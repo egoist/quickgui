@@ -1,7 +1,9 @@
 package ui
 
 import (
+	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/egoist/quickgui/packages/go/native"
 	"github.com/egoist/quickgui/packages/go/protocol"
@@ -65,6 +67,67 @@ func bindValue(node *native.Node, code uint16, value any) {
 		native.SetString(node, code, typed)
 	default:
 		native.SetString(node, code, fmt.Sprint(typed))
+	}
+}
+
+func setExplicitBool(node *native.Node, code uint16, value bool) {
+	native.SetBoolean(node, code, value)
+}
+
+func setComponentValue(node *native.Node, code uint16, value string) {
+	if value == "" {
+		native.ClearProperty(node, code)
+		return
+	}
+	if len(value) > protocol.MaxComponentValueBytes {
+		panic(fmt.Sprintf("QuickGUI component scopes and values are bounded to %d bytes", protocol.MaxComponentValueBytes))
+	}
+	native.SetString(node, code, value)
+}
+
+func setJson(node *native.Node, code uint16, limit int, value any) {
+	if value == nil {
+		native.ClearProperty(node, code)
+		return
+	}
+	payload, err := json.Marshal(value)
+	if err != nil {
+		panic(err)
+	}
+	if len(payload) > limit {
+		panic(fmt.Sprintf("QuickGUI component declarations are bounded to %d bytes", limit))
+	}
+	native.SetString(node, code, string(payload))
+}
+
+func setInputType(node *native.Node, value string) {
+	native.SetBoolean(node, protocol.Password, value == "password")
+}
+
+func setHoverGroup(node *native.Node, code uint16, value any) {
+	if value == nil {
+		native.ClearProperty(node, code)
+		return
+	}
+	switch typed := value.(type) {
+	case bool:
+		if typed {
+			native.SetBoolean(node, code, true)
+		} else {
+			native.ClearProperty(node, code)
+		}
+	case string:
+		name := strings.TrimSpace(typed)
+		if name == "" {
+			native.ClearProperty(node, code)
+			return
+		}
+		if len(name) > protocol.MaxHoverGroupNameBytes {
+			panic(fmt.Sprintf("QuickGUI hover group names are bounded to %d bytes", protocol.MaxHoverGroupNameBytes))
+		}
+		native.SetString(node, code, name)
+	default:
+		panic(fmt.Sprintf("QuickGUI group %T is not a bool or string", value))
 	}
 }
 
@@ -159,6 +222,20 @@ func Fragment(nodes []*native.Node) *native.Node {
 	sentinel := native.CreateSentinel()
 	sentinel.Group = nodes
 	return sentinel
+}
+
+// DynamicMaybe is a region showing one node or nothing.
+func DynamicMaybe(render func() *native.Node) *native.Node {
+	region := NewRegion()
+	reactive.CreateRenderEffect(func() {
+		node := render()
+		if node == nil {
+			region.Clear()
+			return
+		}
+		region.Replace(func() []*native.Node { return []*native.Node{node} })
+	})
+	return region.Sentinel
 }
 
 // CreateRenderer mounts render into a window. Pass the result as WindowOptions.Renderer.

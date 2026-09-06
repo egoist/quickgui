@@ -96,6 +96,45 @@ func CountLabel(count func() int) *native.Node {
 A plain `count int` prop is a setup-time value. Callback props remain callbacks. `native.Dispatch`
 queues work from a background goroutine onto the application goroutine.
 
+## Router
+
+Routing is the same core-owned route table and bounded memory history as TypeScript.
+`native.Router` talks to the host through the synchronous CPU-only service channel
+(`router-create`, `router-push`, …). `ui.Router` builds a static table, renders the matched
+chain, and keeps a page mounted while only its parameters or query change.
+
+```go
+func App() *native.Node {
+    return ui.Router(ui.RouterProps{
+        InitialPath: "/",
+        Routes: []*ui.RouteDeclaration{
+            ui.Route("/", Shell, ui.Route("", Home), ui.Route("projects/:id", Project)),
+        },
+        Fallback: func() *native.Node { return ui.Text(ui.Props{Children: "Not found"}) },
+    })
+}
+
+func Shell() *native.Node {
+    return ui.View(ui.Props{
+        Children: []any{
+            ui.Link(ui.LinkProps{Href: "/", PartProps: ui.PartProps{Children: func() *native.Node {
+                return ui.Text(ui.Props{Children: "Home"})
+            }}}),
+            ui.Outlet(),
+        },
+    })
+}
+
+func Project() *native.Node {
+    id := ui.UseParam("id")
+    return ui.Text(ui.Props{Children: func() string { return "Project " + id() }})
+}
+```
+
+`UseRouter`, `UseNavigate`, `UseLocation`, `UseParams`, and `UseSearchParams` must be called
+below `Router`. `Link` is a native button with `role="link"`; `ActiveStyle` layers over `Style`
+while the destination is active.
+
 ## Conditional and list content
 
 `Show`, `For`, and `KeyedFor` come from the `ui` package.

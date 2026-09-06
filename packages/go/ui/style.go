@@ -9,6 +9,7 @@ import (
 
 	"github.com/egoist/quickgui/packages/go/native"
 	"github.com/egoist/quickgui/packages/go/protocol"
+	"github.com/egoist/quickgui/packages/go/reactive"
 )
 
 // Style is the host style record, including nested interaction states.
@@ -152,6 +153,183 @@ func setFlex(node *native.Node, value any) {
 	default:
 		panic(fmt.Sprintf("QuickGUI flex %v is not a number or string", value))
 	}
+}
+
+func mergeStyle(target *Style, source Style) {
+	if source.Display != "" {
+		target.Display = source.Display
+	}
+	if source.Flex != nil {
+		target.Flex = source.Flex
+	}
+	if source.FlexDirection != "" {
+		target.FlexDirection = source.FlexDirection
+	}
+	if source.FlexWrap != "" {
+		target.FlexWrap = source.FlexWrap
+	}
+	if source.FlexGrow != nil {
+		target.FlexGrow = source.FlexGrow
+	}
+	if source.FlexShrink != nil {
+		target.FlexShrink = source.FlexShrink
+	}
+	if source.FlexBasis != nil {
+		target.FlexBasis = source.FlexBasis
+	}
+	if source.AlignItems != "" {
+		target.AlignItems = source.AlignItems
+	}
+	if source.AlignSelf != "" {
+		target.AlignSelf = source.AlignSelf
+	}
+	if source.JustifyContent != "" {
+		target.JustifyContent = source.JustifyContent
+	}
+	if source.AlignContent != "" {
+		target.AlignContent = source.AlignContent
+	}
+	if source.Gap != nil {
+		target.Gap = source.Gap
+	}
+	if source.ColumnGap != nil {
+		target.ColumnGap = source.ColumnGap
+	}
+	if source.RowGap != nil {
+		target.RowGap = source.RowGap
+	}
+	if source.Width != nil {
+		target.Width = source.Width
+	}
+	if source.Height != nil {
+		target.Height = source.Height
+	}
+	if source.MinWidth != nil {
+		target.MinWidth = source.MinWidth
+	}
+	if source.MinHeight != nil {
+		target.MinHeight = source.MinHeight
+	}
+	if source.MaxWidth != nil {
+		target.MaxWidth = source.MaxWidth
+	}
+	if source.MaxHeight != nil {
+		target.MaxHeight = source.MaxHeight
+	}
+	if source.Padding != nil {
+		target.Padding = source.Padding
+	}
+	if source.PaddingTop != nil {
+		target.PaddingTop = source.PaddingTop
+	}
+	if source.PaddingRight != nil {
+		target.PaddingRight = source.PaddingRight
+	}
+	if source.PaddingBottom != nil {
+		target.PaddingBottom = source.PaddingBottom
+	}
+	if source.PaddingLeft != nil {
+		target.PaddingLeft = source.PaddingLeft
+	}
+	if source.Margin != nil {
+		target.Margin = source.Margin
+	}
+	if source.MarginTop != nil {
+		target.MarginTop = source.MarginTop
+	}
+	if source.MarginRight != nil {
+		target.MarginRight = source.MarginRight
+	}
+	if source.MarginBottom != nil {
+		target.MarginBottom = source.MarginBottom
+	}
+	if source.MarginLeft != nil {
+		target.MarginLeft = source.MarginLeft
+	}
+	if source.BackgroundColor != nil {
+		target.BackgroundColor = source.BackgroundColor
+	}
+	if source.Color != nil {
+		target.Color = source.Color
+	}
+	if source.Opacity != nil {
+		target.Opacity = source.Opacity
+	}
+	if source.BorderWidth != nil {
+		target.BorderWidth = source.BorderWidth
+	}
+	if source.BorderColor != nil {
+		target.BorderColor = source.BorderColor
+	}
+	if source.BorderRadius != nil {
+		target.BorderRadius = source.BorderRadius
+	}
+	if source.FontSize != nil {
+		target.FontSize = source.FontSize
+	}
+	if source.FontFamily != "" {
+		target.FontFamily = source.FontFamily
+	}
+	if source.FontWeight != nil {
+		target.FontWeight = source.FontWeight
+	}
+	if source.LineHeight != nil {
+		target.LineHeight = source.LineHeight
+	}
+	if source.TextAlign != "" {
+		target.TextAlign = source.TextAlign
+	}
+	if source.Cursor != "" {
+		target.Cursor = source.Cursor
+	}
+	if source.AppRegion != "" {
+		target.AppRegion = source.AppRegion
+	}
+	if source.UserSelect != "" {
+		target.UserSelect = source.UserSelect
+	}
+	if source.Position != "" {
+		target.Position = source.Position
+	}
+	if source.Top != nil {
+		target.Top = source.Top
+	}
+	if source.Right != nil {
+		target.Right = source.Right
+	}
+	if source.Bottom != nil {
+		target.Bottom = source.Bottom
+	}
+	if source.Left != nil {
+		target.Left = source.Left
+	}
+	if source.Hover != nil {
+		target.Hover = source.Hover
+	}
+	if source.Active != nil {
+		target.Active = source.Active
+	}
+	if source.Focus != nil {
+		target.Focus = source.Focus
+	}
+	if source.Disabled != nil {
+		target.Disabled = source.Disabled
+	}
+}
+
+func applyStyleList(node *native.Node, styles []Style) Style {
+	merged := Style{}
+	for _, style := range styles {
+		mergeStyle(&merged, style)
+	}
+	applyStyle(node, merged)
+	return merged
+}
+
+func bindStyleList(node *native.Node, styles func() []Style) {
+	reactive.CreateRenderEffect(func() {
+		applyStyleList(node, styles())
+	})
 }
 
 func applyStyle(node *native.Node, style Style) {

@@ -42,6 +42,8 @@ func Counter() *native.Node {
 
 A component function runs once. Values that change after setup are accessors (`func() T`);
 setters take a value. `Show`, `For`, and `KeyedFor` replace only the region they own.
+`Router`, `Route`, `Layout`, `Outlet`, and `Link` expose the core route table the same way
+`@quickgui/ui/router` does.
 
 Build the host library once, then compile the application as often as you like:
 

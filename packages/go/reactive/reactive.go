@@ -613,6 +613,15 @@ func UseContext[T any](context *Context[T]) T {
 	return context.Use()
 }
 
+// Provide runs fn with value visible to Use/UseContext in that subtree and returns fn's result.
+func Provide[T, R any](c *Context[T], value T, fn func() R) R {
+	var result R
+	c.Provide(value, func() {
+		result = fn()
+	})
+	return result
+}
+
 func onCleanupOf(owner *Owner, fn func()) {
 	owner.Cleanups = append(owner.Cleanups, fn)
 }

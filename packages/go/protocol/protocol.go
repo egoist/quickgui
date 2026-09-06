@@ -153,12 +153,48 @@ const (
 	TerminalStatusListener      uint16 = 93
 	SwiftUIPresentationListener uint16 = 128
 	SelectListener              uint16 = 160
+	Password                    uint16 = 76
+	FocusOnPointer              uint16 = 100
+	Indeterminate               uint16 = 136
+	ActiveValue                 uint16 = 139
+	Orientation                 uint16 = 140
+	KeepMounted                 uint16 = 143
+	ItemIndex                   uint16 = 145
+	Required                    uint16 = 147
+	Invalid                     uint16 = 148
+	Minimum                     uint16 = 175
+	Maximum                     uint16 = 176
+	Pressed                     uint16 = 181
+	Values                      uint16 = 203
+	Step                        uint16 = 204
+	LargeStep                   uint16 = 205
+	Items                       uint16 = 206
+	Options                     uint16 = 208
+	InputValue                  uint16 = 209
+	Group                       uint16 = 235
+	Delay                       uint16 = 292
+	CloseDelay                  uint16 = 293
+	ReadOnly                    uint16 = 296
+	Side                        uint16 = 303
+	Align                       uint16 = 304
+	SideOffset                  uint16 = 305
+	AlignOffset                 uint16 = 306
+	CollisionPadding            uint16 = 307
+	Sticky                      uint16 = 308
+	Modal                       uint16 = 310
+	OpenOnHover                 uint16 = 311
+	MinStepsBetweenValues       uint16 = 317
+	ThumbAlignment              uint16 = 318
+	Href                        uint16 = 333
+	HoverGroup                  uint16 = 354
 )
 
 const (
 	MaxStyleDeclarationBytes = 4096
 	MaxStateStyleJSONBytes   = 16 * 1024
 	MaxComponentValueBytes   = 256
+	MaxComponentJSONBytes    = 64 * 1024
+	MaxHoverGroupNameBytes   = 256
 )
 
 // Event types, numbered so listeners live in plain slices.

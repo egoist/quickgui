@@ -17,7 +17,13 @@ func CreateMemo[T any](compute func() T, options ...reactive.SignalOptions) reac
 
 func CreateEffect(fn func()) { reactive.CreateEffect(fn) }
 
+func CreateRenderEffect(fn func()) { reactive.CreateRenderEffect(fn) }
+
 func Batch(fn func()) { reactive.Batch(fn) }
+
+func Untrack[T any](fn func() T) T { return reactive.Untrack(fn) }
+
+func Flush() { reactive.Flush() }
 
 func OnCleanup(fn func()) { reactive.OnCleanup(fn) }
 

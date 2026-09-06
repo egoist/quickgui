@@ -73,6 +73,12 @@ func isNullJSON(text string) bool {
 	return text == "" || text == "null"
 }
 
+// CallService answers one CPU-only host service synchronously and returns the JSON text of its value.
+// The router uses this channel; it never waits on native main-thread execution.
+func CallService(method, params string) (string, error) {
+	return callService(method, params)
+}
+
 func callService(method, params string) (string, error) {
 	replyText := host.Current.Call(method, params)
 	var status struct {
