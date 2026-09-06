@@ -107,10 +107,18 @@ func ShowAlertDialog(options AlertDialogOptions, done func(int, error)) {
 	})
 }
 
+// FileDialogFilter is one named set of extensions for a file panel.
+type FileDialogFilter struct {
+	Name       string   `json:"name"`
+	Extensions []string `json:"extensions"`
+}
+
 // OpenDialogOptions configure a native open panel.
 type OpenDialogOptions struct {
 	Title       string
+	DefaultPath string
 	ButtonLabel string
+	Filters     []FileDialogFilter
 	Properties  []string
 	Window      *Window
 }
@@ -121,26 +129,71 @@ type OpenDialogResult struct {
 	FilePaths []string
 }
 
-// ShowOpenDialog presents a native open panel.
-func ShowOpenDialog(options OpenDialogOptions, done func(OpenDialogResult, error)) {
+type nativeOpenDialogOptions struct {
+	Files            bool               `json:"files"`
+	Directories      bool               `json:"directories"`
+	Multiple         bool               `json:"multiple"`
+	Title            string             `json:"title,omitempty"`
+	Prompt           string             `json:"prompt,omitempty"`
+	Directory        string             `json:"directory,omitempty"`
+	SuggestedName    string             `json:"suggestedName,omitempty"`
+	Filters          []FileDialogFilter `json:"filters"`
+	ShowsHiddenFiles bool               `json:"showsHiddenFiles"`
+}
+
+func encodeOpenDialogOptions(options OpenDialogOptions) nativeOpenDialogOptions {
 	files := contains(options.Properties, "openFile")
 	directories := contains(options.Properties, "openDirectory")
 	if !files && !directories {
 		directories = true
 	}
-	native := map[string]any{
-		"files":            files,
-		"directories":      directories,
-		"multiple":         contains(options.Properties, "multiSelections"),
-		"showsHiddenFiles": contains(options.Properties, "showHiddenFiles"),
+	filters := options.Filters
+	if filters == nil {
+		filters = []FileDialogFilter{}
 	}
-	if options.Title != "" {
-		native["title"] = options.Title
+	native := nativeOpenDialogOptions{
+		Files:            files,
+		Directories:      directories,
+		Multiple:         contains(options.Properties, "multiSelections"),
+		Title:            options.Title,
+		Prompt:           options.ButtonLabel,
+		Filters:          filters,
+		ShowsHiddenFiles: contains(options.Properties, "showHiddenFiles"),
 	}
-	if options.ButtonLabel != "" {
-		native["prompt"] = options.ButtonLabel
+	if options.DefaultPath != "" {
+		directory, suggested := splitDefaultPath(options.DefaultPath)
+		native.Directory = directory
+		native.SuggestedName = suggested
 	}
-	encoded, _ := json.Marshal(native)
+	return native
+}
+
+func splitDefaultPath(defaultPath string) (directory, suggestedName string) {
+	if pathEndsWithSeparator(defaultPath) {
+		return defaultPath, ""
+	}
+	info, err := os.Stat(defaultPath)
+	if err == nil && info.IsDir() {
+		return defaultPath, ""
+	}
+	return filepath.Dir(defaultPath), filepath.Base(defaultPath)
+}
+
+func pathEndsWithSeparator(path string) bool {
+	if path == "" {
+		return false
+	}
+	last := path[len(path)-1]
+	return last == '/' || last == filepath.Separator
+}
+
+// ShowOpenDialog presents a native open panel.
+func ShowOpenDialog(options OpenDialogOptions, done func(OpenDialogResult, error)) {
+	encoded, err := json.Marshal(encodeOpenDialogOptions(options))
+	if err != nil {
+		done(OpenDialogResult{}, err)
+		return
+	}
 	showDialog(options.Window, 1, string(encoded), func(_ string, paths []string, err error) {
 		if err != nil {
 			done(OpenDialogResult{}, err)
