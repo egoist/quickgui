@@ -147,3 +147,8 @@ jobs:
         env:
           CGO_ENABLED: "0"
         run: go test ./packages/go/...
+      - name: Test Quick Git Go example without cgo
+        env:
+          CGO_ENABLED: "0"
+        run: go test ./...
+        working-directory: examples/quick-git-go

@@ -59,6 +59,15 @@ type Style struct {
 	AppRegion       string
 	UserSelect      string
 	Position        string
+	Overflow        string
+	OverflowX       string
+	OverflowY       string
+	Visibility      string
+	LetterSpacing   any
+	TextTransform   string
+	LineClamp       any
+	WhiteSpace      string
+	TextOverflow    string
 	Top             any
 	Right           any
 	Bottom          any
@@ -291,6 +300,33 @@ func mergeStyle(target *Style, source Style) {
 	if source.Position != "" {
 		target.Position = source.Position
 	}
+	if source.Overflow != "" {
+		target.Overflow = source.Overflow
+	}
+	if source.OverflowX != "" {
+		target.OverflowX = source.OverflowX
+	}
+	if source.OverflowY != "" {
+		target.OverflowY = source.OverflowY
+	}
+	if source.Visibility != "" {
+		target.Visibility = source.Visibility
+	}
+	if source.LetterSpacing != nil {
+		target.LetterSpacing = source.LetterSpacing
+	}
+	if source.TextTransform != "" {
+		target.TextTransform = source.TextTransform
+	}
+	if source.LineClamp != nil {
+		target.LineClamp = source.LineClamp
+	}
+	if source.WhiteSpace != "" {
+		target.WhiteSpace = source.WhiteSpace
+	}
+	if source.TextOverflow != "" {
+		target.TextOverflow = source.TextOverflow
+	}
 	if source.Top != nil {
 		target.Top = source.Top
 	}
@@ -467,6 +503,33 @@ func applyStyle(node *native.Node, style Style) {
 	}
 	if style.Position != "" {
 		setString(node, protocol.Position, style.Position)
+	}
+	if style.Overflow != "" {
+		setString(node, protocol.Overflow, style.Overflow)
+	}
+	if style.OverflowX != "" {
+		setString(node, protocol.OverflowX, style.OverflowX)
+	}
+	if style.OverflowY != "" {
+		setString(node, protocol.OverflowY, style.OverflowY)
+	}
+	if style.Visibility != "" {
+		setString(node, protocol.Visibility, style.Visibility)
+	}
+	if style.LetterSpacing != nil {
+		setLength(node, protocol.LetterSpacing, style.LetterSpacing)
+	}
+	if style.TextTransform != "" {
+		setString(node, protocol.TextTransform, style.TextTransform)
+	}
+	if style.LineClamp != nil {
+		setNumber(node, protocol.LineClamp, style.LineClamp)
+	}
+	if style.WhiteSpace != "" {
+		setString(node, protocol.WhiteSpace, style.WhiteSpace)
+	}
+	if style.TextOverflow != "" {
+		setString(node, protocol.TextOverflow, style.TextOverflow)
 	}
 	if style.Top != nil {
 		setLength(node, protocol.Top, style.Top)

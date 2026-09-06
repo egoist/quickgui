@@ -81,7 +81,8 @@ func (a *Application) didCloseWindow(window *Window) {
 
 func (a *Application) dispatchHostEvent(ev hostEvent) {
 	var extra struct {
-		Error string `json:"error"`
+		Error string   `json:"error"`
+		Paths []string `json:"paths"`
 	}
 	hasValue := ev.flags&1 != 0
 	hasExtra := ev.flags&2 != 0
@@ -104,12 +105,22 @@ func (a *Application) dispatchHostEvent(ev hostEvent) {
 			listener()
 		}
 		return
-	case "command", "invoke":
+	case "command", "invoke", "shell", "popup-menu":
 		var err error
 		if extra.Error != "" {
 			err = fmt.Errorf("%s", extra.Error)
 		}
 		settleReply(ev.target, value, err)
+		return
+	case "alert-dialog", "open-dialog", "save-dialog":
+		var err error
+		if extra.Error != "" {
+			err = fmt.Errorf("%s", extra.Error)
+		}
+		settleDialog(ev.target, value, extra.Paths, err)
+		return
+	case "menu-action":
+		dispatchMenuAction(ev.target)
 		return
 	case "exit":
 		a.exited = true

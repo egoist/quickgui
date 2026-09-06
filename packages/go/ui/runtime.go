@@ -12,15 +12,22 @@ import (
 
 // Props are the host element properties, matching the TypeScript NativeProps shape.
 type Props struct {
-	Style       Style
-	Children    any
-	OnClick     func(*native.Event)
-	OnInput     func(*native.Event)
-	OnSubmit    func(*native.Event)
-	Disabled    bool
-	Value       any
-	Placeholder string
-	Multiline   bool
+	Style          Style
+	Children       any
+	OnClick        func(*native.Event)
+	OnInput        func(*native.Event)
+	OnSubmit       func(*native.Event)
+	OnDoubleClick  func(*native.Event)
+	OnContextMenu  func(*native.Event)
+	OnPointer      func(*native.Event)
+	Disabled       bool
+	Value          any
+	Placeholder    string
+	Multiline      bool
+	AriaLabel      string
+	Selected       bool
+	Group          bool
+	FocusOnPointer *bool
 }
 
 func applyProps(node *native.Node, props Props) {
@@ -45,6 +52,27 @@ func applyProps(node *native.Node, props Props) {
 	}
 	if props.OnSubmit != nil {
 		setListener(node, protocol.EventSubmit, props.OnSubmit)
+	}
+	if props.OnDoubleClick != nil {
+		setListener(node, protocol.EventDoubleClick, props.OnDoubleClick)
+	}
+	if props.OnContextMenu != nil {
+		setListener(node, protocol.EventContextMenu, props.OnContextMenu)
+	}
+	if props.OnPointer != nil {
+		setListener(node, protocol.EventPointer, props.OnPointer)
+	}
+	if props.AriaLabel != "" {
+		native.SetString(node, protocol.AccessibilityLabel, props.AriaLabel)
+	}
+	if props.Selected {
+		native.SetBoolean(node, protocol.Selected, true)
+	}
+	if props.Group {
+		native.SetBoolean(node, protocol.Group, true)
+	}
+	if props.FocusOnPointer != nil {
+		native.SetBoolean(node, protocol.FocusOnPointer, *props.FocusOnPointer)
 	}
 	insertChildren(node, props.Children)
 }

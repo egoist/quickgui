@@ -187,6 +187,8 @@ const (
 	ThumbAlignment              uint16 = 318
 	Href                        uint16 = 333
 	HoverGroup                  uint16 = 354
+	LetterSpacing               uint16 = 240
+	TextTransform               uint16 = 242
 )
 
 const (

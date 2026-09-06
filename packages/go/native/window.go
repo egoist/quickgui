@@ -28,19 +28,25 @@ type WindowOptions struct {
 	TitleBarStyle        string
 	TrafficLightPosition *Point
 	Visible              *bool
+	Appearance           string
+	Vibrancy             string
+	VisualEffectState    string
 }
 
 type nativeWindowOptions struct {
-	Title         string   `json:"title,omitempty"`
-	Width         *float64 `json:"width,omitempty"`
-	Height        *float64 `json:"height,omitempty"`
-	MinimumWidth  *float64 `json:"minimumWidth,omitempty"`
-	MinimumHeight *float64 `json:"minimumHeight,omitempty"`
-	Background    *uint32  `json:"background,omitempty"`
-	TitleBarStyle string   `json:"titleBarStyle,omitempty"`
-	TrafficLightX *float64 `json:"trafficLightX,omitempty"`
-	TrafficLightY *float64 `json:"trafficLightY,omitempty"`
-	Show          *bool    `json:"show,omitempty"`
+	Title             string   `json:"title,omitempty"`
+	Width             *float64 `json:"width,omitempty"`
+	Height            *float64 `json:"height,omitempty"`
+	MinimumWidth      *float64 `json:"minimumWidth,omitempty"`
+	MinimumHeight     *float64 `json:"minimumHeight,omitempty"`
+	Background        *uint32  `json:"background,omitempty"`
+	TitleBarStyle     string   `json:"titleBarStyle,omitempty"`
+	TrafficLightX     *float64 `json:"trafficLightX,omitempty"`
+	TrafficLightY     *float64 `json:"trafficLightY,omitempty"`
+	Show              *bool    `json:"show,omitempty"`
+	Appearance        string   `json:"appearance,omitempty"`
+	Vibrancy          string   `json:"vibrancy,omitempty"`
+	VisualEffectState string   `json:"visualEffectState,omitempty"`
 }
 
 // WindowEventName is one window lifecycle notification.
@@ -53,11 +59,14 @@ const (
 	WindowBlur           WindowEventName = "blur"
 	WindowResize         WindowEventName = "resize"
 	WindowMove           WindowEventName = "move"
+	WindowReadyToShow    WindowEventName = "readyToShow"
+	WindowAppearance     WindowEventName = "appearanceChange"
 )
 
 type WindowEvent struct {
-	Window *Window
-	Type   WindowEventName
+	Window     *Window
+	Type       WindowEventName
+	Appearance string
 }
 
 type windowListener struct {
@@ -145,6 +154,9 @@ func encodeWindowOptions(options WindowOptions) nativeWindowOptions {
 		native.TrafficLightY = &options.TrafficLightPosition.Y
 	}
 	native.Show = options.Visible
+	native.Appearance = options.Appearance
+	native.Vibrancy = options.Vibrancy
+	native.VisualEffectState = options.VisualEffectState
 	return native
 }
 
@@ -170,11 +182,15 @@ func (w *Window) OnClose(listener func(*Window)) func() {
 }
 
 func (w *Window) emit(eventType WindowEventName) {
+	w.emitEvent(WindowEvent{Window: w, Type: eventType})
+}
+
+func (w *Window) emitEvent(event WindowEvent) {
 	snapshot := append([]windowListener(nil), w.listeners...)
 	withCurrentWindow(w, func() {
 		for _, entry := range snapshot {
-			if entry.Type == eventType {
-				entry.Listener(WindowEvent{Window: w, Type: eventType})
+			if entry.Type == event.Type {
+				entry.Listener(event)
 			}
 		}
 	})
@@ -182,6 +198,18 @@ func (w *Window) emit(eventType WindowEventName) {
 
 func (w *Window) Close() {
 	w.App.closeWindow(w)
+}
+
+func (w *Window) Focus() {
+	w.Action("focus", "")
+}
+
+func (w *Window) SetTitle(title string) {
+	w.Action("set-title", title)
+}
+
+func (w *Window) SetRepresentedFile(path string) {
+	w.Action("set-represented-file", path)
 }
 
 func (w *Window) Action(action, value string) {
@@ -230,5 +258,13 @@ func (w *Window) didObserveLifecycle(kind, value string) {
 		w.emit(WindowResize)
 	case "window-move":
 		w.emit(WindowMove)
+	case "window-ready-to-show":
+		w.emit(WindowReadyToShow)
+	case "window-appearance":
+		appearance := "light"
+		if value == "dark" {
+			appearance = "dark"
+		}
+		w.emitEvent(WindowEvent{Window: w, Type: WindowAppearance, Appearance: appearance})
 	}
 }

@@ -30,6 +30,12 @@ func allocateRequest() uint32 {
 	return request
 }
 
+type dialogReply struct {
+	complete func(value string, paths []string, err error)
+}
+
+var pendingDialogs = map[uint32]dialogReply{}
+
 func settleReply(request uint32, value string, err error) {
 	done, ok := pendingReplies[request]
 	if !ok {
@@ -39,10 +45,23 @@ func settleReply(request uint32, value string, err error) {
 	done(value, err)
 }
 
+func settleDialog(request uint32, value string, paths []string, err error) {
+	pending, ok := pendingDialogs[request]
+	if !ok {
+		return
+	}
+	delete(pendingDialogs, request)
+	pending.complete(value, paths, err)
+}
+
 func rejectAllReplies(err error) {
 	for request, done := range pendingReplies {
 		delete(pendingReplies, request)
 		done("", err)
+	}
+	for request, pending := range pendingDialogs {
+		delete(pendingDialogs, request)
+		pending.complete("", nil, err)
 	}
 }
 

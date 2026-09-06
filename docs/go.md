@@ -184,6 +184,18 @@ ui.Button(ui.Props{
 Native events arrive asynchronously with the core's decision. Event payloads may be absent; check
 `event.ValueOK()` before using them.
 
+## Quick Git
+
+[Quick Git](../examples/quick-git-go) is the same git client as `examples/quick-git`, written against
+the Go frontend. Git parsing and process control stay in ordinary Go; the UI uses `View`, `Text`,
+`Button`, `For`, and `Show`, plus native dialogs and menus:
+
+```console
+bun run build:native
+cd examples/quick-git-go
+CGO_ENABLED=0 go run .
+```
+
 ## Host library
 
 `bun run build:native` stages both the scriptc static archive and a `dynamic-host` shared library
@@ -197,5 +209,6 @@ The shared library is built with the `dynamic-host` feature so it does not impor
 `main` symbol that scriptc provides. `quickgui_run_host` runs the native loop on the calling
 thread.
 
-See the [TypeScript UI guide](ui.md) for the shared rendering model and
-[the counter example](../examples/counter-go).
+See the [TypeScript UI guide](ui.md) for the shared rendering model,
+[the counter example](../examples/counter-go), and
+[Quick Git in Go](../examples/quick-git-go).

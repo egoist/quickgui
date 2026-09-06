@@ -33,6 +33,17 @@ cd examples/quick-git
 bun run dev
 ```
 
+The Go port (`examples/quick-git-go`) recreates that client on the cgo-free frontend. Parsers and
+the process runner live in `internal/git`; persistence, a poll-based watcher, and the store live in
+`internal/model`. Compound Table/Toast/Dialog widgets stay TypeScript-only, so the Go UI uses
+primitives plus native sheets and menus:
+
+```console
+bun run build:native
+cd examples/quick-git-go
+CGO_ENABLED=0 go run .
+```
+
 The QuickGUI UI routing example declares nested layouts, dynamic and wildcard routes, query-only
 navigation, active `Link` styling, and back/forward controls. Rust owns pattern matching,
 normalization, decoded values, and the bounded memory history; QuickGUI UI owns only declaration
