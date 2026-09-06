@@ -54,6 +54,10 @@ func bindExplicitBool(node *native.Node, code uint16, value any) {
 		reactive.CreateRenderEffect(func() {
 			setExplicitBool(node, code, typed())
 		})
+	case reactive.Accessor[bool]:
+		reactive.CreateRenderEffect(func() {
+			setExplicitBool(node, code, typed())
+		})
 	case func() *bool:
 		reactive.CreateRenderEffect(func() {
 			setExplicitBool(node, code, typed())
@@ -71,7 +75,15 @@ func bindNumber(node *native.Node, code uint16, value any) {
 		reactive.CreateRenderEffect(func() {
 			setNumber(node, code, typed())
 		})
+	case reactive.Accessor[float64]:
+		reactive.CreateRenderEffect(func() {
+			setNumber(node, code, typed())
+		})
 	case func() int:
+		reactive.CreateRenderEffect(func() {
+			setNumber(node, code, typed())
+		})
+	case reactive.Accessor[int]:
 		reactive.CreateRenderEffect(func() {
 			setNumber(node, code, typed())
 		})
@@ -104,7 +116,13 @@ func resolveNumber(value any) *float64 {
 	case func() float64:
 		number := typed()
 		return &number
+	case reactive.Accessor[float64]:
+		number := typed()
+		return &number
 	case func() int:
+		number := float64(typed())
+		return &number
+	case reactive.Accessor[int]:
 		number := float64(typed())
 		return &number
 	case func() *float64:
@@ -127,6 +145,10 @@ func resolveNumber(value any) *float64 {
 func bindString(node *native.Node, code uint16, value any) {
 	switch typed := value.(type) {
 	case func() string:
+		reactive.CreateRenderEffect(func() {
+			setString(node, code, typed())
+		})
+	case reactive.Accessor[string]:
 		reactive.CreateRenderEffect(func() {
 			setString(node, code, typed())
 		})
@@ -160,6 +182,9 @@ func resolveBoolean(value any) *bool {
 	case func() bool:
 		flag := typed()
 		return &flag
+	case reactive.Accessor[bool]:
+		flag := typed()
+		return &flag
 	case func() *bool:
 		return typed()
 	case bool:
@@ -177,6 +202,9 @@ func resolveString(value any) *string {
 	}
 	switch typed := value.(type) {
 	case func() string:
+		text := typed()
+		return &text
+	case reactive.Accessor[string]:
 		text := typed()
 		return &text
 	case func() *string:

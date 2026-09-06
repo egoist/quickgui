@@ -1,0 +1,15 @@
+{
+  "name": "swift-ui-go",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "quickgui dev",
+    "build": "quickgui build"
+  },
+  "dependencies": {
+    "@quickgui/native": "workspace:*"
+  },
+  "devDependencies": {
+    "@quickgui/cli": "workspace:*"
+  }
+}

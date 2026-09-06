@@ -33,10 +33,18 @@ cd examples/quick-git
 bun run dev
 ```
 
+The Go SwiftUI gallery (`examples/swift-ui-go`) is the same sidebar of native SwiftUI controls as
+`examples/swift-ui`, written against `ui.SwiftUI`.
+
+```console
+cd examples/swift-ui-go
+bun run dev
+```
+
 The Go port (`examples/quick-git-go`) is the same client on the cgo-free frontend, complete on its
 own. Parsers and the process runner live in `internal/git`; persistence, a poll-based watcher, and
 the store live in `internal/model`. The UI binds the same core-owned Table, Dialog, Toast, Checkbox,
-and Select parts as TypeScript:
+and Select parts as TypeScript, and the toolbar uses `SwiftUI.Host` buttons:
 
 ```console
 cd examples/quick-git-go

@@ -362,7 +362,8 @@ inside `Popover.Content` makes ordinary QuickGUI components interactive there.
 
 Run `cd examples/swift-ui && bun run dev` for a sidebar gallery with one live page per exposed
 native SwiftUI control. Its Popover page opens a native popover containing QuickGUI text, input,
-and button components.
+and button components. The Go frontend mirrors that API as `ui.SwiftUI`;
+`cd examples/swift-ui-go && bun run dev` is the same gallery.
 
 See also `cargo run --release --example native_view` and
 `cargo run --release --example overlays`.

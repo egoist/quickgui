@@ -24,7 +24,7 @@ executable. `CGO_ENABLED=0 go run .` still works after `bun run build:native`. P
 
 - `internal/git` is a UI-free git layer: porcelain parsers, a bounded process runner, and repository operations. `CGO_ENABLED=0 go test ./internal/git ./internal/model ./internal/agent` covers the parsers and persistence.
 - `internal/model` holds signals, persistence (`quick-git-state.json`), and a poll-based repository watcher. Git work runs on background goroutines; `native.Dispatch` writes signals on the application goroutine.
-- `internal/ui` is the same compound QuickGUI UI as the TypeScript app: `Table` for file, history, and diff lists; `Dialog` for in-window forms; `Toast` for notices; `Checkbox` and `Select` for controls.
+- `internal/ui` is the same compound QuickGUI UI as the TypeScript app: `Table` for file, history, and diff lists; `Dialog` for in-window forms; `Toast` for notices; `Checkbox` and `Select` for controls; SwiftUI toolbar buttons and progress.
 - `main.go` shares one `GitRunner` and persistence across windows, matching the TypeScript app.
 
 The Go frontend remains cgo-free: this example never compiles Rust or invokes a C compiler.

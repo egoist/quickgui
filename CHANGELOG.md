@@ -12,8 +12,10 @@ All notable user-facing changes to QuickGUI are recorded here.
   select, menu, and the rest) onto the same C ABI. `go build` stays a plain, fast compile: the
   process loads a prebuilt `dynamic-host` shared library and calls `quickgui_run_host` on the
   main thread. `quickgui dev` and `quickgui build` accept `language: "go"` and stage that
-  library next to the executable. See [the Go guide](docs/go.md), `examples/counter-go`, and
-  `examples/quick-git-go`.
+  library next to the executable. `ui.SwiftUI` is the same macOS SwiftUI host family as
+  `@quickgui/ui/swift-ui` (Host, controls, modifiers, popover, and reverse-hosted
+  `QuickGUIHostView`). See [the Go guide](docs/go.md), `examples/counter-go`,
+  `examples/swift-ui-go`, and `examples/quick-git-go`.
 
 
 - Added `Element::selected_style`, a paint-only state that follows the element's `selected` flag

@@ -91,6 +91,10 @@ func bindValue(node *native.Node, code uint16, value any) {
 		reactive.CreateRenderEffect(func() {
 			native.SetString(node, code, typed())
 		})
+	case reactive.Accessor[string]:
+		reactive.CreateRenderEffect(func() {
+			native.SetString(node, code, typed())
+		})
 	case string:
 		native.SetString(node, code, typed)
 	default:

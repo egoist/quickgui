@@ -518,20 +518,23 @@ func Toolbar() *native.Node {
 			PaddingLeft: 14, PaddingRight: 12, BorderWidth: 1, BorderColor: app.Theme().Border, BackgroundColor: app.Theme().Content, AppRegion: "drag",
 		},
 		Children: []any{
-			gui.Button(gui.Props{
-				OnClick: func(*native.Event) { store.SetView(model.ViewBranches) },
-				Style:   gui.Style{Display: "flex", Height: 22, AlignItems: "center", PaddingLeft: 8, PaddingRight: 8, BorderRadius: 6, AppRegion: "no-drag", Hover: &gui.Style{BackgroundColor: app.Theme().Hover}},
-				Children: gui.Text(gui.Props{Children: func() string {
-					if status := store.Status(); status != nil {
-						if status.Branch != "" {
-							return status.Branch
+			swiftHost(func() *native.Node {
+				return gui.SwiftUI.Button(gui.SwiftUIButtonProps{
+					Label: func() string {
+						if status := store.Status(); status != nil {
+							if status.Branch != "" {
+								return status.Branch
+							}
+							if status.Detached && len(status.HeadSha) >= 7 {
+								return status.HeadSha[:7] + " (detached)"
+							}
 						}
-						if status.Detached && len(status.HeadSha) >= 7 {
-							return status.HeadSha[:7] + " (detached)"
-						}
-					}
-					return "…"
-				}}),
+						return "…"
+					},
+					SystemImage: "arrow.triangle.branch",
+					Modifiers:   []gui.SwiftUIModifier{gui.SwiftUI.ButtonStyle("borderless"), gui.SwiftUI.ControlSize("regular")},
+					OnPress:     func(*native.Event) { store.SetView(model.ViewBranches) },
+				})
 			}),
 			gui.Show(func() bool {
 				status := store.Status()
@@ -548,9 +551,20 @@ func Toolbar() *native.Node {
 				return gui.View(gui.Props{
 					Style: gui.Style{Display: "flex", FlexDirection: "row", AlignItems: "center", Gap: 8, MarginRight: 8, AppRegion: "no-drag"},
 					Children: []any{
+						swiftHost(func() *native.Node {
+							return gui.SwiftUI.ProgressView(gui.SwiftUIProgressViewProps{
+								Modifiers: []gui.SwiftUIModifier{gui.SwiftUI.ControlSize("small")},
+							})
+						}),
 						gui.Text(gui.Props{Style: gui.Style{FontSize: 12, Color: app.Theme().TextSecondary}, Children: store.Busy().Label + "…"}),
 						gui.Show(func() bool { return store.Busy() != nil && store.Busy().Cancel != nil }, func() *native.Node {
-							return gui.Button(gui.Props{OnClick: func(*native.Event) { store.CancelBusy() }, Style: app.Theme().Button("secondary"), Children: "Cancel"})
+							return swiftHost(func() *native.Node {
+								return gui.SwiftUI.Button(gui.SwiftUIButtonProps{
+									Label:     "Cancel",
+									Modifiers: []gui.SwiftUIModifier{gui.SwiftUI.ButtonStyle("borderless"), gui.SwiftUI.ControlSize("small")},
+									OnPress:   func(*native.Event) { store.CancelBusy() },
+								})
+							})
 						}),
 					},
 				})
@@ -558,21 +572,36 @@ func Toolbar() *native.Node {
 			gui.View(gui.Props{
 				Style: gui.Style{Display: "flex", FlexDirection: "row", AlignItems: "center", Gap: 6, AppRegion: "no-drag"},
 				Children: []any{
-					toolButton(app, "Fetch", func() { store.Fetch() }, store.Busy() != nil),
-					toolButton(app, "Pull", func() { store.Pull() }, store.Busy() != nil || store.Status() == nil || store.Status().Upstream == ""),
-					toolButton(app, "Push", func() { store.Push() }, store.Busy() != nil || store.Status() == nil || store.Status().Branch == ""),
-					toolButton(app, "↻", func() { store.Refresh() }, store.Busy() != nil),
+					swiftTool("Fetch", "arrow.down.to.line", func() { store.Fetch() }, func() bool { return store.Busy() != nil }),
+					swiftTool("Pull", "arrow.down", func() { store.Pull() }, func() bool {
+						return store.Busy() != nil || store.Status() == nil || store.Status().Upstream == ""
+					}),
+					swiftTool("Push", "arrow.up", func() { store.Push() }, func() bool {
+						return store.Busy() != nil || store.Status() == nil || store.Status().Branch == ""
+					}),
+					swiftTool("", "arrow.clockwise", func() { store.Refresh() }, func() bool { return store.Busy() != nil }),
 				},
 			}),
 		},
 	})
 }
 
-func toolButton(app AppContext, label string, onClick func(), disabled bool) *native.Node {
-	return gui.Button(gui.Props{
-		Disabled: disabled,
-		OnClick:  func(*native.Event) { onClick() },
-		Style:    app.Theme().Button("secondary"),
-		Children: label,
+func swiftHost(children func() *native.Node) *native.Node {
+	return gui.SwiftUI.Host(gui.SwiftUIHostProps{
+		MatchContents: true,
+		PartProps:     gui.PartProps{Children: children},
+	})
+}
+
+func swiftTool(label, systemImage string, onPress func(), disabled func() bool) *native.Node {
+	return swiftHost(func() *native.Node {
+		return gui.SwiftUI.Button(gui.SwiftUIButtonProps{
+			Label:       label,
+			SystemImage: systemImage,
+			Modifiers: func() []gui.SwiftUIModifier {
+				return []gui.SwiftUIModifier{gui.SwiftUI.ButtonStyle("glass"), gui.SwiftUI.Disabled(disabled())}
+			},
+			OnPress: func(*native.Event) { onPress() },
+		})
 	})
 }

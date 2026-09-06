@@ -45,7 +45,9 @@ setters take a value. `Show`, `For`, and `KeyedFor` replace only the region they
 `Router`, `Route`, `Layout`, `Outlet`, and `Link` expose the core route table the same way
 `@quickgui/ui/router` does. Compound families (`Checkbox`, `Dialog`, `Table`, `Toast`, `Tabs`,
 `Popover`, `Slider`, `Select`, `Menu`, and the rest) are thin bindings over the same Rust
-`NativePart`s as `@quickgui/ui`.
+`NativePart`s as `@quickgui/ui`. `ui.SwiftUI` is the macOS SwiftUI host family from
+`@quickgui/ui/swift-ui`: dedicated node tags, modifier JSON, popovers, and reverse-hosted
+`QuickGUIHostView`.
 
 `quickgui dev` / `quickgui build` compile a `language: "go"` project. You can also build the
 host library once and compile the application as often as you like:
@@ -55,5 +57,6 @@ bun run build:native
 CGO_ENABLED=0 go build ./examples/counter-go
 ```
 
-See [the Go guide](../../docs/go.md), the [counter example](../../examples/counter-go), and
+See [the Go guide](../../docs/go.md), the [counter example](../../examples/counter-go),
+[the SwiftUI gallery](../../examples/swift-ui-go), and
 [Quick Git in Go](../../examples/quick-git-go).

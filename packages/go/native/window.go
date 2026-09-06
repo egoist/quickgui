@@ -18,17 +18,20 @@ type Point struct {
 
 // WindowOptions match the TypeScript Window constructor.
 type WindowOptions struct {
-	Renderer             Renderer
-	Title                string
-	Width                float64
-	Height               float64
-	MinimumWidth         float64
-	MinimumHeight        float64
-	Background           any
-	TitleBarStyle        string
-	TrafficLightPosition *Point
-	Visible              *bool
+	Renderer                Renderer
+	Title                   string
+	Width                   float64
+	Height                  float64
+	MinimumWidth            float64
+	MinimumHeight           float64
+	Background              any
+	TitleBarStyle           string
+	TrafficLightPosition    *Point
+	Visible                 *bool
+	Decorated               *bool
+	Shadow                  *bool
 	Appearance              string
+	BackgroundAppearance    string
 	Vibrancy                string
 	VisualEffectState       string
 	Anchor                  *Node
@@ -40,24 +43,28 @@ type WindowOptions struct {
 }
 
 type nativeWindowOptions struct {
-	Title             string   `json:"title,omitempty"`
-	Width             *float64 `json:"width,omitempty"`
-	Height            *float64 `json:"height,omitempty"`
-	MinimumWidth      *float64 `json:"minimumWidth,omitempty"`
-	MinimumHeight     *float64 `json:"minimumHeight,omitempty"`
-	Background        *uint32  `json:"background,omitempty"`
-	TitleBarStyle     string   `json:"titleBarStyle,omitempty"`
-	TrafficLightX     *float64 `json:"trafficLightX,omitempty"`
-	TrafficLightY     *float64 `json:"trafficLightY,omitempty"`
-	Show              *bool    `json:"show,omitempty"`
-	Appearance                   string   `json:"appearance,omitempty"`
-	Vibrancy                     string   `json:"vibrancy,omitempty"`
-	VisualEffectState            string   `json:"visualEffectState,omitempty"`
-	PopoverPlacement             string   `json:"popoverPlacement,omitempty"`
-	PopoverGap                   *float64 `json:"popoverGap,omitempty"`
-	PopoverViewportMargin        *float64 `json:"popoverViewportMargin,omitempty"`
-	PopoverDismissOnEscape       *bool    `json:"popoverDismissOnEscape,omitempty"`
-	PopoverDismissOnPointerOutside *bool  `json:"popoverDismissOnPointerOutside,omitempty"`
+	Title                          string   `json:"title,omitempty"`
+	Width                          *float64 `json:"width,omitempty"`
+	Height                         *float64 `json:"height,omitempty"`
+	MinimumWidth                   *float64 `json:"minimumWidth,omitempty"`
+	MinimumHeight                  *float64 `json:"minimumHeight,omitempty"`
+	Background                     *uint32  `json:"background,omitempty"`
+	TitleBarStyle                  string   `json:"titleBarStyle,omitempty"`
+	TrafficLightX                  *float64 `json:"trafficLightX,omitempty"`
+	TrafficLightY                  *float64 `json:"trafficLightY,omitempty"`
+	Show                           *bool    `json:"show,omitempty"`
+	Decorated                      *bool    `json:"decorated,omitempty"`
+	Shadow                         *bool    `json:"shadow,omitempty"`
+	Transparent                    *bool    `json:"transparent,omitempty"`
+	Blur                           *bool    `json:"blur,omitempty"`
+	Appearance                     string   `json:"appearance,omitempty"`
+	Vibrancy                       string   `json:"vibrancy,omitempty"`
+	VisualEffectState              string   `json:"visualEffectState,omitempty"`
+	PopoverPlacement               string   `json:"popoverPlacement,omitempty"`
+	PopoverGap                     *float64 `json:"popoverGap,omitempty"`
+	PopoverViewportMargin          *float64 `json:"popoverViewportMargin,omitempty"`
+	PopoverDismissOnEscape         *bool    `json:"popoverDismissOnEscape,omitempty"`
+	PopoverDismissOnPointerOutside *bool    `json:"popoverDismissOnPointerOutside,omitempty"`
 }
 
 // WindowEventName is one window lifecycle notification.
@@ -150,6 +157,37 @@ func NewWindow(options WindowOptions) *Window {
 	return window
 }
 
+// NewEmbeddedWindow allocates a hidden child renderer whose native view a SwiftUI host owns.
+func NewEmbeddedWindow(owner *Window, options WindowOptions, matchHorizontal, matchVertical bool) *Window {
+	if owner == nil || owner.Closed {
+		panic("an embedded QuickGUI view requires an open owner Window")
+	}
+	if !App.IsReady() {
+		panic("call native.Run before creating a QuickGUI Window")
+	}
+	owner.Flush()
+	window := &Window{
+		NodeHost: NewNodeHost(App.NativeID, host.Current.AllocateWindow()),
+		App:      App,
+	}
+	window.Root = CreateRootNode(window.NodeHost, protocol.RootNodeID)
+	encoded, _ := json.Marshal(encodeWindowOptions(options))
+	var dispose func()
+	withCurrentWindow(window, func() {
+		if options.Renderer != nil {
+			dispose = options.Renderer(window)
+		}
+	})
+	if dispose != nil {
+		window.mountDisposers = append(window.mountDisposers, dispose)
+	}
+	initial := window.TakeBatch()
+	host.Current.CreateEmbeddedView(window.AppID, window.NativeID, owner.NativeID, matchHorizontal, matchVertical, string(encoded), initial)
+	window.NativeReady = true
+	App.registerWindow(window)
+	return window
+}
+
 func encodeWindowOptions(options WindowOptions) nativeWindowOptions {
 	native := nativeWindowOptions{Title: options.Title, TitleBarStyle: options.TitleBarStyle}
 	if options.Width > 0 {
@@ -173,6 +211,16 @@ func encodeWindowOptions(options WindowOptions) nativeWindowOptions {
 		native.TrafficLightY = &options.TrafficLightPosition.Y
 	}
 	native.Show = options.Visible
+	native.Decorated = options.Decorated
+	native.Shadow = options.Shadow
+	switch options.BackgroundAppearance {
+	case "transparent":
+		flag := true
+		native.Transparent = &flag
+	case "blurred":
+		flag := true
+		native.Blur = &flag
+	}
 	native.Appearance = options.Appearance
 	native.Vibrancy = options.Vibrancy
 	native.VisualEffectState = options.VisualEffectState

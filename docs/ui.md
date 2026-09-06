@@ -240,6 +240,8 @@ import { controlSize } from "@quickgui/ui/swift-ui/modifiers";
 `DatePicker` values are Unix timestamps in milliseconds. SwiftUI popovers use `Popover.Root`,
 `Popover.Trigger`, and `Popover.Content`. `QuickGUIHostView` embeds a separately owned QuickGUI
 renderer in SwiftUI and queues native creation asynchronously. See the [SwiftUI example](../examples/swift-ui).
+The Go frontend exposes the same family as `ui.SwiftUI`; see [the Go gallery](../examples/swift-ui-go)
+and [the Go guide](go.md).
 
 ## Development and distribution
 

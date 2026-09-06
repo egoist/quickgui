@@ -170,6 +170,28 @@ are unstyled. Compound families match `@quickgui/ui`: `Checkbox`, `Dialog`, `Tab
 bindings. Each family declares parts and forwards `componentchange` / `commit` / `dismiss` to the
 Rust core; Go does not reimplement their behavior.
 
+The macOS SwiftUI host is `ui.SwiftUI`, matching `@quickgui/ui/swift-ui`. Wrap each control in
+`SwiftUI.Host` and pass modifier factories (`SwiftUI.ButtonStyle`, `SwiftUI.ControlSize`,
+`SwiftUI.Disabled`, …). `DatePicker` values are Unix timestamps in milliseconds.
+`SwiftUI.Popover.Root` / `Trigger` / `Content` present a native popover.
+`SwiftUI.QuickGUIHostView` reverse-hosts an independently owned QuickGUI renderer; native creation
+is queued on the application goroutine and never waits for AppKit.
+
+```go
+ui.SwiftUI.Host(ui.SwiftUIHostProps{
+    MatchContents: true,
+    PartProps: ui.PartProps{Children: func() *native.Node {
+        return ui.SwiftUI.Slider(ui.SwiftUISliderProps{
+            Value: volume, Min: 0, Max: 1,
+            Modifiers: []ui.SwiftUIModifier{ui.SwiftUI.ControlSize("regular")},
+            OnValueChange: func(next float64, _ *native.Event) { setVolume(next) },
+        })
+    }},
+})
+```
+
+See [the SwiftUI gallery](../examples/swift-ui-go).
+
 Styles use the same camelCase properties as TypeScript:
 
 ```go
@@ -194,7 +216,8 @@ Native events arrive asynchronously with the core's decision. Event payloads may
 [Quick Git](../examples/quick-git-go) is the same git client as `examples/quick-git`, written against
 the Go frontend. Git parsing and process control stay in ordinary Go. The UI uses the same compound
 parts as TypeScript: `Table` for file, history, and diff lists; `Dialog` for in-window forms;
-`Toast` for notices; `Checkbox` and `Select` for controls.
+`Toast` for notices; `Checkbox` and `Select` for controls; `SwiftUI.Host` buttons and progress
+in the toolbar.
 
 ```console
 cd examples/quick-git-go
@@ -218,5 +241,6 @@ The shared library is built with the `dynamic-host` feature so it does not impor
 thread.
 
 See the [TypeScript UI guide](ui.md) for the shared rendering model,
-[the counter example](../examples/counter-go), and
+[the counter example](../examples/counter-go),
+[the SwiftUI gallery](../examples/swift-ui-go), and
 [Quick Git in Go](../examples/quick-git-go).
