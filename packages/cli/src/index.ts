@@ -1,6 +1,7 @@
 export type {
   MacOSConfig,
   MacOSNotarizationConfig,
+  ProjectLanguage,
   QuickGuiConfig,
   QuickGuiTarget,
   WindowsConfig,

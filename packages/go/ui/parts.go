@@ -23,6 +23,9 @@ type PartProps struct {
 	AriaLabel      any
 	TabIndex       *float64
 	OnClick        func(*native.Event)
+	OnDoubleClick  func(*native.Event)
+	OnContextMenu  func(*native.Event)
+	OnPointer      func(*native.Event)
 	OnMouseEnter   func(*native.Event)
 	OnMouseLeave   func(*native.Event)
 	OnMouseDown    func(*native.Event)
@@ -55,6 +58,47 @@ func bindExplicitBool(node *native.Node, code uint16, value any) {
 		setExplicitBool(node, code, typed)
 	default:
 		panic(fmt.Sprintf("QuickGUI expected a bool or accessor, got %T", value))
+	}
+}
+
+func bindNumber(node *native.Node, code uint16, value any) {
+	switch typed := value.(type) {
+	case func() float64:
+		reactive.CreateRenderEffect(func() {
+			setNumber(node, code, typed())
+		})
+	case func() int:
+		reactive.CreateRenderEffect(func() {
+			setNumber(node, code, typed())
+		})
+	case float64, float32, int, int32, int64:
+		setNumber(node, code, typed)
+	default:
+		panic(fmt.Sprintf("QuickGUI expected a number or accessor, got %T", value))
+	}
+}
+
+func resolveNumber(value any) *float64 {
+	if value == nil {
+		return nil
+	}
+	switch typed := value.(type) {
+	case func() float64:
+		number := typed()
+		return &number
+	case func() int:
+		number := float64(typed())
+		return &number
+	case float64:
+		return &typed
+	case float32:
+		number := float64(typed)
+		return &number
+	case int:
+		number := float64(typed)
+		return &number
+	default:
+		panic(fmt.Sprintf("QuickGUI expected a number or accessor, got %T", value))
 	}
 }
 
@@ -182,6 +226,15 @@ func applyPartBehavior(node *native.Node, props PartProps) {
 	}
 	if props.OnClick != nil {
 		setListener(node, protocol.EventClick, props.OnClick)
+	}
+	if props.OnDoubleClick != nil {
+		setListener(node, protocol.EventDoubleClick, props.OnDoubleClick)
+	}
+	if props.OnContextMenu != nil {
+		setListener(node, protocol.EventContextMenu, props.OnContextMenu)
+	}
+	if props.OnPointer != nil {
+		setListener(node, protocol.EventPointer, props.OnPointer)
 	}
 	if props.OnMouseEnter != nil {
 		setListener(node, protocol.EventMouseEnter, props.OnMouseEnter)

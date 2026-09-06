@@ -14,53 +14,40 @@ import (
 	gui "github.com/egoist/quickgui/packages/go/ui"
 )
 
-type toast struct {
-	ID          int
-	Type        string
-	Title       string
-	Description string
-}
-
 func App(store *model.Store, appearance reactive.Accessor[string], openRepository, openPath func(string)) func() *native.Node {
 	return func() *native.Node {
 		window := native.CurrentWindow()
 		theme := gui.CreateMemo(func() Theme { return ThemeFor(appearance()) })
 		dialog, setDialog := gui.CreateSignal(DialogRequest{})
-		toasts, setToasts := gui.CreateSignal([]toast{})
-		nextToast := 0
-		store.SetNotifier(func(notice model.Notice) {
-			nextToast++
-			id := nextToast
-			entry := toast{ID: id, Type: notice.Type, Title: notice.Title, Description: notice.Description}
-			setToasts(append(toasts(), entry))
-			timeout := notice.Timeout
-			if timeout <= 0 {
-				timeout = 4500
-			}
-			time.AfterFunc(time.Duration(timeout)*time.Millisecond, func() {
-				native.Dispatch(func() {
-					var next []toast
-					for _, item := range toasts() {
-						if item.ID != id {
-							next = append(next, item)
-						}
-					}
-					setToasts(next)
-				})
-			})
-		})
 		return ProvideApp(AppContext{
 			Store: store, Window: window, Theme: theme,
 			Dialog: dialog, OpenDialog: setDialog, CloseDialog: func() { setDialog(DialogRequest{}) },
 			OpenRepository:     func() { openRepository("") },
 			OpenRepositoryPath: func(path string) { openPath(path) },
 		}, func() *native.Node {
-			return shell(toasts, setToasts)
+			return gui.Toast.Provider(gui.ToastProviderProps{
+				Timeout:        4500,
+				Limit:          3,
+				Pitch:          6,
+				SwipeDirection: "right",
+				Children: func() *native.Node {
+					toasts := gui.UseToastManager()
+					store.SetNotifier(func(notice model.Notice) {
+						request := gui.ToastRequest{Title: notice.Title, Description: notice.Description, Type: gui.ToastType(notice.Type)}
+						if notice.Timeout > 0 {
+							duration := float64(notice.Timeout)
+							request.Duration = &duration
+						}
+						toasts.Add(request)
+					})
+					return shell()
+				},
+			})
 		})
 	}
 }
 
-func shell(toasts reactive.Accessor[[]toast], setToasts reactive.Setter[[]toast]) *native.Node {
+func shell() *native.Node {
 	app := UseApp()
 	store := app.Store
 	return gui.View(gui.Props{
@@ -97,7 +84,7 @@ func shell(toasts reactive.Accessor[[]toast], setToasts reactive.Setter[[]toast]
 				})
 			}, func() *native.Node { return Welcome() }),
 			Dialogs(),
-			notices(toasts, setToasts),
+			notices(),
 		},
 	})
 }
@@ -121,54 +108,118 @@ func mainView() *native.Node {
 	})
 }
 
-func notices(toasts reactive.Accessor[[]toast], setToasts reactive.Setter[[]toast]) *native.Node {
+func notices() *native.Node {
 	app := UseApp()
-	return gui.View(gui.Props{
-		Style: gui.Style{Position: "absolute", Right: 16, Bottom: 16, Width: 340, Display: "flex", FlexDirection: "column", Gap: 8},
-		Children: gui.For(func() []toast { return toasts() }, func(entry toast, _ func() int) *native.Node {
-			color := app.Theme().Accent
-			switch entry.Type {
-			case "error":
-				color = app.Theme().Danger
-			case "success":
-				color = app.Theme().Success
-			case "warning":
-				color = app.Theme().Warning
-			}
-			return gui.View(gui.Props{
-				Style: gui.Style{
-					Display: "flex", FlexDirection: "row", AlignItems: "flex-start", Gap: 10,
-					PaddingLeft: 12, PaddingRight: 8, PaddingTop: 10, PaddingBottom: 10,
-					BackgroundColor: app.Theme().Raised, BorderWidth: 1, BorderColor: app.Theme().BorderStrong, BorderRadius: 8,
-				},
-				Children: []any{
-					gui.View(gui.Props{Style: gui.Style{Width: 3, AlignSelf: "stretch", BorderRadius: 2, BackgroundColor: color}}),
-					gui.View(gui.Props{
-						Style: gui.Style{Display: "flex", Flex: 1, MinWidth: 0, FlexDirection: "column", Gap: 2},
-						Children: []any{
-							gui.Text(gui.Props{Style: gui.Style{FontSize: 12.5, FontWeight: 700, Color: app.Theme().Text, LineClamp: 2}, Children: entry.Title}),
-							gui.Show(func() bool { return entry.Description != "" }, func() *native.Node {
-								return gui.Text(gui.Props{Style: gui.Style{FontSize: 12, LineHeight: 16, Color: app.Theme().TextSecondary, LineClamp: 4}, Children: entry.Description})
-							}),
-						},
-					}),
-					gui.Button(gui.Props{
-						OnClick: func(*native.Event) {
-							var next []toast
-							for _, item := range toasts() {
-								if item.ID != entry.ID {
-									next = append(next, item)
+	toasts := gui.UseToastManager()
+	return gui.Toast.Portal(gui.PartProps{
+		Style: gui.Style{Position: "absolute", Right: 16, Bottom: 16, Width: 340, Display: "flex"},
+		Children: func() *native.Node {
+			return gui.Toast.Viewport(gui.ToastViewportProps{
+				PartProps: gui.PartProps{
+					Style: gui.Style{Display: "flex", FlexDirection: "column", Gap: 8, Width: "100%"},
+					Children: func() *native.Node {
+						return gui.For(func() []gui.ToastStackEntry { return toasts.Stack() }, func(entry gui.ToastStackEntry, _ func() int) *native.Node {
+							toast := func() *gui.ToastDeclaration {
+								for i := range toasts.Toasts() {
+									if toasts.Toasts()[i].ID == entry.ID {
+										item := toasts.Toasts()[i]
+										return &item
+									}
 								}
+								return nil
 							}
-							setToasts(next)
-						},
-						Style:    app.Theme().IconButton(),
-						Children: "×",
-					}),
+							color := app.Theme().Accent
+							switch entry.Type {
+							case "error":
+								color = app.Theme().Danger
+							case "success":
+								color = app.Theme().Success
+							case "warning":
+								color = app.Theme().Warning
+							}
+							opacity := 1.0
+							if entry.Limited {
+								opacity = 0.6
+							}
+							return gui.Toast.Positioner(gui.ToastPartProps{
+								ToastID: entry.ID,
+								PartProps: gui.PartProps{
+									Children: func() *native.Node {
+										return gui.Toast.Root(gui.ToastPartProps{
+											ToastID: entry.ID,
+											PartProps: gui.PartProps{
+												Style: gui.Style{
+													Display: "flex", FlexDirection: "row", AlignItems: "flex-start", Gap: 10,
+													PaddingLeft: 12, PaddingRight: 8, PaddingTop: 10, PaddingBottom: 10,
+													BackgroundColor: app.Theme().Raised, BorderWidth: 1, BorderColor: app.Theme().BorderStrong, BorderRadius: 8,
+													Opacity: opacity, Transform: "translateX(" + formatSwipe(entry.SwipeMovement) + "px)",
+												},
+												Children: func() *native.Node {
+													return gui.Fragment([]*native.Node{
+														gui.View(gui.Props{Style: gui.Style{Width: 3, AlignSelf: "stretch", BorderRadius: 2, BackgroundColor: color}}),
+														gui.Toast.Content(gui.ToastPartProps{
+															ToastID: entry.ID,
+															PartProps: gui.PartProps{
+																Style: gui.Style{Display: "flex", Flex: 1, MinWidth: 0, FlexDirection: "column", Gap: 2},
+																Children: func() *native.Node {
+																	return gui.Fragment([]*native.Node{
+																		gui.Toast.Title(gui.ToastPartProps{
+																			ToastID: entry.ID,
+																			PartProps: gui.PartProps{
+																				Children: func() *native.Node {
+																					title := ""
+																					if current := toast(); current != nil {
+																						title = current.Title
+																					}
+																					return gui.Text(gui.Props{Style: gui.Style{FontSize: 12.5, FontWeight: 700, Color: app.Theme().Text, LineClamp: 2}, Children: title})
+																				},
+																			},
+																		}),
+																		gui.Show(func() bool {
+																			current := toast()
+																			return current != nil && current.Description != ""
+																		}, func() *native.Node {
+																			return gui.Toast.Description(gui.ToastPartProps{
+																				ToastID: entry.ID,
+																				PartProps: gui.PartProps{
+																					Children: func() *native.Node {
+																						description := ""
+																						if current := toast(); current != nil {
+																							description = current.Description
+																						}
+																						return gui.Text(gui.Props{Style: gui.Style{FontSize: 12, LineHeight: 16, Color: app.Theme().TextSecondary, LineClamp: 4}, Children: description})
+																					},
+																				},
+																			})
+																		}),
+																	})
+																},
+															},
+														}),
+														gui.Toast.Close(gui.ToastPartProps{
+															ToastID: entry.ID,
+															PartProps: gui.PartProps{
+																Style:    app.Theme().IconButton(),
+																Children: func() *native.Node { return gui.Text(gui.Props{Children: "×"}) },
+															},
+														}),
+													})
+												},
+											},
+										})
+									},
+								},
+							})
+						}, func(entry gui.ToastStackEntry) any { return entry.ID }, nil)
+					},
 				},
 			})
-		}, func(entry toast) any { return entry.ID }, nil),
+		},
 	})
+}
+
+func formatSwipe(value float64) string {
+	return strings.TrimRight(strings.TrimRight(fmt.Sprintf("%.2f", value), "0"), ".")
 }
 
 func Welcome() *native.Node {

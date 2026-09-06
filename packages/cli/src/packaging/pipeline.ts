@@ -146,6 +146,8 @@ export interface LinuxPackagingInput {
   stagingRoot: string;
   icons?: IconBuildResult;
   run: Runner;
+  /** Extra files installed next to the executable (the Go host shared library). */
+  extraFiles?: ReadonlyArray<{ path: string; name: string }>;
 }
 
 /** Build the desktop entry, AppDir, optional AppImage, and optional `.deb`. */
@@ -182,6 +184,9 @@ export async function packageLinux(input: LinuxPackagingInput): Promise<Packagin
     mkdirSync(join(appDir, "usr", "bin"), { recursive: true });
     cpSync(input.executablePath, join(appDir, "usr", "bin", config.executableName));
     chmodSync(join(appDir, "usr", "bin", config.executableName), 0o755);
+    for (const extra of input.extraFiles ?? []) {
+      cpSync(extra.path, join(appDir, "usr", "bin", extra.name));
+    }
     writeFileSync(join(appDir, `${config.executableName}.desktop`), entry);
     writeFileSync(join(appDir, "AppRun"), appRunScript(config.executableName));
     chmodSync(join(appDir, "AppRun"), 0o755);
@@ -217,6 +222,11 @@ export async function packageLinux(input: LinuxPackagingInput): Promise<Packagin
     const executable = new Uint8Array(readFileSync(input.executablePath));
     const data: TarEntry[] = [
       { path: paths.executable, data: executable, mode: 0o755 },
+      ...(input.extraFiles ?? []).map((extra) => ({
+        path: `${dirname(paths.executable)}/${extra.name}`,
+        data: new Uint8Array(readFileSync(extra.path)),
+        mode: 0o644,
+      })),
       { path: paths.desktopEntry, data: new TextEncoder().encode(entry) },
       ...(mimeXml
         ? [{ path: paths.mimePackage, data: new TextEncoder().encode(mimeXml) }]
@@ -290,6 +300,8 @@ export interface WindowsPackagingInput {
   stagingRoot: string;
   icons?: IconBuildResult;
   run: Runner;
+  /** Extra files installed next to the executable (the Go host shared library). */
+  extraFiles?: ReadonlyArray<readonly [string, string]>;
 }
 
 /** Write the NSIS script and, when `makensis` is available, compile and sign the installer. */
@@ -314,6 +326,7 @@ export async function packageWindows(input: WindowsPackagingInput): Promise<Pack
     executablePath: input.executablePath,
     outputFile: installerPath,
     protocols: config.protocols,
+    ...(input.extraFiles && input.extraFiles.length > 0 ? { extraFiles: input.extraFiles } : {}),
     documentTypes: config.documentTypes,
     ...(iconPath ? { iconPath } : {}),
     ...(config.windows.nsis?.installDirectory

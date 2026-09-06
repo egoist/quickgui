@@ -189,6 +189,47 @@ describe("project configuration", () => {
     });
   });
 
+  test("Go projects default the entry to the project root", () => {
+    const root = temporaryRoot();
+    const config = resolveConfig(
+      { name: "Go App", identifier: "com.example.go-app", language: "go" },
+      root,
+    );
+    expect(config.language).toBe("go");
+    expect(config.entry).toBe(root);
+  });
+
+  test("Go projects accept a .go file entry and reject a TypeScript path", () => {
+    const root = temporaryRoot();
+    const config = resolveConfig(
+      {
+        name: "Go App",
+        identifier: "com.example.go-app",
+        language: "go",
+        entry: "main.go",
+      },
+      root,
+    );
+    expect(config.entry).toBe(join(root, "main.go"));
+    expect(() =>
+      resolveConfig(
+        {
+          name: "Go App",
+          identifier: "com.example.go-app",
+          language: "go",
+          entry: "src/app.tsx",
+        },
+        root,
+      ),
+    ).toThrow("directory or a .go file");
+    expect(() =>
+      resolveConfig(
+        { name: "Bad", identifier: "com.example.bad", language: "rust" },
+        root,
+      ),
+    ).toThrow('`language` must be "typescript" or "go"');
+  });
+
   test("rejects an invalid bundle identifier", () => {
     expect(() =>
       resolveConfig({ name: "Bad", identifier: "not a reverse dns identifier" }, temporaryRoot()),

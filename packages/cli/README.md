@@ -55,6 +55,7 @@ import { defineConfig } from "@quickgui/cli";
 export default defineConfig({
   name: "My App",
   identifier: "com.example.my-app",
+  language: "typescript",
   entry: "src/app.tsx",
   version: "0.1.0",
   resources: ["assets"],

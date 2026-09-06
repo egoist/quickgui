@@ -64,6 +64,12 @@ Development and production application builds run on the matching macOS host arc
 Bun is tooling only; Node.js 24+ runs the scriptc compiler. TypeScript 7 is required for JSX lowering.
 The optional extra diagnostic pass is off by default; enable it with `native: { typeCheck: true }`.
 
+Go applications set `language: "go"` in `quickgui.config.ts`. The default `entry` is the project
+directory. `quickgui dev` and `quickgui build` run `CGO_ENABLED=0 go build` and copy the prebuilt
+host shared library next to the executable (into `Contents/MacOS` on macOS). Zig native modules
+and scriptc are skipped. `go` must be on PATH; build the host library with `bun run build:native`
+once so `@quickgui/native/lib/<target>/` contains `libquickgui_host`.
+
 ## Production package
 
 ```console

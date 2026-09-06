@@ -72,10 +72,19 @@ type Style struct {
 	Right           any
 	Bottom          any
 	Left            any
+	Outline         string
+	OutlineWidth    any
+	OutlineColor    any
+	OutlineOffset   any
+	OutlineStyle    string
+	Transform       string
+	TransformOrigin string
 	Hover           *Style
 	Active          *Style
 	Focus           *Style
 	Disabled        *Style
+	Selected        *Style
+	GroupHover      *Style
 }
 
 func setLength(node *native.Node, code uint16, value any) {
@@ -351,6 +360,33 @@ func mergeStyle(target *Style, source Style) {
 	if source.Disabled != nil {
 		target.Disabled = source.Disabled
 	}
+	if source.Selected != nil {
+		target.Selected = source.Selected
+	}
+	if source.GroupHover != nil {
+		target.GroupHover = source.GroupHover
+	}
+	if source.Outline != "" {
+		target.Outline = source.Outline
+	}
+	if source.OutlineWidth != nil {
+		target.OutlineWidth = source.OutlineWidth
+	}
+	if source.OutlineColor != nil {
+		target.OutlineColor = source.OutlineColor
+	}
+	if source.OutlineOffset != nil {
+		target.OutlineOffset = source.OutlineOffset
+	}
+	if source.OutlineStyle != "" {
+		target.OutlineStyle = source.OutlineStyle
+	}
+	if source.Transform != "" {
+		target.Transform = source.Transform
+	}
+	if source.TransformOrigin != "" {
+		target.TransformOrigin = source.TransformOrigin
+	}
 }
 
 func applyStyleList(node *native.Node, styles []Style) Style {
@@ -554,6 +590,52 @@ func applyStyle(node *native.Node, style Style) {
 	}
 	if style.Disabled != nil {
 		setStateStyle(node, protocol.DisabledStyle, "disabled", style.Disabled)
+	}
+	if style.Selected != nil {
+		setStateStyle(node, protocol.SelectedStyle, "selected", style.Selected)
+	}
+	if style.GroupHover != nil {
+		setStateStyle(node, protocol.GroupHoverStyle, "groupHover", style.GroupHover)
+	}
+	if style.Outline != "" {
+		applyOutlineShorthand(node, style.Outline)
+	}
+	if style.OutlineWidth != nil {
+		setLength(node, protocol.OutlineWidth, style.OutlineWidth)
+	}
+	if style.OutlineColor != nil {
+		setColor(node, protocol.OutlineColor, style.OutlineColor)
+	}
+	if style.OutlineOffset != nil {
+		setLength(node, protocol.OutlineOffset, style.OutlineOffset)
+	}
+	if style.OutlineStyle != "" {
+		setString(node, protocol.OutlineStyle, style.OutlineStyle)
+	}
+	if style.Transform != "" {
+		setString(node, protocol.Transform, style.Transform)
+	}
+	if style.TransformOrigin != "" {
+		setString(node, protocol.TransformOrigin, style.TransformOrigin)
+	}
+}
+
+func applyOutlineShorthand(node *native.Node, value string) {
+	for _, token := range strings.Fields(value) {
+		switch token {
+		case "solid", "dashed", "dotted", "none":
+			setString(node, protocol.OutlineStyle, token)
+		default:
+			if strings.HasSuffix(token, "px") || token == "0" {
+				setLength(node, protocol.OutlineWidth, token)
+				continue
+			}
+			if _, err := strconv.ParseFloat(token, 64); err == nil {
+				setLength(node, protocol.OutlineWidth, token)
+				continue
+			}
+			setColor(node, protocol.OutlineColor, token)
+		}
 	}
 }
 

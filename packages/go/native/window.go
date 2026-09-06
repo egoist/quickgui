@@ -28,9 +28,15 @@ type WindowOptions struct {
 	TitleBarStyle        string
 	TrafficLightPosition *Point
 	Visible              *bool
-	Appearance           string
-	Vibrancy             string
-	VisualEffectState    string
+	Appearance              string
+	Vibrancy                string
+	VisualEffectState       string
+	Anchor                  *Node
+	Placement               string
+	Gap                     *float64
+	ViewportMargin          *float64
+	DismissOnEscape         *bool
+	DismissOnPointerOutside *bool
 }
 
 type nativeWindowOptions struct {
@@ -44,9 +50,14 @@ type nativeWindowOptions struct {
 	TrafficLightX     *float64 `json:"trafficLightX,omitempty"`
 	TrafficLightY     *float64 `json:"trafficLightY,omitempty"`
 	Show              *bool    `json:"show,omitempty"`
-	Appearance        string   `json:"appearance,omitempty"`
-	Vibrancy          string   `json:"vibrancy,omitempty"`
-	VisualEffectState string   `json:"visualEffectState,omitempty"`
+	Appearance                   string   `json:"appearance,omitempty"`
+	Vibrancy                     string   `json:"vibrancy,omitempty"`
+	VisualEffectState            string   `json:"visualEffectState,omitempty"`
+	PopoverPlacement             string   `json:"popoverPlacement,omitempty"`
+	PopoverGap                   *float64 `json:"popoverGap,omitempty"`
+	PopoverViewportMargin        *float64 `json:"popoverViewportMargin,omitempty"`
+	PopoverDismissOnEscape       *bool    `json:"popoverDismissOnEscape,omitempty"`
+	PopoverDismissOnPointerOutside *bool  `json:"popoverDismissOnPointerOutside,omitempty"`
 }
 
 // WindowEventName is one window lifecycle notification.
@@ -125,7 +136,15 @@ func NewWindow(options WindowOptions) *Window {
 		window.mountDisposers = append(window.mountDisposers, dispose)
 	}
 	initial := window.TakeBatch()
-	host.Current.CreateWindow(window.AppID, window.NativeID, string(encoded), initial)
+	if options.Anchor != nil {
+		parent := options.Anchor.Host
+		if parent == nil || parent.Closed {
+			panic("a system popover requires a mounted node in an open parent Window")
+		}
+		host.Current.CreateSystemPopover(window.AppID, window.NativeID, parent.NativeID, options.Anchor.ID, string(encoded), initial)
+	} else {
+		host.Current.CreateWindow(window.AppID, window.NativeID, string(encoded), initial)
+	}
 	window.NativeReady = true
 	App.registerWindow(window)
 	return window
@@ -157,6 +176,11 @@ func encodeWindowOptions(options WindowOptions) nativeWindowOptions {
 	native.Appearance = options.Appearance
 	native.Vibrancy = options.Vibrancy
 	native.VisualEffectState = options.VisualEffectState
+	native.PopoverPlacement = options.Placement
+	native.PopoverGap = options.Gap
+	native.PopoverViewportMargin = options.ViewportMargin
+	native.PopoverDismissOnEscape = options.DismissOnEscape
+	native.PopoverDismissOnPointerOutside = options.DismissOnPointerOutside
 	return native
 }
 

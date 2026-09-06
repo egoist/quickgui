@@ -3,10 +3,12 @@
 A native git client built with the QuickGUI Go frontend. It recreates the TypeScript `examples/quick-git` app: changes, diffs, commit, history, branches, worktrees, stashes, and local coding agents.
 
 ```console
-CGO_ENABLED=0 go build -o quick-git-go .
+bun run dev
 ```
 
-The host shared library must already be available for `native.Run` (same as the other Go examples). Pass `QUICK_GIT_OPEN=/path/to/repo` to open a repository at launch; otherwise the last one opens.
+`quickgui dev` compiles with `CGO_ENABLED=0 go build` and stages `libquickgui_host` next to the
+executable. `CGO_ENABLED=0 go run .` still works after `bun run build:native`. Pass
+`QUICK_GIT_OPEN=/path/to/repo` to open a repository at launch; otherwise the last one opens.
 
 ## What it does
 
@@ -22,7 +24,7 @@ The host shared library must already be available for `native.Run` (same as the 
 
 - `internal/git` is a UI-free git layer: porcelain parsers, a bounded process runner, and repository operations. `CGO_ENABLED=0 go test ./internal/git ./internal/model ./internal/agent` covers the parsers and persistence.
 - `internal/model` holds signals, persistence (`quick-git-state.json`), and a poll-based repository watcher. Git work runs on background goroutines; `native.Dispatch` writes signals on the application goroutine.
-- `internal/ui` is ordinary QuickGUI views (`View` / `Text` / `Button` / `For` / `Show`). Compound Table, Toast, and Dialog widgets stay TypeScript-only; this example approximates them with primitives and native sheets/menus.
+- `internal/ui` is the same compound QuickGUI UI as the TypeScript app: `Table` for file, history, and diff lists; `Dialog` for in-window forms; `Toast` for notices; `Checkbox` and `Select` for controls.
 - `main.go` shares one `GitRunner` and persistence across windows, matching the TypeScript app.
 
 The Go frontend remains cgo-free: this example never compiles Rust or invokes a C compiler.

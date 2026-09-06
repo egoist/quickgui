@@ -4,11 +4,10 @@ The TypeScript counter example, written against the Go frontend. Components run 
 signals update only the text node that read them.
 
 ```console
-bun run build:native
 cd examples/counter-go
-CGO_ENABLED=0 go run .
+bun run dev
 ```
 
-`go build` does not compile Rust or invoke a C compiler. The process loads the
-prebuilt host shared library (`packages/native/lib/<target>/libquickgui_host.dylib`)
-at runtime. Set `QUICKGUI_HOST_LIB` if the library is staged elsewhere.
+`quickgui.config.ts` sets `language: "go"`. `quickgui dev` and `quickgui build` compile with
+`CGO_ENABLED=0 go build` and stage the host shared library. `go build` does not compile Rust
+or invoke a C compiler. Set `QUICKGUI_HOST_LIB` if you run the binary without that staged copy.

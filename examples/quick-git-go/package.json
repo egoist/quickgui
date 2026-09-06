@@ -1,0 +1,16 @@
+{
+  "name": "quick-git-go",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "quickgui dev",
+    "build": "quickgui build",
+    "test": "CGO_ENABLED=0 go test ./..."
+  },
+  "dependencies": {
+    "@quickgui/native": "workspace:*"
+  },
+  "devDependencies": {
+    "@quickgui/cli": "workspace:*"
+  }
+}

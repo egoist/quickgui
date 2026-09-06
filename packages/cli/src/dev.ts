@@ -279,7 +279,9 @@ export function shouldIgnoreChange(
   if (basename(path).endsWith(".bun-build")) return true;
   const parts = pathFromRoot.split(sep);
   if (
-    parts.some((part) => [".git", ".quickgui", ".zig-cache", "node_modules", "target"].includes(part))
+    parts.some((part) =>
+      [".git", ".quickgui", ".zig-cache", "node_modules", "target", "vendor"].includes(part),
+    )
   ) {
     return true;
   }

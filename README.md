@@ -131,13 +131,13 @@ cd examples/counter
 bun run dev
 ```
 
-A matching Go counter uses the same host and fine-grained signals. `go build` does not compile
-Rust or use cgo; the process loads the prebuilt host shared library at runtime:
+A matching Go counter uses the same host, fine-grained signals, and compound NativePart families.
+`go build` does not compile Rust or use cgo; `quickgui dev` compiles the package and stages the
+host shared library:
 
 ```console
-bun run build:native
 cd examples/counter-go
-CGO_ENABLED=0 go run .
+bun run dev
 ```
 
 The routing example uses the Rust core for matching and memory history while QuickGUI UI renders nested

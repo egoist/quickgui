@@ -43,13 +43,17 @@ func Counter() *native.Node {
 A component function runs once. Values that change after setup are accessors (`func() T`);
 setters take a value. `Show`, `For`, and `KeyedFor` replace only the region they own.
 `Router`, `Route`, `Layout`, `Outlet`, and `Link` expose the core route table the same way
-`@quickgui/ui/router` does.
+`@quickgui/ui/router` does. Compound families (`Checkbox`, `Dialog`, `Table`, `Toast`, `Tabs`,
+`Popover`, `Slider`, `Select`, `Menu`, and the rest) are thin bindings over the same Rust
+`NativePart`s as `@quickgui/ui`.
 
-Build the host library once, then compile the application as often as you like:
+`quickgui dev` / `quickgui build` compile a `language: "go"` project. You can also build the
+host library once and compile the application as often as you like:
 
 ```console
 bun run build:native
 CGO_ENABLED=0 go build ./examples/counter-go
 ```
 
-See [the Go guide](../../docs/go.md) and the [counter example](../../examples/counter-go).
+See [the Go guide](../../docs/go.md), the [counter example](../../examples/counter-go), and
+[Quick Git in Go](../../examples/quick-git-go).

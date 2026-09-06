@@ -11,15 +11,15 @@ allocate handles locally, mutations are fire-and-forget, and every result arrive
 asynchronous callback on the application goroutine.
 
 `go build` does not compile Rust and does not use cgo. The process loads a prebuilt host shared
-library at runtime (`packages/native/lib/<target>/libquickgui_host.dylib` on macOS). Build that
-library once with `bun run build:native`, then iterate on the Go application with a plain compile.
+library at runtime (`packages/native/lib/<target>/libquickgui_host.dylib` on macOS). `quickgui dev`
+and `quickgui build` compile the Go package and stage that library. Build the library once with
+`bun run build:native` when iterating with a plain `go run`.
 
 ## First window
 
 ```console
-bun run build:native
 cd examples/counter-go
-CGO_ENABLED=0 go run .
+bun run dev
 ```
 
 ```go
@@ -165,7 +165,12 @@ dispose their owned effects and cleanup callbacks.
 ## Styling and input
 
 Host primitives are `View`, `Text`, `Button`, `Input`, `TextArea`, `Markdown`, and `Image`. They
-are unstyled. Styles use the same camelCase properties as TypeScript:
+are unstyled. Compound families match `@quickgui/ui`: `Checkbox`, `Dialog`, `Table`, `Toast`,
+`Tabs`, `Popover`, `Slider`, `Select`, `Menu`, and the rest of the Base UI-shaped NativePart
+bindings. Each family declares parts and forwards `componentchange` / `commit` / `dismiss` to the
+Rust core; Go does not reimplement their behavior.
+
+Styles use the same camelCase properties as TypeScript:
 
 ```go
 ui.Button(ui.Props{
@@ -187,14 +192,17 @@ Native events arrive asynchronously with the core's decision. Event payloads may
 ## Quick Git
 
 [Quick Git](../examples/quick-git-go) is the same git client as `examples/quick-git`, written against
-the Go frontend. Git parsing and process control stay in ordinary Go; the UI uses `View`, `Text`,
-`Button`, `For`, and `Show`, plus native dialogs and menus:
+the Go frontend. Git parsing and process control stay in ordinary Go. The UI uses the same compound
+parts as TypeScript: `Table` for file, history, and diff lists; `Dialog` for in-window forms;
+`Toast` for notices; `Checkbox` and `Select` for controls.
 
 ```console
-bun run build:native
 cd examples/quick-git-go
-CGO_ENABLED=0 go run .
+bun run dev
 ```
+
+`language: "go"` in `quickgui.config.ts` makes `quickgui dev` and `quickgui build` run
+`CGO_ENABLED=0 go build` and copy `libquickgui_host` next to the executable.
 
 ## Host library
 

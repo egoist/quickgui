@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { isAbsolute, resolve } from "node:path";
+import { basename, isAbsolute, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
 import { CliError } from "./error.ts";
@@ -137,6 +137,9 @@ export interface MacAppStoreConfig {
   entitlements?: string;
 }
 
+/** Application language the CLI compiles. TypeScript is the default scriptc path. */
+export type ProjectLanguage = "typescript" | "go";
+
 /** Zig optimization mode used for native modules. */
 export type ZigOptimizeMode = "Debug" | "ReleaseSafe" | "ReleaseFast" | "ReleaseSmall";
 
@@ -170,6 +173,11 @@ export interface QuickGuiConfig {
   identifier: string;
   version?: string;
   buildVersion?: string;
+  /**
+   * Frontend language. `"go"` compiles with `CGO_ENABLED=0 go build` and stages the
+   * prebuilt host shared library. Defaults to `"typescript"`.
+   */
+  language?: ProjectLanguage;
   entry?: string;
   outDir?: string;
   target?: QuickGuiTarget;
@@ -199,6 +207,7 @@ export interface ResolvedQuickGuiConfig {
   identifier: string;
   version: string;
   buildVersion: string;
+  language: ProjectLanguage;
   entry: string;
   outDir: string;
   target?: QuickGuiTarget;
@@ -255,7 +264,13 @@ export function resolveConfig(
   }
   const version = optionalString(input.version, "version", 64) ?? "0.1.0";
   const buildVersion = optionalString(input.buildVersion, "buildVersion", 64) ?? version;
-  const entry = resolveRelative(projectRoot, optionalString(input.entry, "entry", 1_024) ?? "src/app.tsx");
+  const language = resolveLanguage(input.language);
+  const defaultEntry = language === "go" ? "." : "src/app.tsx";
+  const entry = resolveRelative(
+    projectRoot,
+    optionalString(input.entry, "entry", 1_024) ?? defaultEntry,
+  );
+  if (language === "go") validateGoEntry(entry);
   const outDir = resolveRelative(projectRoot, optionalString(input.outDir, "outDir", 1_024) ?? "dist");
   const target = input.target === undefined ? undefined : parseTarget(requiredString(input.target, "target", 64));
   const resources = stringArray(input.resources, "resources").map((path) =>
@@ -290,6 +305,7 @@ export function resolveConfig(
     identifier,
     version,
     buildVersion,
+    language,
     entry,
     outDir,
     ...(target ? { target } : {}),
@@ -590,6 +606,23 @@ function protocolArray(value: unknown): string[] {
     }
   }
   return [...new Set(protocols)];
+}
+
+function resolveLanguage(value: unknown): ProjectLanguage {
+  if (value === undefined) return "typescript";
+  const language = requiredString(value, "language", 32);
+  if (language !== "typescript" && language !== "go") {
+    throw new CliError(`\`language\` must be "typescript" or "go"`);
+  }
+  return language;
+}
+
+function validateGoEntry(entry: string): void {
+  const name = basename(entry);
+  if (name.endsWith(".go")) return;
+  if (name.includes(".") && !name.startsWith(".")) {
+    throw new CliError(`Go entry \`${entry}\` must be a directory or a .go file`);
+  }
 }
 
 function executableName(name: string): string {

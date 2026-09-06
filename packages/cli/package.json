@@ -24,6 +24,7 @@
     "src/config.ts",
     "src/dev.ts",
     "src/error.ts",
+    "src/go-build.ts",
     "src/index.ts",
     "src/init.ts",
     "src/jsx-lowering.ts",

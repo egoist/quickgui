@@ -7,10 +7,13 @@ All notable user-facing changes to QuickGUI are recorded here.
 ### Framework
 
 - Added a cgo-free Go frontend beside the scriptc TypeScript pipeline. `packages/go` ports
-  Solid-style signals, the retained native tree, and unstyled `View`/`Text`/`Button` bindings
-  onto the same C ABI. `go build` stays a plain, fast compile: the process loads a prebuilt
-  `dynamic-host` shared library and calls `quickgui_run_host` on the main thread. See
-  [the Go guide](docs/go.md) and `examples/counter-go`.
+  Solid-style signals, the retained native tree, unstyled primitives, and the same compound
+  NativePart families as `@quickgui/ui` (checkbox, dialog, table, toast, tabs, popover, slider,
+  select, menu, and the rest) onto the same C ABI. `go build` stays a plain, fast compile: the
+  process loads a prebuilt `dynamic-host` shared library and calls `quickgui_run_host` on the
+  main thread. `quickgui dev` and `quickgui build` accept `language: "go"` and stage that
+  library next to the executable. See [the Go guide](docs/go.md), `examples/counter-go`, and
+  `examples/quick-git-go`.
 
 
 - Added `Element::selected_style`, a paint-only state that follows the element's `selected` flag

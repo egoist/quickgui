@@ -14,6 +14,7 @@ import { basename, dirname, extname, join, relative, resolve } from "node:path";
 
 import type { MacOSNotarizationConfig, ResolvedQuickGuiConfig } from "./config.ts";
 import { CliError, errorMessage } from "./error.ts";
+import { compileGoApplication, hostLibraryName } from "./go-build.ts";
 import { buildNativeModules, type BuiltNativeModule } from "./modules.ts";
 import { compileNativeApplication } from "./native-build.ts";
 import {
@@ -83,12 +84,16 @@ export async function buildProject(
   if (info.platform === "darwin" && options.mode === "production") {
     validateMacPackaging(config, options);
   }
-  // Native modules come first: the application links their libraries.
-  const modules = await buildNativeModules(config, {
-    target: options.target,
-    mode: options.mode,
-    log: (line) => console.log(`[quickgui] ${line}`),
-  });
+  // Native modules come first for TypeScript: the application links their libraries.
+  // Go applications load the host shared library at runtime and do not compile Zig modules.
+  const modules =
+    config.language === "go"
+      ? []
+      : await buildNativeModules(config, {
+          target: options.target,
+          mode: options.mode,
+          log: (line) => console.log(`[quickgui] ${line}`),
+        });
   const baseOutDir = options.outDir
     ? resolve(config.projectRoot, options.outDir)
     : options.mode === "development"
@@ -395,6 +400,7 @@ async function buildExecutable(
   if (options.mode !== "production") return result;
 
   const icons = resolveIcons(config, stagingRoot);
+  const hostLibrary = stagedHostLibrary(executablePath, options.target);
   const packaged =
     info.platform === "linux"
       ? await packageLinux({
@@ -404,6 +410,9 @@ async function buildExecutable(
           stagingRoot,
           run: (command, cwd) => run(command, cwd),
           ...(icons ? { icons } : {}),
+          ...(hostLibrary
+            ? { extraFiles: [{ path: hostLibrary, name: basename(hostLibrary) }] }
+            : {}),
         })
       : await packageWindows({
           config,
@@ -411,12 +420,18 @@ async function buildExecutable(
           stagingRoot,
           run: (command, cwd) => run(command, cwd),
           ...(icons ? { icons } : {}),
+          ...(hostLibrary ? { extraFiles: [[hostLibrary, basename(hostLibrary)]] } : {}),
         });
   return {
     ...result,
     ...(packaged.artifacts.length > 0 ? { extraArtifacts: packaged.artifacts } : {}),
     ...(packaged.notes.length > 0 ? { notes: packaged.notes } : {}),
   };
+}
+
+function stagedHostLibrary(executablePath: string, target: QuickGuiTarget): string | undefined {
+  const path = resolve(dirname(executablePath), hostLibraryName(targetInfo(target).platform));
+  return existsSync(path) ? path : undefined;
 }
 
 async function compileExecutable(
@@ -427,15 +442,24 @@ async function compileExecutable(
   modules: BuiltNativeModule[],
 ): Promise<void> {
   const started = performance.now();
-  await compileNativeApplication({
-    config,
-    mode: options.mode,
-    target: options.target,
-    executablePath,
-    fonts,
-    extraLibraries: modules.map((module) => module.archivePath),
-    extraFunctions: modules.flatMap((module) => module.ffiFunctions),
-  });
+  if (config.language === "go") {
+    await compileGoApplication({
+      config,
+      mode: options.mode,
+      target: options.target,
+      executablePath,
+    });
+  } else {
+    await compileNativeApplication({
+      config,
+      mode: options.mode,
+      target: options.target,
+      executablePath,
+      fonts,
+      extraLibraries: modules.map((module) => module.archivePath),
+      extraFunctions: modules.flatMap((module) => module.ffiFunctions),
+    });
+  }
   console.log(`[quickgui] Compiled ${basename(executablePath)} in ${Math.round(performance.now() - started)} ms`);
 }
 
@@ -561,7 +585,15 @@ function validateInputs(
   config: ResolvedQuickGuiConfig,
   platform: "darwin" | "linux" | "windows",
 ): void {
-  if (!existsSync(config.entry) || !statSync(config.entry).isFile()) {
+  if (!existsSync(config.entry)) {
+    throw new CliError(`Application entrypoint not found: ${config.entry}`);
+  }
+  const entryInfo = statSync(config.entry);
+  if (config.language === "go") {
+    if (!entryInfo.isDirectory() && !(entryInfo.isFile() && config.entry.endsWith(".go"))) {
+      throw new CliError(`Go entry \`${config.entry}\` must be a directory or a .go file`);
+    }
+  } else if (!entryInfo.isFile()) {
     throw new CliError(`Application entrypoint not found: ${config.entry}`);
   }
   for (const resource of config.resources) {
