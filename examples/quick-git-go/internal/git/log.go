@@ -168,7 +168,8 @@ func LayoutGraph(commits []Commit) []GraphRow {
 			lanes[lane] = &laneEntry{sha: commit.Parents[0], color: color}
 			edges = append(edges, GraphEdge{FromLane: lane, ToLane: lane, Color: color})
 		}
-		for _, parent := range commit.Parents[1:] {
+		for i := 1; i < len(commit.Parents); i++ {
+			parent := commit.Parents[i]
 			existing := -1
 			for i, entry := range lanes {
 				if entry != nil && entry.sha == parent {

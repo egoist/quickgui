@@ -191,8 +191,10 @@ func parseRenamed(record, originalPath string) (StatusEntry, bool) {
 	if strings.HasPrefix(score, "C") {
 		entry.Kind = KindCopied
 	}
-	if n, err := strconv.Atoi(score[1:]); err == nil {
-		entry.Similarity = &n
+	if len(score) > 1 {
+		if n, err := strconv.Atoi(score[1:]); err == nil {
+			entry.Similarity = &n
+		}
 	}
 	return entry, true
 }
