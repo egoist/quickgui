@@ -194,14 +194,14 @@ type MenuDefinition struct {
 }
 
 type nativeMenuItem struct {
-	Type        string           `json:"type"`
-	ID          uint32           `json:"id,omitempty"`
-	Label       string           `json:"label,omitempty"`
-	Enabled     bool             `json:"enabled"`
-	Checked     bool             `json:"checked,omitempty"`
-	Role        string           `json:"role,omitempty"`
-	Accelerator string           `json:"accelerator,omitempty"`
-	Items       []nativeMenuItem `json:"items,omitempty"`
+	Type        string            `json:"type"`
+	ID          uint32            `json:"id,omitempty"`
+	Label       string            `json:"label,omitempty"`
+	Enabled     bool              `json:"enabled"`
+	Checked     bool              `json:"checked,omitempty"`
+	Role        string            `json:"role,omitempty"`
+	Accelerator string            `json:"accelerator,omitempty"`
+	Items       *[]nativeMenuItem `json:"items,omitempty"`
 }
 
 type nativeMenuDefinition struct {
@@ -245,9 +245,11 @@ func encodeMenuItems(items []MenuItem, ids *[]uint32) []nativeMenuItem {
 			continue
 		}
 		if kind == "submenu" {
+			// The host requires `items` on every submenu, including an empty Open Recent list.
+			children := encodeMenuItems(item.Items, ids)
 			native = append(native, nativeMenuItem{
 				Type: "submenu", Label: item.Label, Enabled: enabledOrTrue(item.Enabled),
-				Items: encodeMenuItems(item.Items, ids),
+				Items: &children,
 			})
 			continue
 		}
