@@ -86,6 +86,7 @@ Start at the [documentation index](docs/README.md).
 
 - [View API and layout](docs/view-api.md)
 - [QuickGUI UI renderer](docs/ui.md)
+- [Go UI](docs/go.md)
 - [Project CLI and application packaging](docs/cli.md)
 - [Native modules in Zig](docs/native-modules.md)
 - [Windows and shared state](docs/windows.md)
@@ -128,6 +129,15 @@ For a natively compiled TypeScript application (macOS, Node.js 24+, Bun tooling,
 bun install
 cd examples/counter
 bun run dev
+```
+
+A matching Go counter uses the same host and fine-grained signals. `go build` does not compile
+Rust or use cgo; the process loads the prebuilt host shared library at runtime:
+
+```console
+bun run build:native
+cd examples/counter-go
+CGO_ENABLED=0 go run .
 ```
 
 The routing example uses the Rust core for matching and memory history while QuickGUI UI renders nested

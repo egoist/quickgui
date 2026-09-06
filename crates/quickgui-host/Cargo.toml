@@ -11,6 +11,12 @@ publish = false
 [lib]
 crate-type = ["staticlib", "rlib"]
 
+[features]
+default = []
+# Shared-library host for the Go frontend. Omits the scriptc process entry, which
+# imports the application's `main` symbol and would leave a cdylib unlinked.
+dynamic-host = []
+
 [dependencies]
 base64 = "0.22.1"
 libc = "0.2"

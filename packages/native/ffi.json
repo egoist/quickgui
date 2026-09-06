@@ -51,7 +51,8 @@
       ],
       "returns": "i32"
     },
-    { "name": "quickguiDestroyApp", "symbol": "quickgui_destroy_app", "params": ["u32"], "returns": "i32" }
+    { "name": "quickguiDestroyApp", "symbol": "quickgui_destroy_app", "params": ["u32"], "returns": "i32" },
+    { "name": "quickguiRunHost", "symbol": "quickgui_run_host", "params": [], "returns": "i32" }
   ],
   "libraries": [],
   "system_libraries": []

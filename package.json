@@ -11,6 +11,7 @@
   "scripts": {
     "build:native": "bun run --filter @quickgui/native build",
     "test:js": "bun test ./packages/native ./packages/ui ./packages/cli",
+    "test:go": "CGO_ENABLED=0 go test ./packages/go/...",
     "typecheck:js": "bunx tsc -p tsconfig.json --noEmit",
     "version:sync": "node scripts/sync-release-version.mjs",
     "version:check": "node scripts/sync-release-version.mjs --check"

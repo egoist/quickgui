@@ -12,6 +12,15 @@ cd examples/system-api
 bun run dev
 ```
 
+The Go counter is the same fine-grained UI as `examples/counter`, compiled with `go build` and
+no cgo. The process loads the prebuilt host shared library at runtime:
+
+```console
+bun run build:native
+cd examples/counter-go
+CGO_ENABLED=0 go run .
+```
+
 Quick Git is a native git client built as a product rather than a demo. Its pure-TypeScript git
 layer (a bounded process runner plus porcelain v2, unified diff, log, ref, stash, and worktree
 parsers with patch formatting for partial staging) is covered by `bun test`, including real git

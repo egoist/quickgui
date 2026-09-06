@@ -16,8 +16,9 @@ mutations enqueue work; results and native request acceptance arrive through Pro
 CPU-only services execute on the caller's thread. The boundary never waits synchronously for
 native main-thread execution.
 
-The package ships `lib/<target>/libquickgui_host.a`, its `link.json` recipe, `ffi.json`, TypeScript
-bindings, and the Zig module runtime. It does not ship a Node-API addon. Build applications through
+The package ships `lib/<target>/libquickgui_host.a`, the `dynamic-host` shared library the Go
+frontend loads at runtime, its `link.json` recipe, `ffi.json`, TypeScript bindings, and the Zig
+module runtime. It does not ship a Node-API addon. Build applications through
 `@quickgui/cli` on a matching macOS host. A source checkout builds the host with
 `bun run build:native`; `--target` can stage a particular macOS Rust target.
 

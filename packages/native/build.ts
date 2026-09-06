@@ -60,12 +60,37 @@ if (!existsSync(archive)) throw new Error(`Expected the host archive at ${archiv
 const stage = join(packageRoot, "lib", target);
 mkdirSync(stage, { recursive: true });
 cpSync(archive, join(stage, "libquickgui_host.a"));
+
+const sharedName = platform === "darwin" ? "libquickgui_host.dylib" : platform === "windows" ? "quickgui_host.dll" : "libquickgui_host.so";
+const sharedCargo = [
+  "cargo",
+  "rustc",
+  "-p",
+  "quickgui-host",
+  "--lib",
+  "--crate-type",
+  "cdylib",
+  "--features",
+  "dynamic-host",
+  ...(selected === undefined ? [] : ["--target", selected.triple]),
+  ...(debug ? [] : ["--release"]),
+];
+const sharedCommand = platform === "darwin" ? [join(repoRoot, "scripts", "with-macos-ghostty-zig.sh"), ...sharedCargo] : sharedCargo;
+console.log(`[native] ${sharedCommand.join(" ")}`);
+const sharedBuild = Bun.spawnSync(sharedCommand, { cwd: repoRoot, stdin: "inherit", stdout: "inherit", stderr: "inherit", env: process.env });
+if (sharedBuild.exitCode !== 0) process.exit(sharedBuild.exitCode);
+const sharedArchive = join(targetDir, ...(selected === undefined ? [] : [selected.triple]), profile, sharedName);
+if (!existsSync(sharedArchive)) throw new Error(`Expected the host shared library at ${sharedArchive}`);
+cpSync(sharedArchive, join(stage, sharedName));
+console.log(`[native] Staged ${realpathSync(join(stage, sharedName))}`);
+
 writeFileSync(
   join(stage, "link.json"),
   `${JSON.stringify(
     {
       target,
       entry: platform === "darwin" ? "_quickgui_main" : "quickgui_main",
+      shared: sharedName,
       frameworks,
       libraries,
       searchPaths: platform === "darwin" ? ["/usr/lib/swift"] : [],

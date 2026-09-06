@@ -7,18 +7,22 @@
 //! call-scoped reply callback because they never touch the application runtime.
 
 use std::ffi::{CStr, c_char, c_int, c_void};
+#[cfg(all(not(test), not(feature = "dynamic-host")))]
 use std::sync::mpsc;
 
 use super::*;
 
 /// Stack reserved for the application thread. The compiled program runs its own stackful fibers
 /// on separate allocations, but its main fiber lives on this thread's stack.
+#[cfg(all(not(test), not(feature = "dynamic-host")))]
 const APPLICATION_STACK_BYTES: usize = 64 * 1024 * 1024;
 /// Longest wait for the application thread to unwind after the native loop has exited.
+#[cfg(all(not(test), not(feature = "dynamic-host")))]
 const APPLICATION_EXIT_GRACE: Duration = Duration::from_secs(5);
 
 // The test harness defines its own `main`, so the program entry exists only in a real host.
-#[cfg(not(test))]
+// The Go frontend loads a `dynamic-host` cdylib and must not import the process `main`.
+#[cfg(all(not(test), not(feature = "dynamic-host")))]
 unsafe extern "C" {
     /// The compiled application's program entry, defined by the scriptc program object.
     #[link_name = "main"]
@@ -114,7 +118,7 @@ impl Drop for HostAutoreleasePool {
 ///
 /// # Safety
 /// Called by the C runtime with the process arguments.
-#[cfg(not(test))]
+#[cfg(all(not(test), not(feature = "dynamic-host")))]
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn quickgui_main(argc: c_int, argv: *mut *mut c_char) -> c_int {
     let (exit_sender, exit_receiver) = mpsc::channel::<i32>();
@@ -136,6 +140,19 @@ pub unsafe extern "C" fn quickgui_main(argc: c_int, argv: *mut *mut c_char) -> c
     // Give the application thread a bounded chance to run its quit listeners and unwind.
     let _ = exit_receiver.recv_timeout(APPLICATION_EXIT_GRACE);
     std::process::exit(code);
+}
+
+/// Run the native host loop on the current thread until the application exits.
+///
+/// Non-scriptc frontends (Go, via a cgo-free runtime load of this cdylib) own the process
+/// `main` and call this after starting application work on a dedicated thread. The
+/// TypeScript/scriptc pipeline keeps using [`quickgui_main`] as the linker entry, which
+/// spawns the compiled `main` itself.
+///
+/// Returns the process exit code. A host failure prints its reason and returns 1.
+#[unsafe(no_mangle)]
+pub extern "C" fn quickgui_run_host() -> c_int {
+    run_host(ready_notifier())
 }
 
 /// Run the native host loop on the current (main) thread until the application exits.

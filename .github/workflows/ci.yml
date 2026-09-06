@@ -131,3 +131,19 @@ jobs:
           restore-keys: cargo-${{ runner.os }}-${{ matrix.toolchain }}-
       - name: Check every target and feature
         run: cargo check --all-targets --all-features --locked
+
+  go-frontend:
+    name: Go frontend
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22.x"
+      - name: Test Go frontend without cgo
+        env:
+          CGO_ENABLED: "0"
+        run: go test ./packages/go/...

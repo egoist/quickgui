@@ -212,6 +212,10 @@ Implemented now:
 - raster element backgrounds with `Auto`/`Cover`/`Contain`/`Fixed` sizing, four repeat modes, and
   fractional background positions, painted through the existing bounded image primitive and masked
   by the element's rounded corners;
+- a cgo-free Go frontend (`packages/go`) that loads the same C ABI host as a `dynamic-host`
+  shared library at runtime, so `go build` does not compile Rust or invoke a C compiler, with
+  Solid-style signals, a retained native tree, `Show`/`For`/`KeyedFor`, and unstyled View/Text/Button
+  bindings matching the TypeScript UX;
 - macOS TypeScript/TSX compilation through scriptc and a static Rust C ABI host with a native main-thread application loop,
   a core-backed singleton application readiness lifecycle, dynamically created `Window` instances,
   independent transactional bounded retained trees,

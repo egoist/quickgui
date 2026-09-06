@@ -6,6 +6,7 @@ QuickGUI's documentation is split by concern so public API guidance stays separa
 
 - [View API and layout](view-api.md) — declarative views, Tailwind-style helpers, Flexbox, CSS Grid, and parent-size container queries.
 - [QuickGUI UI renderer](ui.md) — scriptc compilation and the Rust C ABI, unstyled native components, JSX compilation, reactive event boundaries, and the current binding scope.
+- [Go UI](go.md) — the cgo-free Go frontend: the same Rust core and C ABI, Solid-style signals, and a fast `go build` that loads the host shared library at runtime.
 - [Project CLI and application packaging](cli.md) — initialization, on-demand TSX development in a real native app, restart ownership, target builds, and macOS signing.
 - [Native modules in Zig](native-modules.md) — `modules/<name>/main.zig` compiled into typed static native libraries: the type mapping, injected arenas, errors, synchronous and background calls, retained state behind handles, and what pays off natively.
 - [Application identity, paths, and system information](application-environment.md) — package metadata, app-scoped standard directories, locale/language data, and immutable runtime access.

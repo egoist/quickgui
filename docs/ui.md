@@ -9,6 +9,9 @@ bounded command and event queues.
 - `@quickgui/ui` supplies signals, JSX primitives, component bindings, and renderer ownership.
 - `@quickgui/cli` uses TypeScript 7 to lower JSX, then links the compiled application and Rust host.
 
+A cgo-free [Go frontend](go.md) sits beside this pipeline, loads the same host as a shared
+library at runtime, and exposes the same signals and unstyled components.
+
 Bun is development tooling. Applications do not embed Bun, Node.js, a webview, or a JavaScript
 engine. scriptc supports a subset of TypeScript and Node-compatible APIs; arbitrary npm packages
 and Bun application APIs are not supported. Native application builds currently require a matching
