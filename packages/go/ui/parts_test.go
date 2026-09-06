@@ -33,6 +33,49 @@ func TestFinishPartMountsChildrenAndRef(t *testing.T) {
 	})
 }
 
+func TestPartPropsAcceptPrimitiveBoolPointers(t *testing.T) {
+	native.ResetTreeStateForTests()
+	focus := false
+	disabled := true
+	label := "Stage file"
+	reactive.CreateRoot(func(dispose func()) struct{} {
+		defer dispose()
+		node := Checkbox.Root(CheckboxProps{
+			PartProps: PartProps{
+				FocusOnPointer: &focus,
+				Disabled:       &disabled,
+				AriaLabel:      &label,
+			},
+			DefaultChecked: false,
+		})
+		if node.Pending == nil || node.Pending.Empty() {
+			t.Fatal("expected checkbox mutations")
+		}
+		return struct{}{}
+	})
+}
+
+func TestResolveHelpersAcceptPointers(t *testing.T) {
+	flag := true
+	if got := resolveBoolean(&flag); got == nil || !*got {
+		t.Fatalf("bool pointer %#v", got)
+	}
+	if resolveBoolean((*bool)(nil)) != nil {
+		t.Fatal("nil bool pointer should be absent")
+	}
+	text := "label"
+	if got := resolveString(&text); got == nil || *got != "label" {
+		t.Fatalf("string pointer %#v", got)
+	}
+	number := 12.0
+	if got := resolveNumber(&number); got == nil || *got != 12 {
+		t.Fatalf("number pointer %#v", got)
+	}
+	if resolveNumber((*float64)(nil)) != nil {
+		t.Fatal("nil number pointer should be absent")
+	}
+}
+
 func TestForwardClickRespectsPreventDefault(t *testing.T) {
 	activated := false
 	handler := forwardClick(func(event *native.Event) {

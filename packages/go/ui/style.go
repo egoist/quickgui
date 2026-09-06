@@ -92,6 +92,10 @@ func setLength(node *native.Node, code uint16, value any) {
 		native.ClearProperty(node, code)
 		return
 	}
+	if unwrapped, ok := unwrapNumericPointer(value); ok {
+		setLength(node, code, unwrapped)
+		return
+	}
 	switch typed := value.(type) {
 	case int:
 		native.SetNumber(node, code, float32(typed))
@@ -735,7 +739,45 @@ func normalizeLength(value string) any {
 	return trimmed
 }
 
+func unwrapNumericPointer(value any) (any, bool) {
+	switch typed := value.(type) {
+	case *int:
+		if typed == nil {
+			return nil, true
+		}
+		return *typed, true
+	case *int32:
+		if typed == nil {
+			return nil, true
+		}
+		return *typed, true
+	case *int64:
+		if typed == nil {
+			return nil, true
+		}
+		return *typed, true
+	case *float32:
+		if typed == nil {
+			return nil, true
+		}
+		return *typed, true
+	case *float64:
+		if typed == nil {
+			return nil, true
+		}
+		return *typed, true
+	default:
+		return nil, false
+	}
+}
+
 func toFloat(value any) float64 {
+	if unwrapped, ok := unwrapNumericPointer(value); ok {
+		if unwrapped == nil {
+			return math.NaN()
+		}
+		return toFloat(unwrapped)
+	}
 	switch typed := value.(type) {
 	case int:
 		return float64(typed)

@@ -54,7 +54,11 @@ func bindExplicitBool(node *native.Node, code uint16, value any) {
 		reactive.CreateRenderEffect(func() {
 			setExplicitBool(node, code, typed())
 		})
-	case bool:
+	case func() *bool:
+		reactive.CreateRenderEffect(func() {
+			setExplicitBool(node, code, typed())
+		})
+	case bool, *bool:
 		setExplicitBool(node, code, typed)
 	default:
 		panic(fmt.Sprintf("QuickGUI expected a bool or accessor, got %T", value))
@@ -71,7 +75,15 @@ func bindNumber(node *native.Node, code uint16, value any) {
 		reactive.CreateRenderEffect(func() {
 			setNumber(node, code, typed())
 		})
-	case float64, float32, int, int32, int64:
+	case func() *float64:
+		reactive.CreateRenderEffect(func() {
+			setNumber(node, code, typed())
+		})
+	case func() *int:
+		reactive.CreateRenderEffect(func() {
+			setNumber(node, code, typed())
+		})
+	case float64, float32, int, int32, int64, *float64, *float32, *int, *int32, *int64:
 		setNumber(node, code, typed)
 	default:
 		panic(fmt.Sprintf("QuickGUI expected a number or accessor, got %T", value))
@@ -82,6 +94,12 @@ func resolveNumber(value any) *float64 {
 	if value == nil {
 		return nil
 	}
+	if unwrapped, ok := unwrapNumericPointer(value); ok {
+		if unwrapped == nil {
+			return nil
+		}
+		return resolveNumber(unwrapped)
+	}
 	switch typed := value.(type) {
 	case func() float64:
 		number := typed()
@@ -89,6 +107,10 @@ func resolveNumber(value any) *float64 {
 	case func() int:
 		number := float64(typed())
 		return &number
+	case func() *float64:
+		return typed()
+	case func() *int:
+		return resolveNumber(typed())
 	case float64:
 		return &typed
 	case float32:
@@ -108,6 +130,21 @@ func bindString(node *native.Node, code uint16, value any) {
 		reactive.CreateRenderEffect(func() {
 			setString(node, code, typed())
 		})
+	case func() *string:
+		reactive.CreateRenderEffect(func() {
+			next := typed()
+			if next == nil {
+				setString(node, code, "")
+				return
+			}
+			setString(node, code, *next)
+		})
+	case *string:
+		if typed == nil {
+			setString(node, code, "")
+			return
+		}
+		setString(node, code, *typed)
 	case string:
 		setString(node, code, typed)
 	default:
@@ -123,8 +160,12 @@ func resolveBoolean(value any) *bool {
 	case func() bool:
 		flag := typed()
 		return &flag
+	case func() *bool:
+		return typed()
 	case bool:
 		return &typed
+	case *bool:
+		return typed
 	default:
 		panic(fmt.Sprintf("QuickGUI expected a bool or accessor, got %T", value))
 	}
@@ -138,8 +179,12 @@ func resolveString(value any) *string {
 	case func() string:
 		text := typed()
 		return &text
+	case func() *string:
+		return typed()
 	case string:
 		return &typed
+	case *string:
+		return typed
 	default:
 		panic(fmt.Sprintf("QuickGUI expected a string or accessor, got %T", value))
 	}
