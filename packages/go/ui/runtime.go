@@ -98,8 +98,23 @@ func bindValue(node *native.Node, code uint16, value any) {
 	}
 }
 
-func setExplicitBool(node *native.Node, code uint16, value bool) {
-	native.SetBoolean(node, code, value)
+func setExplicitBool(node *native.Node, code uint16, value any) {
+	if value == nil {
+		native.ClearProperty(node, code)
+		return
+	}
+	switch typed := value.(type) {
+	case bool:
+		native.SetBoolean(node, code, typed)
+	case *bool:
+		if typed == nil {
+			native.ClearProperty(node, code)
+			return
+		}
+		native.SetBoolean(node, code, *typed)
+	default:
+		panic(fmt.Sprintf("QuickGUI expected a bool, got %T", value))
+	}
 }
 
 func setComponentValue(node *native.Node, code uint16, value string) {
@@ -111,6 +126,44 @@ func setComponentValue(node *native.Node, code uint16, value string) {
 		panic(fmt.Sprintf("QuickGUI component scopes and values are bounded to %d bytes", protocol.MaxComponentValueBytes))
 	}
 	native.SetString(node, code, value)
+}
+
+func setMilliseconds(node *native.Node, code uint16, value any) {
+	if value == nil {
+		native.ClearProperty(node, code)
+		return
+	}
+	setNumber(node, code, value)
+}
+
+func setExtent(node *native.Node, code uint16, value *Extent) {
+	if value == nil {
+		native.ClearProperty(node, code)
+		return
+	}
+	if !isFinite(value.Width) || !isFinite(value.Height) {
+		panic("QuickGUI extents must be finite numbers")
+	}
+	native.SetString(node, code, fmt.Sprintf("[%v,%v]", value.Width, value.Height))
+}
+
+func setMenuLink(node *native.Node, code uint16, value string) {
+	if value == "" {
+		native.ClearProperty(node, code)
+		return
+	}
+	if len(value) > protocol.MaxMenuLinkBytes {
+		panic(fmt.Sprintf("QuickGUI menu links are bounded to %d bytes", protocol.MaxMenuLinkBytes))
+	}
+	native.SetString(node, code, value)
+}
+
+func packedColor(value any) *uint32 {
+	if value == nil || value == "" {
+		return nil
+	}
+	color := native.ParseColor(value)
+	return &color
 }
 
 func setJson(node *native.Node, code uint16, limit int, value any) {
