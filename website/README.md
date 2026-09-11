@@ -23,6 +23,10 @@ bun run build
 bun run deploy   # wrangler deploy
 ```
 
+In CI (`CI`, `WORKERS_CI`, or `CF_PAGES`), `bun run deploy` installs Rust, the
+`wasm32-unknown-unknown` target, and the pinned wasm-bindgen CLI when they are
+missing, then builds and runs `wrangler deploy`.
+
 `bun run preview` serves the production build locally via the Cloudflare Vite
 plugin (workerd).
 

@@ -13,7 +13,7 @@
 		"dev": "bun run docs:api && bun run docs:wasm && bun run docs:index && react-router dev --port 3000",
 		"build": "bun run docs:api && bun run docs:wasm && bun run docs:index && react-router build",
 		"preview": "bun run build && vite preview",
-		"deploy": "bun run build && wrangler deploy",
+		"deploy": "bun ./scripts/deploy.ts",
 		"cf-typegen": "wrangler types",
 		"typecheck": "wrangler types && react-router typegen && tsc -b",
 		"docs:api": "bun ./scripts/build-component-api.ts",
