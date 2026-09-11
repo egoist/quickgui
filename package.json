@@ -11,6 +11,8 @@
   ],
   "scripts": {
     "build:native": "bun run --filter @quickgui/native build",
+    "build": "bun run --cwd website build",
+    "deploy": "bun run --cwd website deploy",
     "test:js": "bun test ./packages/cli ./scripts/benchmark-memory.test.ts",
     "test:typescript": "bun scripts/check-typescript-coverage.ts && bun test --preload ./packages/solid/test/preload.ts ./packages/solid/test ./packages/native/test ./packages/extension-updater/test && bun run --cwd examples/quick-git-typescript test",
     "typecheck:js": "bun benchmarks/desktop/quickgui-typescript/generate.ts && bunx tsc -p tsconfig.json --noEmit",

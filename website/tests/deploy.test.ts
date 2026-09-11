@@ -11,6 +11,7 @@ import {
   isCiEnvironment,
   prependCargoBin,
   rustcMeetsMsrv,
+  wasmBindgenDownloadCommand,
 } from "../scripts/ensure-docs-toolchain";
 
 const website = resolve(import.meta.dir, "..");
@@ -40,18 +41,24 @@ test("CI includes Cloudflare Workers Builds and Pages", () => {
   expect(isCiEnvironment({ CI: "false" })).toBe(false);
   expect(isCiEnvironment({ CI: "true" })).toBe(true);
   expect(isCiEnvironment({ WORKERS_CI: "1" })).toBe(true);
+  expect(isCiEnvironment({ WORKERS_CI_BUILD_UUID: "abc" })).toBe(true);
   expect(isCiEnvironment({ CF_PAGES: "1" })).toBe(true);
+  expect(isCiEnvironment({ CF_PAGES_COMMIT_SHA: "abc" })).toBe(true);
 });
 
-test("deploy puts cargo bin on PATH before build and wrangler", () => {
+test("deploy and build install the WASM toolchain before cargo runs", () => {
   const pkg = JSON.parse(readFileSync(resolve(website, "package.json"), "utf8")) as {
     scripts: Record<string, string>;
   };
+  const root = JSON.parse(readFileSync(resolve(website, "../package.json"), "utf8")) as {
+    scripts: Record<string, string>;
+  };
   expect(pkg.scripts.deploy).toBe("bun ./scripts/deploy.ts");
-  const deploy = readFileSync(resolve(website, "scripts/deploy.ts"), "utf8");
-  expect(deploy).toContain("ensureDocsToolchain");
-  expect(deploy).toContain('["bun", "run", "build"]');
-  expect(deploy).toContain("wrangler");
+  expect(pkg.scripts.build).toBe("bun ./scripts/build.ts");
+  expect(root.scripts.deploy).toBe("bun run --cwd website deploy");
+  expect(root.scripts.build).toBe("bun run --cwd website build");
+  expect(readFileSync(resolve(website, "scripts/deploy.ts"), "utf8")).toContain("ensureDocsToolchain");
+  expect(readFileSync(resolve(website, "scripts/build.ts"), "utf8")).toContain("ensureDocsToolchain");
   expect(readFileSync(resolve(website, "scripts/build-demos.ts"), "utf8")).toContain(
     "ensureDocsToolchain",
   );
@@ -83,11 +90,11 @@ test("CI without Rust installs rustup, the wasm target, and wasm-bindgen-cli", a
     which: (name) => bins[name] ?? null,
     run: async (args) => {
       commands.push(args);
-      if (args[0] === "bash") {
+      if (args[0] === "bash" && args.at(-1)?.includes("sh.rustup.rs")) {
         bins.cargo = "/tmp/ci-home/.cargo/bin/cargo";
         bins.rustup = "/tmp/ci-home/.cargo/bin/rustup";
       }
-      if (args[0] === "cargo" && args.includes("wasm-bindgen-cli")) {
+      if (args[0] === "bash" && args.at(-1)?.includes("wasm-bindgen")) {
         bins["wasm-bindgen"] = "/tmp/ci-home/.cargo/bin/wasm-bindgen";
       }
     },
@@ -96,14 +103,8 @@ test("CI without Rust installs rustup, the wasm target, and wasm-bindgen-cli", a
   expect(env.PATH?.startsWith(`${cargoBinDir(env)}:`)).toBe(true);
   expect(commands[0]).toEqual(RUSTUP_INSTALL_COMMAND);
   expect(commands).toContainEqual(["rustup", "target", "add", WASM_TARGET]);
-  expect(commands).toContainEqual([
-    "cargo",
-    "install",
-    "wasm-bindgen-cli",
-    "--version",
-    version,
-    "--locked",
-  ]);
+  expect(commands).toContainEqual(wasmBindgenDownloadCommand(version, cargoBinDir(env)));
+  expect(commands.some((args) => args.includes("wasm-bindgen-cli"))).toBe(false);
 });
 
 test("CI with cargo still installs a missing or mismatched wasm-bindgen CLI", async () => {
@@ -120,14 +121,7 @@ test("CI with cargo still installs a missing or mismatched wasm-bindgen CLI", as
   });
   expect(commands).not.toContainEqual(RUSTUP_INSTALL_COMMAND);
   expect(commands).toContainEqual(["rustup", "target", "add", WASM_TARGET]);
-  expect(commands).toContainEqual([
-    "cargo",
-    "install",
-    "wasm-bindgen-cli",
-    "--version",
-    version,
-    "--locked",
-  ]);
+  expect(commands).toContainEqual(wasmBindgenDownloadCommand(version, cargoBinDir(env)));
 });
 
 test("CI skips wasm-bindgen-cli when the pinned version is already on PATH", async () => {
@@ -169,6 +163,32 @@ test("CI upgrades an old rustc before adding the wasm target", async () => {
   expect(commands).toContainEqual(["rustup", "default", "stable"]);
   expect(commands).toContainEqual(["rustup", "target", "add", WASM_TARGET]);
   expect(commands.some((args) => args.includes("wasm-bindgen-cli"))).toBe(false);
+});
+
+test("CI falls back to cargo install when the wasm-bindgen download fails", async () => {
+  const commands: string[][] = [];
+  const env = { CI: "true", HOME: "/tmp/ci-home", PATH: "/usr/bin" };
+  await ensureDocsToolchain({
+    env,
+    version,
+    which: (name) => (name === "wasm-bindgen" ? null : `/bin/${name}`),
+    run: async (args) => {
+      commands.push(args);
+      if (args[0] === "bash" && args.at(-1)?.includes("wasm-bindgen")) {
+        throw new Error("download failed");
+      }
+    },
+    output: async (args) => commandOutput(args),
+  });
+  expect(commands).toContainEqual(wasmBindgenDownloadCommand(version, cargoBinDir(env)));
+  expect(commands).toContainEqual([
+    "cargo",
+    "install",
+    "wasm-bindgen-cli",
+    "--version",
+    version,
+    "--locked",
+  ]);
 });
 
 test("prependCargoBin is idempotent", () => {

@@ -11,7 +11,7 @@
 		"docs:check": "bun ./scripts/build-component-api.ts --check && bun ./scripts/build-demo-sources.ts --check && bun run docs:index && bun test ./tests/docs.test.ts ./tests/component-api.test.ts",
 		"docs:translate": "bun ./scripts/generate-doc-translations.ts",
 		"dev": "bun run docs:api && bun run docs:wasm && bun run docs:index && react-router dev --port 3000",
-		"build": "bun run docs:api && bun run docs:wasm && bun run docs:index && react-router build",
+		"build": "bun ./scripts/build.ts",
 		"preview": "bun run build && vite preview",
 		"deploy": "bun ./scripts/deploy.ts",
 		"cf-typegen": "wrangler types",

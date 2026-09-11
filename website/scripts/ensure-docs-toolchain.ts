@@ -13,9 +13,13 @@ export const RUSTUP_INSTALL_COMMAND = [
 ];
 
 export function isCiEnvironment(env: Record<string, string | undefined> = process.env) {
-  return [env.CI, env.WORKERS_CI, env.CF_PAGES].some(
-    (value) => Boolean(value) && value !== "0" && value !== "false",
-  );
+  return [
+    env.CI,
+    env.WORKERS_CI,
+    env.WORKERS_CI_BUILD_UUID,
+    env.CF_PAGES,
+    env.CF_PAGES_COMMIT_SHA,
+  ].some((value) => Boolean(value) && value !== "0" && value !== "false");
 }
 
 export function docsWasmBindgenVersion(repoRoot = root) {
@@ -60,6 +64,45 @@ export function prependCargoBin(env: Record<string, string | undefined> = proces
   return bin;
 }
 
+export function wasmBindgenArtifact(
+  version: string,
+  platform = process.platform,
+  arch = process.arch,
+) {
+  const cpu = arch === "arm64" ? "aarch64" : arch === "x64" ? "x86_64" : undefined;
+  if (!cpu) throw new Error(`Unsupported architecture: ${arch}`);
+  const triple =
+    platform === "linux"
+      ? `${cpu}-unknown-linux-musl`
+      : platform === "darwin"
+        ? `${cpu}-apple-darwin`
+        : platform === "win32"
+          ? `${cpu}-pc-windows-msvc`
+          : undefined;
+  if (!triple) throw new Error(`Unsupported platform: ${platform}`);
+  const folder = `wasm-bindgen-${version}-${triple}`;
+  return {
+    folder,
+    url: `https://github.com/wasm-bindgen/wasm-bindgen/releases/download/${version}/${folder}.tar.gz`,
+  };
+}
+
+export function wasmBindgenDownloadCommand(version: string, dest: string) {
+  const { url, folder } = wasmBindgenArtifact(version);
+  const binary = process.platform === "win32" ? "wasm-bindgen.exe" : "wasm-bindgen";
+  return [
+    "bash",
+    "-euo",
+    "pipefail",
+    "-c",
+    `tmp=$(mktemp -d)
+trap 'rm -rf "$tmp"' EXIT
+curl --proto '=https' --tlsv1.2 -fsSL ${JSON.stringify(url)} | tar -xz -C "$tmp"
+mkdir -p ${JSON.stringify(dest)}
+install -m 755 "$tmp/${folder}/${binary}" ${JSON.stringify(resolve(dest, binary))}`,
+  ];
+}
+
 export type EnsureDocsToolchain = {
   env?: Record<string, string | undefined>;
   which?: (name: string) => string | null;
@@ -70,7 +113,7 @@ export type EnsureDocsToolchain = {
 
 async function spawn(args: string[], env: Record<string, string | undefined>, capture: boolean) {
   const child = Bun.spawn(args, {
-    env,
+    env: { ...env },
     stdout: capture ? "pipe" : "inherit",
     stderr: capture ? "pipe" : "inherit",
   });
@@ -86,8 +129,10 @@ async function spawn(args: string[], env: Record<string, string | undefined>, ca
 export async function ensureDocsToolchain(options: EnsureDocsToolchain = {}) {
   const env = options.env ?? process.env;
   if (!isCiEnvironment(env)) return;
-  prependCargoBin(env);
-  const which = options.which ?? ((name) => Bun.which(name, { PATH: env.PATH }));
+  const cargoBin = prependCargoBin(env);
+  const which =
+    options.which ??
+    ((name) => Bun.which(name, { PATH: env.PATH }) ?? (env === process.env ? Bun.which(name) : null));
   const run = options.run ?? ((args) => spawn(args, env, false).then(() => undefined));
   const output = options.output ?? ((args) => spawn(args, env, true));
   const version = options.version ?? docsWasmBindgenVersion();
@@ -115,8 +160,12 @@ export async function ensureDocsToolchain(options: EnsureDocsToolchain = {}) {
   }
   await run(["rustup", "target", "add", WASM_TARGET]);
   const installed = which("wasm-bindgen") ? await output(["wasm-bindgen", "--version"]) : "";
-  if (!installed.includes(version)) {
-    console.log(`CI: installing wasm-bindgen-cli ${version}`);
+  if (installed.includes(version)) return;
+  console.log(`CI: installing wasm-bindgen-cli ${version}`);
+  try {
+    await run(wasmBindgenDownloadCommand(version, cargoBin));
+  } catch (error) {
+    console.log(`CI: wasm-bindgen download failed, falling back to cargo install: ${error}`);
     await run(["cargo", "install", "wasm-bindgen-cli", "--version", version, "--locked"]);
   }
 }
