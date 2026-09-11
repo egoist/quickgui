@@ -1,0 +1,31 @@
+通过触发器显示或隐藏单个面板，同时保留无障碍状态。
+
+## 导入
+
+从 `quickgui` 导入 `Collapsible`。
+
+```rust
+use quickgui::*;
+```
+
+## 用法
+
+```rust
+let disclosure = Collapsible::new("notes", open);
+disclosure.root_part(div()).child(disclosure.trigger_part(text("Notes")))
+```
+
+## 结构
+
+- `Collapsible::root_part`
+- `Collapsible::trigger_part`
+- `Collapsible::panel_part`
+
+## 主要属性
+
+| 属性 | 说明 |
+| --- | --- |
+| `open` | 受控的打开状态。 |
+| `default_open` | 组件自行管理打开状态时的初始状态。 |
+| `on_open_change` | 报告核心做出的打开或关闭决定。 |
+| `keep_mounted` | 保持非活动内容已挂载，但禁用其显示。 |

@@ -1,0 +1,33 @@
+One selectable item, normally declared inside a RadioGroup.
+
+## Import
+
+Import `Radio` from `quickgui`.
+
+```rust
+use quickgui::*;
+```
+
+## Usage
+
+```rust
+let radio = Radio::new(selected);
+radio
+    .root_part(div().flex_row().gap(8.0).on_click(select))
+    .child(radio.indicator_part(div().size(16.0, 16.0).rounded(8.0)))
+    .child(text("Option A"))
+```
+
+## Anatomy
+
+- `Radio::root_part`
+- `Radio::indicator_part`
+
+## Key props
+
+| Prop | Purpose |
+| --- | --- |
+| `value` | Controlled value. The precise value type follows this component’s contract. |
+| `checked` | Controlled checked state. |
+| `on_click` | Reports the checked state accepted by the core. |
+| `disabled` | Prevents interaction and exposes the disabled state. |

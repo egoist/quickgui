@@ -1,0 +1,39 @@
+Embeds the retained Ghostty terminal surface and reports process lifecycle events.
+
+## Import
+
+Import `Terminal` from `quickgui`.
+
+```rust
+use quickgui::*;
+```
+
+## Usage
+
+```rust
+let terminal = Terminal::spawn(
+    TerminalOptions {
+        program: Some("/bin/zsh".into()),
+        arguments: vec!["-l".into()],
+        working_directory: Some(directory.into()),
+        ..TerminalOptions::default()
+    },
+    cx.window_invalidator(),
+)?;
+terminal.element(cx)
+```
+
+## Key props
+
+| Prop | Purpose |
+| --- | --- |
+| `program` | Executable launched by the terminal. |
+| `args` | Arguments passed to the terminal process. |
+| `working_directory` | Initial working directory for the terminal process. |
+| `environment` | Environment entries added to the terminal process. |
+| `on_status` | Reports terminal process lifecycle changes. |
+| `palette` | Sixteen ANSI colors (`terminal.Palette`) or an accessor. Updates preserve the PTY. |
+| `cursor_color` | Cursor color or color accessor. |
+| `padding_color` | Use `"extend"` to paint padding with terminal edge backgrounds. |
+| `font_thicken` | Enables native font thickening. |
+| `scrollback` | Maximum retained scrollback lines. |

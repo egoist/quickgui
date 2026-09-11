@@ -1,0 +1,24 @@
+Displays a filesystem path, file URL, or base64 data URL with retained image resources.
+
+## Import
+
+Import `Image` from `quickgui`.
+
+```rust
+use quickgui::*;
+```
+
+## Usage
+
+```rust
+img(Image::from_rgba(128, 128, pixels).expect("image"))
+    .size(160.0, 160.0)
+    .rounded(12.0)
+```
+
+## Key props
+
+| Prop | Purpose |
+| --- | --- |
+| `value` | Filesystem path, data URL, SVG document, or shader source expected by the component. |
+| `object_fit` | How image content fits its declared box. |

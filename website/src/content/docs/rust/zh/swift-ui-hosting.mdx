@@ -1,0 +1,34 @@
+Rust 指南正文目前以英文提供，组件 API 参考包含中文说明。
+
+Apply `SwiftUiModifier` values in declaration order. Convenience builders such as `style`, `control_size`, and `disabled` append those modifiers.
+
+## 修饰器
+
+Button style, border shape, control size, label style, tint, and disabled state are supported. Apply them on the descriptor before `sync`.
+
+## Liquid Glass
+
+```rust
+SwiftUiButton::new(1)
+    .label("Continue")
+    .style(SwiftUiButtonStyle::Glass)
+    .control_size(SwiftUiControlSize::Large)
+```
+
+The operating system draws native glass where available. Layout and hit testing remain owned by the native hosting layer.
+
+## 反向托管
+
+```rust
+SwiftUiQuickGuiHost::pending(1)
+```
+
+Embed a QuickGUI subtree back into the SwiftUI tree with `SwiftUiQuickGuiHost` and `MacSwiftUiHost::set_embedded_view`. The hosted surface is an ordinary QuickGUI renderer.
+
+## SwiftUI Popover
+
+`SwiftUiPopover` has explicit `trigger` and `content` element lists. A `SwiftUiQuickGuiHost` inside that content owns a separate ordinary QuickGUI renderer.
+
+## 生命周期
+
+Native and Rust ownership must agree: an embedded renderer is disposed with its host, and a presented panel is disposed with its owner. Dropping `MacSwiftUiHost` releases the NSHostingView.

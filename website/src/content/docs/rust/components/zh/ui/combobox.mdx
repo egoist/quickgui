@@ -1,0 +1,58 @@
+将可编辑文本、筛选、可选标签项和原生建议界面结合在一起。
+
+## 导入
+
+从 `quickgui` 导入 `Combobox`。
+
+```rust
+use quickgui::*;
+```
+
+## 用法
+
+```rust
+let mut state = ComboboxState::new(items);
+state.set_query("pro");
+div().child(text_input(state.query()))
+```
+
+## 结构
+
+- `Combobox::root_part`
+- `Combobox::input_part`
+- `Combobox::option_part`
+- `Combobox::label_part`
+- `Combobox::value_part`
+- `Combobox::icon_part`
+- `Combobox::input_group_part`
+- `Combobox::clear_part`
+- `Combobox::trigger_part`
+- `Combobox::chips_part`
+- `Combobox::chip_part`
+- `Combobox::chip_remove_part`
+- `Combobox::backdrop_part`
+- `Combobox::portal_part`
+- `Combobox::positioner_part`
+- `Combobox::popup_part`
+- `Combobox::arrow_part`
+- `Combobox::status_part`
+- `Combobox::empty_part`
+- `Combobox::list_part`
+- `Combobox::row_part`
+- `Combobox::item_part`
+- `Combobox::item_indicator_part`
+- `Combobox::group_part`
+- `Combobox::group_label_part`
+- `Combobox::collection_part`
+- `Combobox::separator_part`
+
+## 主要属性
+
+| 属性 | 说明 |
+| --- | --- |
+| `items` | 用于选项或键盘导航的有限声明模型。 |
+| `value` | 受控值，具体类型取决于该组件的约定。 |
+| `input_value` | Combobox 或 Autocomplete 使用的可编辑查询文本。 |
+| `multiple` | 允许选择或打开多个值。 |
+| `filter_mode` | 由核心管理的包含、前缀、模糊或禁用筛选模式。 |
+| `on_value_change` | 报告核心接受的值。 |

@@ -1,8 +1,8 @@
 export const site = {
   name: "QuickGUI",
-  tagline: "Build native desktop apps with Go or TypeScript.",
+  tagline: "Build native desktop apps with Go, TypeScript, or Rust.",
   description:
-    "Build native desktop apps with Go or TypeScript and Solid 2. Fast builds, fine-grained reactivity, GPU rendering, familiar layouts, and accessible components.",
+    "Build native desktop apps with Go, TypeScript, or Rust. Fast builds, fine-grained reactivity, GPU rendering, familiar layouts, and accessible components.",
   repo: "egoist/quickgui",
   links: {
     github: "https://github.com/egoist/quickgui",

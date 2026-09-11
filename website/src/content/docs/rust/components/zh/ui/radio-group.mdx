@@ -1,0 +1,30 @@
+管理单选状态以及 Radio 项之间的键盘移动。
+
+## 导入
+
+从 `quickgui` 导入 `RadioGroup`。
+
+```rust
+use quickgui::*;
+```
+
+## 用法
+
+```rust
+RadioGroup::new()
+    .root_part(div().flex_col().gap(8.0))
+```
+
+## 结构
+
+- `RadioGroup::root_part`
+
+## 主要属性
+
+| 属性 | 说明 |
+| --- | --- |
+| `value` | 受控值，具体类型取决于该组件的约定。 |
+| `default_value` | 组件自行管理状态时的初始值。 |
+| `on_value_change` | 报告核心接受的值。 |
+| `read_only` | 阻止值变化，但仍允许控件获得焦点。 |
+| `required` | 将值标记为验证和表单提交所必需。 |

@@ -1,0 +1,30 @@
+オン／オフの押下状態を保持する、押下可能なコントロールです。
+
+## インポート
+
+`quickgui` から `Toggle` をインポートします。
+
+```rust
+use quickgui::*;
+```
+
+## 使い方
+
+```rust
+Toggle::new(pressed)
+    .root_part(button().on_click(toggle).child("Pin this item"))
+```
+
+## 構成
+
+- `Toggle::root_part`
+- `Toggle::indicator_part`
+
+## 主なプロパティ
+
+| プロパティ | 説明 |
+| --- | --- |
+| `pressed` | 制御された押下状態です。 |
+| `default_pressed` | コンポーネント自身が状態を管理するときの初期押下状態です。 |
+| `on_pressed_change` | コアが受け入れた押下状態を通知します。 |
+| `disabled` | 操作を無効にし、無効状態を公開します。 |

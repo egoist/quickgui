@@ -1,0 +1,29 @@
+原生分段选择器，支持值选择和中性的 Xcode 风格标签页角色。
+
+## 导入
+
+从 `quickgui` 导入 `SwiftUiPicker`。
+
+```rust
+use quickgui::*;
+```
+
+## 用法
+
+```rust
+SwiftUiPicker::segmented(
+    1,
+    "code",
+    [SwiftUiPickerOption::new("code", "Code"), SwiftUiPickerOption::new("preview", "Preview")],
+)
+```
+
+## 主要属性
+
+| 属性 | 说明 |
+| --- | --- |
+| `selection` | 表格、原生选择器或颜色控件的受控选中值。 |
+| `options` | 有序的原生选择器选项。 |
+| `label` | 原生 SwiftUI 控件的可见标签。 |
+| `role` | 保留节点暴露的无障碍角色。 |
+| `on_value_change` | 报告选中的原生选择器选项或颜色。 |

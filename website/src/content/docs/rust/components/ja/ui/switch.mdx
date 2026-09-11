@@ -1,0 +1,32 @@
+ルートのトラックと個別にスタイルできるつまみを持つ、オン／オフコントロールです。
+
+## インポート
+
+`quickgui` から `Switch` をインポートします。
+
+```rust
+use quickgui::*;
+```
+
+## 使い方
+
+```rust
+let control = Switch::new(enabled);
+control
+    .root_part(div().w(40.0).h(24.0).rounded(12.0).on_click(toggle))
+    .child(control.thumb_part(div().size(18.0, 18.0).rounded(9.0)))
+```
+
+## 構成
+
+- `Switch::root_part`
+- `Switch::thumb_part`
+
+## 主なプロパティ
+
+| プロパティ | 説明 |
+| --- | --- |
+| `checked` | 制御されたチェック状態です。 |
+| `default_checked` | コンポーネント自身が状態を管理するときの初期チェック状態です。 |
+| `on_click` | コアが受け入れたチェック状態を通知します。 |
+| `disabled` | 操作を無効にし、無効状態を公開します。 |

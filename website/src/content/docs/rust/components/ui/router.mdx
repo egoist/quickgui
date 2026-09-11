@@ -1,0 +1,44 @@
+A QuickGUI UI projection of QuickGUI core routing with nested layouts and bounded memory history.
+
+## Import
+
+Import `Router` from `quickgui`.
+
+```rust
+use quickgui::*;
+```
+
+## Usage
+
+```rust
+let mut router = Router::new(
+    [
+        RouteDefinition::new("home", "/"),
+        RouteDefinition::new("settings", "/settings"),
+    ],
+    "/",
+)?;
+match router.matched().and_then(|matched| matched.route_ids().last().map(|id| id.as_ref())) {
+    Some("settings") => text("Settings"),
+    _ => button().on_click(open_settings).child("Settings"),
+}
+```
+
+## Anatomy
+
+- `Router`
+- `RouteDefinition`
+- `RouteDefinition::layout`
+- `Router::push`
+- `Router::matched`
+
+## Key props
+
+| Prop | Purpose |
+| --- | --- |
+| `initial_destination` | Initial destination for the bounded in-memory history. |
+| `fallback` | Content rendered when no route matches. |
+| `routes` | Static route declarations built with `ui.Route` and `ui.Layout`. |
+| `path` | Absolute or parent-relative route pattern. |
+| `component` | Component rendered when a route wins. |
+| `href` | Destination resolved by the QuickGUI router. |

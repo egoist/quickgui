@@ -1,0 +1,39 @@
+Connects one control to its label, description, validation state, and error message.
+
+## Import
+
+Import `Field` from `quickgui`.
+
+```rust
+use quickgui::*;
+```
+
+## Usage
+
+```rust
+let field = Field::new("email");
+field
+    .root_part(div().flex_col().gap(6.0))
+    .child(field.label_part(text("Email")))
+    .child(text_input(value))
+```
+
+## Anatomy
+
+- `Field::root_part`
+- `Field::item_part`
+- `Field::label_part`
+- `Field::control_part`
+- `Field::validity_part`
+- `Field::description_part`
+- `Field::error_part`
+
+## Key props
+
+| Prop | Purpose |
+| --- | --- |
+| `invalid` | Projects invalid state to the field and its parts. |
+| `required` | Marks the value as required for validation and form submission. |
+| `validation_message` | Bounded message exposed to error content and accessibility. |
+| `validation_mode` | Selects which interaction boundary triggers validation. |
+| `on_validation_change` | Reports the validation trigger and timing selected by the core. |

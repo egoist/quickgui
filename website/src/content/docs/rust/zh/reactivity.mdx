@@ -1,0 +1,51 @@
+Rust 指南正文目前以英文提供，组件 API 参考包含中文说明。
+
+Store state on the `View`. `render` reads that state to build elements. Call `cx.invalidate()` after a mutation so the window schedules another render. The native core still retains layout, paint, and accessibility between frames.
+
+## 响应式状态
+
+Keep fields on the view struct. Register listeners with `cx.listener` so activations can mutate those fields. A value you copy in `render` is the current frame's snapshot.
+
+```rust
+struct Counter {
+    count: usize,
+}
+impl View for Counter {
+    fn render(&mut self, cx: &mut ViewContext<'_, Self>) -> impl IntoElement {
+        let increment = cx.listener("increment", |this, cx: &mut EventContext| {
+            this.count += 1;
+            cx.invalidate();
+        });
+        div()
+            .child(text(format!("Count: {}", self.count)))
+            .child(button().on_click(increment).child("Increment"))
+    }
+}
+```
+
+## 派生状态
+
+Compute derived values in `render` from the fields you already store. Keep derivations pure; perform writes from listeners.
+
+```rust
+let doubled = self.count * 2;
+text(format!("{doubled}"))
+```
+
+Store an expensive derivation on the view when several children need the same value in one frame.
+
+## 副作用与清理
+
+Rust views do not subscribe with Go/TypeScript-style effects. Start external work from listeners or `Application` callbacks, and drop that work when the view is dropped. Window close releases the view and its listeners.
+
+```rust
+impl Drop for WatcherView {
+    fn drop(&mut self) {
+        self.stop.take().map(|stop| stop());
+    }
+}
+```
+
+## 批量更新
+
+Calling `cx.invalidate()` marks the window dirty. Multiple invalidations in one event coalesce into one render. Do not install a frame loop for ordinary state updates; the window sleeps while it is clean.

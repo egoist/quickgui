@@ -1,0 +1,38 @@
+操作、閉じる、スワイプに対応した、時間制御される積み重ね通知を表示します。
+
+## インポート
+
+`quickgui` から `Toast` をインポートします。
+
+```rust
+use quickgui::*;
+```
+
+## 使い方
+
+```rust
+toast_viewport("toasts").child(text("Saved"))
+```
+
+## 構成
+
+- `Toast::provider_part`
+- `Toast::portal_part`
+- `Toast::viewport_part`
+- `Toast::positioner_part`
+- `Toast::root_part`
+- `Toast::content_part`
+- `Toast::title_part`
+- `Toast::description_part`
+- `Toast::action_part`
+- `Toast::close_part`
+
+## 主なプロパティ
+
+| プロパティ | 説明 |
+| --- | --- |
+| `toasts` | ビューポートが描画する、宣言済み Toast キュー全体です。 |
+| `toast_id` | 描画された 1 つの Toast に対応する、安定したキュー ID です。 |
+| `timeout` | 継承する自動消去時間、またはウォームアップ済み Provider のタイムアウトです。 |
+| `swipe_direction` | スワイプでサーフェスを閉じる、または移動する方向の端です。 |
+| `on_dismiss` | コアが閉じた Toast ID を通知します。 |

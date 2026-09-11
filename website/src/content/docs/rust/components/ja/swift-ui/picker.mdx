@@ -1,0 +1,26 @@
+メニュー、セグメント、ラジオグループ、インラインの各スタイルに対応した、制御された SwiftUI Picker です。
+
+## インポート
+
+`quickgui` から `SwiftUiPicker` をインポートします。
+
+```rust
+use quickgui::*;
+```
+
+## 使い方
+
+```rust
+SwiftUiPicker::new(1, "space", [SwiftUiPickerOption::new("space", "Space")])
+    .label("Theme")
+```
+
+## 主なプロパティ
+
+| プロパティ | 説明 |
+| --- | --- |
+| `selection` | テーブル、ネイティブピッカー、カラーコントロールの制御選択値です。 |
+| `options` | 順序付きのネイティブピッカー選択肢です。 |
+| `label` | ネイティブ SwiftUI コントロールに表示するラベルです。 |
+| `style` | このコントロールのネイティブ SwiftUI 表示スタイルです。 |
+| `on_value_change` | 選択したネイティブピッカー項目または色を通知します。 |

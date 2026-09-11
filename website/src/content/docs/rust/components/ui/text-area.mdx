@@ -1,0 +1,25 @@
+The multiline text-editing primitive, with the same controlled value contract as Input.
+
+## Import
+
+Import `text_area` from `quickgui`.
+
+```rust
+use quickgui::*;
+```
+
+## Usage
+
+```rust
+text_area(notes.as_str())
+    .placeholder("Notes")
+    .on_input(edit)
+```
+
+## Key props
+
+| Prop | Purpose |
+| --- | --- |
+| `value` | Controlled value. The precise value type follows this component’s contract. |
+| `placeholder` | Text shown while the editable value is empty. |
+| `on_input` | Reports native editing input. |

@@ -1,0 +1,33 @@
+選択可能な 1 項目です。通常は RadioGroup 内で宣言します。
+
+## インポート
+
+`quickgui` から `Radio` をインポートします。
+
+```rust
+use quickgui::*;
+```
+
+## 使い方
+
+```rust
+let radio = Radio::new(selected);
+radio
+    .root_part(div().flex_row().gap(8.0).on_click(select))
+    .child(radio.indicator_part(div().size(16.0, 16.0).rounded(8.0)))
+    .child(text("Option A"))
+```
+
+## 構成
+
+- `Radio::root_part`
+- `Radio::indicator_part`
+
+## 主なプロパティ
+
+| プロパティ | 説明 |
+| --- | --- |
+| `value` | 制御値です。具体的な型は、このコンポーネントの規約に従います。 |
+| `checked` | 制御されたチェック状態です。 |
+| `on_click` | コアが受け入れたチェック状態を通知します。 |
+| `disabled` | 操作を無効にし、無効状態を公開します。 |

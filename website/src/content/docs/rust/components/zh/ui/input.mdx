@@ -1,0 +1,26 @@
+由核心管理的受控文本编辑器，支持原生键盘和文本服务。
+
+## 导入
+
+从 `quickgui` 导入 `text_input`。
+
+```rust
+use quickgui::*;
+```
+
+## 用法
+
+```rust
+text_input(name.as_str())
+    .placeholder("Name")
+    .on_input(edit)
+```
+
+## 主要属性
+
+| 属性 | 说明 |
+| --- | --- |
+| `value` | 受控值，具体类型取决于该组件的约定。 |
+| `placeholder` | 可编辑值为空时显示的文本。 |
+| `multiline` | 启用多行文本编辑。 |
+| `on_input` | 报告原生编辑输入。 |

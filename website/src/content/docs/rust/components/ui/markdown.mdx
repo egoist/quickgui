@@ -1,0 +1,23 @@
+Renders retained Markdown, including an incremental mode for streaming content.
+
+## Import
+
+Import `Markdown` from `quickgui`.
+
+```rust
+use quickgui::*;
+```
+
+## Usage
+
+```rust
+let mut markdown = Markdown::with_text("Build **native** interfaces.");
+markdown.element("note").w(290.0)
+```
+
+## Key props
+
+| Prop | Purpose |
+| --- | --- |
+| `value` | Markdown source to shape and paint. |
+| `streaming` | Uses incremental Markdown reconciliation for appended content. |

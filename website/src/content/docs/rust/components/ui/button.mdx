@@ -1,0 +1,31 @@
+An accessible press target that you style and compose with text or other content.
+
+## Import
+
+Import `button` from `quickgui`.
+
+```rust
+use quickgui::*;
+```
+
+## Usage
+
+```rust
+button()
+    .h(40.0)
+    .px(16.0)
+    .bg(Color::rgb8(37, 99, 235))
+    .text_color(Color::WHITE)
+    .rounded(8.0)
+    .hover(|style| style.bg(Color::rgb8(59, 130, 246)))
+    .on_click(save)
+    .child("Save changes")
+```
+
+## Key props
+
+| Prop | Purpose |
+| --- | --- |
+| `child` | Content mounted inside the component. |
+| `on_click` | Runs after the core resolves an activation. |
+| `disabled` | Prevents interaction and exposes the disabled state. |

@@ -9,6 +9,17 @@ export const snippets = {
   />
 </Host>`,
   },
+  rustSwiftUi: {
+    lang: "rust",
+    code: `let mut host = MacSwiftUiHost::new(|_id| {})?;
+host.sync(&[SwiftUiButton::new(1)
+    .label("Save changes")
+    .system_image("checkmark")
+    .style(SwiftUiButtonStyle::Glass)
+    .into()])?;
+native_view(host.view())
+`,
+  },
   typescriptCounter: {
     lang: "tsx",
     code: `function Counter() {
@@ -29,6 +40,35 @@ export const snippets = {
 `,
   },
   typescriptCliCheck: { lang: "bash", code: "bun run check\nbun run test\nbun run fmt" },
+  rustCounter: {
+    lang: "rust",
+    code: `impl View for Counter {
+    fn render(&mut self, cx: &mut ViewContext<'_, Self>) -> impl IntoElement {
+        let increment = cx.listener("increment", |this, cx: &mut EventContext| {
+            this.count += 1;
+            cx.invalidate();
+        });
+        div()
+            .flex_col()
+            .size_full()
+            .items_center()
+            .justify_center()
+            .gap_5()
+            .bg(Color::rgb8(9, 13, 22))
+            .text_color(Color::rgb8(226, 232, 240))
+            .child(text(format!("Count: {}", self.count)))
+            .child(
+                button()
+                    .p(12.0)
+                    .rounded_lg()
+                    .bg(Color::rgb8(37, 99, 235))
+                    .on_click(increment)
+                    .child("Increment"),
+            )
+    }
+}
+`,
+  },
   counter: {
     lang: "go",
     code: `func Counter() *ui.Element {

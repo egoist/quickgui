@@ -1,0 +1,30 @@
+A pressable control that retains an on or off pressed state.
+
+## Import
+
+Import `Toggle` from `quickgui`.
+
+```rust
+use quickgui::*;
+```
+
+## Usage
+
+```rust
+Toggle::new(pressed)
+    .root_part(button().on_click(toggle).child("Pin this item"))
+```
+
+## Anatomy
+
+- `Toggle::root_part`
+- `Toggle::indicator_part`
+
+## Key props
+
+| Prop | Purpose |
+| --- | --- |
+| `pressed` | Controlled pressed state. |
+| `default_pressed` | Initial pressed state when the component owns it. |
+| `on_pressed_change` | Reports the pressed state accepted by the core. |
+| `disabled` | Prevents interaction and exposes the disabled state. |

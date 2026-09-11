@@ -1,0 +1,26 @@
+制御されたネイティブの日付または日時ピッカーです。
+
+## インポート
+
+`quickgui` から `SwiftUiDatePicker` をインポートします。
+
+```rust
+use quickgui::*;
+```
+
+## 使い方
+
+```rust
+SwiftUiDatePicker::new(1, timestamp).label("Start")
+```
+
+## 主なプロパティ
+
+| プロパティ | 説明 |
+| --- | --- |
+| `value` | ミリ秒単位の Unix タイムスタンプです。`Min` と `Max` も同じ単位です。 |
+| `min` | 受け入れる最小値です。 |
+| `max` | 受け入れる最大値です。 |
+| `displayed_components` | 日付、時刻、または日付と時刻の両方のフィールドを選びます。 |
+| `style` | `automatic`、`field`、`stepperField`、`graphical` のいずれかです。 |
+| `on_value_change` | コアが受け入れた値を通知します。 |

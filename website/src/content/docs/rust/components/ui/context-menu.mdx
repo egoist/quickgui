@@ -1,0 +1,30 @@
+Opens a model-driven native menu from a secondary-button press on its trigger.
+
+## Import
+
+Import `ContextMenuState` from `quickgui`.
+
+```rust
+use quickgui::*;
+```
+
+## Usage
+
+```rust
+ContextMenuState::new()
+    .trigger_part(div().child(text("Right-click me")))
+```
+
+## Anatomy
+
+- `ContextMenuState::root_part`
+- `ContextMenuState::trigger_part`
+
+## Key props
+
+| Prop | Purpose |
+| --- | --- |
+| `items` | Bounded declaration model used for options or keyboard navigation. |
+| `appearance` | Structural colors and geometry for a core-painted native menu or picker. |
+| `on_select` | Reports the menu entry selected by the core. |
+| `loop` | Wraps highlight navigation at the ends of a menu level. |

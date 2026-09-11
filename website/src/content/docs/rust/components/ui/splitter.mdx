@@ -1,0 +1,32 @@
+Creates resizable panes with pointer and keyboard-operated handles.
+
+## Import
+
+Import `Splitter` from `quickgui`.
+
+```rust
+use quickgui::*;
+```
+
+## Usage
+
+```rust
+let splitter = Splitter::new("workspace", &state);
+splitter.root_part(div().flex_row())
+```
+
+## Anatomy
+
+- `Splitter::root_part`
+- `Splitter::pane_part`
+- `Splitter::handle_part`
+
+## Key props
+
+| Prop | Purpose |
+| --- | --- |
+| `value` | Controlled value. The precise value type follows this component’s contract. |
+| `default_value` | Initial value when the component owns its state. |
+| `panes` | Per-pane minimum size and collapse declarations. |
+| `orientation` | Horizontal or vertical layout and keyboard direction. |
+| `on_sizes_change` | Reports the complete pane-size set after the core resizes it. |

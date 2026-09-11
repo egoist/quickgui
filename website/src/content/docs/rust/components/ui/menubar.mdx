@@ -1,0 +1,31 @@
+Coordinates a horizontal in-window menubar and its menu items.
+
+## Import
+
+Import `Menubar` from `quickgui`.
+
+```rust
+use quickgui::*;
+```
+
+## Usage
+
+```rust
+let bar = Menubar::new("app");
+bar.root_part(div().flex_row())
+```
+
+## Anatomy
+
+- `Menubar::root_part`
+- `Menubar::item_part`
+
+## Key props
+
+| Prop | Purpose |
+| --- | --- |
+| `count` | Number of declared menubar items. |
+| `open` | Controlled open state. |
+| `default_open` | Initial state when the component owns whether it is open. |
+| `on_open_change` | Reports an open or close decision from the core. |
+| `on_active_change` | Reports the item that now owns the roving focus state. |

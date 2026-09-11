@@ -1,0 +1,31 @@
+テキストなどの内容を自由に組み合わせてスタイルできる、アクセシブルな押下ターゲットです。
+
+## インポート
+
+`quickgui` から `button` をインポートします。
+
+```rust
+use quickgui::*;
+```
+
+## 使い方
+
+```rust
+button()
+    .h(40.0)
+    .px(16.0)
+    .bg(Color::rgb8(37, 99, 235))
+    .text_color(Color::WHITE)
+    .rounded(8.0)
+    .hover(|style| style.bg(Color::rgb8(59, 130, 246)))
+    .on_click(save)
+    .child("Save changes")
+```
+
+## 主なプロパティ
+
+| プロパティ | 説明 |
+| --- | --- |
+| `child` | コンポーネント内にマウントする内容です。 |
+| `on_click` | コアがアクティブ化を解決した後に実行します。 |
+| `disabled` | 操作を無効にし、無効状態を公開します。 |

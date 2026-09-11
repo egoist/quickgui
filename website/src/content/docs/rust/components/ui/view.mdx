@@ -1,0 +1,27 @@
+A general-purpose retained container for layout, paint, pointer input, and accessibility.
+
+## Import
+
+Import `div` from `quickgui`.
+
+```rust
+use quickgui::*;
+```
+
+## Usage
+
+```rust
+div()
+    .p(20.0)
+    .gap(12.0)
+    .child(text("Hello from Rust"))
+    .child(button().on_click(continue_clicked).child("Continue"))
+```
+
+## Key props
+
+| Prop | Purpose |
+| --- | --- |
+| `child` | Content mounted inside the component. |
+| `on_click` | Runs after the core resolves an activation. |
+| `ref` | Receives the retained native node. |

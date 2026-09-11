@@ -2,9 +2,9 @@ import type { en } from "./en";
 
 export const zh: typeof en = {
   meta: {
-    title: "QuickGUI — 用 Go 或 TypeScript 构建原生桌面应用",
+    title: "QuickGUI — 用 Go、TypeScript 或 Rust 构建原生桌面应用",
     description:
-      "用 Go 或 TypeScript 构建原生桌面应用。快速构建、细粒度响应式、GPU 渲染和无障碍组件，并提供内存与应用体积的实测对比。",
+      "用 Go、TypeScript 或 Rust 构建原生桌面应用。快速构建、细粒度响应式、GPU 渲染和无障碍组件，并提供内存与应用体积的实测对比。",
   },
   common: {
     skipToContent: "跳到正文",
@@ -23,10 +23,10 @@ export const zh: typeof en = {
     benchmarks: "基准测试",
   },
   hero: {
-    badge: "Go + TypeScript · 快速构建",
+    badge: "Go + TypeScript + Rust · 快速构建",
     titleLine1: "构建原生桌面应用，",
-    titleLine2: "用 Go 或 TypeScript。",
-    sub: "使用 Go 或 TypeScript 开发原生界面，支持快速增量构建、细粒度响应式和无障碍组件，共享同一个 GPU 渲染器。",
+    titleLine2: "用 Go、TypeScript 或 Rust。",
+    sub: "使用 Go、TypeScript 或 Rust 开发原生界面，支持快速增量构建、细粒度响应式和无障碍组件，共享同一个 GPU 渲染器。",
   },
   features: {
     title: "特性",
@@ -37,11 +37,11 @@ export const zh: typeof en = {
       },
       fast: {
         title: "快速增量构建",
-        body: "重新编译 Go 或 TypeScript 应用时，复用原生运行时。缩短反馈周期，把更多时间留给界面打磨。",
+        body: "重新编译 Go、TypeScript 或 Rust 应用时，复用原生运行时。缩短反馈周期，把更多时间留给界面打磨。",
       },
       layout: {
         title: "Flexbox 与 CSS Grid",
-        body: "使用 Flexbox、CSS Grid 和熟悉的样式选项，在 Go 或 TypeScript 中组合布局并复用组件样式。",
+        body: "使用 Flexbox、CSS Grid 和熟悉的样式选项，在 Go、TypeScript 或 Rust 中组合布局并复用组件样式。",
       },
       components: {
         title: "组件开箱即用",
@@ -70,12 +70,12 @@ export const zh: typeof en = {
     },
   },
   code: {
-    title: "Go 与 TypeScript 示例",
-    lead: "Go 使用链式原生视图和可组合样式，TypeScript 使用 Solid 2 JSX。信号只更新读取它的绑定，其余节点保持挂载。",
+    title: "Go、TypeScript 与 Rust 示例",
+    lead: "Go 使用链式原生视图和可组合样式，TypeScript 使用 Solid 2 JSX，Rust 实现 View 并直接链接 crate。更新只作用于读取它的绑定，其余节点保持挂载。",
   },
   swiftUi: {
     title: "在 QuickGUI 中使用原生 SwiftUI",
-    lead: "在 macOS 的 Go 或 TypeScript 应用中嵌入真正的 SwiftUI 控件，与 QuickGUI 组件一起使用。",
+    lead: "在 macOS 的 Go、TypeScript 或 Rust 应用中嵌入真正的 SwiftUI 控件，与 QuickGUI 组件一起使用。",
   },
   quickstart: {
     title: "快速开始",
@@ -89,7 +89,7 @@ export const zh: typeof en = {
   },
   cta: {
     title: "开始使用 QuickGUI",
-    body: "编写 Go 或 TypeScript 组件，发布自带运行时的原生应用。",
+    body: "编写 Go、TypeScript 或 Rust 组件，发布自带运行时的原生应用。",
     docs: "阅读文档",
     star: "在 GitHub 加星",
   },

@@ -1,0 +1,52 @@
+Rust ガイド本文は現在英語です。コンポーネントの API リファレンスには日本語の説明があります。
+
+`Router` owns route matching, normalized locations, and bounded memory history. The view chooses which elements to mount from the current match.
+
+## ルートの宣言
+
+```rust
+let router = Router::new(
+    [
+        RouteDefinition::new("home", "/"),
+        RouteDefinition::new("project", "/projects/:id"),
+    ],
+    "/",
+)?;
+```
+
+`RouteDefinition::layout` declares a pathless ancestor. Relative child paths join their parent; an absolute child path starts at the root.
+
+## 入れ子のレイアウト
+
+Match the route chain and wrap inner content with layout elements. Pathless layouts appear in `matched` ancestry without adding a URL segment.
+
+```rust
+RouteDefinition::layout("shell").parent("root")
+```
+
+## ナビゲーション
+
+```rust
+self.router.push("/projects/42")?;
+cx.invalidate();
+```
+
+The controller supports `push`, `replace`, `back`, and `forward`. Navigation stays in the native application.
+
+## ルートパラメーター
+
+```rust
+if let Some(matched) = self.router.matched() {
+    let id = matched
+        .params()
+        .iter()
+        .find(|param| param.name() == "id")
+        .map(|param| param.value())
+        .unwrap_or("");
+    text(format!("Project {id}"))
+} else {
+    text("Page not found")
+}
+```
+
+Query pairs are retained as bounded lists on `RouteLocation`.

@@ -1,0 +1,32 @@
+Presents QuickGUI content in a separate native child window that can extend beyond its owner.
+
+## Import
+
+Import `SystemPopover` from `quickgui`.
+
+```rust
+use quickgui::*;
+```
+
+## Usage
+
+```rust
+SystemPopover::new(320.0, 240.0)
+```
+
+## Anatomy
+
+- `SystemPopover::root_part`
+- `SystemPopover::trigger_part`
+- `SystemPopover::content_part`
+
+## Key props
+
+| Prop | Purpose |
+| --- | --- |
+| `open` | Controlled open state. |
+| `default_open` | Initial state when the component owns whether it is open. |
+| `on_open_change` | Reports an open or close decision from the core. |
+| `width` | Declared logical width. |
+| `height` | Declared logical height. |
+| `placement` | Requested native child-window placement. |

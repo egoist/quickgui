@@ -1,8 +1,9 @@
 import { docsOutline, docsTitle, DOCS_GUIDE_ORDER } from './docs-structure'
 import type { Locale } from '../i18n'
+import { RUST_DOCS_PAGES } from './rust-docs'
 import { TYPESCRIPT_DOCS_PAGES } from './typescript-docs'
 
-export const DOCS_FRONTENDS = ['go', 'typescript'] as const
+export const DOCS_FRONTENDS = ['go', 'typescript', 'rust'] as const
 export type DocsFrontend = (typeof DOCS_FRONTENDS)[number]
 
 export type DocsSlug = (typeof DOCS_GUIDE_ORDER)[number]
@@ -182,15 +183,19 @@ export const GO_DOCS_PAGES: readonly DocsPageMeta[] = [
 ]
 
 export function isDocsFrontend(value: string | undefined): value is DocsFrontend {
-  return value === 'go' || value === 'typescript'
+  return (DOCS_FRONTENDS as readonly string[]).includes(value ?? '')
 }
 
 export function docsPages(frontend: DocsFrontend): readonly DocsPageMeta[] {
-  return frontend === 'typescript' ? TYPESCRIPT_DOCS_PAGES : GO_DOCS_PAGES
+  if (frontend === 'typescript') return TYPESCRIPT_DOCS_PAGES
+  if (frontend === 'rust') return RUST_DOCS_PAGES
+  return GO_DOCS_PAGES
 }
 
 export function frontendLabel(frontend: DocsFrontend): string {
-  return frontend === 'typescript' ? 'TypeScript' : 'Go'
+  if (frontend === 'typescript') return 'TypeScript'
+  if (frontend === 'rust') return 'Rust'
+  return 'Go'
 }
 
 export function docsPath(frontend: DocsFrontend, slug: DocsSlug = 'getting-started'): string {

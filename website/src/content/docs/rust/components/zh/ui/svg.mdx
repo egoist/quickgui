@@ -1,0 +1,23 @@
+无需加载外部 SVG 资源即可渲染完整的内联 SVG 文档。
+
+## 导入
+
+从 `quickgui` 导入 `Svg`。
+
+```rust
+use quickgui::*;
+```
+
+## 用法
+
+```rust
+svg(Svg::from_bytes(ICON).expect("svg"))
+    .size(72.0, 72.0)
+    .text_color(Color::rgb8(37, 99, 235))
+```
+
+## 主要属性
+
+| 属性 | 说明 |
+| --- | --- |
+| `value` | 组件所需的文件系统路径、数据 URL、SVG 文档或着色器源码。 |

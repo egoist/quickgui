@@ -7,6 +7,7 @@ import { FrontendPicker } from "../frontend-picker";
 const examples: Record<DocsFrontend, { file: string; snippet: SnippetKey }> = {
   go: { file: "swiftui.go", snippet: "swiftUi" },
   typescript: { file: "swiftui.tsx", snippet: "typescriptSwiftUi" },
+  rust: { file: "swiftui.rs", snippet: "rustSwiftUi" },
 };
 
 export function SwiftUi({

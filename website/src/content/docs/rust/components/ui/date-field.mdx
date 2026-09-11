@@ -1,0 +1,31 @@
+A segmented, keyboard-editable date field with locale-aware date parts.
+
+## Import
+
+Import `DateField` from `quickgui`.
+
+```rust
+use quickgui::*;
+```
+
+## Usage
+
+```rust
+let field = DateField::new("start");
+field.root_part(div().flex_row())
+```
+
+## Anatomy
+
+- `DateField::root_part`
+- `DateField::segment_part`
+
+## Key props
+
+| Prop | Purpose |
+| --- | --- |
+| `value` | Controlled value. The precise value type follows this component’s contract. |
+| `min` | Minimum accepted value. |
+| `max` | Maximum accepted value. |
+| `on_value_change` | Reports the value accepted by the core. |
+| `disabled` | Prevents interaction and exposes the disabled state. |

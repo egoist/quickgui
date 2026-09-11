@@ -1,0 +1,38 @@
+窗口内模态框，支持焦点约束、关闭操作和精确的过渡结束时机。
+
+## 导入
+
+从 `quickgui` 导入 `Dialog`。
+
+```rust
+use quickgui::*;
+```
+
+## 用法
+
+```rust
+let dialog = Dialog::new("save", open);
+dialog.root_part(div()).child(dialog.title_part(text("Save changes")))
+```
+
+## 结构
+
+- `Dialog::root_part`
+- `Dialog::trigger_part`
+- `Dialog::portal_part`
+- `Dialog::backdrop_part`
+- `Dialog::viewport_part`
+- `Dialog::popup_part`
+- `Dialog::title_part`
+- `Dialog::description_part`
+- `Dialog::close_part`
+
+## 主要属性
+
+| 属性 | 说明 |
+| --- | --- |
+| `open` | 受控的打开状态。 |
+| `default_open` | 组件自行管理打开状态时的初始状态。 |
+| `on_open_change` | 报告核心做出的打开或关闭决定。 |
+| `dismiss_on_escape` | 允许按 Escape 键关闭界面。 |
+| `exit_duration` | 在精确的退出过渡时长内保持关闭中的内容已挂载。 |

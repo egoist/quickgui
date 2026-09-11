@@ -1,0 +1,39 @@
+将控件与标签、说明、验证状态和错误信息关联起来。
+
+## 导入
+
+从 `quickgui` 导入 `Field`。
+
+```rust
+use quickgui::*;
+```
+
+## 用法
+
+```rust
+let field = Field::new("email");
+field
+    .root_part(div().flex_col().gap(6.0))
+    .child(field.label_part(text("Email")))
+    .child(text_input(value))
+```
+
+## 结构
+
+- `Field::root_part`
+- `Field::item_part`
+- `Field::label_part`
+- `Field::control_part`
+- `Field::validity_part`
+- `Field::description_part`
+- `Field::error_part`
+
+## 主要属性
+
+| 属性 | 说明 |
+| --- | --- |
+| `invalid` | 将无效状态传递给字段及其各部件。 |
+| `required` | 将值标记为验证和表单提交所必需。 |
+| `validation_message` | 向错误内容和无障碍 API 暴露的有限长度消息。 |
+| `validation_mode` | 选择触发验证的交互边界。 |
+| `on_validation_change` | 报告核心选择的验证触发条件和时机。 |

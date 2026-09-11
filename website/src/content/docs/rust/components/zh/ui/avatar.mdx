@@ -1,0 +1,30 @@
+显示图像；图像不可用时显示后备内容。
+
+## 导入
+
+从 `quickgui` 导入 `avatar`。
+
+```rust
+use quickgui::*;
+```
+
+## 用法
+
+```rust
+avatar("user", "Ada Lovelace").size(40.0, 40.0).rounded(20.0)
+```
+
+## 结构
+
+- `avatar::root_part`
+- `avatar::image_part`
+- `avatar::fallback_part`
+
+## 主要属性
+
+| 属性 | 说明 |
+| --- | --- |
+| `aria_label` | 当组件的可见部件可能变化时使用的无障碍名称。 |
+| `src` | 头像图像的文件系统路径、文件 URL 或 base64 数据 URL。 |
+| `delay` | 打开前由核心管理的延迟（毫秒）。 |
+| `on_loading_status_change` | 报告头像图像每次加载状态变化。 |

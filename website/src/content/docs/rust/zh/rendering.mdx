@@ -1,0 +1,55 @@
+Rust 指南正文目前以英文提供，组件 API 参考包含中文说明。
+
+`View::render` builds an element tree after invalidation or OS damage. Native layout, painting, focus, input, and accessibility remain in the core. Stable `Element::id` values preserve identity across renders.
+
+## 渲染模型
+
+Return `impl IntoElement` from `render`. Fluent builders construct retained elements. The window sleeps until `invalidate` or platform damage. Do not rebuild from a timer when nothing changed.
+
+## 条件内容
+
+```rust
+if self.expanded {
+    text("Expanded content")
+} else {
+    text("Collapsed")
+}
+```
+
+Omitting a branch drops its nodes. Sibling elements with stable ids keep their identities.
+
+## 列表与节点身份
+
+```rust
+div().children(self.items.iter().map(|item| {
+    text(item.name.as_str()).id(item.id)
+}))
+```
+
+Give stateful rows stable `id`s. Use `VirtualList` or `TableState` for large collections and only mount visible rows.
+
+## 窗口生命周期
+
+Each `open_window` owns an independent view. Closing a child window must not drop its siblings. Handle macOS Dock reopening by constructing a fresh window when `has_visible_windows` is false.
+
+## 当前窗口
+
+```rust
+fn render(&mut self, cx: &mut ViewContext<'_, Self>) -> impl IntoElement {
+    let close = cx.listener("close", |_this, cx: &mut EventContext| {
+        let _ = cx.close_window();
+    });
+    button().on_click(close).child("Close")
+}
+```
+
+`ViewContext` and `EventContext` expose the current `WindowHandle` during render and event dispatch.
+
+## 检查、测试与调试
+
+```sh
+quickgui check
+quickgui test
+```
+
+`examples/base_ui_components.rs` is the broad UI gallery. Enable the `inspector` crate feature for the in-app inspector. Native integration checks are separate from `cargo test`.

@@ -1,0 +1,29 @@
+Lays out and paints the visible part of a long or variable-height collection.
+
+## Import
+
+Import `VirtualList` from `quickgui`.
+
+```rust
+use quickgui::*;
+```
+
+## Usage
+
+```rust
+div()
+    .h(210.0)
+    .overflow_hidden()
+    .virtual_scroll(&list)
+    .children(list.visible_rows().range.map(|index| text(format!("Row {index}"))))
+```
+
+## Key props
+
+| Prop | Purpose |
+| --- | --- |
+| `estimated_item_height` | Initial logical row-height estimate used by virtualization. |
+| `overscan` | Extra rows mounted before and after the visible range. |
+| `list_alignment` | Pins short list content to the top or bottom. |
+| `follow_mode` | Chooses ordinary scrolling or tail-following behavior. |
+| `child` | Content mounted inside the component. |

@@ -1,0 +1,31 @@
+A bounded one-time-code editor made from individually styled input cells.
+
+## Import
+
+Import `OtpField` from `quickgui`.
+
+```rust
+use quickgui::*;
+```
+
+## Usage
+
+```rust
+let field = OtpField::new("code");
+field.root_part(div().flex_row().gap(8.0))
+```
+
+## Anatomy
+
+- `OtpField::root_part`
+- `OtpField::input_part`
+- `OtpField::separator_part`
+
+## Key props
+
+| Prop | Purpose |
+| --- | --- |
+| `value` | Controlled value. The precise value type follows this component’s contract. |
+| `length` | Number of one-time-code input slots, bounded to twelve. |
+| `on_value_change` | Reports the value accepted by the core. |
+| `disabled` | Prevents interaction and exposes the disabled state. |

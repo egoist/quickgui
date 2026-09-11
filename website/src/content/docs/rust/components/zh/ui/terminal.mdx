@@ -1,0 +1,39 @@
+嵌入保留式 Ghostty 终端表面，并报告进程生命周期事件。
+
+## 导入
+
+从 `quickgui` 导入 `Terminal`。
+
+```rust
+use quickgui::*;
+```
+
+## 用法
+
+```rust
+let terminal = Terminal::spawn(
+    TerminalOptions {
+        program: Some("/bin/zsh".into()),
+        arguments: vec!["-l".into()],
+        working_directory: Some(directory.into()),
+        ..TerminalOptions::default()
+    },
+    cx.window_invalidator(),
+)?;
+terminal.element(cx)
+```
+
+## 主要属性
+
+| 属性 | 说明 |
+| --- | --- |
+| `program` | 终端启动的可执行文件。 |
+| `args` | 传递给终端进程的参数。 |
+| `working_directory` | 终端进程的初始工作目录。 |
+| `environment` | 添加到终端进程的环境变量。 |
+| `on_status` | 报告终端进程的生命周期变化。 |
+| `palette` | 16 色 ANSI 调色板（`terminal.Palette`）或访问器，更新时保留 PTY。 |
+| `cursor_color` | 光标颜色或颜色访问器。 |
+| `padding_color` | 使用 `"extend"` 将终端边缘背景延伸到内边距。 |
+| `font_thicken` | 启用原生字体加粗处理。 |
+| `scrollback` | 保留的最大回滚行数。 |

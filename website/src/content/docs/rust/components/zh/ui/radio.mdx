@@ -1,0 +1,33 @@
+单个可选项，通常在 RadioGroup 中声明。
+
+## 导入
+
+从 `quickgui` 导入 `Radio`。
+
+```rust
+use quickgui::*;
+```
+
+## 用法
+
+```rust
+let radio = Radio::new(selected);
+radio
+    .root_part(div().flex_row().gap(8.0).on_click(select))
+    .child(radio.indicator_part(div().size(16.0, 16.0).rounded(8.0)))
+    .child(text("Option A"))
+```
+
+## 结构
+
+- `Radio::root_part`
+- `Radio::indicator_part`
+
+## 主要属性
+
+| 属性 | 说明 |
+| --- | --- |
+| `value` | 受控值，具体类型取决于该组件的约定。 |
+| `checked` | 受控的选中状态。 |
+| `on_click` | 报告核心接受的选中状态。 |
+| `disabled` | 禁止交互，并暴露禁用状态。 |

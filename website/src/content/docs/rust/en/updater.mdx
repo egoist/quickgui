@@ -1,0 +1,79 @@
+Enable the `updater` feature on the `quickgui` crate. Rust apps do not load `@quickgui/extension-updater`; they call `UpdateClient` in-process.
+
+## Configuration
+
+Generate an Ed25519 key pair, then copy the public key into the project:
+
+```sh
+bunx @quickgui/cli keygen --sparkle --out-dir "$HOME/.config/my-app/update-keys"
+cp "$HOME/.config/my-app/update-keys/quickgui-update.pub" ./update-public-key.pub
+```
+
+Keep the private `quickgui-update.key` outside version control.
+
+```ts
+import { readFileSync } from "node:fs";
+import { defineConfig } from "@quickgui/cli";
+
+export default defineConfig({
+  language: "rust",
+  name: "My App",
+  identifier: "com.example.my-app",
+  version: "1.0.0",
+  entry: ".",
+  updates: {
+    baseUrl: "https://downloads.example.com/my-app",
+    publicKey: readFileSync(
+      new URL("./update-public-key.pub", import.meta.url),
+      "utf8",
+    ).trim(),
+    automaticChecks: true,
+  },
+});
+```
+
+Do not set `extensions`. Enable the crate feature:
+
+```toml
+[dependencies]
+quickgui = { version = "0.1.3", features = ["updater"] }
+```
+
+The CLI embeds the public key, application version, identifier, and feed URL in packaged metadata. A `darwin-arm64` build checks `https://downloads.example.com/my-app/appcast-darwin-arm64.xml` unless `updates.feedUrl` overrides it.
+
+## Application usage
+
+Construct one `UpdateClient` after the application starts, outside `View::render`, so every window shares the session:
+
+```rust
+use quickgui::{UpdateClient, default_update_target};
+
+let client = UpdateClient::new("1.0.0", public_key)?
+    .target(default_update_target())?;
+if let Some(update) = client.check("https://downloads.example.com/my-app/{{target}}/latest.json")? {
+    let staged = client.download_and_stage(&update)?;
+    client.install_staged(&staged)?;
+}
+```
+
+A Check for Updates action can call `check` from a listener and `cx.invalidate()` when UI state should show progress.
+
+## Lifecycle
+
+Keep the client for the process lifetime. Closing a window must not drop it if other windows still need update status. Cooperative cancellation uses `UpdateCancellation` around download and staging.
+
+## Platforms
+
+macOS can also emit Sparkle appcasts when `updates.publicKey` is set. Windows and Linux use the signed JSON updater. Development builds should point at a disposable feed.
+
+## Publishing
+
+```sh
+bun run build --update-manifest
+```
+
+Signing needs the Minisign secret key in `updates.minisignSecretKey` or `QUICKGUI_MINISIGN_SECRET_KEY`. The private key is never embedded in the application.
+
+## Native artifacts
+
+Packaged Rust apps include the executable and `quickgui.json`. The updater client reads the embedded public key and current version from that metadata when you pass the values from `AppInfo`.

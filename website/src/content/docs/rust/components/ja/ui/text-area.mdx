@@ -1,0 +1,25 @@
+Input と同じ制御値の規約を持つ、複数行テキスト編集プリミティブです。
+
+## インポート
+
+`quickgui` から `text_area` をインポートします。
+
+```rust
+use quickgui::*;
+```
+
+## 使い方
+
+```rust
+text_area(notes.as_str())
+    .placeholder("Notes")
+    .on_input(edit)
+```
+
+## 主なプロパティ
+
+| プロパティ | 説明 |
+| --- | --- |
+| `value` | 制御値です。具体的な型は、このコンポーネントの規約に従います。 |
+| `placeholder` | 編集値が空のときに表示するテキストです。 |
+| `on_input` | ネイティブ編集の入力を通知します。 |

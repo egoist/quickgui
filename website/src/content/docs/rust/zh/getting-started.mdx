@@ -1,0 +1,96 @@
+Rust 指南正文目前以英文提供，组件 API 参考包含中文说明。
+
+These guides use Rust. Choose Go or TypeScript in the sidebar for those language bindings.
+
+Rust apps link the `quickgui` crate into the executable. The CLI runs Cargo, packages the binary, and does not bundle `libquickgui_host`. Ordinary edits rebuild the selected crate; there is no FFI host library to reuse.
+
+## 系统要求
+
+- A current stable Rust toolchain (1.90 or newer)
+- Bun 1.3 or newer
+- Xcode Command Line Tools on macOS (`xcode-select --install`)
+
+The first development build compiles wgpu and takes longer. Later edits reuse incremental Cargo artifacts.
+
+## 创建项目
+
+Run the command below and choose **Rust** when prompted.
+
+```sh
+bunx @quickgui/cli init my-app --language rust
+cd my-app
+bun run dev
+```
+
+`bun run dev` compiles the crate, packages and launches the app, and rebuilds on source changes. Pass `--language rust` to skip the language prompt.
+
+## 第一个窗口
+
+The generated `src/main.rs` constructs an [`Application`](https://docs.rs/quickgui), opens a window, and implements [`View`](https://docs.rs/quickgui). Store state on the view and call `cx.invalidate()` after mutations.
+
+```rust
+use quickgui::{
+    App, AppInfo, Application, Color, EventContext, IntoElement, View, ViewContext, WindowOptions,
+    div, text,
+};
+
+fn main() -> Result<(), quickgui::AppError> {
+    Application::new()
+        .app_info(AppInfo::new("My App", "0.1.0", "com.example.my-app").expect("valid identity"))
+        .on_reopen(|has_visible_windows, cx| {
+            if !has_visible_windows {
+                open_window(cx);
+            }
+        })
+        .run(open_window)
+}
+
+fn open_window(cx: &mut App) {
+    cx.open_window(WindowOptions::new("My App").size(760.0, 520.0), Counter { count: 0 });
+}
+
+struct Counter {
+    count: usize,
+}
+
+impl View for Counter {
+    fn render(&mut self, cx: &mut ViewContext<'_, Self>) -> impl IntoElement {
+        let increment = cx.listener("increment", |this, cx: &mut EventContext| {
+            this.count += 1;
+            cx.invalidate();
+        });
+        div()
+            .size_full()
+            .flex_col()
+            .items_center()
+            .justify_center()
+            .gap_3()
+            .child(text(format!("Count: {}", self.count)))
+            .child(
+                div()
+                    .on_click(increment)
+                    .px_4()
+                    .py_2()
+                    .rounded_lg()
+                    .bg(Color::rgb8(37, 99, 235))
+                    .child("Increment"),
+            )
+    }
+}
+```
+
+## 运行与构建
+
+```sh
+bun run check
+bun run test
+bun run fmt
+bun run dev
+bun run build
+```
+
+`check`, `test`, and `fmt` dispatch to Cargo. Production builds compile with `--release` and write packaged apps under `dist/`. Rust apps ship `quickgui.json` next to the executable (or in `Contents/Resources` on macOS) instead of a host shared library.
+
+## 后续步骤
+
+Explore the [component reference](/docs/rust/components), [native services](/docs/rust/native-services), and [SwiftUI controls](/docs/rust/swift-ui). The checkout includes `examples/base_ui_components.rs` and related `examples/*.rs` galleries.

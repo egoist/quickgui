@@ -1,0 +1,31 @@
+ロービングフォーカスを使い、単一または複数の押下値を管理します。
+
+## インポート
+
+`quickgui` から `ToggleGroup` をインポートします。
+
+```rust
+use quickgui::*;
+```
+
+## 使い方
+
+```rust
+let group = ToggleGroup::new("align", &state, &items);
+group.root_part(div().flex_row())
+```
+
+## 構成
+
+- `ToggleGroup::root_part`
+- `ToggleGroup::item_part`
+
+## 主なプロパティ
+
+| プロパティ | 説明 |
+| --- | --- |
+| `items` | 選択肢やキーボードナビゲーションに使う、上限付きの宣言モデルです。 |
+| `value` | 制御値です。具体的な型は、このコンポーネントの規約に従います。 |
+| `default_value` | コンポーネント自身が状態を管理するときの初期値です。 |
+| `multiple` | 単一選択または複数選択の方針を選びます。 |
+| `on_value_change` | コアが受け入れた値を通知します。 |

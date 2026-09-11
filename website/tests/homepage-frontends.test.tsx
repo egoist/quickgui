@@ -40,12 +40,13 @@ test("homepage frontends share the init command and select their examples and do
           <SwiftUi highlighted={highlighted} frontend={frontend} onFrontendChange={() => {}} />,
         ),
       );
-      const extension = { go: "go", typescript: "tsx" }[frontend];
+      const extension = { go: "go", typescript: "tsx", rust: "rs" }[frontend];
       expect(swift).toContain(`swiftui.${extension}`);
       expect(swift).toContain(
         {
           go: "ui.SwiftUI.Host",
           typescript: "Host matchContents",
+          rust: "MacSwiftUiHost",
         }[frontend],
       );
       const quickstart = plain(

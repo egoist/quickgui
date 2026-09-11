@@ -1,0 +1,24 @@
+受控的原生 SwiftUI 开关。
+
+## 导入
+
+从 `quickgui` 导入 `SwiftUiToggle`。
+
+```rust
+use quickgui::*;
+```
+
+## 用法
+
+```rust
+SwiftUiToggle::new(1, enabled).label("Notifications")
+```
+
+## 主要属性
+
+| 属性 | 说明 |
+| --- | --- |
+| `is_on` | 受控的 SwiftUI 开关值。 |
+| `label` | 原生 SwiftUI 控件的可见标签。 |
+| `on_value_change` | 报告原生 SwiftUI 开关接受的值。 |
+| `modifiers` | 应用于托管控件的有序 SwiftUI View 修饰器。 |

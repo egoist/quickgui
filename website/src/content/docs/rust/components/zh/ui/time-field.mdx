@@ -1,0 +1,31 @@
+可通过键盘编辑的分段时间字段，包含时、分、秒和上下午部分。
+
+## 导入
+
+从 `quickgui` 导入 `TimeField`。
+
+```rust
+use quickgui::*;
+```
+
+## 用法
+
+```rust
+let field = TimeField::new("alarm");
+field.root_part(div().flex_row())
+```
+
+## 结构
+
+- `TimeField::root_part`
+- `TimeField::segment_part`
+
+## 主要属性
+
+| 属性 | 说明 |
+| --- | --- |
+| `value` | 受控值，具体类型取决于该组件的约定。 |
+| `default_value` | 组件自行管理状态时的初始值。 |
+| `hour12` | 添加上午/下午分段，并使用 12 小时制。 |
+| `show_seconds` | 挂载秒数分段。 |
+| `on_value_change` | 报告核心接受的值。 |

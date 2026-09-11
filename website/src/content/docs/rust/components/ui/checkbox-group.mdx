@@ -1,0 +1,30 @@
+Coordinates a bounded set of checkbox values and an optional derived parent checkbox.
+
+## Import
+
+Import `CheckboxGroup` from `quickgui`.
+
+```rust
+use quickgui::*;
+```
+
+## Usage
+
+```rust
+let group = CheckboxGroup::new("colors", &state);
+group.root_part(div().flex_col().gap(8.0))
+```
+
+## Anatomy
+
+- `CheckboxGroup::root_part`
+
+## Key props
+
+| Prop | Purpose |
+| --- | --- |
+| `all_values` | Complete ordered value universe used to derive a parent checkbox state. |
+| `value` | Controlled value. The precise value type follows this component’s contract. |
+| `default_value` | Initial value when the component owns its state. |
+| `on_value_change` | Reports the value accepted by the core. |
+| `disabled` | Prevents interaction and exposes the disabled state. |

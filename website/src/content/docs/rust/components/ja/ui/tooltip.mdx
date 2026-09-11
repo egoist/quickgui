@@ -1,0 +1,37 @@
+コアが正確に管理する遅延後に補助情報を表示し、Provider 単位のウォームアップにも対応します。
+
+## インポート
+
+`quickgui` から `Tooltip` をインポートします。
+
+```rust
+use quickgui::*;
+```
+
+## 使い方
+
+```rust
+let tooltip = Tooltip::new("hint");
+tooltip.trigger_part(button().child("Save"))
+```
+
+## 構成
+
+- `Tooltip::provider_part`
+- `Tooltip::root_part`
+- `Tooltip::trigger_part`
+- `Tooltip::portal_part`
+- `Tooltip::positioner_part`
+- `Tooltip::popup_part`
+- `Tooltip::arrow_part`
+
+## 主なプロパティ
+
+| プロパティ | 説明 |
+| --- | --- |
+| `open` | 制御された開閉状態です。 |
+| `default_open` | コンポーネント自身が開閉状態を管理するときの初期状態です。 |
+| `delay` | 開くまでの、コアが管理する遅延時間（ミリ秒）です。 |
+| `close_delay` | 閉じるまでの、コアが管理する遅延時間（ミリ秒）です。 |
+| `side` | 衝突処理前に優先する配置方向です。 |
+| `hoverable` | 閉じずにポインターを Tooltip 内へ移動できるようにします。 |

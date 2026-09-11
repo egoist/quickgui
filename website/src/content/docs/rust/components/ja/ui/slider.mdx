@@ -1,0 +1,41 @@
+ポインターとキーボード操作をコアが管理する、単一または複数つまみの範囲入力です。
+
+## インポート
+
+`quickgui` から `Slider` をインポートします。
+
+```rust
+use quickgui::*;
+```
+
+## 使い方
+
+```rust
+let slider = Slider::new("volume", &state);
+slider
+    .root_part(div().flex_col().gap(14.0))
+    .child(text("Volume"))
+    .child(slider.track_part(div().w(240.0).h(24.0)))
+```
+
+## 構成
+
+- `Slider::root_part`
+- `Slider::label_part`
+- `Slider::value_part`
+- `Slider::control_part`
+- `Slider::track_part`
+- `Slider::range_part`
+- `Slider::indicator_part`
+- `Slider::thumb_part`
+
+## 主なプロパティ
+
+| プロパティ | 説明 |
+| --- | --- |
+| `value` | 制御値です。具体的な型は、このコンポーネントの規約に従います。 |
+| `default_value` | コンポーネント自身が状態を管理するときの初期値です。 |
+| `min` | 受け入れる最小値です。 |
+| `max` | 受け入れる最大値です。 |
+| `step` | キーボード、ポインター、またはネイティブコントロール入力で使う増分です。 |
+| `on_value_change` | コアが受け入れた値を通知します。 |

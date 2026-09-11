@@ -1,0 +1,58 @@
+Combines editable text, filtering, optional chips, and a native suggestion surface.
+
+## Import
+
+Import `Combobox` from `quickgui`.
+
+```rust
+use quickgui::*;
+```
+
+## Usage
+
+```rust
+let mut state = ComboboxState::new(items);
+state.set_query("pro");
+div().child(text_input(state.query()))
+```
+
+## Anatomy
+
+- `Combobox::root_part`
+- `Combobox::input_part`
+- `Combobox::option_part`
+- `Combobox::label_part`
+- `Combobox::value_part`
+- `Combobox::icon_part`
+- `Combobox::input_group_part`
+- `Combobox::clear_part`
+- `Combobox::trigger_part`
+- `Combobox::chips_part`
+- `Combobox::chip_part`
+- `Combobox::chip_remove_part`
+- `Combobox::backdrop_part`
+- `Combobox::portal_part`
+- `Combobox::positioner_part`
+- `Combobox::popup_part`
+- `Combobox::arrow_part`
+- `Combobox::status_part`
+- `Combobox::empty_part`
+- `Combobox::list_part`
+- `Combobox::row_part`
+- `Combobox::item_part`
+- `Combobox::item_indicator_part`
+- `Combobox::group_part`
+- `Combobox::group_label_part`
+- `Combobox::collection_part`
+- `Combobox::separator_part`
+
+## Key props
+
+| Prop | Purpose |
+| --- | --- |
+| `items` | Bounded declaration model used for options or keyboard navigation. |
+| `value` | Controlled value. The precise value type follows this component’s contract. |
+| `input_value` | Editable query text used by a combobox or autocomplete. |
+| `multiple` | Allows more than one value to be selected or opened. |
+| `filter_mode` | Core-owned contains, prefix, fuzzy, or disabled filtering. |
+| `on_value_change` | Reports the value accepted by the core. |

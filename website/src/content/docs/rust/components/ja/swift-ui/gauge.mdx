@@ -1,0 +1,26 @@
+線形と円形のアクセサリースタイルに対応した、ネイティブ SwiftUI Gauge です。
+
+## インポート
+
+`quickgui` から `SwiftUiGauge` をインポートします。
+
+```rust
+use quickgui::*;
+```
+
+## 使い方
+
+```rust
+SwiftUiGauge::new(1, 0.7).label("Battery")
+```
+
+## 主なプロパティ
+
+| プロパティ | 説明 |
+| --- | --- |
+| `value` | 制御値です。具体的な型は、このコンポーネントの規約に従います。 |
+| `min` | 受け入れる最小値です。 |
+| `max` | 受け入れる最大値です。 |
+| `label` | ネイティブ SwiftUI コントロールに表示するラベルです。 |
+| `current_value_label` | 現在のネイティブ進捗または Gauge 値を表す読みやすいラベルです。 |
+| `style` | このコントロールのネイティブ SwiftUI 表示スタイルです。 |

@@ -1,0 +1,33 @@
+1 つの日付を選ぶための、キーボードで操作できる月間カレンダーグリッドです。
+
+## インポート
+
+`quickgui` から `Calendar` をインポートします。
+
+```rust
+use quickgui::*;
+```
+
+## 使い方
+
+```rust
+let calendar = Calendar::new("month");
+calendar.root_part(div().flex_col())
+```
+
+## 構成
+
+- `Calendar::root_part`
+- `Calendar::week_part`
+- `Calendar::day_part`
+
+## 主なプロパティ
+
+| プロパティ | 説明 |
+| --- | --- |
+| `value` | 制御値です。具体的な型は、このコンポーネントの規約に従います。 |
+| `default_value` | コンポーネント自身が状態を管理するときの初期値です。 |
+| `min` | 受け入れる最小値です。 |
+| `max` | 受け入れる最大値です。 |
+| `first_weekday` | 最初の曜日列です。月曜日が 0、日曜日が 6 です。 |
+| `on_value_change` | コアが受け入れた値を通知します。 |

@@ -1,0 +1,37 @@
+数字编辑器，提供递增、递减和拖动调节部件。
+
+## 导入
+
+从 `quickgui` 导入 `NumberField`。
+
+```rust
+use quickgui::*;
+```
+
+## 用法
+
+```rust
+let field = NumberField::new("amount", &state);
+field.root_part(div()).child(field.input_part(text_input(state.text())))
+```
+
+## 结构
+
+- `NumberField::root_part`
+- `NumberField::group_part`
+- `NumberField::input_part`
+- `NumberField::increment_part`
+- `NumberField::decrement_part`
+- `NumberField::scrub_area_part`
+- `NumberField::scrub_area_cursor_part`
+
+## 主要属性
+
+| 属性 | 说明 |
+| --- | --- |
+| `value` | 受控值，具体类型取决于该组件的约定。 |
+| `default_value` | 组件自行管理状态时的初始值。 |
+| `min` | 可接受的最小值。 |
+| `max` | 可接受的最大值。 |
+| `step` | 键盘、指针或原生控件输入使用的步长。 |
+| `on_value_change` | 报告核心接受的值。 |

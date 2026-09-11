@@ -1,0 +1,48 @@
+サブメニュー、グループ、リンク、チェック項目、ラジオ項目を組み合わせられるメニューです。
+
+## インポート
+
+`quickgui` から `PopoverMenu` をインポートします。
+
+```rust
+use quickgui::*;
+```
+
+## 使い方
+
+```rust
+let menu = PopoverMenu::new("actions", &state);
+menu.root_part(div()).child(menu.trigger_part(button().child("Actions")))
+```
+
+## 構成
+
+- `PopoverMenu::root_part`
+- `PopoverMenu::trigger_part`
+- `PopoverMenu::portal_part`
+- `PopoverMenu::backdrop_part`
+- `PopoverMenu::positioner_part`
+- `PopoverMenu::popup_part`
+- `PopoverMenu::arrow_part`
+- `PopoverMenu::item_part`
+- `PopoverMenu::link_item_part`
+- `PopoverMenu::submenu_root_part`
+- `PopoverMenu::submenu_trigger_part`
+- `PopoverMenu::group_part`
+- `PopoverMenu::group_label_part`
+- `PopoverMenu::radio_group_part`
+- `PopoverMenu::radio_item_part`
+- `PopoverMenu::radio_item_indicator_part`
+- `PopoverMenu::checkbox_item_part`
+- `PopoverMenu::checkbox_item_indicator_part`
+- `PopoverMenu::separator_part`
+
+## 主なプロパティ
+
+| プロパティ | 説明 |
+| --- | --- |
+| `open` | 制御された開閉状態です。 |
+| `default_open` | コンポーネント自身が開閉状態を管理するときの初期状態です。 |
+| `on_open_change` | コアが決定した開閉を通知します。 |
+| `orientation` | 水平または垂直のレイアウトと、それに対応するキーボード方向です。 |
+| `loop_focus` | 現在のメニューレベルの端でキーボードハイライトを循環させます。 |

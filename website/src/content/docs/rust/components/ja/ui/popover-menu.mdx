@@ -1,0 +1,32 @@
+ネイティブのポップオーバー内に描画される、コンパクトなモデル駆動メニューです。
+
+## インポート
+
+`quickgui` から `PopoverMenu` をインポートします。
+
+```rust
+use quickgui::*;
+```
+
+## 使い方
+
+```rust
+let menu = PopoverMenu::new("edit", &state);
+menu.root_part(div()).child(menu.trigger_part(button().child("Edit")))
+```
+
+## 構成
+
+- `PopoverMenu::root_part`
+- `PopoverMenu::trigger_part`
+- `PopoverMenu::popup_part`
+
+## 主なプロパティ
+
+| プロパティ | 説明 |
+| --- | --- |
+| `items` | 選択肢やキーボードナビゲーションに使う、上限付きの宣言モデルです。 |
+| `appearance` | コア描画のネイティブメニューまたはピッカーに使う構造色とジオメトリです。 |
+| `open` | 制御された開閉状態です。 |
+| `on_open_change` | コアが決定した開閉を通知します。 |
+| `on_select` | コアが選択したメニュー項目を通知します。 |

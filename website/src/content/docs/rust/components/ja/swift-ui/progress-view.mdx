@@ -1,0 +1,24 @@
+確定または不確定のネイティブ SwiftUI 進捗インジケーターです。
+
+## インポート
+
+`quickgui` から `SwiftUiProgressView` をインポートします。
+
+```rust
+use quickgui::*;
+```
+
+## 使い方
+
+```rust
+SwiftUiProgressView::new(1, 0.4, 1.0).label("Downloading")
+```
+
+## 主なプロパティ
+
+| プロパティ | 説明 |
+| --- | --- |
+| `value` | 制御値です。具体的な型は、このコンポーネントの規約に従います。 |
+| `total` | 確定型の SwiftUI 進捗で使う分母です。 |
+| `label` | ネイティブ SwiftUI コントロールに表示するラベルです。 |
+| `current_value_label` | 現在のネイティブ進捗または Gauge 値を表す読みやすいラベルです。 |

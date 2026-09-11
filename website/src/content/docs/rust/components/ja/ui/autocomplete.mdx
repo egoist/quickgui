@@ -1,0 +1,51 @@
+選択値を必須にせず、自由入力テキストの候補を絞り込みます。
+
+## インポート
+
+`quickgui` から `Autocomplete` をインポートします。
+
+```rust
+use quickgui::*;
+```
+
+## 使い方
+
+```rust
+let mut state = AutocompleteState::new(items);
+state.set_query("qui");
+div().child(text(state.query()))
+```
+
+## 構成
+
+- `Autocomplete::root_part`
+- `Autocomplete::input_part`
+- `Autocomplete::option_part`
+- `Autocomplete::label_part`
+- `Autocomplete::value_part`
+- `Autocomplete::icon_part`
+- `Autocomplete::input_group_part`
+- `Autocomplete::clear_part`
+- `Autocomplete::portal_part`
+- `Autocomplete::positioner_part`
+- `Autocomplete::popup_part`
+- `Autocomplete::arrow_part`
+- `Autocomplete::status_part`
+- `Autocomplete::empty_part`
+- `Autocomplete::list_part`
+- `Autocomplete::item_part`
+- `Autocomplete::item_indicator_part`
+- `Autocomplete::group_part`
+- `Autocomplete::group_label_part`
+- `Autocomplete::collection_part`
+- `Autocomplete::separator_part`
+
+## 主なプロパティ
+
+| プロパティ | 説明 |
+| --- | --- |
+| `items` | 選択肢やキーボードナビゲーションに使う、上限付きの宣言モデルです。 |
+| `input_value` | Combobox または Autocomplete が使う、編集可能な検索テキストです。 |
+| `filter_mode` | コアが管理する、部分一致、前方一致、あいまい一致、または無効の絞り込みです。 |
+| `on_input_value_change` | コアが保持した編集可能な検索テキストを通知します。 |
+| `on_commit` | 明示的なコミット境界と最終値の詳細を通知します。 |

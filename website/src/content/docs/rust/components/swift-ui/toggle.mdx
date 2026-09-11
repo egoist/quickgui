@@ -1,0 +1,24 @@
+A controlled native SwiftUI on/off switch.
+
+## Import
+
+Import `SwiftUiToggle` from `quickgui`.
+
+```rust
+use quickgui::*;
+```
+
+## Usage
+
+```rust
+SwiftUiToggle::new(1, enabled).label("Notifications")
+```
+
+## Key props
+
+| Prop | Purpose |
+| --- | --- |
+| `is_on` | Controlled SwiftUI toggle value. |
+| `label` | Visible native SwiftUI control label. |
+| `on_value_change` | Reports the value accepted by the native SwiftUI toggle. |
+| `modifiers` | Ordered SwiftUI view modifiers applied to the hosted control. |

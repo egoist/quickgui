@@ -1,0 +1,28 @@
+A native SwiftUI button with text, SF Symbol, semantic role, and press handling.
+
+## Import
+
+Import `SwiftUiButton` from `quickgui`.
+
+```rust
+use quickgui::*;
+```
+
+## Usage
+
+```rust
+SwiftUiButton::new(1)
+    .label("Save")
+    .system_image("checkmark")
+    .style(SwiftUiButtonStyle::BorderedProminent)
+```
+
+## Key props
+
+| Prop | Purpose |
+| --- | --- |
+| `label` | Visible native SwiftUI control label. |
+| `system_image` | SF Symbols name displayed with a SwiftUI button label. |
+| `role` | SwiftUI semantic role: `default`, `cancel`, or `destructive`. |
+| `action` | Runs when the native SwiftUI button is activated. |
+| `modifiers` | Ordered SwiftUI view modifiers applied to the hosted control. |

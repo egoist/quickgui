@@ -1,0 +1,24 @@
+TextField と同じ制御規約を持つ、入力内容を隠すネイティブエディターです。
+
+## インポート
+
+`quickgui` から `SwiftUiTextField` をインポートします。
+
+```rust
+use quickgui::*;
+```
+
+## 使い方
+
+```rust
+SwiftUiTextField::new(1, secret).placeholder("Password").secure(true)
+```
+
+## 主なプロパティ
+
+| プロパティ | 説明 |
+| --- | --- |
+| `value` | 制御値です。具体的な型は、このコンポーネントの規約に従います。 |
+| `placeholder` | 編集値が空のときに表示するテキストです。 |
+| `on_value_change` | コアが受け入れた値を通知します。 |
+| `on_submit` | ネイティブフィールドが現在値を送信したときに実行します。 |

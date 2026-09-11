@@ -1,0 +1,33 @@
+A virtualized tabular collection with header, row, and cell parts.
+
+## Import
+
+Import `Table` from `quickgui`.
+
+```rust
+use quickgui::*;
+```
+
+## Usage
+
+```rust
+TableState::new(rows, columns)
+    .element("issues")
+```
+
+## Anatomy
+
+- `Table::root_part`
+- `Table::header_part`
+- `Table::row_part`
+- `Table::cell_part`
+
+## Key props
+
+| Prop | Purpose |
+| --- | --- |
+| `columns` | Column declarations for the virtual table. |
+| `row_count` | Total logical row count. |
+| `row_height` | Logical height of each virtualized row. |
+| `selection_mode` | Allows single or multiple table selection. |
+| `selection` | Controlled selection for a table, native picker, or color control. |

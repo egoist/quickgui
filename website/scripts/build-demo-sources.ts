@@ -15,7 +15,7 @@ export async function buildDemoSources(check = false) {
     ...entry.match(/pub const COMPONENTS:[\s\S]*?= &\[([\s\S]*?)\];/)![1].matchAll(/"([a-z-]+)"/g),
   ].map((match) => match[1]);
   const highlighter = await createHighlighter({
-    langs: ["go", "tsx"],
+    langs: ["go", "tsx", "rust"],
     themes: ["github-light-high-contrast", "github-dark-high-contrast"],
   });
   const result: Record<string, DemoSource> = {};

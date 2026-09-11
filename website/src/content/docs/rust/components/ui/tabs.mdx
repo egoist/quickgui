@@ -1,0 +1,34 @@
+Switches between labeled panels with automatic or manual keyboard activation.
+
+## Import
+
+Import `Tabs` from `quickgui`.
+
+```rust
+use quickgui::*;
+```
+
+## Usage
+
+```rust
+let tabs = Tabs::new("settings", "general");
+tabs.root_part(div().flex_col()).child(tabs.list_part(div().flex_row()))
+```
+
+## Anatomy
+
+- `Tabs::root_part`
+- `Tabs::list_part`
+- `Tabs::tab_part`
+- `Tabs::indicator_part`
+- `Tabs::panel_part`
+
+## Key props
+
+| Prop | Purpose |
+| --- | --- |
+| `value` | Controlled value. The precise value type follows this component’s contract. |
+| `default_value` | Initial value when the component owns its state. |
+| `on_value_change` | Reports the value accepted by the core. |
+| `orientation` | Horizontal or vertical layout and keyboard direction. |
+| `activation` | Whether focus or an explicit press activates a tab. |

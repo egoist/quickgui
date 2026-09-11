@@ -1,0 +1,24 @@
+編集と送信のコールバックを持つ、制御されたネイティブ SwiftUI TextField です。
+
+## インポート
+
+`quickgui` から `SwiftUiTextField` をインポートします。
+
+```rust
+use quickgui::*;
+```
+
+## 使い方
+
+```rust
+SwiftUiTextField::new(1, name).placeholder("Name")
+```
+
+## 主なプロパティ
+
+| プロパティ | 説明 |
+| --- | --- |
+| `value` | 制御値です。具体的な型は、このコンポーネントの規約に従います。 |
+| `placeholder` | 編集値が空のときに表示するテキストです。 |
+| `on_value_change` | コアが受け入れた値を通知します。 |
+| `on_submit` | ネイティブフィールドが現在値を送信したときに実行します。 |

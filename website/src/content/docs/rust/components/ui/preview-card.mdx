@@ -1,0 +1,36 @@
+Shows a richer hover or focus preview beside a trigger without changing the current screen.
+
+## Import
+
+Import `PreviewCard` from `quickgui`.
+
+```rust
+use quickgui::*;
+```
+
+## Usage
+
+```rust
+let card = PreviewCard::new("file", &state);
+card.trigger_part(text("README.md"))
+```
+
+## Anatomy
+
+- `PreviewCard::root_part`
+- `PreviewCard::trigger_part`
+- `PreviewCard::portal_part`
+- `PreviewCard::backdrop_part`
+- `PreviewCard::positioner_part`
+- `PreviewCard::popup_part`
+- `PreviewCard::arrow_part`
+
+## Key props
+
+| Prop | Purpose |
+| --- | --- |
+| `open` | Controlled open state. |
+| `default_open` | Initial state when the component owns whether it is open. |
+| `delay` | Core-owned delay in milliseconds before opening. |
+| `close_delay` | Core-owned delay in milliseconds before closing. |
+| `placement` | Preferred placement side before collision handling. |

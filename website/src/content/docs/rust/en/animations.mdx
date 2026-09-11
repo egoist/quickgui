@@ -1,0 +1,31 @@
+Native transitions interpolate paint-only style changes while the element stays mounted.
+
+## Hover transitions
+
+```rust
+button()
+    .bg(Color::rgb8(37, 99, 235))
+    .transition(Transition::colors(Duration::from_millis(160)))
+    .hover(|style| style.bg(Color::rgb8(29, 78, 216)))
+    .child("Hover")
+```
+
+## State-driven animation
+
+Change a style field from view state and call `invalidate`. The core interpolates supported transitions. Do not reconstruct the view on each frame.
+
+## Timing and frame rate
+
+`Transition::new` takes a `Duration`. Set easing with `with_easing` and cap cadence with `max_fps` while animation is active. That ceiling is not an idle scheduling source.
+
+## Supported properties
+
+`TransitionProperties` covers background, border color and width, radius, text color, box shadow, opacity, and transform. Layout lengths stay declaration-time values because they require Taffy.
+
+## Mounting and reduced motion
+
+Keep an overlay mounted for its exit transition when the component supports that lifecycle. Respect the platform reduced-motion preference instead of imposing a frame loop.
+
+## Animated images
+
+`img` uses native image resources, including animated GIF/WebP sources. The core owns playback deadlines, cache limits, and visibility-based suspension; loading a static image does not request idle frames.

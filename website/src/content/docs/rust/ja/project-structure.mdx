@@ -1,0 +1,61 @@
+Rust ガイド本文は現在英語です。コンポーネントの API リファレンスには日本語の説明があります。
+
+A QuickGUI Rust project keeps application code in a Cargo package and development commands in a small Bun package.
+
+## 生成されるファイル
+
+The CLI generates these files. Commit `Cargo.lock` after the first successful build.
+
+```text
+my-app/
+├── src/main.rs
+├── Cargo.toml
+├── Cargo.lock
+├── quickgui.config.ts
+├── package.json
+└── README.md
+```
+
+## アプリケーションのエントリ
+
+`src/main.rs` starts `Application::new().run(...)` and opens windows from that callback. Each window owns a `View`. `entry` in the config is the crate directory (or a `Cargo.toml` path). Split larger applications into ordinary Rust modules.
+
+```rust
+fn main() -> Result<(), quickgui::AppError> {
+    Application::new().run(|cx| {
+        cx.open_window(WindowOptions::new("My App").size(760.0, 520.0), App);
+    })
+}
+```
+
+## 設定
+
+```ts
+import { defineConfig } from "@quickgui/cli";
+export default defineConfig({
+  language: "rust", name: "My App", identifier: "com.example.my-app",
+  entry: ".", fonts: ["assets/MyFont.ttf"], resources: ["assets"],
+});
+```
+
+TOML supports the same keys. The CLI checks `quickgui.toml` before `quickgui.config.ts`. Rust apps must not set `extensions`, `native.tags`, or `native.libraryPath`; enable crate features in `Cargo.toml` instead.
+
+## パッケージ
+
+Applications depend on the `quickgui` crate. `@quickgui/cli` is a development dependency. Optional `terminal` and `updater` capabilities are Cargo features on `quickgui`, not separately bundled host libraries.
+
+```toml
+[dependencies]
+quickgui = { version = "0.1.3", features = ["updater"] }
+```
+
+## ローカル開発
+
+```sh
+bun install
+bun run dev
+bun run check
+bun run test
+```
+
+Use a shared `CARGO_TARGET_DIR` if you work on several Rust apps. The first wgpu build is slow; later incremental compiles reuse that target directory.

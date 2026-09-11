@@ -1,0 +1,39 @@
+1 つのコントロールをラベル、説明、検証状態、エラーメッセージに関連付けます。
+
+## インポート
+
+`quickgui` から `Field` をインポートします。
+
+```rust
+use quickgui::*;
+```
+
+## 使い方
+
+```rust
+let field = Field::new("email");
+field
+    .root_part(div().flex_col().gap(6.0))
+    .child(field.label_part(text("Email")))
+    .child(text_input(value))
+```
+
+## 構成
+
+- `Field::root_part`
+- `Field::item_part`
+- `Field::label_part`
+- `Field::control_part`
+- `Field::validity_part`
+- `Field::description_part`
+- `Field::error_part`
+
+## 主なプロパティ
+
+| プロパティ | 説明 |
+| --- | --- |
+| `invalid` | Field とそのパーツへ検証エラー状態を反映します。 |
+| `required` | 検証とフォーム送信で必須の値としてマークします。 |
+| `validation_message` | エラー内容とアクセシビリティに公開する、長さ制限付きメッセージです。 |
+| `validation_mode` | 検証を開始するインタラクション境界を選びます。 |
+| `on_validation_change` | コアが選んだ検証のトリガーとタイミングを通知します。 |

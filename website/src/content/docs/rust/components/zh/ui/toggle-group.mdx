@@ -1,0 +1,31 @@
+配合移动式键盘焦点管理单选或多选的按下值。
+
+## 导入
+
+从 `quickgui` 导入 `ToggleGroup`。
+
+```rust
+use quickgui::*;
+```
+
+## 用法
+
+```rust
+let group = ToggleGroup::new("align", &state, &items);
+group.root_part(div().flex_row())
+```
+
+## 结构
+
+- `ToggleGroup::root_part`
+- `ToggleGroup::item_part`
+
+## 主要属性
+
+| 属性 | 说明 |
+| --- | --- |
+| `items` | 用于选项或键盘导航的有限声明模型。 |
+| `value` | 受控值，具体类型取决于该组件的约定。 |
+| `default_value` | 组件自行管理状态时的初始值。 |
+| `multiple` | 选择单选或多选策略。 |
+| `on_value_change` | 报告核心接受的值。 |

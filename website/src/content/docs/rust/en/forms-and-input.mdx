@@ -1,0 +1,27 @@
+Text controls are controlled: pass the current value into `text_input` / `text_area` and write edits from `on_input`.
+
+## Text input
+
+```rust
+text_input(self.name.as_str())
+    .placeholder("Name")
+    .on_input(edit)
+text_area(self.notes.as_str())
+    .on_input(edit_notes)
+```
+
+## Fields
+
+`Field` and `Fieldset` declare accessible relationships among labels, descriptions, controls, and errors. Validation mode and debounce deadlines live on `FieldState`.
+
+## Choices
+
+Compose `Checkbox`, `CheckboxGroup`, `RadioGroup`, `Radio`, and `Switch` with their indicators and labels. Store checked values on the view and update them from listeners.
+
+## Select
+
+`SelectState`, `ComboboxState`, and `AutocompleteState` declare options ahead of native filtering and keyboard navigation. Keep option values stable.
+
+## Events
+
+Input listeners receive the next text. Pointer, key, gesture, drop, and submit handlers are registered on `ViewContext`. Use declared listeners so the core knows which events the view observes.

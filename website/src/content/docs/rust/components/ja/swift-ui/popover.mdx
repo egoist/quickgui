@@ -1,0 +1,29 @@
+組み合わせた SwiftUI トリガーから、ネイティブ SwiftUI Popover を表示します。
+
+## インポート
+
+`quickgui` から `SwiftUiPopover` をインポートします。
+
+```rust
+use quickgui::*;
+```
+
+## 使い方
+
+```rust
+SwiftUiPopover::new(1)
+```
+
+## 構成
+
+- `SwiftUiPopover.trigger`
+- `SwiftUiPopover.content`
+
+## 主なプロパティ
+
+| プロパティ | 説明 |
+| --- | --- |
+| `is_presented` | 制御されたネイティブ SwiftUI Popover の表示状態です。 |
+| `on_is_presented_change` | ネイティブ SwiftUI Popover の表示状態変更を通知します。 |
+| `attachment_anchor` | 組み合わせた SwiftUI トリガー上のアンカーポイントです。 |
+| `arrow_edge` | ネイティブ SwiftUI Popover の矢印を置く優先辺です。 |

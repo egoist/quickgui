@@ -1,0 +1,32 @@
+A compact model-driven menu rendered in a native popover window.
+
+## Import
+
+Import `PopoverMenu` from `quickgui`.
+
+```rust
+use quickgui::*;
+```
+
+## Usage
+
+```rust
+let menu = PopoverMenu::new("edit", &state);
+menu.root_part(div()).child(menu.trigger_part(button().child("Edit")))
+```
+
+## Anatomy
+
+- `PopoverMenu::root_part`
+- `PopoverMenu::trigger_part`
+- `PopoverMenu::popup_part`
+
+## Key props
+
+| Prop | Purpose |
+| --- | --- |
+| `items` | Bounded declaration model used for options or keyboard navigation. |
+| `appearance` | Structural colors and geometry for a core-painted native menu or picker. |
+| `open` | Controlled open state. |
+| `on_open_change` | Reports an open or close decision from the core. |
+| `on_select` | Reports the menu entry selected by the core. |

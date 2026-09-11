@@ -1,0 +1,73 @@
+A Rust application can share ordinary modules, or it can author a native extension that Go and TypeScript apps load. Rust apps themselves do not set `extensions` in `quickgui.config.ts`; they enable crate features and depend on crates.
+
+## Choose an extension type
+
+| What you are adding | What you ship | Core changes |
+| --- | --- | --- |
+| Components or application logic | A Rust module or crate | None |
+| Optional QuickGUI capabilities | Cargo features such as `updater` and `terminal` | None |
+| A native service for Go or TypeScript | A `cdylib`, manifest, and typed wrapper | None |
+
+Native extensions run in the consumer's process. A Rust **app** already is that process: it links `quickgui` and does not load `libquickgui_host`.
+
+## Create an extension project
+
+```sh
+quickgui init-extension my-extension --type rust
+```
+
+Use this when Go or TypeScript apps should consume a native service. Extension scaffolds use the shared extension ABI. `--npm-package` sets the artifact package name.
+
+## Share a component
+
+Share UI by exporting functions that return `Element`:
+
+```rust
+use quickgui::{Color, Element, text};
+
+pub fn notice(message: impl Into<std::sync::Arc<str>>) -> Element {
+    text(message)
+        .p(12.0)
+        .bg(Color::rgb8(239, 246, 255))
+        .text_color(Color::rgb8(30, 64, 175))
+        .rounded(8.0)
+}
+```
+
+Return `notice("Saved")` as a child. Keep application-wide services outside `View::render`.
+
+## Lay out a native extension
+
+A native extension ships `quickgui.extension.json`, a versioned shared library, and declared resources. Its manifest identifies the service name, ABI, npm package, release version, library, and per-platform resources. Rust extensions can vendor [`extension_api.rs`](https://github.com/egoist/quickgui/blob/main/src/extension_api.rs) and build a `cdylib` without linking the renderer.
+
+## Declare dependencies
+
+Rust **applications** enable features in `Cargo.toml`. They must not set top-level `extensions`:
+
+```toml
+[dependencies]
+quickgui = { version = "0.1.3", features = ["terminal"] }
+```
+
+Go and TypeScript consumers declare the extension package in their own config. Custom extensions may use a scoped package such as `@acme/extension-echo`.
+
+## Implement the native contract
+
+Implement the bounded `ServiceApi` contract in the extension. Copy borrowed input before returning, keep event streams scoped to their sessions, and release worker resources when the session stops.
+
+## Automatic registration
+
+Go and TypeScript CLIs resolve and bundle declared extensions. A Rust app has nothing to register: Cargo links the crates you depend on. Optional renderer backends stay behind Cargo features.
+
+## Build and package artifacts
+
+App edits rebuild the selected crate. Rebuild an extension when its native implementation changes, then rebuild the consuming Go or TypeScript application to stage those bytes.
+
+## Test and distribute
+
+```rust
+// Extension authors test the packed cdylib with the generated demo app.
+// Rust applications call crate APIs directly instead of invokeExtension.
+```
+
+Test against a packed extension and CLI in a fresh Go or TypeScript project. Extension commands are asynchronous and share the bounded native event transport.

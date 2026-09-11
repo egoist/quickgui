@@ -1,0 +1,28 @@
+Paints validated WGSL with a bounded set of numeric shader parameters.
+
+## Import
+
+Import `CustomShader` from `quickgui`.
+
+```rust
+use quickgui::*;
+```
+
+## Usage
+
+```rust
+custom_shader(
+    CustomShader::new(
+        "fn quickgui_fragment(input: QuickGuiShaderInput) -> vec4<f32> { return vec4<f32>(input.uv.x, 0.3, input.uv.y, 1.0); }",
+    )
+    .expect("shader"),
+)
+.size(260.0, 150.0)
+```
+
+## Key props
+
+| Prop | Purpose |
+| --- | --- |
+| `value` | Filesystem path, data URL, SVG document, or shader source expected by the component. |
+| `shader_parameters` | Up to sixteen numeric values packed into fixed shader parameter vectors. |

@@ -1,0 +1,51 @@
+Filters suggestions for free-form text without requiring a selected value.
+
+## Import
+
+Import `Autocomplete` from `quickgui`.
+
+```rust
+use quickgui::*;
+```
+
+## Usage
+
+```rust
+let mut state = AutocompleteState::new(items);
+state.set_query("qui");
+div().child(text(state.query()))
+```
+
+## Anatomy
+
+- `Autocomplete::root_part`
+- `Autocomplete::input_part`
+- `Autocomplete::option_part`
+- `Autocomplete::label_part`
+- `Autocomplete::value_part`
+- `Autocomplete::icon_part`
+- `Autocomplete::input_group_part`
+- `Autocomplete::clear_part`
+- `Autocomplete::portal_part`
+- `Autocomplete::positioner_part`
+- `Autocomplete::popup_part`
+- `Autocomplete::arrow_part`
+- `Autocomplete::status_part`
+- `Autocomplete::empty_part`
+- `Autocomplete::list_part`
+- `Autocomplete::item_part`
+- `Autocomplete::item_indicator_part`
+- `Autocomplete::group_part`
+- `Autocomplete::group_label_part`
+- `Autocomplete::collection_part`
+- `Autocomplete::separator_part`
+
+## Key props
+
+| Prop | Purpose |
+| --- | --- |
+| `items` | Bounded declaration model used for options or keyboard navigation. |
+| `input_value` | Editable query text used by a combobox or autocomplete. |
+| `filter_mode` | Core-owned contains, prefix, fuzzy, or disabled filtering. |
+| `on_input_value_change` | Reports the editable query text retained by the core. |
+| `on_commit` | Reports one explicit commit boundary and its final value details. |

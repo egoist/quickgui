@@ -1,0 +1,30 @@
+トリガーを副ボタンで押すと、モデル駆動のネイティブメニューを開きます。
+
+## インポート
+
+`quickgui` から `ContextMenuState` をインポートします。
+
+```rust
+use quickgui::*;
+```
+
+## 使い方
+
+```rust
+ContextMenuState::new()
+    .trigger_part(div().child(text("Right-click me")))
+```
+
+## 構成
+
+- `ContextMenuState::root_part`
+- `ContextMenuState::trigger_part`
+
+## 主なプロパティ
+
+| プロパティ | 説明 |
+| --- | --- |
+| `items` | 選択肢やキーボードナビゲーションに使う、上限付きの宣言モデルです。 |
+| `appearance` | コア描画のネイティブメニューまたはピッカーに使う構造色とジオメトリです。 |
+| `on_select` | コアが選択したメニュー項目を通知します。 |
+| `loop` | メニューレベルの端でハイライト移動を循環させます。 |

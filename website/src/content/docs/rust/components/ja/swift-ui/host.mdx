@@ -1,0 +1,25 @@
+NSHostingView を基盤とし、QuickGUI 内に 1 つの SwiftUI コンポーネントツリーをマウントするリーフです。
+
+## インポート
+
+`quickgui` から `MacSwiftUiHost` をインポートします。
+
+```rust
+use quickgui::*;
+```
+
+## 使い方
+
+```rust
+let mut host = MacSwiftUiHost::new(|_id| {})?;
+host.sync(&[SwiftUiButton::new(1).label("Continue").into()])?;
+native_view(host.view())
+```
+
+## 主なプロパティ
+
+| プロパティ | 説明 |
+| --- | --- |
+| `match_contents` | ホストしたサブツリー固有の幅、高さ、またはその両方を使います。 |
+| `style` | QuickGUI のレイアウト、描画、タイポグラフィ、インタラクション状態のスタイルです。 |
+| `child` | コンポーネント内にマウントする内容です。 |

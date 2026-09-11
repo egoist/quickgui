@@ -1,0 +1,30 @@
+Shows an image with a fallback that appears when the image is unavailable.
+
+## Import
+
+Import `avatar` from `quickgui`.
+
+```rust
+use quickgui::*;
+```
+
+## Usage
+
+```rust
+avatar("user", "Ada Lovelace").size(40.0, 40.0).rounded(20.0)
+```
+
+## Anatomy
+
+- `avatar::root_part`
+- `avatar::image_part`
+- `avatar::fallback_part`
+
+## Key props
+
+| Prop | Purpose |
+| --- | --- |
+| `aria_label` | Accessible name for a component whose visible parts may change. |
+| `src` | Filesystem path, file URL, or base64 data URL for an avatar image. |
+| `delay` | Core-owned delay in milliseconds before opening. |
+| `on_loading_status_change` | Reports every avatar image load-state transition. |

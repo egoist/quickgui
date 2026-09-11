@@ -9,7 +9,7 @@ export function readFrontendPreference(cookieHeader: string | null): DocsFronten
     .find((cookie) => cookie.startsWith(`${FRONTEND_COOKIE}=`))
     ?.slice(FRONTEND_COOKIE.length + 1)
 
-  return value === 'typescript' ? 'typescript' : 'go'
+  return value === 'typescript' || value === 'rust' ? value : 'go'
 }
 
 export function rememberFrontend(frontend: DocsFrontend): void {

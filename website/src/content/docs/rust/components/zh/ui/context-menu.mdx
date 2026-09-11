@@ -1,0 +1,30 @@
+在触发器上按下次要按钮时打开模型驱动的原生菜单。
+
+## 导入
+
+从 `quickgui` 导入 `ContextMenuState`。
+
+```rust
+use quickgui::*;
+```
+
+## 用法
+
+```rust
+ContextMenuState::new()
+    .trigger_part(div().child(text("Right-click me")))
+```
+
+## 结构
+
+- `ContextMenuState::root_part`
+- `ContextMenuState::trigger_part`
+
+## 主要属性
+
+| 属性 | 说明 |
+| --- | --- |
+| `items` | 用于选项或键盘导航的有限声明模型。 |
+| `appearance` | 核心绘制的原生菜单或选择器所用的结构颜色和几何属性。 |
+| `on_select` | 报告核心选中的菜单项。 |
+| `loop` | 到达菜单层级末端时循环高亮导航。 |

@@ -1,0 +1,26 @@
+受控的原生日期或日期时间选择器。
+
+## 导入
+
+从 `quickgui` 导入 `SwiftUiDatePicker`。
+
+```rust
+use quickgui::*;
+```
+
+## 用法
+
+```rust
+SwiftUiDatePicker::new(1, timestamp).label("Start")
+```
+
+## 主要属性
+
+| 属性 | 说明 |
+| --- | --- |
+| `value` | 以毫秒表示的 Unix 时间戳；`Min` 和 `Max` 使用相同单位。 |
+| `min` | 可接受的最小值。 |
+| `max` | 可接受的最大值。 |
+| `displayed_components` | 选择日期、时间或日期和时间组合字段。 |
+| `style` | `automatic`、`field`、`stepperField` 或 `graphical`。 |
+| `on_value_change` | 报告核心接受的值。 |

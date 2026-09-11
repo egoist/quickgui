@@ -1,0 +1,35 @@
+1 つ以上の展開セクションと、そのキーボードフォーカスを管理します。
+
+## インポート
+
+`quickgui` から `Accordion` をインポートします。
+
+```rust
+use quickgui::*;
+```
+
+## 使い方
+
+```rust
+let accordion = Accordion::new("faq");
+let item = accordion.item("one", 0, true);
+item.root_part(div()).child(item.trigger_part(text("Details")))
+```
+
+## 構成
+
+- `Accordion::root_part`
+- `Accordion::item_part`
+- `Accordion::header_part`
+- `Accordion::trigger_part`
+- `Accordion::panel_part`
+
+## 主なプロパティ
+
+| プロパティ | 説明 |
+| --- | --- |
+| `value` | 制御値です。具体的な型は、このコンポーネントの規約に従います。 |
+| `default_value` | コンポーネント自身が状態を管理するときの初期値です。 |
+| `on_value_change` | コアが受け入れた値を通知します。 |
+| `multiple` | 複数の値を選択または開けるようにします。 |
+| `keep_mounted` | 非アクティブな内容をマウントしたまま、表示を無効にします。 |

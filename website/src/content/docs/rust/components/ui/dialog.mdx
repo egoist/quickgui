@@ -1,0 +1,38 @@
+An in-window modal with focus containment, dismissal, and exact transition completion.
+
+## Import
+
+Import `Dialog` from `quickgui`.
+
+```rust
+use quickgui::*;
+```
+
+## Usage
+
+```rust
+let dialog = Dialog::new("save", open);
+dialog.root_part(div()).child(dialog.title_part(text("Save changes")))
+```
+
+## Anatomy
+
+- `Dialog::root_part`
+- `Dialog::trigger_part`
+- `Dialog::portal_part`
+- `Dialog::backdrop_part`
+- `Dialog::viewport_part`
+- `Dialog::popup_part`
+- `Dialog::title_part`
+- `Dialog::description_part`
+- `Dialog::close_part`
+
+## Key props
+
+| Prop | Purpose |
+| --- | --- |
+| `open` | Controlled open state. |
+| `default_open` | Initial state when the component owns whether it is open. |
+| `on_open_change` | Reports an open or close decision from the core. |
+| `dismiss_on_escape` | Allows Escape to dismiss the surface. |
+| `exit_duration` | Keeps closing content mounted for the exact exit transition duration. |

@@ -1,0 +1,38 @@
+Rust ガイド本文は現在英語です。コンポーネントの API リファレンスには日本語の説明があります。
+
+Enable the `swift-ui` crate feature. Hosted controls are AppKit/SwiftUI views composed with QuickGUI’s retained scene, not replicas painted by wgpu.
+
+## Host
+
+Construct `MacSwiftUiHost`, `sync` a descriptor tree, and mount the NSView with `native_view`.
+
+```rust
+let mut host = MacSwiftUiHost::new(|_id| {})?;
+host.sync(&[SwiftUiButton::new(1).label("Continue").into()])?;
+native_view(host.view())
+```
+
+## ネイティブコントロール
+
+The host includes buttons, toggles, sliders, steppers, progress views, gauges, text and secure fields, pickers, segmented controls, date/color pickers, and popovers. Each component’s reference lists its builder methods.
+
+## 制御値
+
+```rust
+let mut host = MacSwiftUiHost::new_with_control_events(
+    |_id| {},
+    |_id, _presented| {},
+    |id, value| { /* store value for id */ },
+    |_id| {},
+)?;
+host.sync(&[SwiftUiToggle::new(1, enabled).label("Notifications").into()])?;
+native_view(host.view())
+```
+
+## サイズ
+
+`MacSwiftUiHost::fitting_size` reports intrinsic native sizing. Keep the parent’s dimensions constrained so native measurement and GPU layout agree.
+
+## 対応プラットフォーム
+
+SwiftUI hosting is macOS-specific. System availability determines optional appearances, including Liquid Glass. Go and TypeScript expose the same core capability through their adapters.

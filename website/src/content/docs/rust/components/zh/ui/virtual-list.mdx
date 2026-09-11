@@ -1,0 +1,29 @@
+为长列表或不等高集合布局并绘制可见部分。
+
+## 导入
+
+从 `quickgui` 导入 `VirtualList`。
+
+```rust
+use quickgui::*;
+```
+
+## 用法
+
+```rust
+div()
+    .h(210.0)
+    .overflow_hidden()
+    .virtual_scroll(&list)
+    .children(list.visible_rows().range.map(|index| text(format!("Row {index}"))))
+```
+
+## 主要属性
+
+| 属性 | 说明 |
+| --- | --- |
+| `estimated_item_height` | 虚拟化使用的初始逻辑行高估计值。 |
+| `overscan` | 在可见范围前后额外挂载的行数。 |
+| `list_alignment` | 将较短的列表内容固定在顶部或底部。 |
+| `follow_mode` | 选择普通滚动或跟随末尾模式。 |
+| `child` | 挂载在组件内部的内容。 |

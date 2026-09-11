@@ -1,0 +1,33 @@
+表示确定或不确定的任务进度，可组合标签和轨道。
+
+## 导入
+
+从 `quickgui` 导入 `progress`。
+
+```rust
+use quickgui::*;
+```
+
+## 用法
+
+```rust
+progress(0.4, 1.0).w(240.0).h(8.0).rounded(4.0)
+```
+
+## 结构
+
+- `progress::root_part`
+- `progress::track_part`
+- `progress::indicator_part`
+- `progress::label_part`
+- `progress::value_part`
+
+## 主要属性
+
+| 属性 | 说明 |
+| --- | --- |
+| `value` | 受控值，具体类型取决于该组件的约定。 |
+| `max` | 可接受的最大值。 |
+| `indeterminate` | 表示完成量未知的进度。 |
+| `value_text` | 辅助技术优先使用的易读值。 |
+| `on_status_change` | 报告派生状态、格式化值和完成比例。 |

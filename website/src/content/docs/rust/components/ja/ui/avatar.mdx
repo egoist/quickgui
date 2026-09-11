@@ -1,0 +1,30 @@
+画像を表示し、読み込めない場合はフォールバックを表示します。
+
+## インポート
+
+`quickgui` から `avatar` をインポートします。
+
+```rust
+use quickgui::*;
+```
+
+## 使い方
+
+```rust
+avatar("user", "Ada Lovelace").size(40.0, 40.0).rounded(20.0)
+```
+
+## 構成
+
+- `avatar::root_part`
+- `avatar::image_part`
+- `avatar::fallback_part`
+
+## 主なプロパティ
+
+| プロパティ | 説明 |
+| --- | --- |
+| `aria_label` | 表示パーツが変化するコンポーネントに付けるアクセシブル名です。 |
+| `src` | アバター画像のファイルパス、ファイル URL、または base64 データ URL です。 |
+| `delay` | 開くまでの、コアが管理する遅延時間（ミリ秒）です。 |
+| `on_loading_status_change` | アバター画像の読み込み状態が変わるたびに通知します。 |

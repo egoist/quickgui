@@ -1,0 +1,41 @@
+A single- or multi-thumb range input with core-owned pointer and keyboard interaction.
+
+## Import
+
+Import `Slider` from `quickgui`.
+
+```rust
+use quickgui::*;
+```
+
+## Usage
+
+```rust
+let slider = Slider::new("volume", &state);
+slider
+    .root_part(div().flex_col().gap(14.0))
+    .child(text("Volume"))
+    .child(slider.track_part(div().w(240.0).h(24.0)))
+```
+
+## Anatomy
+
+- `Slider::root_part`
+- `Slider::label_part`
+- `Slider::value_part`
+- `Slider::control_part`
+- `Slider::track_part`
+- `Slider::range_part`
+- `Slider::indicator_part`
+- `Slider::thumb_part`
+
+## Key props
+
+| Prop | Purpose |
+| --- | --- |
+| `value` | Controlled value. The precise value type follows this component’s contract. |
+| `default_value` | Initial value when the component owns its state. |
+| `min` | Minimum accepted value. |
+| `max` | Maximum accepted value. |
+| `step` | Increment used by keyboard, pointer, or native control input. |
+| `on_value_change` | Reports the value accepted by the core. |

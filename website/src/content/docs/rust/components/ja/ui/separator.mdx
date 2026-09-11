@@ -1,0 +1,26 @@
+組み込みの見た目を持たない、セマンティックな水平または垂直区切り線です。
+
+## インポート
+
+`quickgui` から `separator` をインポートします。
+
+```rust
+use quickgui::*;
+```
+
+## 使い方
+
+```rust
+separator(SeparatorOrientation::Horizontal).w(240.0)
+```
+
+## 構成
+
+- `separator::root_part`
+
+## 主なプロパティ
+
+| プロパティ | 説明 |
+| --- | --- |
+| `orientation` | 水平または垂直のレイアウトと、それに対応するキーボード方向です。 |
+| `style` | QuickGUI のレイアウト、描画、タイポグラフィ、インタラクション状態のスタイルです。 |

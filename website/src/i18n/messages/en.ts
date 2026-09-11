@@ -1,8 +1,8 @@
 export const en = {
   meta: {
-    title: "QuickGUI — Native desktop apps with Go or TypeScript.",
+    title: "QuickGUI — Native desktop apps with Go, TypeScript, or Rust.",
     description:
-      "Build native desktop apps with Go or TypeScript. Fast builds, fine-grained reactivity, GPU rendering, and accessible components. Explore measured memory and bundle sizes.",
+      "Build native desktop apps with Go, TypeScript, or Rust. Fast builds, fine-grained reactivity, GPU rendering, and accessible components. Explore measured memory and bundle sizes.",
   },
   common: {
     skipToContent: "Skip to content",
@@ -21,10 +21,10 @@ export const en = {
     benchmarks: "Benchmarks",
   },
   hero: {
-    badge: "Go + TypeScript · Fast builds",
+    badge: "Go + TypeScript + Rust · Fast builds",
     titleLine1: "Build native desktop apps.",
-    titleLine2: "With Go or TypeScript.",
-    sub: "Build native interfaces in Go or TypeScript with fast incremental builds, fine-grained reactivity, and accessible components powered by the same GPU renderer.",
+    titleLine2: "With Go, TypeScript, or Rust.",
+    sub: "Build native interfaces in Go, TypeScript, or Rust with fast incremental builds, fine-grained reactivity, and accessible components powered by the same GPU renderer.",
   },
   features: {
     title: "Features",
@@ -35,11 +35,11 @@ export const en = {
       },
       fast: {
         title: "Fast incremental builds",
-        body: "Recompile your Go or TypeScript app while reusing the native runtime. Keep the feedback loop short as you refine your interface.",
+        body: "Recompile your Go, TypeScript, or Rust app while reusing the native runtime. Keep the feedback loop short as you refine your interface.",
       },
       layout: {
         title: "Flexbox and CSS Grid",
-        body: "Flexbox and CSS Grid with familiar style options. Compose layouts in Go or TypeScript and reuse styles across components.",
+        body: "Flexbox and CSS Grid with familiar style options. Compose layouts in Go, TypeScript, or Rust and reuse styles across components.",
       },
       components: {
         title: "Components included",
@@ -68,12 +68,12 @@ export const en = {
     },
   },
   code: {
-    title: "Go and TypeScript examples",
-    lead: "Go uses fluent native views and composable styles. TypeScript uses Solid 2 JSX. In both, signals update the bindings that read them while the rest of the tree stays mounted.",
+    title: "Go, TypeScript, and Rust examples",
+    lead: "Go uses fluent native views and composable styles. TypeScript uses Solid 2 JSX. Rust implements View and links the crate directly. In each language, updates change the bindings that read them while the rest of the tree stays mounted.",
   },
   swiftUi: {
     title: "Use native SwiftUI in QuickGUI.",
-    lead: "Embed real SwiftUI controls in your Go or TypeScript application on macOS, alongside your QuickGUI components.",
+    lead: "Embed real SwiftUI controls in your Go, TypeScript, or Rust application on macOS, alongside your QuickGUI components.",
   },
   quickstart: {
     title: "Quickstart",
@@ -87,7 +87,7 @@ export const en = {
   },
   cta: {
     title: "Get started with QuickGUI",
-    body: "Write a Go or TypeScript component and ship a native app with its runtime included.",
+    body: "Write a Go, TypeScript, or Rust component and ship a native app with its runtime included.",
     docs: "Read the docs",
     star: "Star on GitHub",
   },

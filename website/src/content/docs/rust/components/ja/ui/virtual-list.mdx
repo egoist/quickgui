@@ -1,0 +1,29 @@
+長いリストや高さが可変のコレクションの表示範囲をレイアウトして描画します。
+
+## インポート
+
+`quickgui` から `VirtualList` をインポートします。
+
+```rust
+use quickgui::*;
+```
+
+## 使い方
+
+```rust
+div()
+    .h(210.0)
+    .overflow_hidden()
+    .virtual_scroll(&list)
+    .children(list.visible_rows().range.map(|index| text(format!("Row {index}"))))
+```
+
+## 主なプロパティ
+
+| プロパティ | 説明 |
+| --- | --- |
+| `estimated_item_height` | 仮想化で使う初期論理行高の推定値です。 |
+| `overscan` | 表示範囲の前後に追加でマウントする行数です。 |
+| `list_alignment` | 短いリスト内容を上端または下端に固定します。 |
+| `follow_mode` | 通常のスクロールまたは末尾追従の動作を選びます。 |
+| `child` | コンポーネント内にマウントする内容です。 |

@@ -1,0 +1,42 @@
+披露式导航界面，包含带方向动画的视口和弹出部件。
+
+## 导入
+
+从 `quickgui` 导入 `NavigationMenu`。
+
+```rust
+use quickgui::*;
+```
+
+## 用法
+
+```rust
+let menu = NavigationMenu::new("docs", &state, &items);
+menu.root_part(div().flex_row())
+```
+
+## 结构
+
+- `NavigationMenu::root_part`
+- `NavigationMenu::list_part`
+- `NavigationMenu::item_part`
+- `NavigationMenu::trigger_part`
+- `NavigationMenu::icon_part`
+- `NavigationMenu::content_part`
+- `NavigationMenu::link_part`
+- `NavigationMenu::portal_part`
+- `NavigationMenu::positioner_part`
+- `NavigationMenu::popup_part`
+- `NavigationMenu::viewport_part`
+- `NavigationMenu::arrow_part`
+- `NavigationMenu::backdrop_part`
+
+## 主要属性
+
+| 属性 | 说明 |
+| --- | --- |
+| `value` | 受控值，具体类型取决于该组件的约定。 |
+| `default_value` | 组件自行管理状态时的初始值。 |
+| `on_value_change` | 报告核心接受的值。 |
+| `orientation` | 水平或垂直布局，以及对应的键盘方向。 |
+| `delay` | 打开前由核心管理的延迟（毫秒）。 |

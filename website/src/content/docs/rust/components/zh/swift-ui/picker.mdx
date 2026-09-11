@@ -1,0 +1,26 @@
+受控的 SwiftUI 选择器，支持菜单、分段、单选组和内联样式。
+
+## 导入
+
+从 `quickgui` 导入 `SwiftUiPicker`。
+
+```rust
+use quickgui::*;
+```
+
+## 用法
+
+```rust
+SwiftUiPicker::new(1, "space", [SwiftUiPickerOption::new("space", "Space")])
+    .label("Theme")
+```
+
+## 主要属性
+
+| 属性 | 说明 |
+| --- | --- |
+| `selection` | 表格、原生选择器或颜色控件的受控选中值。 |
+| `options` | 有序的原生选择器选项。 |
+| `label` | 原生 SwiftUI 控件的可见标签。 |
+| `style` | 此控件的原生 SwiftUI 展示样式。 |
+| `on_value_change` | 报告选中的原生选择器选项或颜色。 |

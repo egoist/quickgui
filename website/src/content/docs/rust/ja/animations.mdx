@@ -1,0 +1,33 @@
+Rust ガイド本文は現在英語です。コンポーネントの API リファレンスには日本語の説明があります。
+
+Native transitions interpolate paint-only style changes while the element stays mounted.
+
+## ホバーのトランジション
+
+```rust
+button()
+    .bg(Color::rgb8(37, 99, 235))
+    .transition(Transition::colors(Duration::from_millis(160)))
+    .hover(|style| style.bg(Color::rgb8(29, 78, 216)))
+    .child("Hover")
+```
+
+## 状態によるアニメーション
+
+Change a style field from view state and call `invalidate`. The core interpolates supported transitions. Do not reconstruct the view on each frame.
+
+## 時間とフレームレート
+
+`Transition::new` takes a `Duration`. Set easing with `with_easing` and cap cadence with `max_fps` while animation is active. That ceiling is not an idle scheduling source.
+
+## 対応するプロパティ
+
+`TransitionProperties` covers background, border color and width, radius, text color, box shadow, opacity, and transform. Layout lengths stay declaration-time values because they require Taffy.
+
+## マウントと視差効果の抑制
+
+Keep an overlay mounted for its exit transition when the component supports that lifecycle. Respect the platform reduced-motion preference instead of imposing a frame loop.
+
+## アニメーション画像
+
+`img` uses native image resources, including animated GIF/WebP sources. The core owns playback deadlines, cache limits, and visibility-based suspension; loading a static image does not request idle frames.

@@ -1,0 +1,34 @@
+既知の範囲内のスカラー測定値を、低・高・最適のセマンティックな帯域とともに表示します。
+
+## インポート
+
+`quickgui` から `meter` をインポートします。
+
+```rust
+use quickgui::*;
+```
+
+## 使い方
+
+```rust
+meter(70.0, 0.0, 100.0).w(240.0).h(8.0)
+```
+
+## 構成
+
+- `meter::root_part`
+- `meter::track_part`
+- `meter::indicator_part`
+- `meter::label_part`
+- `meter::value_part`
+
+## 主なプロパティ
+
+| プロパティ | 説明 |
+| --- | --- |
+| `value` | 制御値です。具体的な型は、このコンポーネントの規約に従います。 |
+| `min` | 受け入れる最小値です。 |
+| `max` | 受け入れる最大値です。 |
+| `low` | Meter の低い範囲の上限です。 |
+| `high` | Meter の高い範囲の下限です。 |
+| `optimum` | Meter 値の望ましい点または範囲です。 |
