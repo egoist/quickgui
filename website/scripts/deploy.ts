@@ -1,5 +1,6 @@
 import { resolve } from "node:path";
 import { ensureDocsToolchain } from "./ensure-docs-toolchain";
+import { generatedWorkerConfig } from "./wrangler-output";
 
 const website = resolve(import.meta.dir, "..");
 
@@ -15,4 +16,4 @@ async function run(args: string[]) {
 
 await ensureDocsToolchain();
 await run(["bun", "run", "build"]);
-await run(["wrangler", "deploy", ...process.argv.slice(2)]);
+await run(["wrangler", "deploy", "-c", generatedWorkerConfig(website), ...process.argv.slice(2)]);

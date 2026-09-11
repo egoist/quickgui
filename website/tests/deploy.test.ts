@@ -1,6 +1,7 @@
 import { expect, test } from "bun:test";
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
 import {
   RUSTUP_INSTALL_COMMAND,
   WASM_TARGET,
@@ -13,6 +14,7 @@ import {
   rustcMeetsMsrv,
   wasmBindgenDownloadCommand,
 } from "../scripts/ensure-docs-toolchain";
+import { generatedWorkerConfig } from "../scripts/wrangler-output";
 
 const website = resolve(import.meta.dir, "..");
 const version = docsWasmBindgenVersion();
@@ -61,6 +63,12 @@ test("deploy and build install the WASM toolchain before cargo runs", () => {
   expect(readFileSync(resolve(website, "scripts/build.ts"), "utf8")).toContain("ensureDocsToolchain");
   expect(readFileSync(resolve(website, "scripts/build-demos.ts"), "utf8")).toContain(
     "ensureDocsToolchain",
+  );
+  expect(readFileSync(resolve(website, "scripts/deploy.ts"), "utf8")).toContain(
+    'wrangler", "deploy", "-c", generatedWorkerConfig(website)',
+  );
+  expect(readFileSync(resolve(website, "scripts/build.ts"), "utf8")).toContain(
+    "generatedWorkerConfig(website)",
   );
 });
 
@@ -196,4 +204,31 @@ test("prependCargoBin is idempotent", () => {
   const bin = prependCargoBin(env);
   prependCargoBin(env);
   expect(env.PATH).toBe(`${bin}:/usr/bin`);
+});
+
+test("deploy uses the Vite-generated wrangler config, not workers/app.ts", () => {
+  const root = mkdtempSync(join(tmpdir(), "quickgui-wrangler-"));
+  const generated = join(root, "build/server/wrangler.json");
+  mkdirSync(join(root, "build/server"), { recursive: true });
+  mkdirSync(join(root, ".wrangler/deploy"), { recursive: true });
+  writeFileSync(generated, JSON.stringify({ main: "index.js", no_bundle: true }));
+  writeFileSync(
+    join(root, ".wrangler/deploy/config.json"),
+    JSON.stringify({ configPath: "../../build/server/wrangler.json" }),
+  );
+  expect(generatedWorkerConfig(root)).toBe(generated);
+
+  const fallbackRoot = mkdtempSync(join(tmpdir(), "quickgui-wrangler-fallback-"));
+  mkdirSync(join(fallbackRoot, "build/server"), { recursive: true });
+  writeFileSync(
+    join(fallbackRoot, "build/server/wrangler.json"),
+    JSON.stringify({ main: "index.js" }),
+  );
+  expect(generatedWorkerConfig(fallbackRoot)).toBe(
+    join(fallbackRoot, "build/server/wrangler.json"),
+  );
+
+  expect(() => generatedWorkerConfig(mkdtempSync(join(tmpdir(), "quickgui-wrangler-empty-")))).toThrow(
+    /virtual:react-router\/server-build/,
+  );
 });

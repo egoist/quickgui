@@ -26,7 +26,13 @@ bun run deploy   # wrangler deploy
 From the repo root, `bun run build` and `bun run deploy` forward to this package.
 In CI (`CI`, `WORKERS_CI`, or `CF_PAGES`), those scripts install Rust, the
 `wasm32-unknown-unknown` target, and the pinned wasm-bindgen CLI when they are
-missing, then build and run `wrangler deploy`.
+missing, then build and deploy the Vite-generated worker.
+
+Set the Cloudflare Workers Builds deploy command to `bun run deploy` (from the
+repo root or `website/`). Do not run `npx wrangler deploy` against
+`website/wrangler.jsonc`: that file's `main` is `./workers/app.ts`, which
+imports Vite's `virtual:react-router/server-build` module. `bun run deploy`
+points wrangler at `build/server/wrangler.json` after the production build.
 
 `bun run preview` serves the production build locally via the Cloudflare Vite
 plugin (workerd).

@@ -1,5 +1,6 @@
 import { resolve } from "node:path";
 import { ensureDocsToolchain } from "./ensure-docs-toolchain";
+import { generatedWorkerConfig } from "./wrangler-output";
 
 const website = resolve(import.meta.dir, "..");
 
@@ -18,3 +19,4 @@ await run(["bun", "run", "docs:api"]);
 await run(["bun", "run", "docs:wasm"]);
 await run(["bun", "run", "docs:index"]);
 await run(["react-router", "build"]);
+generatedWorkerConfig(website);
