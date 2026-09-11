@@ -1,0 +1,24 @@
+A controlled native SwiftUI text field with edit and submit callbacks.
+
+## Import
+
+Import `SwiftUiTextField` from `quickgui`.
+
+```rust
+use quickgui::*;
+```
+
+## Usage
+
+```rust
+SwiftUiTextField::new(1, name).placeholder("Name")
+```
+
+## Key props
+
+| Prop | Purpose |
+| --- | --- |
+| `value` | Controlled value. The precise value type follows this component’s contract. |
+| `placeholder` | Text shown while the editable value is empty. |
+| `on_value_change` | Reports the value accepted by the core. |
+| `on_submit` | Runs when the native field submits its current value. |

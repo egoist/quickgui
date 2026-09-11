@@ -1,0 +1,28 @@
+検証済みの WGSL を、数を制限した数値シェーダーパラメーターで描画します。
+
+## インポート
+
+`quickgui` から `CustomShader` をインポートします。
+
+```rust
+use quickgui::*;
+```
+
+## 使い方
+
+```rust
+custom_shader(
+    CustomShader::new(
+        "fn quickgui_fragment(input: QuickGuiShaderInput) -> vec4<f32> { return vec4<f32>(input.uv.x, 0.3, input.uv.y, 1.0); }",
+    )
+    .expect("shader"),
+)
+.size(260.0, 150.0)
+```
+
+## 主なプロパティ
+
+| プロパティ | 説明 |
+| --- | --- |
+| `value` | コンポーネントが受け取るファイルパス、データ URL、SVG ドキュメント、またはシェーダーソースです。 |
+| `shader_parameters` | 固定のシェーダーパラメーターベクトルへ格納する最大 16 個の数値です。 |

@@ -1,0 +1,24 @@
+使用保留式图像资源显示文件系统路径、文件 URL 或 base64 数据 URL。
+
+## 导入
+
+从 `quickgui` 导入 `Image`。
+
+```rust
+use quickgui::*;
+```
+
+## 用法
+
+```rust
+img(Image::from_rgba(128, 128, pixels).expect("image"))
+    .size(160.0, 160.0)
+    .rounded(12.0)
+```
+
+## 主要属性
+
+| 属性 | 说明 |
+| --- | --- |
+| `value` | 组件所需的文件系统路径、数据 URL、SVG 文档或着色器源码。 |
+| `object_fit` | 图像内容在声明区域中的适配方式。 |

@@ -1,0 +1,36 @@
+在一套移动焦点的键盘模型下组织操作和输入。
+
+## 导入
+
+从 `quickgui` 导入 `Toolbar`。
+
+```rust
+use quickgui::*;
+```
+
+## 用法
+
+```rust
+let bar = Toolbar::new("main", &state, &items);
+bar.root_part(div().flex_row().gap(8.0))
+```
+
+## 结构
+
+- `Toolbar::root_part`
+- `Toolbar::item_part`
+- `Toolbar::button_part`
+- `Toolbar::link_part`
+- `Toolbar::input_part`
+- `Toolbar::group_part`
+- `Toolbar::separator_part`
+
+## 主要属性
+
+| 属性 | 说明 |
+| --- | --- |
+| `items` | 用于选项或键盘导航的有限声明模型。 |
+| `active` | 持有当前活动状态或移动焦点状态的受控项目。 |
+| `default_active` | 非受控组件的初始活动项目。 |
+| `orientation` | 水平或垂直布局，以及对应的键盘方向。 |
+| `on_active_change` | 报告当前持有移动焦点状态的项目。 |

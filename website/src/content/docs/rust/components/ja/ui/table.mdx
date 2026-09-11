@@ -1,0 +1,33 @@
+ヘッダー、行、セルのパーツを持つ仮想化テーブルコレクションです。
+
+## インポート
+
+`quickgui` から `Table` をインポートします。
+
+```rust
+use quickgui::*;
+```
+
+## 使い方
+
+```rust
+TableState::new(rows, columns)
+    .element("issues")
+```
+
+## 構成
+
+- `Table::root_part`
+- `Table::header_part`
+- `Table::row_part`
+- `Table::cell_part`
+
+## 主なプロパティ
+
+| プロパティ | 説明 |
+| --- | --- |
+| `columns` | 仮想テーブルの列宣言です。 |
+| `row_count` | 論理上の総行数です。 |
+| `row_height` | 仮想化された各行の論理高さです。 |
+| `selection_mode` | テーブルで単一選択または複数選択を有効にします。 |
+| `selection` | テーブル、ネイティブピッカー、カラーコントロールの制御選択値です。 |

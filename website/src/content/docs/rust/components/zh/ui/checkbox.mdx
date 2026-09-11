@@ -1,0 +1,34 @@
+二态或不确定状态的选择控件，指示器可独立设置样式。
+
+## 导入
+
+从 `quickgui` 导入 `Checkbox`。
+
+```rust
+use quickgui::*;
+```
+
+## 用法
+
+```rust
+let checkbox = Checkbox::new(checked);
+checkbox
+    .root_part(div().flex_row().items_center().gap(8.0).on_click(toggle))
+    .child(checkbox.indicator_part(div().size(16.0, 16.0).rounded(4.0)))
+    .child(text("Remember me"))
+```
+
+## 结构
+
+- `Checkbox::root_part`
+- `Checkbox::indicator_part`
+
+## 主要属性
+
+| 属性 | 说明 |
+| --- | --- |
+| `checked` | 受控的选中状态。 |
+| `default_checked` | 组件自行管理状态时的初始选中状态。 |
+| `on_click` | 报告核心接受的选中状态。 |
+| `read_only` | 阻止值变化，但仍允许控件获得焦点。 |
+| `disabled` | 禁止交互，并暴露禁用状态。 |

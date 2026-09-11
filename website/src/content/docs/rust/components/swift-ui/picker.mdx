@@ -1,0 +1,26 @@
+A controlled SwiftUI picker with menu, segmented, radio-group, and inline styles.
+
+## Import
+
+Import `SwiftUiPicker` from `quickgui`.
+
+```rust
+use quickgui::*;
+```
+
+## Usage
+
+```rust
+SwiftUiPicker::new(1, "space", [SwiftUiPickerOption::new("space", "Space")])
+    .label("Theme")
+```
+
+## Key props
+
+| Prop | Purpose |
+| --- | --- |
+| `selection` | Controlled selection for a table, native picker, or color control. |
+| `options` | Ordered native picker options. |
+| `label` | Visible native SwiftUI control label. |
+| `style` | Native SwiftUI presentation style for this control. |
+| `on_value_change` | Reports the selected native picker option or color. |

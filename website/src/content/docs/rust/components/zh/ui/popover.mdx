@@ -1,0 +1,42 @@
+在当前窗口中，将调用方设置样式的内容放在锚点旁。
+
+## 导入
+
+从 `quickgui` 导入 `Popover`。
+
+```rust
+use quickgui::*;
+```
+
+## 用法
+
+```rust
+let popover = Popover::new("help", open);
+popover.root_part(div()).child(popover.trigger_part(button().child("Help")))
+```
+
+## 结构
+
+- `Popover::root_part`
+- `Popover::trigger_part`
+- `Popover::content_part`
+- `Popover::portal_part`
+- `Popover::backdrop_part`
+- `Popover::positioner_part`
+- `Popover::popup_part`
+- `Popover::arrow_part`
+- `Popover::viewport_part`
+- `Popover::title_part`
+- `Popover::description_part`
+- `Popover::close_part`
+
+## 主要属性
+
+| 属性 | 说明 |
+| --- | --- |
+| `open` | 受控的打开状态。 |
+| `default_open` | 组件自行管理打开状态时的初始状态。 |
+| `on_open_change` | 报告核心做出的打开或关闭决定。 |
+| `side` | 碰撞处理前的首选放置方向。 |
+| `align` | 在放置交叉轴上的首选对齐方式。 |
+| `modal` | 将焦点限制在界面内，并阻止与后方内容交互。 |

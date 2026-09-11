@@ -1,0 +1,36 @@
+Groups actions and inputs under one roving-focus keyboard model.
+
+## Import
+
+Import `Toolbar` from `quickgui`.
+
+```rust
+use quickgui::*;
+```
+
+## Usage
+
+```rust
+let bar = Toolbar::new("main", &state, &items);
+bar.root_part(div().flex_row().gap(8.0))
+```
+
+## Anatomy
+
+- `Toolbar::root_part`
+- `Toolbar::item_part`
+- `Toolbar::button_part`
+- `Toolbar::link_part`
+- `Toolbar::input_part`
+- `Toolbar::group_part`
+- `Toolbar::separator_part`
+
+## Key props
+
+| Prop | Purpose |
+| --- | --- |
+| `items` | Bounded declaration model used for options or keyboard navigation. |
+| `active` | Controlled item holding the active or roving focus state. |
+| `default_active` | Initial active item for an uncontrolled component. |
+| `orientation` | Horizontal or vertical layout and keyboard direction. |
+| `on_active_change` | Reports the item that now owns the roving focus state. |

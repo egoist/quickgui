@@ -1,0 +1,30 @@
+管理一组有限的复选框值，并可派生出可选的父复选框状态。
+
+## 导入
+
+从 `quickgui` 导入 `CheckboxGroup`。
+
+```rust
+use quickgui::*;
+```
+
+## 用法
+
+```rust
+let group = CheckboxGroup::new("colors", &state);
+group.root_part(div().flex_col().gap(8.0))
+```
+
+## 结构
+
+- `CheckboxGroup::root_part`
+
+## 主要属性
+
+| 属性 | 说明 |
+| --- | --- |
+| `all_values` | 用于派生父复选框状态的完整有序值集合。 |
+| `value` | 受控值，具体类型取决于该组件的约定。 |
+| `default_value` | 组件自行管理状态时的初始值。 |
+| `on_value_change` | 报告核心接受的值。 |
+| `disabled` | 禁止交互，并暴露禁用状态。 |

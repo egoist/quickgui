@@ -1,0 +1,26 @@
+A controlled native date or date-and-time picker.
+
+## Import
+
+Import `SwiftUiDatePicker` from `quickgui`.
+
+```rust
+use quickgui::*;
+```
+
+## Usage
+
+```rust
+SwiftUiDatePicker::new(1, timestamp).label("Start")
+```
+
+## Key props
+
+| Prop | Purpose |
+| --- | --- |
+| `value` | Unix timestamp in milliseconds; `Min` and `Max` use the same unit. |
+| `min` | Minimum accepted value. |
+| `max` | Maximum accepted value. |
+| `displayed_components` | Chooses date, time, or combined date-and-time fields. |
+| `style` | `automatic`, `field`, `stepperField`, or `graphical`. |
+| `on_value_change` | Reports the value accepted by the core. |

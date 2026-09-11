@@ -1,0 +1,38 @@
+確認操作に特化し、背景クリックで閉じる既定動作をより厳格にしたダイアログです。
+
+## インポート
+
+`quickgui` から `Dialog` をインポートします。
+
+```rust
+use quickgui::*;
+```
+
+## 使い方
+
+```rust
+let dialog = Dialog::alert("quit", open);
+dialog.root_part(div()).child(dialog.title_part(text("Quit without saving?")))
+```
+
+## 構成
+
+- `Dialog::root_part`
+- `Dialog::trigger_part`
+- `Dialog::portal_part`
+- `Dialog::backdrop_part`
+- `Dialog::viewport_part`
+- `Dialog::popup_part`
+- `Dialog::title_part`
+- `Dialog::description_part`
+- `Dialog::close_part`
+
+## 主なプロパティ
+
+| プロパティ | 説明 |
+| --- | --- |
+| `open` | 制御された開閉状態です。 |
+| `default_open` | コンポーネント自身が開閉状態を管理するときの初期状態です。 |
+| `on_open_change` | コアが決定した開閉を通知します。 |
+| `dismiss_on_escape` | Escape キーでサーフェスを閉じられるようにします。 |
+| `exit_duration` | 閉じる内容を、正確な終了トランジション時間だけマウントしたままにします。 |

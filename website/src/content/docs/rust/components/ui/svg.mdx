@@ -1,0 +1,23 @@
+Renders a complete inline SVG document without loading external SVG resources.
+
+## Import
+
+Import `Svg` from `quickgui`.
+
+```rust
+use quickgui::*;
+```
+
+## Usage
+
+```rust
+svg(Svg::from_bytes(ICON).expect("svg"))
+    .size(72.0, 72.0)
+    .text_color(Color::rgb8(37, 99, 235))
+```
+
+## Key props
+
+| Prop | Purpose |
+| --- | --- |
+| `value` | Filesystem path, data URL, SVG document, or shader source expected by the component. |

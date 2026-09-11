@@ -1,0 +1,33 @@
+Rust ガイド本文は現在英語です。コンポーネントの API リファレンスには日本語の説明があります。
+
+Call `Application::new().run(...)` once from `main`. Its startup callback creates windows and registers application services. Listeners run on the native UI thread.
+
+## ウィンドウのライフタイム
+
+`cx.open_window(WindowOptions::new("Title").size(width, height), view)` creates a window with its own `View` and retained tree. Closing the window drops that view. Handle macOS Dock reopening from `Application::on_reopen` when `has_visible_windows` is false.
+
+```rust
+Application::new()
+    .on_reopen(|has_visible_windows, cx| {
+        if !has_visible_windows {
+            cx.open_window(WindowOptions::new("My App").size(760.0, 520.0), App);
+        }
+    })
+    .run(|cx| {
+        cx.open_window(WindowOptions::new("My App").size(760.0, 520.0), App);
+    })
+```
+
+## コマンドとサービス
+
+```rust
+cx.prompt("Save changes?", ["Save", "Cancel"]);
+cx.prompt_for_paths(PathPromptOptions::new().files(true));
+cx.message_box(MessageBoxOptions::new("Replace this file?"));
+```
+
+Typed APIs cover dialogs, clipboard, shell, appearance, menus, displays, and other platform services. Capture `cx.window_handle()` during a listener when later work needs that window.
+
+## イベントとファイル監視
+
+Window events include focus, resize, appearance, minimize, fullscreen, and close. Application callbacks include reopen, activation, quit, and open URLs. Prefer native notifications over polling. Enable the `file-watcher` crate feature when you need filesystem events, and drop watchers with the owning view.

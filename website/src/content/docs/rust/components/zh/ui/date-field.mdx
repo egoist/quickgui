@@ -1,0 +1,31 @@
+可通过键盘编辑的分段日期字段，日期部分会适配区域设置。
+
+## 导入
+
+从 `quickgui` 导入 `DateField`。
+
+```rust
+use quickgui::*;
+```
+
+## 用法
+
+```rust
+let field = DateField::new("start");
+field.root_part(div().flex_row())
+```
+
+## 结构
+
+- `DateField::root_part`
+- `DateField::segment_part`
+
+## 主要属性
+
+| 属性 | 说明 |
+| --- | --- |
+| `value` | 受控值，具体类型取决于该组件的约定。 |
+| `min` | 可接受的最小值。 |
+| `max` | 可接受的最大值。 |
+| `on_value_change` | 报告核心接受的值。 |
+| `disabled` | 禁止交互，并暴露禁用状态。 |

@@ -1,0 +1,29 @@
+値選択とニュートラルな Xcode 風タブロールを持つ、ネイティブのセグメントピッカーです。
+
+## インポート
+
+`quickgui` から `SwiftUiPicker` をインポートします。
+
+```rust
+use quickgui::*;
+```
+
+## 使い方
+
+```rust
+SwiftUiPicker::segmented(
+    1,
+    "code",
+    [SwiftUiPickerOption::new("code", "Code"), SwiftUiPickerOption::new("preview", "Preview")],
+)
+```
+
+## 主なプロパティ
+
+| プロパティ | 説明 |
+| --- | --- |
+| `selection` | テーブル、ネイティブピッカー、カラーコントロールの制御選択値です。 |
+| `options` | 順序付きのネイティブピッカー選択肢です。 |
+| `label` | ネイティブ SwiftUI コントロールに表示するラベルです。 |
+| `role` | 保持ノードが公開するアクセシビリティロールです。 |
+| `on_value_change` | 選択したネイティブピッカー項目または色を通知します。 |

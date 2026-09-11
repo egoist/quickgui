@@ -1,0 +1,37 @@
+増加、減少、ドラッグ調整用のパーツを備えた数値エディターです。
+
+## インポート
+
+`quickgui` から `NumberField` をインポートします。
+
+```rust
+use quickgui::*;
+```
+
+## 使い方
+
+```rust
+let field = NumberField::new("amount", &state);
+field.root_part(div()).child(field.input_part(text_input(state.text())))
+```
+
+## 構成
+
+- `NumberField::root_part`
+- `NumberField::group_part`
+- `NumberField::input_part`
+- `NumberField::increment_part`
+- `NumberField::decrement_part`
+- `NumberField::scrub_area_part`
+- `NumberField::scrub_area_cursor_part`
+
+## 主なプロパティ
+
+| プロパティ | 説明 |
+| --- | --- |
+| `value` | 制御値です。具体的な型は、このコンポーネントの規約に従います。 |
+| `default_value` | コンポーネント自身が状態を管理するときの初期値です。 |
+| `min` | 受け入れる最小値です。 |
+| `max` | 受け入れる最大値です。 |
+| `step` | キーボード、ポインター、またはネイティブコントロール入力で使う増分です。 |
+| `on_value_change` | コアが受け入れた値を通知します。 |

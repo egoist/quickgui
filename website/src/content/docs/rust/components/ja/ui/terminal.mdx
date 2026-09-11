@@ -1,0 +1,39 @@
+保持型の Ghostty ターミナルサーフェスを埋め込み、プロセスのライフサイクルイベントを通知します。
+
+## インポート
+
+`quickgui` から `Terminal` をインポートします。
+
+```rust
+use quickgui::*;
+```
+
+## 使い方
+
+```rust
+let terminal = Terminal::spawn(
+    TerminalOptions {
+        program: Some("/bin/zsh".into()),
+        arguments: vec!["-l".into()],
+        working_directory: Some(directory.into()),
+        ..TerminalOptions::default()
+    },
+    cx.window_invalidator(),
+)?;
+terminal.element(cx)
+```
+
+## 主なプロパティ
+
+| プロパティ | 説明 |
+| --- | --- |
+| `program` | ターミナルが起動する実行ファイルです。 |
+| `args` | ターミナルプロセスに渡す引数です。 |
+| `working_directory` | ターミナルプロセスの初期作業ディレクトリです。 |
+| `environment` | ターミナルプロセスに追加する環境変数です。 |
+| `on_status` | ターミナルプロセスのライフサイクル変更を通知します。 |
+| `palette` | 16 色の ANSI パレット（`terminal.Palette`）またはアクセサー。更新しても PTY は維持されます。 |
+| `cursor_color` | カーソル色または色のアクセサー。 |
+| `padding_color` | `"extend"` で端の背景色を余白まで延長します。 |
+| `font_thicken` | ネイティブのフォント増厚を有効にします。 |
+| `scrollback` | 保持するスクロールバックの最大行数。 |

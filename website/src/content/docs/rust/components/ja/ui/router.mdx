@@ -1,0 +1,44 @@
+QuickGUI コアのルーティングを QuickGUI UI に投影し、ネストされたレイアウトと上限付きメモリ履歴を提供します。
+
+## インポート
+
+`quickgui` から `Router` をインポートします。
+
+```rust
+use quickgui::*;
+```
+
+## 使い方
+
+```rust
+let mut router = Router::new(
+    [
+        RouteDefinition::new("home", "/"),
+        RouteDefinition::new("settings", "/settings"),
+    ],
+    "/",
+)?;
+match router.matched().and_then(|matched| matched.route_ids().last().map(|id| id.as_ref())) {
+    Some("settings") => text("Settings"),
+    _ => button().on_click(open_settings).child("Settings"),
+}
+```
+
+## 構成
+
+- `Router`
+- `RouteDefinition`
+- `RouteDefinition::layout`
+- `Router::push`
+- `Router::matched`
+
+## 主なプロパティ
+
+| プロパティ | 説明 |
+| --- | --- |
+| `initial_destination` | 上限付きメモリ履歴の初期移動先です。 |
+| `fallback` | どのルートにも一致しないときに描画する内容です。 |
+| `routes` | `ui.Route` と `ui.Layout` で作成する静的ルート宣言です。 |
+| `path` | 絶対または親からの相対ルートパターンです。 |
+| `component` | ルートが一致したときに描画するコンポーネントです。 |
+| `href` | QuickGUI Router が解決する移動先です。 |

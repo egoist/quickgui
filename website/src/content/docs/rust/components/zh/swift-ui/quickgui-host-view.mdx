@@ -1,0 +1,25 @@
+在 SwiftUI 层级中反向托管一棵普通的 QuickGUI 子树。
+
+## 导入
+
+从 `quickgui` 导入 `SwiftUiQuickGuiHost`。
+
+```rust
+use quickgui::*;
+```
+
+## 用法
+
+```rust
+SwiftUiQuickGuiHost::pending(1)
+```
+
+## 主要属性
+
+| 属性 | 说明 |
+| --- | --- |
+| `width` | 声明的逻辑宽度。 |
+| `height` | 声明的逻辑高度。 |
+| `match_contents` | 使用托管子树的固有宽度、高度或两者。 |
+| `background` | 反向托管 QuickGUI WGPU 表面的清除颜色。 |
+| `child` | 挂载在组件内部的内容。 |

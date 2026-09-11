@@ -1,0 +1,42 @@
+A disclosure-style navigation surface with animated direction, viewport, and popup parts.
+
+## Import
+
+Import `NavigationMenu` from `quickgui`.
+
+```rust
+use quickgui::*;
+```
+
+## Usage
+
+```rust
+let menu = NavigationMenu::new("docs", &state, &items);
+menu.root_part(div().flex_row())
+```
+
+## Anatomy
+
+- `NavigationMenu::root_part`
+- `NavigationMenu::list_part`
+- `NavigationMenu::item_part`
+- `NavigationMenu::trigger_part`
+- `NavigationMenu::icon_part`
+- `NavigationMenu::content_part`
+- `NavigationMenu::link_part`
+- `NavigationMenu::portal_part`
+- `NavigationMenu::positioner_part`
+- `NavigationMenu::popup_part`
+- `NavigationMenu::viewport_part`
+- `NavigationMenu::arrow_part`
+- `NavigationMenu::backdrop_part`
+
+## Key props
+
+| Prop | Purpose |
+| --- | --- |
+| `value` | Controlled value. The precise value type follows this component’s contract. |
+| `default_value` | Initial value when the component owns its state. |
+| `on_value_change` | Reports the value accepted by the core. |
+| `orientation` | Horizontal or vertical layout and keyboard direction. |
+| `delay` | Core-owned delay in milliseconds before opening. |

@@ -1,0 +1,36 @@
+1 つのロービングフォーカスモデルの下に操作と入力をまとめます。
+
+## インポート
+
+`quickgui` から `Toolbar` をインポートします。
+
+```rust
+use quickgui::*;
+```
+
+## 使い方
+
+```rust
+let bar = Toolbar::new("main", &state, &items);
+bar.root_part(div().flex_row().gap(8.0))
+```
+
+## 構成
+
+- `Toolbar::root_part`
+- `Toolbar::item_part`
+- `Toolbar::button_part`
+- `Toolbar::link_part`
+- `Toolbar::input_part`
+- `Toolbar::group_part`
+- `Toolbar::separator_part`
+
+## 主なプロパティ
+
+| プロパティ | 説明 |
+| --- | --- |
+| `items` | 選択肢やキーボードナビゲーションに使う、上限付きの宣言モデルです。 |
+| `active` | アクティブ状態またはロービングフォーカス状態を持つ、制御された項目です。 |
+| `default_active` | 非制御コンポーネントの初期アクティブ項目です。 |
+| `orientation` | 水平または垂直のレイアウトと、それに対応するキーボード方向です。 |
+| `on_active_change` | ロービングフォーカス状態を現在持つ項目を通知します。 |

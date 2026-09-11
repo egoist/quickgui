@@ -1,0 +1,25 @@
+基于 NSHostingView 的叶节点，用于在 QuickGUI 中挂载一棵 SwiftUI 组件树。
+
+## 导入
+
+从 `quickgui` 导入 `MacSwiftUiHost`。
+
+```rust
+use quickgui::*;
+```
+
+## 用法
+
+```rust
+let mut host = MacSwiftUiHost::new(|_id| {})?;
+host.sync(&[SwiftUiButton::new(1).label("Continue").into()])?;
+native_view(host.view())
+```
+
+## 主要属性
+
+| 属性 | 说明 |
+| --- | --- |
+| `match_contents` | 使用托管子树的固有宽度、高度或两者。 |
+| `style` | QuickGUI 的布局、绘制、排版和交互状态样式。 |
+| `child` | 挂载在组件内部的内容。 |

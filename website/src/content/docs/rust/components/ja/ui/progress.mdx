@@ -1,0 +1,33 @@
+確定または不確定のタスク進捗を、組み合わせ可能なラベルとトラックで表します。
+
+## インポート
+
+`quickgui` から `progress` をインポートします。
+
+```rust
+use quickgui::*;
+```
+
+## 使い方
+
+```rust
+progress(0.4, 1.0).w(240.0).h(8.0).rounded(4.0)
+```
+
+## 構成
+
+- `progress::root_part`
+- `progress::track_part`
+- `progress::indicator_part`
+- `progress::label_part`
+- `progress::value_part`
+
+## 主なプロパティ
+
+| プロパティ | 説明 |
+| --- | --- |
+| `value` | 制御値です。具体的な型は、このコンポーネントの規約に従います。 |
+| `max` | 受け入れる最大値です。 |
+| `indeterminate` | 完了量が不明な進捗を表します。 |
+| `value_text` | 支援技術向けの読みやすい値です。 |
+| `on_status_change` | 導出された状態、整形済みの値、完了率を通知します。 |

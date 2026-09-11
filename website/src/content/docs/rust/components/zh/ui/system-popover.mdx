@@ -1,0 +1,32 @@
+在独立的原生子窗口中显示 QuickGUI 内容，可超出所属窗口边界。
+
+## 导入
+
+从 `quickgui` 导入 `SystemPopover`。
+
+```rust
+use quickgui::*;
+```
+
+## 用法
+
+```rust
+SystemPopover::new(320.0, 240.0)
+```
+
+## 结构
+
+- `SystemPopover::root_part`
+- `SystemPopover::trigger_part`
+- `SystemPopover::content_part`
+
+## 主要属性
+
+| 属性 | 说明 |
+| --- | --- |
+| `open` | 受控的打开状态。 |
+| `default_open` | 组件自行管理打开状态时的初始状态。 |
+| `on_open_change` | 报告核心做出的打开或关闭决定。 |
+| `width` | 声明的逻辑宽度。 |
+| `height` | 声明的逻辑高度。 |
+| `placement` | 请求的原生子窗口放置位置。 |

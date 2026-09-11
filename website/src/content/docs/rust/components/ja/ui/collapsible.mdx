@@ -1,0 +1,31 @@
+アクセシブルな状態を保ちながら、トリガーで 1 つのパネルを表示／非表示にします。
+
+## インポート
+
+`quickgui` から `Collapsible` をインポートします。
+
+```rust
+use quickgui::*;
+```
+
+## 使い方
+
+```rust
+let disclosure = Collapsible::new("notes", open);
+disclosure.root_part(div()).child(disclosure.trigger_part(text("Notes")))
+```
+
+## 構成
+
+- `Collapsible::root_part`
+- `Collapsible::trigger_part`
+- `Collapsible::panel_part`
+
+## 主なプロパティ
+
+| プロパティ | 説明 |
+| --- | --- |
+| `open` | 制御された開閉状態です。 |
+| `default_open` | コンポーネント自身が開閉状態を管理するときの初期状態です。 |
+| `on_open_change` | コアが決定した開閉を通知します。 |
+| `keep_mounted` | 非アクティブな内容をマウントしたまま、表示を無効にします。 |

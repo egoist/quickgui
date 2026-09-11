@@ -1,0 +1,34 @@
+A binary or indeterminate choice with a separately styled indicator.
+
+## Import
+
+Import `Checkbox` from `quickgui`.
+
+```rust
+use quickgui::*;
+```
+
+## Usage
+
+```rust
+let checkbox = Checkbox::new(checked);
+checkbox
+    .root_part(div().flex_row().items_center().gap(8.0).on_click(toggle))
+    .child(checkbox.indicator_part(div().size(16.0, 16.0).rounded(4.0)))
+    .child(text("Remember me"))
+```
+
+## Anatomy
+
+- `Checkbox::root_part`
+- `Checkbox::indicator_part`
+
+## Key props
+
+| Prop | Purpose |
+| --- | --- |
+| `checked` | Controlled checked state. |
+| `default_checked` | Initial checked state when the component owns it. |
+| `on_click` | Reports the checked state accepted by the core. |
+| `read_only` | Prevents value changes while leaving the control focusable. |
+| `disabled` | Prevents interaction and exposes the disabled state. |

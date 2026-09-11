@@ -1,0 +1,30 @@
+Owns single-choice selection and keyboard movement across Radio items.
+
+## Import
+
+Import `RadioGroup` from `quickgui`.
+
+```rust
+use quickgui::*;
+```
+
+## Usage
+
+```rust
+RadioGroup::new()
+    .root_part(div().flex_col().gap(8.0))
+```
+
+## Anatomy
+
+- `RadioGroup::root_part`
+
+## Key props
+
+| Prop | Purpose |
+| --- | --- |
+| `value` | Controlled value. The precise value type follows this component’s contract. |
+| `default_value` | Initial value when the component owns its state. |
+| `on_value_change` | Reports the value accepted by the core. |
+| `read_only` | Prevents value changes while leaving the control focusable. |
+| `required` | Marks the value as required for validation and form submission. |

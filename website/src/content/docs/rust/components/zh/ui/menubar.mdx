@@ -1,0 +1,31 @@
+管理窗口内的水平菜单栏及其菜单项。
+
+## 导入
+
+从 `quickgui` 导入 `Menubar`。
+
+```rust
+use quickgui::*;
+```
+
+## 用法
+
+```rust
+let bar = Menubar::new("app");
+bar.root_part(div().flex_row())
+```
+
+## 结构
+
+- `Menubar::root_part`
+- `Menubar::item_part`
+
+## 主要属性
+
+| 属性 | 说明 |
+| --- | --- |
+| `count` | 已声明的菜单栏项目数。 |
+| `open` | 受控的打开状态。 |
+| `default_open` | 组件自行管理打开状态时的初始状态。 |
+| `on_open_change` | 报告核心做出的打开或关闭决定。 |
+| `on_active_change` | 报告当前持有移动焦点状态的项目。 |

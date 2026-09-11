@@ -1,0 +1,31 @@
+由可分别设置样式的输入格组成、长度受限的一次性验证码编辑器。
+
+## 导入
+
+从 `quickgui` 导入 `OtpField`。
+
+```rust
+use quickgui::*;
+```
+
+## 用法
+
+```rust
+let field = OtpField::new("code");
+field.root_part(div().flex_row().gap(8.0))
+```
+
+## 结构
+
+- `OtpField::root_part`
+- `OtpField::input_part`
+- `OtpField::separator_part`
+
+## 主要属性
+
+| 属性 | 说明 |
+| --- | --- |
+| `value` | 受控值，具体类型取决于该组件的约定。 |
+| `length` | 一次性验证码输入格数量，上限为 12。 |
+| `on_value_change` | 报告核心接受的值。 |
+| `disabled` | 禁止交互，并暴露禁用状态。 |

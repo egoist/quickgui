@@ -1,0 +1,32 @@
+在原生浮窗中渲染的紧凑型模型驱动菜单。
+
+## 导入
+
+从 `quickgui` 导入 `PopoverMenu`。
+
+```rust
+use quickgui::*;
+```
+
+## 用法
+
+```rust
+let menu = PopoverMenu::new("edit", &state);
+menu.root_part(div()).child(menu.trigger_part(button().child("Edit")))
+```
+
+## 结构
+
+- `PopoverMenu::root_part`
+- `PopoverMenu::trigger_part`
+- `PopoverMenu::popup_part`
+
+## 主要属性
+
+| 属性 | 说明 |
+| --- | --- |
+| `items` | 用于选项或键盘导航的有限声明模型。 |
+| `appearance` | 核心绘制的原生菜单或选择器所用的结构颜色和几何属性。 |
+| `open` | 受控的打开状态。 |
+| `on_open_change` | 报告核心做出的打开或关闭决定。 |
+| `on_select` | 报告核心选中的菜单项。 |

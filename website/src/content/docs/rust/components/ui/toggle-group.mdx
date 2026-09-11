@@ -1,0 +1,31 @@
+Coordinates single or multiple pressed values with roving keyboard focus.
+
+## Import
+
+Import `ToggleGroup` from `quickgui`.
+
+```rust
+use quickgui::*;
+```
+
+## Usage
+
+```rust
+let group = ToggleGroup::new("align", &state, &items);
+group.root_part(div().flex_row())
+```
+
+## Anatomy
+
+- `ToggleGroup::root_part`
+- `ToggleGroup::item_part`
+
+## Key props
+
+| Prop | Purpose |
+| --- | --- |
+| `items` | Bounded declaration model used for options or keyboard navigation. |
+| `value` | Controlled value. The precise value type follows this component’s contract. |
+| `default_value` | Initial value when the component owns its state. |
+| `multiple` | Chooses the single- or multiple-selection policy. |
+| `on_value_change` | Reports the value accepted by the core. |

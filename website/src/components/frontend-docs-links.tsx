@@ -5,6 +5,7 @@ import { DOCS_FRONTENDS, docsPath, frontendLabel, type DocsFrontend } from "../l
 const icons: Record<DocsFrontend, string> = {
   go: "i-simple-icons-go size-6 text-[#00add8]",
   typescript: "i-simple-icons-typescript size-5 text-[#3178c6]",
+  rust: "i-simple-icons-rust size-5 text-[#dea584]",
 };
 
 export function FrontendDocsLinks({ externalArrow = false }: { externalArrow?: boolean }) {

@@ -1,0 +1,26 @@
+A native SwiftUI gauge with linear and circular accessory styles.
+
+## Import
+
+Import `SwiftUiGauge` from `quickgui`.
+
+```rust
+use quickgui::*;
+```
+
+## Usage
+
+```rust
+SwiftUiGauge::new(1, 0.7).label("Battery")
+```
+
+## Key props
+
+| Prop | Purpose |
+| --- | --- |
+| `value` | Controlled value. The precise value type follows this component’s contract. |
+| `min` | Minimum accepted value. |
+| `max` | Maximum accepted value. |
+| `label` | Visible native SwiftUI control label. |
+| `current_value_label` | Readable label for the current native progress or gauge value. |
+| `style` | Native SwiftUI presentation style for this control. |

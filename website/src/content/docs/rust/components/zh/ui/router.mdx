@@ -1,0 +1,44 @@
+将 QuickGUI 核心路由投影到 QuickGUI UI，支持嵌套布局和容量受限的内存历史。
+
+## 导入
+
+从 `quickgui` 导入 `Router`。
+
+```rust
+use quickgui::*;
+```
+
+## 用法
+
+```rust
+let mut router = Router::new(
+    [
+        RouteDefinition::new("home", "/"),
+        RouteDefinition::new("settings", "/settings"),
+    ],
+    "/",
+)?;
+match router.matched().and_then(|matched| matched.route_ids().last().map(|id| id.as_ref())) {
+    Some("settings") => text("Settings"),
+    _ => button().on_click(open_settings).child("Settings"),
+}
+```
+
+## 结构
+
+- `Router`
+- `RouteDefinition`
+- `RouteDefinition::layout`
+- `Router::push`
+- `Router::matched`
+
+## 主要属性
+
+| 属性 | 说明 |
+| --- | --- |
+| `initial_destination` | 有界内存历史的初始目标地址。 |
+| `fallback` | 没有路由匹配时渲染的内容。 |
+| `routes` | 使用 `ui.Route` 和 `ui.Layout` 创建的静态路由声明。 |
+| `path` | 绝对路由模式或相对于父路由的模式。 |
+| `component` | 路由匹配时渲染的组件。 |
+| `href` | QuickGUI 路由器解析的目标地址。 |

@@ -1,0 +1,31 @@
+時、分、秒、午前／午後の各パーツを持つ、キーボード編集可能な分割時刻フィールドです。
+
+## インポート
+
+`quickgui` から `TimeField` をインポートします。
+
+```rust
+use quickgui::*;
+```
+
+## 使い方
+
+```rust
+let field = TimeField::new("alarm");
+field.root_part(div().flex_row())
+```
+
+## 構成
+
+- `TimeField::root_part`
+- `TimeField::segment_part`
+
+## 主なプロパティ
+
+| プロパティ | 説明 |
+| --- | --- |
+| `value` | 制御値です。具体的な型は、このコンポーネントの規約に従います。 |
+| `default_value` | コンポーネント自身が状態を管理するときの初期値です。 |
+| `hour12` | 午前／午後セグメントを追加し、12 時間表記を使います。 |
+| `show_seconds` | 秒セグメントをマウントします。 |
+| `on_value_change` | コアが受け入れた値を通知します。 |

@@ -1,0 +1,29 @@
+从组合式 SwiftUI 触发器显示原生 SwiftUI 浮窗。
+
+## 导入
+
+从 `quickgui` 导入 `SwiftUiPopover`。
+
+```rust
+use quickgui::*;
+```
+
+## 用法
+
+```rust
+SwiftUiPopover::new(1)
+```
+
+## 结构
+
+- `SwiftUiPopover.trigger`
+- `SwiftUiPopover.content`
+
+## 主要属性
+
+| 属性 | 说明 |
+| --- | --- |
+| `is_presented` | 受控的原生 SwiftUI Popover 显示状态。 |
+| `on_is_presented_change` | 报告原生 SwiftUI Popover 的显示状态变化。 |
+| `attachment_anchor` | 组合式 SwiftUI 触发器上的锚点。 |
+| `arrow_edge` | 原生 SwiftUI Popover 箭头的首选边缘。 |

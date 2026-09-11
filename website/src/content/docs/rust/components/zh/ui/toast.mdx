@@ -1,0 +1,38 @@
+显示定时堆叠通知，支持操作、关闭和滑动手势。
+
+## 导入
+
+从 `quickgui` 导入 `Toast`。
+
+```rust
+use quickgui::*;
+```
+
+## 用法
+
+```rust
+toast_viewport("toasts").child(text("Saved"))
+```
+
+## 结构
+
+- `Toast::provider_part`
+- `Toast::portal_part`
+- `Toast::viewport_part`
+- `Toast::positioner_part`
+- `Toast::root_part`
+- `Toast::content_part`
+- `Toast::title_part`
+- `Toast::description_part`
+- `Toast::action_part`
+- `Toast::close_part`
+
+## 主要属性
+
+| 属性 | 说明 |
+| --- | --- |
+| `toasts` | 视口渲染的完整 Toast 队列声明。 |
+| `toast_id` | 与一个已渲染 Toast 关联的稳定队列标识符。 |
+| `timeout` | 继承的自动关闭时长或预热 Provider 的超时时间。 |
+| `swipe_direction` | 滑动关闭或移动界面时朝向的边缘。 |
+| `on_dismiss` | 报告核心关闭的 Toast 标识符。 |

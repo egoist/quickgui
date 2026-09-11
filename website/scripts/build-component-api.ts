@@ -4,6 +4,7 @@ import { ALL_COMPONENT_DOCS } from "../src/lib/component-docs";
 import { propertyNotes } from "./component-property-notes";
 import type { ApiEntry, ApiSection, ComponentApi } from "../src/lib/component-api";
 import { typescriptApi } from "./typescript-api";
+import { rustApi } from "./rust-api";
 
 const root = resolve(import.meta.dir, "../..");
 const output = resolve(root, "website/src/lib/generated/component-api.json");
@@ -196,7 +197,7 @@ function goApi(component: (typeof ALL_COMPONENT_DOCS)[number]): ApiSection[] {
 }
 const data: Record<string, ComponentApi> = {};
 for (const component of ALL_COMPONENT_DOCS)
-  for (const frontend of ["go", "typescript"] as const) {
+  for (const frontend of ["go", "typescript", "rust"] as const) {
     const content = readFileSync(
       resolve(
         root,
@@ -206,7 +207,12 @@ for (const component of ALL_COMPONENT_DOCS)
     );
     data[`${frontend}/${component.kind}/${component.slug}`] = {
       language: frontend === "typescript" ? "tsx" : frontend,
-      sections: frontend === "typescript" ? typescriptApi(component) : goApi(component),
+      sections:
+        frontend === "typescript"
+          ? typescriptApi(component)
+          : frontend === "rust"
+            ? rustApi(component)
+            : goApi(component),
       example:
         content
           .split("## Usage")[1]

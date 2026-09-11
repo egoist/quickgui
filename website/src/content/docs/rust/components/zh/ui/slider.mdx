@@ -1,0 +1,41 @@
+单滑块或多滑块范围输入，指针与键盘交互由核心管理。
+
+## 导入
+
+从 `quickgui` 导入 `Slider`。
+
+```rust
+use quickgui::*;
+```
+
+## 用法
+
+```rust
+let slider = Slider::new("volume", &state);
+slider
+    .root_part(div().flex_col().gap(14.0))
+    .child(text("Volume"))
+    .child(slider.track_part(div().w(240.0).h(24.0)))
+```
+
+## 结构
+
+- `Slider::root_part`
+- `Slider::label_part`
+- `Slider::value_part`
+- `Slider::control_part`
+- `Slider::track_part`
+- `Slider::range_part`
+- `Slider::indicator_part`
+- `Slider::thumb_part`
+
+## 主要属性
+
+| 属性 | 说明 |
+| --- | --- |
+| `value` | 受控值，具体类型取决于该组件的约定。 |
+| `default_value` | 组件自行管理状态时的初始值。 |
+| `min` | 可接受的最小值。 |
+| `max` | 可接受的最大值。 |
+| `step` | 键盘、指针或原生控件输入使用的步长。 |
+| `on_value_change` | 报告核心接受的值。 |

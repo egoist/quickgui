@@ -1,0 +1,33 @@
+A keyboard-navigable month grid for single-date selection.
+
+## Import
+
+Import `Calendar` from `quickgui`.
+
+```rust
+use quickgui::*;
+```
+
+## Usage
+
+```rust
+let calendar = Calendar::new("month");
+calendar.root_part(div().flex_col())
+```
+
+## Anatomy
+
+- `Calendar::root_part`
+- `Calendar::week_part`
+- `Calendar::day_part`
+
+## Key props
+
+| Prop | Purpose |
+| --- | --- |
+| `value` | Controlled value. The precise value type follows this component’s contract. |
+| `default_value` | Initial value when the component owns its state. |
+| `min` | Minimum accepted value. |
+| `max` | Maximum accepted value. |
+| `first_weekday` | First weekday column, where Monday is 0 and Sunday is 6. |
+| `on_value_change` | Reports the value accepted by the core. |

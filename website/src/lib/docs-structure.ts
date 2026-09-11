@@ -2,7 +2,7 @@ import GithubSlugger from 'github-slugger'
 import type { Locale } from '../i18n'
 import type { DocsOutlineItem, DocsSlug } from './docs'
 
-// Shared guide order and sections keep both language frontends navigable in the
+// Shared guide order and sections keep every language frontend navigable in the
 // same way. Their MDX bodies contain the frontend-specific APIs and examples.
 export const DOCS_GUIDE_ORDER = [
   'getting-started',

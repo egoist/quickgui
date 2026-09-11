@@ -1,0 +1,34 @@
+显示已知范围内的标量测量值，并带有语义化的低值、高值和最佳区间。
+
+## 导入
+
+从 `quickgui` 导入 `meter`。
+
+```rust
+use quickgui::*;
+```
+
+## 用法
+
+```rust
+meter(70.0, 0.0, 100.0).w(240.0).h(8.0)
+```
+
+## 结构
+
+- `meter::root_part`
+- `meter::track_part`
+- `meter::indicator_part`
+- `meter::label_part`
+- `meter::value_part`
+
+## 主要属性
+
+| 属性 | 说明 |
+| --- | --- |
+| `value` | 受控值，具体类型取决于该组件的约定。 |
+| `min` | 可接受的最小值。 |
+| `max` | 可接受的最大值。 |
+| `low` | 仪表低值区间的上界。 |
+| `high` | 仪表高值区间的下界。 |
+| `optimum` | 仪表值的理想点或区间。 |

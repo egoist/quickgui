@@ -1,0 +1,37 @@
+Shows passive help after an exact core-owned delay and supports provider-level warm-up behavior.
+
+## Import
+
+Import `Tooltip` from `quickgui`.
+
+```rust
+use quickgui::*;
+```
+
+## Usage
+
+```rust
+let tooltip = Tooltip::new("hint");
+tooltip.trigger_part(button().child("Save"))
+```
+
+## Anatomy
+
+- `Tooltip::provider_part`
+- `Tooltip::root_part`
+- `Tooltip::trigger_part`
+- `Tooltip::portal_part`
+- `Tooltip::positioner_part`
+- `Tooltip::popup_part`
+- `Tooltip::arrow_part`
+
+## Key props
+
+| Prop | Purpose |
+| --- | --- |
+| `open` | Controlled open state. |
+| `default_open` | Initial state when the component owns whether it is open. |
+| `delay` | Core-owned delay in milliseconds before opening. |
+| `close_delay` | Core-owned delay in milliseconds before closing. |
+| `side` | Preferred placement side before collision handling. |
+| `hoverable` | Allows the pointer to cross into the tooltip without closing it. |

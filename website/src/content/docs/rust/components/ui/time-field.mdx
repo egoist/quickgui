@@ -1,0 +1,31 @@
+A segmented, keyboard-editable time field with hour, minute, second, and period parts.
+
+## Import
+
+Import `TimeField` from `quickgui`.
+
+```rust
+use quickgui::*;
+```
+
+## Usage
+
+```rust
+let field = TimeField::new("alarm");
+field.root_part(div().flex_row())
+```
+
+## Anatomy
+
+- `TimeField::root_part`
+- `TimeField::segment_part`
+
+## Key props
+
+| Prop | Purpose |
+| --- | --- |
+| `value` | Controlled value. The precise value type follows this component’s contract. |
+| `default_value` | Initial value when the component owns its state. |
+| `hour12` | Adds an AM/PM segment and uses a twelve-hour clock. |
+| `show_seconds` | Mounts a seconds segment. |
+| `on_value_change` | Reports the value accepted by the core. |

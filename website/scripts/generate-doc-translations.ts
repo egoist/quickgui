@@ -186,6 +186,10 @@ const translations: Record<
     zh: '打开前由核心管理的延迟（毫秒）。',
     ja: '開くまでの、コアが管理する遅延時間（ミリ秒）です。',
   },
+  'Cursor color or color accessor.': {
+    zh: '光标颜色或颜色访问器。',
+    ja: 'カーソル色または色のアクセサー。',
+  },
   'Declared logical height.': {
     zh: '声明的逻辑高度。',
     ja: '宣言された論理高さです。',
@@ -225,6 +229,10 @@ const translations: Record<
   'Enables multiline text editing.': {
     zh: '启用多行文本编辑。',
     ja: '複数行テキスト編集を有効にします。',
+  },
+  'Enables native font thickening.': {
+    zh: '启用原生字体加粗处理。',
+    ja: 'ネイティブのフォント増厚を有効にします。',
   },
   'Environment entries added to the terminal process.': {
     zh: '添加到终端进程的环境变量。',
@@ -329,6 +337,10 @@ const translations: Record<
   'Maximum accepted value.': {
     zh: '可接受的最大值。',
     ja: '受け入れる最大値です。',
+  },
+  'Maximum retained scrollback lines.': {
+    zh: '保留的最大回滚行数。',
+    ja: '保持するスクロールバックの最大行数。',
   },
   'Minimum accepted value.': {
     zh: '可接受的最小值。',
@@ -510,6 +522,10 @@ const translations: Record<
     zh: '选择触发验证的交互边界。',
     ja: '検証を開始するインタラクション境界を選びます。',
   },
+  'Sixteen ANSI colors (`terminal.Palette`) or an accessor. Updates preserve the PTY.': {
+    zh: '16 色 ANSI 调色板（`terminal.Palette`）或访问器，更新时保留 PTY。',
+    ja: '16 色の ANSI パレット（`terminal.Palette`）またはアクセサー。更新しても PTY は維持されます。',
+  },
   'SF Symbols name displayed with a SwiftUI button label.': {
     zh: '与 SwiftUI 按钮标签一起显示的 SF Symbols 名称。',
     ja: 'SwiftUI Button のラベルとともに表示する SF Symbols 名です。',
@@ -542,6 +558,10 @@ const translations: Record<
     zh: '仪表低值区间的上界。',
     ja: 'Meter の低い範囲の上限です。',
   },
+  'Use `"extend"` to paint padding with terminal edge backgrounds.': {
+    zh: '使用 `"extend"` 将终端边缘背景延伸到内边距。',
+    ja: '`"extend"` で端の背景色を余白まで延長します。',
+  },
   'Uses incremental Markdown reconciliation for appended content.': {
     zh: '对追加内容使用增量 Markdown 协调。',
     ja: '追記された内容に Markdown の差分更新を使います。',
@@ -569,8 +589,9 @@ const translations: Record<
 }
 
 const websiteRoot = resolve(import.meta.dir, '..')
-const componentRoot = resolve(websiteRoot, 'src/content/docs/go/components')
 const locales = ['zh', 'ja'] as const
+// Go component locales are hand-tuned. This generator writes Rust locales from English Rust MDX.
+const frontends = ['rust'] as const
 
 function translateSource(
   source: string,
@@ -625,26 +646,29 @@ function translateSource(
 }
 
 let written = 0
-for (const locale of locales) {
-  const descriptions = componentDescriptionTranslations(locale)
-  for (const component of ALL_COMPONENT_DOCS) {
-    const key = `${component.kind}/${component.slug}`
-    const description = descriptions[key]
-    if (!description) throw new Error(`Missing ${locale} description: ${key}`)
+for (const frontend of frontends) {
+  const componentRoot = resolve(websiteRoot, `src/content/docs/${frontend}/components`)
+  for (const locale of locales) {
+    const descriptions = componentDescriptionTranslations(locale)
+    for (const component of ALL_COMPONENT_DOCS) {
+      const key = `${component.kind}/${component.slug}`
+      const description = descriptions[key]
+      if (!description) throw new Error(`Missing ${locale} description: ${key}`)
 
-    const family = component.kind === 'swift-ui' ? 'swift-ui' : 'ui'
-    const sourcePath = resolve(componentRoot, family, `${component.slug}.mdx`)
-    const destination = resolve(
-      componentRoot,
-      locale,
-      family,
-      `${component.slug}.mdx`,
-    )
-    const source = await readFile(sourcePath, 'utf8')
-    const translated = translateSource(source, locale, description)
-    await mkdir(resolve(componentRoot, locale, family), { recursive: true })
-    await writeFile(destination, translated)
-    written += 1
+      const family = component.kind === 'swift-ui' ? 'swift-ui' : 'ui'
+      const sourcePath = resolve(componentRoot, family, `${component.slug}.mdx`)
+      const destination = resolve(
+        componentRoot,
+        locale,
+        family,
+        `${component.slug}.mdx`,
+      )
+      const source = await readFile(sourcePath, 'utf8')
+      const translated = translateSource(source, locale, description)
+      await mkdir(resolve(componentRoot, locale, family), { recursive: true })
+      await writeFile(destination, translated)
+      written += 1
+    }
   }
 }
 

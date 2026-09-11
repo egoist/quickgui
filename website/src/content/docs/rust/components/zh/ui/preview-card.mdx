@@ -1,0 +1,36 @@
+在触发器旁显示更丰富的悬停或聚焦预览，不改变当前页面。
+
+## 导入
+
+从 `quickgui` 导入 `PreviewCard`。
+
+```rust
+use quickgui::*;
+```
+
+## 用法
+
+```rust
+let card = PreviewCard::new("file", &state);
+card.trigger_part(text("README.md"))
+```
+
+## 结构
+
+- `PreviewCard::root_part`
+- `PreviewCard::trigger_part`
+- `PreviewCard::portal_part`
+- `PreviewCard::backdrop_part`
+- `PreviewCard::positioner_part`
+- `PreviewCard::popup_part`
+- `PreviewCard::arrow_part`
+
+## 主要属性
+
+| 属性 | 说明 |
+| --- | --- |
+| `open` | 受控的打开状态。 |
+| `default_open` | 组件自行管理打开状态时的初始状态。 |
+| `delay` | 打开前由核心管理的延迟（毫秒）。 |
+| `close_delay` | 关闭前由核心管理的延迟（毫秒）。 |
+| `placement` | 碰撞处理前的首选放置方向。 |

@@ -1,0 +1,25 @@
+SwiftUI 階層の中へ通常の QuickGUI サブツリーをリバースホストします。
+
+## インポート
+
+`quickgui` から `SwiftUiQuickGuiHost` をインポートします。
+
+```rust
+use quickgui::*;
+```
+
+## 使い方
+
+```rust
+SwiftUiQuickGuiHost::pending(1)
+```
+
+## 主なプロパティ
+
+| プロパティ | 説明 |
+| --- | --- |
+| `width` | 宣言された論理幅です。 |
+| `height` | 宣言された論理高さです。 |
+| `match_contents` | ホストしたサブツリー固有の幅、高さ、またはその両方を使います。 |
+| `background` | リバースホストした QuickGUI WGPU サーフェスのクリアカラーです。 |
+| `child` | コンポーネント内にマウントする内容です。 |

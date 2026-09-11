@@ -1,0 +1,32 @@
+开关控件，根节点作为轨道，滑块可独立设置样式。
+
+## 导入
+
+从 `quickgui` 导入 `Switch`。
+
+```rust
+use quickgui::*;
+```
+
+## 用法
+
+```rust
+let control = Switch::new(enabled);
+control
+    .root_part(div().w(40.0).h(24.0).rounded(12.0).on_click(toggle))
+    .child(control.thumb_part(div().size(18.0, 18.0).rounded(9.0)))
+```
+
+## 结构
+
+- `Switch::root_part`
+- `Switch::thumb_part`
+
+## 主要属性
+
+| 属性 | 说明 |
+| --- | --- |
+| `checked` | 受控的选中状态。 |
+| `default_checked` | 组件自行管理状态时的初始选中状态。 |
+| `on_click` | 报告核心接受的选中状态。 |
+| `disabled` | 禁止交互，并暴露禁用状态。 |

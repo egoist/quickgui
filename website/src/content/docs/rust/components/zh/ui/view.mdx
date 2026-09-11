@@ -1,0 +1,27 @@
+用于布局、绘制、指针输入和无障碍支持的通用保留式容器。
+
+## 导入
+
+从 `quickgui` 导入 `div`。
+
+```rust
+use quickgui::*;
+```
+
+## 用法
+
+```rust
+div()
+    .p(20.0)
+    .gap(12.0)
+    .child(text("Hello from Rust"))
+    .child(button().on_click(continue_clicked).child("Continue"))
+```
+
+## 主要属性
+
+| 属性 | 说明 |
+| --- | --- |
+| `child` | 挂载在组件内部的内容。 |
+| `on_click` | 在核心完成激活判定后运行。 |
+| `ref` | 接收保留式原生节点。 |

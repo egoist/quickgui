@@ -1,0 +1,31 @@
+A virtualized hierarchical collection with expansion, selection, and keyboard navigation.
+
+## Import
+
+Import `Tree` from `quickgui`.
+
+```rust
+use quickgui::*;
+```
+
+## Usage
+
+```rust
+TreeState::new(nodes)
+    .element("files")
+```
+
+## Anatomy
+
+- `Tree::root_part`
+- `Tree::row_part`
+
+## Key props
+
+| Prop | Purpose |
+| --- | --- |
+| `nodes` | Bounded hierarchical node declarations for the tree. |
+| `expanded` | Controlled expanded tree node identifiers. |
+| `value` | Controlled value. The precise value type follows this component’s contract. |
+| `on_expanded_change` | Reports the ordered node identifiers expanded by the core. |
+| `on_value_change` | Reports the value accepted by the core. |

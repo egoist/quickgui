@@ -1,0 +1,38 @@
+Presents timed, stacked notifications with action, close, and swipe behavior.
+
+## Import
+
+Import `Toast` from `quickgui`.
+
+```rust
+use quickgui::*;
+```
+
+## Usage
+
+```rust
+toast_viewport("toasts").child(text("Saved"))
+```
+
+## Anatomy
+
+- `Toast::provider_part`
+- `Toast::portal_part`
+- `Toast::viewport_part`
+- `Toast::positioner_part`
+- `Toast::root_part`
+- `Toast::content_part`
+- `Toast::title_part`
+- `Toast::description_part`
+- `Toast::action_part`
+- `Toast::close_part`
+
+## Key props
+
+| Prop | Purpose |
+| --- | --- |
+| `toasts` | Complete declared toast queue rendered by the viewport. |
+| `toast_id` | Stable queue identifier associated with one rendered toast. |
+| `timeout` | Inherited auto-dismiss duration or warm-provider timeout. |
+| `swipe_direction` | Edge toward which a swipe dismisses or moves the surface. |
+| `on_dismiss` | Reports toast identifiers dismissed by the core. |

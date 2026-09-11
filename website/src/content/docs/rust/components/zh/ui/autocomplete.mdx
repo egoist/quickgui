@@ -1,0 +1,51 @@
+筛选自由输入文本的建议项，无需选中某个值。
+
+## 导入
+
+从 `quickgui` 导入 `Autocomplete`。
+
+```rust
+use quickgui::*;
+```
+
+## 用法
+
+```rust
+let mut state = AutocompleteState::new(items);
+state.set_query("qui");
+div().child(text(state.query()))
+```
+
+## 结构
+
+- `Autocomplete::root_part`
+- `Autocomplete::input_part`
+- `Autocomplete::option_part`
+- `Autocomplete::label_part`
+- `Autocomplete::value_part`
+- `Autocomplete::icon_part`
+- `Autocomplete::input_group_part`
+- `Autocomplete::clear_part`
+- `Autocomplete::portal_part`
+- `Autocomplete::positioner_part`
+- `Autocomplete::popup_part`
+- `Autocomplete::arrow_part`
+- `Autocomplete::status_part`
+- `Autocomplete::empty_part`
+- `Autocomplete::list_part`
+- `Autocomplete::item_part`
+- `Autocomplete::item_indicator_part`
+- `Autocomplete::group_part`
+- `Autocomplete::group_label_part`
+- `Autocomplete::collection_part`
+- `Autocomplete::separator_part`
+
+## 主要属性
+
+| 属性 | 说明 |
+| --- | --- |
+| `items` | 用于选项或键盘导航的有限声明模型。 |
+| `input_value` | Combobox 或 Autocomplete 使用的可编辑查询文本。 |
+| `filter_mode` | 由核心管理的包含、前缀、模糊或禁用筛选模式。 |
+| `on_input_value_change` | 报告核心保留的可编辑查询文本。 |
+| `on_commit` | 报告一次明确的提交边界及最终值详情。 |

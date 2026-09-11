@@ -1,0 +1,25 @@
+The NSHostingView-backed leaf that mounts one SwiftUI component tree inside QuickGUI.
+
+## Import
+
+Import `MacSwiftUiHost` from `quickgui`.
+
+```rust
+use quickgui::*;
+```
+
+## Usage
+
+```rust
+let mut host = MacSwiftUiHost::new(|_id| {})?;
+host.sync(&[SwiftUiButton::new(1).label("Continue").into()])?;
+native_view(host.view())
+```
+
+## Key props
+
+| Prop | Purpose |
+| --- | --- |
+| `match_contents` | Uses the hosted subtree’s intrinsic width, height, or both. |
+| `style` | QuickGUI layout, paint, typography, and interaction-state styles. |
+| `child` | Content mounted inside the component. |

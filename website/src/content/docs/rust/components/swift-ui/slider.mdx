@@ -1,0 +1,29 @@
+A controlled native slider with continuous or stepped values.
+
+## Import
+
+Import `SwiftUiSlider` from `quickgui`.
+
+```rust
+use quickgui::*;
+```
+
+## Usage
+
+```rust
+SwiftUiSlider::new(1, volume)
+    .range(0.0, 100.0)
+    .step(1.0)
+    .label("Volume")
+```
+
+## Key props
+
+| Prop | Purpose |
+| --- | --- |
+| `value` | Controlled value. The precise value type follows this component’s contract. |
+| `min` | Minimum accepted value. |
+| `max` | Maximum accepted value. |
+| `step` | Increment used by keyboard, pointer, or native control input. |
+| `label` | Visible native SwiftUI control label. |
+| `on_value_change` | Reports the value accepted by the core. |

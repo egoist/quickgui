@@ -1,0 +1,28 @@
+原生 SwiftUI 按钮，支持文本、SF Symbol、语义角色和按下处理。
+
+## 导入
+
+从 `quickgui` 导入 `SwiftUiButton`。
+
+```rust
+use quickgui::*;
+```
+
+## 用法
+
+```rust
+SwiftUiButton::new(1)
+    .label("Save")
+    .system_image("checkmark")
+    .style(SwiftUiButtonStyle::BorderedProminent)
+```
+
+## 主要属性
+
+| 属性 | 说明 |
+| --- | --- |
+| `label` | 原生 SwiftUI 控件的可见标签。 |
+| `system_image` | 与 SwiftUI 按钮标签一起显示的 SF Symbols 名称。 |
+| `role` | SwiftUI 语义角色：`default`、`cancel` 或 `destructive`。 |
+| `action` | 原生 SwiftUI 按钮激活时运行。 |
+| `modifiers` | 应用于托管控件的有序 SwiftUI View 修饰器。 |

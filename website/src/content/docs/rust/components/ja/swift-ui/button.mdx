@@ -1,0 +1,28 @@
+テキスト、SF Symbol、セマンティックロール、押下処理に対応したネイティブ SwiftUI Button です。
+
+## インポート
+
+`quickgui` から `SwiftUiButton` をインポートします。
+
+```rust
+use quickgui::*;
+```
+
+## 使い方
+
+```rust
+SwiftUiButton::new(1)
+    .label("Save")
+    .system_image("checkmark")
+    .style(SwiftUiButtonStyle::BorderedProminent)
+```
+
+## 主なプロパティ
+
+| プロパティ | 説明 |
+| --- | --- |
+| `label` | ネイティブ SwiftUI コントロールに表示するラベルです。 |
+| `system_image` | SwiftUI Button のラベルとともに表示する SF Symbols 名です。 |
+| `role` | SwiftUI のセマンティックロールです：`default`、`cancel`、`destructive`。 |
+| `action` | ネイティブ SwiftUI Button がアクティブになったときに実行します。 |
+| `modifiers` | ホストしたコントロールへ順番に適用する SwiftUI View モディファイアです。 |

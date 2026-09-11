@@ -1,0 +1,58 @@
+編集可能なテキスト、絞り込み、任意のチップ、ネイティブの候補表示を組み合わせます。
+
+## インポート
+
+`quickgui` から `Combobox` をインポートします。
+
+```rust
+use quickgui::*;
+```
+
+## 使い方
+
+```rust
+let mut state = ComboboxState::new(items);
+state.set_query("pro");
+div().child(text_input(state.query()))
+```
+
+## 構成
+
+- `Combobox::root_part`
+- `Combobox::input_part`
+- `Combobox::option_part`
+- `Combobox::label_part`
+- `Combobox::value_part`
+- `Combobox::icon_part`
+- `Combobox::input_group_part`
+- `Combobox::clear_part`
+- `Combobox::trigger_part`
+- `Combobox::chips_part`
+- `Combobox::chip_part`
+- `Combobox::chip_remove_part`
+- `Combobox::backdrop_part`
+- `Combobox::portal_part`
+- `Combobox::positioner_part`
+- `Combobox::popup_part`
+- `Combobox::arrow_part`
+- `Combobox::status_part`
+- `Combobox::empty_part`
+- `Combobox::list_part`
+- `Combobox::row_part`
+- `Combobox::item_part`
+- `Combobox::item_indicator_part`
+- `Combobox::group_part`
+- `Combobox::group_label_part`
+- `Combobox::collection_part`
+- `Combobox::separator_part`
+
+## 主なプロパティ
+
+| プロパティ | 説明 |
+| --- | --- |
+| `items` | 選択肢やキーボードナビゲーションに使う、上限付きの宣言モデルです。 |
+| `value` | 制御値です。具体的な型は、このコンポーネントの規約に従います。 |
+| `input_value` | Combobox または Autocomplete が使う、編集可能な検索テキストです。 |
+| `multiple` | 複数の値を選択または開けるようにします。 |
+| `filter_mode` | コアが管理する、部分一致、前方一致、あいまい一致、または無効の絞り込みです。 |
+| `on_value_change` | コアが受け入れた値を通知します。 |

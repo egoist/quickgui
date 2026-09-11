@@ -1,0 +1,24 @@
+制御されたネイティブ SwiftUI オン／オフスイッチです。
+
+## インポート
+
+`quickgui` から `SwiftUiToggle` をインポートします。
+
+```rust
+use quickgui::*;
+```
+
+## 使い方
+
+```rust
+SwiftUiToggle::new(1, enabled).label("Notifications")
+```
+
+## 主なプロパティ
+
+| プロパティ | 説明 |
+| --- | --- |
+| `is_on` | 制御された SwiftUI Toggle の値です。 |
+| `label` | ネイティブ SwiftUI コントロールに表示するラベルです。 |
+| `on_value_change` | ネイティブ SwiftUI Toggle が受け入れた値を通知します。 |
+| `modifiers` | ホストしたコントロールへ順番に適用する SwiftUI View モディファイアです。 |

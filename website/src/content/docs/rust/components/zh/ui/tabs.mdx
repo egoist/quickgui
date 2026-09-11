@@ -1,0 +1,34 @@
+在带标签的面板之间切换，支持自动或手动键盘激活。
+
+## 导入
+
+从 `quickgui` 导入 `Tabs`。
+
+```rust
+use quickgui::*;
+```
+
+## 用法
+
+```rust
+let tabs = Tabs::new("settings", "general");
+tabs.root_part(div().flex_col()).child(tabs.list_part(div().flex_row()))
+```
+
+## 结构
+
+- `Tabs::root_part`
+- `Tabs::list_part`
+- `Tabs::tab_part`
+- `Tabs::indicator_part`
+- `Tabs::panel_part`
+
+## 主要属性
+
+| 属性 | 说明 |
+| --- | --- |
+| `value` | 受控值，具体类型取决于该组件的约定。 |
+| `default_value` | 组件自行管理状态时的初始值。 |
+| `on_value_change` | 报告核心接受的值。 |
+| `orientation` | 水平或垂直布局，以及对应的键盘方向。 |
+| `activation` | 焦点或明确按下操作是否会激活标签页。 |

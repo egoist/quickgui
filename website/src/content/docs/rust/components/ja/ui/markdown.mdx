@@ -1,0 +1,23 @@
+保持型の Markdown を描画し、ストリーミング内容向けの差分更新にも対応します。
+
+## インポート
+
+`quickgui` から `Markdown` をインポートします。
+
+```rust
+use quickgui::*;
+```
+
+## 使い方
+
+```rust
+let mut markdown = Markdown::with_text("Build **native** interfaces.");
+markdown.element("note").w(290.0)
+```
+
+## 主なプロパティ
+
+| プロパティ | 説明 |
+| --- | --- |
+| `value` | 組版・描画する Markdown ソースです。 |
+| `streaming` | 追記された内容に Markdown の差分更新を使います。 |

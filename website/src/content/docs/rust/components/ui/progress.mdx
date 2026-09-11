@@ -1,0 +1,33 @@
+Represents determinate or indeterminate task progress with composable labels and track.
+
+## Import
+
+Import `progress` from `quickgui`.
+
+```rust
+use quickgui::*;
+```
+
+## Usage
+
+```rust
+progress(0.4, 1.0).w(240.0).h(8.0).rounded(4.0)
+```
+
+## Anatomy
+
+- `progress::root_part`
+- `progress::track_part`
+- `progress::indicator_part`
+- `progress::label_part`
+- `progress::value_part`
+
+## Key props
+
+| Prop | Purpose |
+| --- | --- |
+| `value` | Controlled value. The precise value type follows this component’s contract. |
+| `max` | Maximum accepted value. |
+| `indeterminate` | Represents progress whose completed amount is unknown. |
+| `value_text` | Human-readable value preferred by assistive technology. |
+| `on_status_change` | Reports the derived status, formatted value, and completion ratio. |

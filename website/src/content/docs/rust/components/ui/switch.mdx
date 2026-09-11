@@ -1,0 +1,32 @@
+An on/off control with a root track and independently styled thumb.
+
+## Import
+
+Import `Switch` from `quickgui`.
+
+```rust
+use quickgui::*;
+```
+
+## Usage
+
+```rust
+let control = Switch::new(enabled);
+control
+    .root_part(div().w(40.0).h(24.0).rounded(12.0).on_click(toggle))
+    .child(control.thumb_part(div().size(18.0, 18.0).rounded(9.0)))
+```
+
+## Anatomy
+
+- `Switch::root_part`
+- `Switch::thumb_part`
+
+## Key props
+
+| Prop | Purpose |
+| --- | --- |
+| `checked` | Controlled checked state. |
+| `default_checked` | Initial checked state when the component owns it. |
+| `on_click` | Reports the checked state accepted by the core. |
+| `disabled` | Prevents interaction and exposes the disabled state. |

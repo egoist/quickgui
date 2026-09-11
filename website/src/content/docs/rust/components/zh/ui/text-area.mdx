@@ -1,0 +1,25 @@
+多行文本编辑基础组件，受控值约定与 Input 相同。
+
+## 导入
+
+从 `quickgui` 导入 `text_area`。
+
+```rust
+use quickgui::*;
+```
+
+## 用法
+
+```rust
+text_area(notes.as_str())
+    .placeholder("Notes")
+    .on_input(edit)
+```
+
+## 主要属性
+
+| 属性 | 说明 |
+| --- | --- |
+| `value` | 受控值，具体类型取决于该组件的约定。 |
+| `placeholder` | 可编辑值为空时显示的文本。 |
+| `on_input` | 报告原生编辑输入。 |

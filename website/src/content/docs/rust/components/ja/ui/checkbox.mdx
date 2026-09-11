@@ -1,0 +1,34 @@
+独立してスタイルできるインジケーターを持つ、二値または不定状態の選択コントロールです。
+
+## インポート
+
+`quickgui` から `Checkbox` をインポートします。
+
+```rust
+use quickgui::*;
+```
+
+## 使い方
+
+```rust
+let checkbox = Checkbox::new(checked);
+checkbox
+    .root_part(div().flex_row().items_center().gap(8.0).on_click(toggle))
+    .child(checkbox.indicator_part(div().size(16.0, 16.0).rounded(4.0)))
+    .child(text("Remember me"))
+```
+
+## 構成
+
+- `Checkbox::root_part`
+- `Checkbox::indicator_part`
+
+## 主なプロパティ
+
+| プロパティ | 説明 |
+| --- | --- |
+| `checked` | 制御されたチェック状態です。 |
+| `default_checked` | コンポーネント自身が状態を管理するときの初期チェック状態です。 |
+| `on_click` | コアが受け入れたチェック状態を通知します。 |
+| `read_only` | 値の変更を防ぎつつ、コントロールはフォーカス可能なままにします。 |
+| `disabled` | 操作を無効にし、無効状態を公開します。 |

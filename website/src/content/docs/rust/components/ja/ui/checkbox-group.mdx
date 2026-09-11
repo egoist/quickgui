@@ -1,0 +1,30 @@
+有限個のチェックボックス値をまとめ、必要に応じて親チェックボックスの状態も導出します。
+
+## インポート
+
+`quickgui` から `CheckboxGroup` をインポートします。
+
+```rust
+use quickgui::*;
+```
+
+## 使い方
+
+```rust
+let group = CheckboxGroup::new("colors", &state);
+group.root_part(div().flex_col().gap(8.0))
+```
+
+## 構成
+
+- `CheckboxGroup::root_part`
+
+## 主なプロパティ
+
+| プロパティ | 説明 |
+| --- | --- |
+| `all_values` | 親チェックボックスの状態導出に使う、完全で順序付きの値集合です。 |
+| `value` | 制御値です。具体的な型は、このコンポーネントの規約に従います。 |
+| `default_value` | コンポーネント自身が状態を管理するときの初期値です。 |
+| `on_value_change` | コアが受け入れた値を通知します。 |
+| `disabled` | 操作を無効にし、無効状態を公開します。 |

@@ -1,0 +1,24 @@
+A determinate or indeterminate native SwiftUI progress indicator.
+
+## Import
+
+Import `SwiftUiProgressView` from `quickgui`.
+
+```rust
+use quickgui::*;
+```
+
+## Usage
+
+```rust
+SwiftUiProgressView::new(1, 0.4, 1.0).label("Downloading")
+```
+
+## Key props
+
+| Prop | Purpose |
+| --- | --- |
+| `value` | Controlled value. The precise value type follows this component’s contract. |
+| `total` | Denominator for determinate SwiftUI progress. |
+| `label` | Visible native SwiftUI control label. |
+| `current_value_label` | Readable label for the current native progress or gauge value. |

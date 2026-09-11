@@ -1,0 +1,32 @@
+ポインターとキーボードで操作できるハンドルを備えた、サイズ変更可能なペインを作ります。
+
+## インポート
+
+`quickgui` から `Splitter` をインポートします。
+
+```rust
+use quickgui::*;
+```
+
+## 使い方
+
+```rust
+let splitter = Splitter::new("workspace", &state);
+splitter.root_part(div().flex_row())
+```
+
+## 構成
+
+- `Splitter::root_part`
+- `Splitter::pane_part`
+- `Splitter::handle_part`
+
+## 主なプロパティ
+
+| プロパティ | 説明 |
+| --- | --- |
+| `value` | 制御値です。具体的な型は、このコンポーネントの規約に従います。 |
+| `default_value` | コンポーネント自身が状態を管理するときの初期値です。 |
+| `panes` | ペインごとの最小サイズと折りたたみ宣言です。 |
+| `orientation` | 水平または垂直のレイアウトと、それに対応するキーボード方向です。 |
+| `on_sizes_change` | コアによるサイズ変更後、完全なペインサイズ集合を通知します。 |

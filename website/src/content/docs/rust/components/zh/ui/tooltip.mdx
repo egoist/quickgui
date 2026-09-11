@@ -1,0 +1,37 @@
+在核心精确控制的延迟后显示辅助信息，并支持 Provider 级预热。
+
+## 导入
+
+从 `quickgui` 导入 `Tooltip`。
+
+```rust
+use quickgui::*;
+```
+
+## 用法
+
+```rust
+let tooltip = Tooltip::new("hint");
+tooltip.trigger_part(button().child("Save"))
+```
+
+## 结构
+
+- `Tooltip::provider_part`
+- `Tooltip::root_part`
+- `Tooltip::trigger_part`
+- `Tooltip::portal_part`
+- `Tooltip::positioner_part`
+- `Tooltip::popup_part`
+- `Tooltip::arrow_part`
+
+## 主要属性
+
+| 属性 | 说明 |
+| --- | --- |
+| `open` | 受控的打开状态。 |
+| `default_open` | 组件自行管理打开状态时的初始状态。 |
+| `delay` | 打开前由核心管理的延迟（毫秒）。 |
+| `close_delay` | 关闭前由核心管理的延迟（毫秒）。 |
+| `side` | 碰撞处理前的首选放置方向。 |
+| `hoverable` | 允许指针移入 Tooltip 而不会将其关闭。 |

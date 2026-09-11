@@ -1,0 +1,42 @@
+方向付きアニメーション、ビューポート、ポップアップの各パーツを備えた開閉式ナビゲーションです。
+
+## インポート
+
+`quickgui` から `NavigationMenu` をインポートします。
+
+```rust
+use quickgui::*;
+```
+
+## 使い方
+
+```rust
+let menu = NavigationMenu::new("docs", &state, &items);
+menu.root_part(div().flex_row())
+```
+
+## 構成
+
+- `NavigationMenu::root_part`
+- `NavigationMenu::list_part`
+- `NavigationMenu::item_part`
+- `NavigationMenu::trigger_part`
+- `NavigationMenu::icon_part`
+- `NavigationMenu::content_part`
+- `NavigationMenu::link_part`
+- `NavigationMenu::portal_part`
+- `NavigationMenu::positioner_part`
+- `NavigationMenu::popup_part`
+- `NavigationMenu::viewport_part`
+- `NavigationMenu::arrow_part`
+- `NavigationMenu::backdrop_part`
+
+## 主なプロパティ
+
+| プロパティ | 説明 |
+| --- | --- |
+| `value` | 制御値です。具体的な型は、このコンポーネントの規約に従います。 |
+| `default_value` | コンポーネント自身が状態を管理するときの初期値です。 |
+| `on_value_change` | コアが受け入れた値を通知します。 |
+| `orientation` | 水平または垂直のレイアウトと、それに対応するキーボード方向です。 |
+| `delay` | 開くまでの、コアが管理する遅延時間（ミリ秒）です。 |

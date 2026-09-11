@@ -1,0 +1,32 @@
+创建可调整大小的面板，分隔手柄支持指针和键盘操作。
+
+## 导入
+
+从 `quickgui` 导入 `Splitter`。
+
+```rust
+use quickgui::*;
+```
+
+## 用法
+
+```rust
+let splitter = Splitter::new("workspace", &state);
+splitter.root_part(div().flex_row())
+```
+
+## 结构
+
+- `Splitter::root_part`
+- `Splitter::pane_part`
+- `Splitter::handle_part`
+
+## 主要属性
+
+| 属性 | 说明 |
+| --- | --- |
+| `value` | 受控值，具体类型取决于该组件的约定。 |
+| `default_value` | 组件自行管理状态时的初始值。 |
+| `panes` | 每个面板的最小尺寸和折叠声明。 |
+| `orientation` | 水平或垂直布局，以及对应的键盘方向。 |
+| `on_sizes_change` | 在核心调整大小后报告完整的面板尺寸集合。 |

@@ -1,0 +1,48 @@
+可完全组合的菜单，支持子菜单、分组、链接、复选项和单选项。
+
+## 导入
+
+从 `quickgui` 导入 `PopoverMenu`。
+
+```rust
+use quickgui::*;
+```
+
+## 用法
+
+```rust
+let menu = PopoverMenu::new("actions", &state);
+menu.root_part(div()).child(menu.trigger_part(button().child("Actions")))
+```
+
+## 结构
+
+- `PopoverMenu::root_part`
+- `PopoverMenu::trigger_part`
+- `PopoverMenu::portal_part`
+- `PopoverMenu::backdrop_part`
+- `PopoverMenu::positioner_part`
+- `PopoverMenu::popup_part`
+- `PopoverMenu::arrow_part`
+- `PopoverMenu::item_part`
+- `PopoverMenu::link_item_part`
+- `PopoverMenu::submenu_root_part`
+- `PopoverMenu::submenu_trigger_part`
+- `PopoverMenu::group_part`
+- `PopoverMenu::group_label_part`
+- `PopoverMenu::radio_group_part`
+- `PopoverMenu::radio_item_part`
+- `PopoverMenu::radio_item_indicator_part`
+- `PopoverMenu::checkbox_item_part`
+- `PopoverMenu::checkbox_item_indicator_part`
+- `PopoverMenu::separator_part`
+
+## 主要属性
+
+| 属性 | 说明 |
+| --- | --- |
+| `open` | 受控的打开状态。 |
+| `default_open` | 组件自行管理打开状态时的初始状态。 |
+| `on_open_change` | 报告核心做出的打开或关闭决定。 |
+| `orientation` | 水平或垂直布局，以及对应的键盘方向。 |
+| `loop_focus` | 到达当前菜单层级末端时循环键盘高亮。 |

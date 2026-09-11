@@ -1,0 +1,29 @@
+A native segmented picker with value-selection and neutral Xcode-style tab roles.
+
+## Import
+
+Import `SwiftUiPicker` from `quickgui`.
+
+```rust
+use quickgui::*;
+```
+
+## Usage
+
+```rust
+SwiftUiPicker::segmented(
+    1,
+    "code",
+    [SwiftUiPickerOption::new("code", "Code"), SwiftUiPickerOption::new("preview", "Preview")],
+)
+```
+
+## Key props
+
+| Prop | Purpose |
+| --- | --- |
+| `selection` | Controlled selection for a table, native picker, or color control. |
+| `options` | Ordered native picker options. |
+| `label` | Visible native SwiftUI control label. |
+| `role` | Accessibility role exposed by the retained node. |
+| `on_value_change` | Reports the selected native picker option or color. |

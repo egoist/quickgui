@@ -1,0 +1,27 @@
+レイアウト、描画、ポインター入力、アクセシビリティに使える汎用の保持型コンテナです。
+
+## インポート
+
+`quickgui` から `div` をインポートします。
+
+```rust
+use quickgui::*;
+```
+
+## 使い方
+
+```rust
+div()
+    .p(20.0)
+    .gap(12.0)
+    .child(text("Hello from Rust"))
+    .child(button().on_click(continue_clicked).child("Continue"))
+```
+
+## 主なプロパティ
+
+| プロパティ | 説明 |
+| --- | --- |
+| `child` | コンポーネント内にマウントする内容です。 |
+| `on_click` | コアがアクティブ化を解決した後に実行します。 |
+| `ref` | 保持されたネイティブノードを受け取ります。 |

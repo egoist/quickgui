@@ -75,31 +75,35 @@ describe('frontend documentation routes', () => {
   })
 })
 
-test('Go and TypeScript share guide order, localized sections, and sidebar structure', () => {
-  const go = docsPages('go')
-  const typescript = docsPages('typescript')
-  expect(go.map((page) => page.slug)).toEqual(DOCS_GUIDE_ORDER)
-  expect(typescript.map((page) => page.slug)).toEqual(DOCS_GUIDE_ORDER)
+test('Go, TypeScript, and Rust share guide order, localized sections, and sidebar structure', () => {
+  const pages = Object.fromEntries(DOCS_FRONTENDS.map((frontend) => [frontend, docsPages(frontend)]))
+  for (const frontend of DOCS_FRONTENDS) {
+    expect(pages[frontend].map((page) => page.slug)).toEqual(DOCS_GUIDE_ORDER)
+  }
   for (const locale of SUPPORTED_LOCALES) {
-    for (let index = 0; index < go.length; index++) {
-      expect(localizedDocsPage(go[index], locale).title).toBe(
-        localizedDocsPage(typescript[index], locale).title,
-      )
-      expect(localizedDocsPage(go[index], locale).outline).toEqual(
-        localizedDocsPage(typescript[index], locale).outline,
-      )
-      expect(switchDocsFrontend(docsPath('go', go[index].slug), 'typescript')).toBe(
-        docsPath('typescript', go[index].slug),
-      )
+    for (let index = 0; index < pages.go.length; index++) {
+      for (const frontend of DOCS_FRONTENDS) {
+        expect(localizedDocsPage(pages.go[index], locale).title).toBe(
+          localizedDocsPage(pages[frontend][index], locale).title,
+        )
+        expect(localizedDocsPage(pages.go[index], locale).outline).toEqual(
+          localizedDocsPage(pages[frontend][index], locale).outline,
+        )
+        expect(switchDocsFrontend(docsPath('go', pages.go[index].slug), frontend)).toBe(
+          docsPath(frontend, pages[frontend][index].slug),
+        )
+      }
     }
-    const structure = (frontend: 'go' | 'typescript') =>
+    const structure = (frontend: (typeof DOCS_FRONTENDS)[number]) =>
       docsNavGroups(locale, frontend).map((group) => ({
         id: group.id,
         title: group.title,
         titles: group.items.map((item) => item.title),
         paths: group.items.map((item) => item.path.replace(`/docs/${frontend}`, '')),
       }))
-    expect(structure('go')).toEqual(structure('typescript'))
+    for (const frontend of DOCS_FRONTENDS) {
+      expect(structure('go')).toEqual(structure(frontend))
+    }
   }
 })
 
@@ -195,28 +199,33 @@ test('all internal MDX links use valid frontend routes', async () => {
   }
 })
 
-test('every Go component has a localized TypeScript reference and keeps its route when switching', async () => {
+test('every Go component has a localized TypeScript and Rust reference and keeps its route when switching', async () => {
   for (const component of ALL_COMPONENT_DOCS) {
-    const path = componentDocsPath(component, 'typescript')
-    expect(switchDocsFrontend(componentDocsPath(component), 'typescript')).toBe(path)
-    expect(switchDocsFrontend(path, 'go')).toBe(componentDocsPath(component))
-    let example = ''
-    for (const locale of SUPPORTED_LOCALES) {
-      const file = resolve(
-        root,
-        'src/content/docs/typescript/components',
-        locale === 'en' ? '' : locale,
-        component.kind,
-        `${component.slug}.mdx`,
-      )
-      const content = await readFile(file, 'utf8')
-      expect(content).not.toContain('```go')
-      const code = [...content.matchAll(/```tsx\n([\s\S]*?)```/g)]
-        .map((match) => match[1])
-        .join('\n')
-      expect(code.trim().length).toBeGreaterThan(0)
-      if (locale === 'en') example = code
-      else expect(code).toBe(example)
+    for (const frontend of ['typescript', 'rust'] as const) {
+      const path = componentDocsPath(component, frontend)
+      expect(switchDocsFrontend(componentDocsPath(component), frontend)).toBe(path)
+      expect(switchDocsFrontend(path, 'go')).toBe(componentDocsPath(component))
+      const fence = frontend === 'typescript' ? 'tsx' : 'rust'
+      let example = ''
+      for (const locale of SUPPORTED_LOCALES) {
+        const file = resolve(
+          root,
+          'src/content/docs',
+          frontend,
+          'components',
+          locale === 'en' ? '' : locale,
+          component.kind,
+          `${component.slug}.mdx`,
+        )
+        const content = await readFile(file, 'utf8')
+        expect(content).not.toContain('```go')
+        const code = [...content.matchAll(new RegExp('```' + fence + '\\n([\\s\\S]*?)```', 'g'))]
+          .map((match) => match[1])
+          .join('\n')
+        expect(code.trim().length).toBeGreaterThan(0)
+        if (locale === 'en') example = code
+        else expect(code).toBe(example)
+      }
     }
   }
 })

@@ -1,0 +1,34 @@
+スクロール可能なビューポートと、呼び出し側でスタイルできるスクロールバー、つまみ、コーナーを組み合わせます。
+
+## インポート
+
+`quickgui` から `ScrollArea` をインポートします。
+
+```rust
+use quickgui::*;
+```
+
+## 使い方
+
+```rust
+let area = ScrollArea::new("log");
+area.viewport_part(div().h(160.0).overflow_hidden())
+```
+
+## 構成
+
+- `ScrollArea::root_part`
+- `ScrollArea::viewport_part`
+- `ScrollArea::content_part`
+- `ScrollArea::scrollbar_part`
+- `ScrollArea::thumb_part`
+- `ScrollArea::corner_part`
+
+## 主なプロパティ
+
+| プロパティ | 説明 |
+| --- | --- |
+| `viewport_size` | 宣言されたスクロールビューポートの範囲です。 |
+| `content_size` | 宣言されたスクロール内容の範囲です。 |
+| `overflow_edge_threshold` | その端にいるとみなす最大距離です。 |
+| `on_scroll_state_change` | 制限適用後のオフセットと、そこから得たオーバーフロー状態を通知します。 |

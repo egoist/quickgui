@@ -1,0 +1,35 @@
+Coordinates one or more expandable sections and their keyboard focus.
+
+## Import
+
+Import `Accordion` from `quickgui`.
+
+```rust
+use quickgui::*;
+```
+
+## Usage
+
+```rust
+let accordion = Accordion::new("faq");
+let item = accordion.item("one", 0, true);
+item.root_part(div()).child(item.trigger_part(text("Details")))
+```
+
+## Anatomy
+
+- `Accordion::root_part`
+- `Accordion::item_part`
+- `Accordion::header_part`
+- `Accordion::trigger_part`
+- `Accordion::panel_part`
+
+## Key props
+
+| Prop | Purpose |
+| --- | --- |
+| `value` | Controlled value. The precise value type follows this component’s contract. |
+| `default_value` | Initial value when the component owns its state. |
+| `on_value_change` | Reports the value accepted by the core. |
+| `multiple` | Allows more than one value to be selected or opened. |
+| `keep_mounted` | Keeps inactive content mounted with display disabled. |

@@ -1,0 +1,50 @@
+ネイティブのポップオーバーに選択肢を表示する、単一または複数選択のピッカーです。
+
+## インポート
+
+`quickgui` から `Select` をインポートします。
+
+```rust
+use quickgui::*;
+```
+
+## 使い方
+
+```rust
+let mut state = SelectState::new(items);
+state.open(true);
+div().child(text(state.selected_label().unwrap_or("Choose")))
+```
+
+## 構成
+
+- `Select::root_part`
+- `Select::trigger_part`
+- `Select::option_part`
+- `Select::label_part`
+- `Select::value_part`
+- `Select::icon_part`
+- `Select::backdrop_part`
+- `Select::portal_part`
+- `Select::positioner_part`
+- `Select::popup_part`
+- `Select::arrow_part`
+- `Select::list_part`
+- `Select::item_part`
+- `Select::item_text_part`
+- `Select::item_indicator_part`
+- `Select::group_part`
+- `Select::group_label_part`
+- `Select::separator_part`
+- `Select::scroll_up_arrow_part`
+- `Select::scroll_down_arrow_part`
+
+## 主なプロパティ
+
+| プロパティ | 説明 |
+| --- | --- |
+| `items` | 選択肢やキーボードナビゲーションに使う、上限付きの宣言モデルです。 |
+| `value` | 制御値です。具体的な型は、このコンポーネントの規約に従います。 |
+| `default_value` | コンポーネント自身が状態を管理するときの初期値です。 |
+| `multiple` | 複数の値を選択または開けるようにします。 |
+| `on_value_change` | コアが受け入れた値を通知します。 |

@@ -1,0 +1,24 @@
+原生 SwiftUI 颜色选择器，返回 CSS 风格的 RGBA 颜色字符串。
+
+## 导入
+
+从 `quickgui` 导入 `SwiftUiColorPicker`。
+
+```rust
+use quickgui::*;
+```
+
+## 用法
+
+```rust
+SwiftUiColorPicker::new(1, "#2563eb").label("Accent")
+```
+
+## 主要属性
+
+| 属性 | 说明 |
+| --- | --- |
+| `selection` | 表格、原生选择器或颜色控件的受控选中值。 |
+| `label` | 原生 SwiftUI 控件的可见标签。 |
+| `supports_opacity` | 允许在原生颜色面板中选择 Alpha 值。 |
+| `on_value_change` | 报告选中的原生选择器选项或颜色。 |

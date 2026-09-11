@@ -1,0 +1,29 @@
+Rust 指南正文目前以英文提供，组件 API 参考包含中文说明。
+
+Text controls are controlled: pass the current value into `text_input` / `text_area` and write edits from `on_input`.
+
+## 文本输入
+
+```rust
+text_input(self.name.as_str())
+    .placeholder("Name")
+    .on_input(edit)
+text_area(self.notes.as_str())
+    .on_input(edit_notes)
+```
+
+## 字段
+
+`Field` and `Fieldset` declare accessible relationships among labels, descriptions, controls, and errors. Validation mode and debounce deadlines live on `FieldState`.
+
+## 选项
+
+Compose `Checkbox`, `CheckboxGroup`, `RadioGroup`, `Radio`, and `Switch` with their indicators and labels. Store checked values on the view and update them from listeners.
+
+## 选择器
+
+`SelectState`, `ComboboxState`, and `AutocompleteState` declare options ahead of native filtering and keyboard navigation. Keep option values stable.
+
+## 事件
+
+Input listeners receive the next text. Pointer, key, gesture, drop, and submit handlers are registered on `ViewContext`. Use declared listeners so the core knows which events the view observes.

@@ -1,0 +1,31 @@
+展開、選択、キーボードナビゲーションに対応した仮想化階層コレクションです。
+
+## インポート
+
+`quickgui` から `Tree` をインポートします。
+
+```rust
+use quickgui::*;
+```
+
+## 使い方
+
+```rust
+TreeState::new(nodes)
+    .element("files")
+```
+
+## 構成
+
+- `Tree::root_part`
+- `Tree::row_part`
+
+## 主なプロパティ
+
+| プロパティ | 説明 |
+| --- | --- |
+| `nodes` | Tree の上限付き階層ノード宣言です。 |
+| `expanded` | 制御された展開済み Tree ノード ID です。 |
+| `value` | 制御値です。具体的な型は、このコンポーネントの規約に従います。 |
+| `on_expanded_change` | コアが展開した順序付きノード ID を通知します。 |
+| `on_value_change` | コアが受け入れた値を通知します。 |

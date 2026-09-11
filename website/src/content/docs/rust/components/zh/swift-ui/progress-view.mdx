@@ -1,0 +1,24 @@
+确定或不确定的原生 SwiftUI 进度指示器。
+
+## 导入
+
+从 `quickgui` 导入 `SwiftUiProgressView`。
+
+```rust
+use quickgui::*;
+```
+
+## 用法
+
+```rust
+SwiftUiProgressView::new(1, 0.4, 1.0).label("Downloading")
+```
+
+## 主要属性
+
+| 属性 | 说明 |
+| --- | --- |
+| `value` | 受控值，具体类型取决于该组件的约定。 |
+| `total` | SwiftUI 确定进度的分母。 |
+| `label` | 原生 SwiftUI 控件的可见标签。 |
+| `current_value_label` | 当前原生进度或仪表值的易读标签。 |

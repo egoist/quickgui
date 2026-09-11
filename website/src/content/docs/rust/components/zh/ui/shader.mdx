@@ -1,0 +1,28 @@
+使用有限数量的数值着色器参数绘制经过验证的 WGSL。
+
+## 导入
+
+从 `quickgui` 导入 `CustomShader`。
+
+```rust
+use quickgui::*;
+```
+
+## 用法
+
+```rust
+custom_shader(
+    CustomShader::new(
+        "fn quickgui_fragment(input: QuickGuiShaderInput) -> vec4<f32> { return vec4<f32>(input.uv.x, 0.3, input.uv.y, 1.0); }",
+    )
+    .expect("shader"),
+)
+.size(260.0, 150.0)
+```
+
+## 主要属性
+
+| 属性 | 说明 |
+| --- | --- |
+| `value` | 组件所需的文件系统路径、数据 URL、SVG 文档或着色器源码。 |
+| `shader_parameters` | 最多 16 个数值，打包到固定的着色器参数向量中。 |

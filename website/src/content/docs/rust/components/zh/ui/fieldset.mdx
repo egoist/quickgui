@@ -1,0 +1,32 @@
+在同一个图例和共享语义状态下组织相关字段。
+
+## 导入
+
+从 `quickgui` 导入 `Fieldset`。
+
+```rust
+use quickgui::*;
+```
+
+## 用法
+
+```rust
+Fieldset::new()
+    .root_part(div().flex_col().gap(12.0))
+    .child(text("Account"))
+```
+
+## 结构
+
+- `Fieldset::root_part`
+- `Fieldset::legend_part`
+- `Fieldset::description_part`
+- `Fieldset::control_part`
+
+## 主要属性
+
+| 属性 | 说明 |
+| --- | --- |
+| `disabled` | 禁止交互，并暴露禁用状态。 |
+| `child` | 挂载在组件内部的内容。 |
+| `style` | QuickGUI 的布局、绘制、排版和交互状态样式。 |

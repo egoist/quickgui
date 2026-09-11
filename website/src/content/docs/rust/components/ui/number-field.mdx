@@ -1,0 +1,37 @@
+A numeric editor with increment, decrement, and drag-to-scrub parts.
+
+## Import
+
+Import `NumberField` from `quickgui`.
+
+```rust
+use quickgui::*;
+```
+
+## Usage
+
+```rust
+let field = NumberField::new("amount", &state);
+field.root_part(div()).child(field.input_part(text_input(state.text())))
+```
+
+## Anatomy
+
+- `NumberField::root_part`
+- `NumberField::group_part`
+- `NumberField::input_part`
+- `NumberField::increment_part`
+- `NumberField::decrement_part`
+- `NumberField::scrub_area_part`
+- `NumberField::scrub_area_cursor_part`
+
+## Key props
+
+| Prop | Purpose |
+| --- | --- |
+| `value` | Controlled value. The precise value type follows this component’s contract. |
+| `default_value` | Initial value when the component owns its state. |
+| `min` | Minimum accepted value. |
+| `max` | Maximum accepted value. |
+| `step` | Increment used by keyboard, pointer, or native control input. |
+| `on_value_change` | Reports the value accepted by the core. |

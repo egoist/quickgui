@@ -1,0 +1,24 @@
+受控的原生 SwiftUI 文本字段，提供编辑和提交回调。
+
+## 导入
+
+从 `quickgui` 导入 `SwiftUiTextField`。
+
+```rust
+use quickgui::*;
+```
+
+## 用法
+
+```rust
+SwiftUiTextField::new(1, name).placeholder("Name")
+```
+
+## 主要属性
+
+| 属性 | 说明 |
+| --- | --- |
+| `value` | 受控值，具体类型取决于该组件的约定。 |
+| `placeholder` | 可编辑值为空时显示的文本。 |
+| `on_value_change` | 报告核心接受的值。 |
+| `on_submit` | 原生字段提交当前值时运行。 |

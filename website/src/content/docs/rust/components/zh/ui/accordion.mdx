@@ -1,0 +1,35 @@
+管理一个或多个可展开区域及其键盘焦点。
+
+## 导入
+
+从 `quickgui` 导入 `Accordion`。
+
+```rust
+use quickgui::*;
+```
+
+## 用法
+
+```rust
+let accordion = Accordion::new("faq");
+let item = accordion.item("one", 0, true);
+item.root_part(div()).child(item.trigger_part(text("Details")))
+```
+
+## 结构
+
+- `Accordion::root_part`
+- `Accordion::item_part`
+- `Accordion::header_part`
+- `Accordion::trigger_part`
+- `Accordion::panel_part`
+
+## 主要属性
+
+| 属性 | 说明 |
+| --- | --- |
+| `value` | 受控值，具体类型取决于该组件的约定。 |
+| `default_value` | 组件自行管理状态时的初始值。 |
+| `on_value_change` | 报告核心接受的值。 |
+| `multiple` | 允许选择或打开多个值。 |
+| `keep_mounted` | 保持非活动内容已挂载，但禁用其显示。 |

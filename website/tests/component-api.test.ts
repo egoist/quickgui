@@ -11,7 +11,7 @@ const root = resolve(import.meta.dir, "../..");
 test("each frontend reference uses real declarations, examples, and source targets", () => {
   const sourceLengths = new Map<string, number>();
   for (const component of ALL_COMPONENT_DOCS)
-    for (const frontend of ["go", "typescript"] as const) {
+    for (const frontend of DOCS_FRONTENDS) {
       const api = getComponentApi(frontend, component.kind, component.slug);
       expect(api.example.length).toBeGreaterThan(0);
       expect(api.sections.length).toBeGreaterThan(0);
@@ -86,6 +86,7 @@ test("every preview uses the selected frontend's documented example and syntax h
   }
   expect(getDemoSource("go", "button")!.code).toContain("ui.Button(");
   expect(getDemoSource("typescript", "button")!.code).toContain("<Button");
+  expect(getDemoSource("rust", "button")!.code).toContain("button()");
   for (const frontend of DOCS_FRONTENDS) {
     expect(getDemoSource(frontend, "terminal")).toBeUndefined();
     expect(getDemoSource(frontend, "missing")).toBeUndefined();

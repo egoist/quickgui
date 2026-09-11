@@ -1,0 +1,29 @@
+Presents a native SwiftUI popover from a composed SwiftUI trigger.
+
+## Import
+
+Import `SwiftUiPopover` from `quickgui`.
+
+```rust
+use quickgui::*;
+```
+
+## Usage
+
+```rust
+SwiftUiPopover::new(1)
+```
+
+## Anatomy
+
+- `SwiftUiPopover.trigger`
+- `SwiftUiPopover.content`
+
+## Key props
+
+| Prop | Purpose |
+| --- | --- |
+| `is_presented` | Controlled native SwiftUI popover presentation state. |
+| `on_is_presented_change` | Reports native SwiftUI popover presentation changes. |
+| `attachment_anchor` | Anchor point on the composed SwiftUI trigger. |
+| `arrow_edge` | Preferred edge for the native SwiftUI popover arrow. |

@@ -1,0 +1,31 @@
+ウィンドウ内の水平メニューバーとその項目を管理します。
+
+## インポート
+
+`quickgui` から `Menubar` をインポートします。
+
+```rust
+use quickgui::*;
+```
+
+## 使い方
+
+```rust
+let bar = Menubar::new("app");
+bar.root_part(div().flex_row())
+```
+
+## 構成
+
+- `Menubar::root_part`
+- `Menubar::item_part`
+
+## 主なプロパティ
+
+| プロパティ | 説明 |
+| --- | --- |
+| `count` | 宣言されたメニューバー項目の数です。 |
+| `open` | 制御された開閉状態です。 |
+| `default_open` | コンポーネント自身が開閉状態を管理するときの初期状態です。 |
+| `on_open_change` | コアが決定した開閉を通知します。 |
+| `on_active_change` | ロービングフォーカス状態を現在持つ項目を通知します。 |

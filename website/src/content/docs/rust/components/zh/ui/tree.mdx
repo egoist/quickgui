@@ -1,0 +1,31 @@
+虚拟化层级集合，支持展开、选择和键盘导航。
+
+## 导入
+
+从 `quickgui` 导入 `Tree`。
+
+```rust
+use quickgui::*;
+```
+
+## 用法
+
+```rust
+TreeState::new(nodes)
+    .element("files")
+```
+
+## 结构
+
+- `Tree::root_part`
+- `Tree::row_part`
+
+## 主要属性
+
+| 属性 | 说明 |
+| --- | --- |
+| `nodes` | 树使用的有限层级节点声明。 |
+| `expanded` | 受控的已展开树节点标识符。 |
+| `value` | 受控值，具体类型取决于该组件的约定。 |
+| `on_expanded_change` | 报告核心展开的有序节点标识符。 |
+| `on_value_change` | 报告核心接受的值。 |

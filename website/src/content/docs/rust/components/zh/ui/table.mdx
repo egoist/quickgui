@@ -1,0 +1,33 @@
+虚拟化表格集合，包含表头、行和单元格部件。
+
+## 导入
+
+从 `quickgui` 导入 `Table`。
+
+```rust
+use quickgui::*;
+```
+
+## 用法
+
+```rust
+TableState::new(rows, columns)
+    .element("issues")
+```
+
+## 结构
+
+- `Table::root_part`
+- `Table::header_part`
+- `Table::row_part`
+- `Table::cell_part`
+
+## 主要属性
+
+| 属性 | 说明 |
+| --- | --- |
+| `columns` | 虚拟表格的列声明。 |
+| `row_count` | 逻辑总行数。 |
+| `row_height` | 每个虚拟化行的逻辑高度。 |
+| `selection_mode` | 允许表格单选或多选。 |
+| `selection` | 表格、原生选择器或颜色控件的受控选中值。 |

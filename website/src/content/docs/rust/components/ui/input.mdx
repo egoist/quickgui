@@ -1,0 +1,26 @@
+A controlled, core-owned text editor with native keyboard and text services.
+
+## Import
+
+Import `text_input` from `quickgui`.
+
+```rust
+use quickgui::*;
+```
+
+## Usage
+
+```rust
+text_input(name.as_str())
+    .placeholder("Name")
+    .on_input(edit)
+```
+
+## Key props
+
+| Prop | Purpose |
+| --- | --- |
+| `value` | Controlled value. The precise value type follows this component’s contract. |
+| `placeholder` | Text shown while the editable value is empty. |
+| `multiline` | Enables multiline text editing. |
+| `on_input` | Reports native editing input. |

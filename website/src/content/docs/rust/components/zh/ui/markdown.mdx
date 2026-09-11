@@ -1,0 +1,23 @@
+以保留模式渲染 Markdown，并支持用于流式内容的增量模式。
+
+## 导入
+
+从 `quickgui` 导入 `Markdown`。
+
+```rust
+use quickgui::*;
+```
+
+## 用法
+
+```rust
+let mut markdown = Markdown::with_text("Build **native** interfaces.");
+markdown.element("note").w(290.0)
+```
+
+## 主要属性
+
+| 属性 | 说明 |
+| --- | --- |
+| `value` | 用于排版和绘制的 Markdown 源文本。 |
+| `streaming` | 对追加内容使用增量 Markdown 协调。 |
