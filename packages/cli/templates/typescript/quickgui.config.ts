@@ -1,7 +1,7 @@
 import { defineConfig } from "@quickgui/cli";
 
 export default defineConfig({
-  frontend: "typescript",
+  language: "typescript",
   name: {{APP_NAME}},
   identifier: {{IDENTIFIER}},
   entry: "app.tsx",

@@ -1,4 +1,4 @@
-# Go frontend
+# Go applications
 
 QuickGUI applications are ordinary Go programs. `purego` loads the prebuilt Rust shared library in the same process, with `CGO_ENABLED=0`. The Rust core owns layout, rendering, accessibility, native controls, windows, and platform services. Go owns application state and the fine-grained reactive graph. The TypeScript CLI handles development and packaging.
 
@@ -163,7 +163,7 @@ Components, signals, event callbacks, and CPU-only native router calls run on on
 
 `native.Dispatch(func() { … })` queues a background result onto the UI goroutine. `ui.Async(work, done)` runs a context-aware worker and dispatches its completion, canceling it when its component is disposed. `ui.OnCleanup` releases component resources. Native dialogs and services use asynchronous callbacks: none synchronously waits for the native main thread.
 
-Go and Rust exchange bounded binary mutation batches and copied event data through an in-process C ABI. No application host process or frontend IPC is involved. Clean windows sleep; property deduplication and batched effects avoid redundant native mutations. App-specific background jobs can still consume CPU.
+Go and Rust exchange bounded binary mutation batches and copied event data through an in-process C ABI. No application host process or IPC bridge is involved. Clean windows sleep; property deduplication and batched effects avoid redundant native mutations. App-specific background jobs can still consume CPU.
 
 ## Packages and controls
 

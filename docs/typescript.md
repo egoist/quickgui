@@ -1,11 +1,11 @@
 # TypeScript with Bun and Solid 2
 
-The TypeScript frontend uses Bun, Solid 2, and the same Rust renderer as Go. Bun calls the shared library through `bun:ffi` in the same process. JSX produces retained native nodes without a DOM or WebView.
+The TypeScript language uses Bun, Solid 2, and the same Rust renderer as Go. Bun calls the shared library through `bun:ffi` in the same process. JSX produces retained native nodes without a DOM or WebView.
 
 ## Start a project
 
 ```sh
-quickgui init my-app --frontend typescript
+quickgui init my-app --language typescript
 cd my-app
 bun run dev
 ```
@@ -16,7 +16,7 @@ In this source checkout, run `bun install` and `bun run build:native` once, then
 bun packages/cli/src/cli.ts dev --project examples/counter-typescript
 ```
 
-Use Bun 1.4 or later. Solid, `@solidjs/compiler`, and `@solidjs/universal` are pinned to `2.0.0-rc.7`. Solid 2 is a release candidate, and Bun labels its FFI API experimental. The frontend targets the repository's macOS workflow; Windows/Linux native runtime acceptance remains outstanding.
+Use Bun 1.4 or later. Solid, `@solidjs/compiler`, and `@solidjs/universal` are pinned to `2.0.0-rc.7`. Solid 2 is a release candidate, and Bun labels its FFI API experimental. TypeScript targets the repository's macOS workflow; Windows/Linux native runtime acceptance remains outstanding.
 
 ## Components and windows
 
@@ -47,7 +47,7 @@ openWindow();
 
 Components construct once. Solid tracks JSX expressions and updates affected native properties or child edges. Use Solid 2's `Show`, `For`, signals, effects, and cleanup APIs. Each window has an independent Solid root, disposed when the native window closes. The Dock handler creates a fresh window after the last window closes on macOS.
 
-The frontend exposes the complete native component families:
+The TypeScript binding exposes the complete native component families:
 
 - Primitives: `View`, `Text`, `Button`, `Input`/`TextInput`, `TextArea`, `Markdown`, `Image`, `Svg`, `Shader`, `VirtualList`, and optional `Terminal`.
 - Forms: `Field`, `Fieldset`, `Checkbox`, `CheckboxGroup`, `Radio`, `RadioGroup`, `Switch`, `NumberField`, `OtpField`, `Select`, `Combobox`, and `Autocomplete`.
@@ -95,7 +95,7 @@ The [Quick Git example](../examples/quick-git-typescript/README.md) includes cha
 
 ## Build and check
 
-Set `frontend: "typescript"` in `quickgui.config.ts`, or `frontend = "typescript"` in TOML. The default entry is `app.tsx`. Use `jsx: "preserve"` and `jsxImportSource: "@quickgui/solid"` in TypeScript configuration, as in the scaffold.
+Set `language: "typescript"` in `quickgui.config.ts`, or `language = "typescript"` in TOML. The previous `frontend` name remains accepted as an alias. The default entry is `app.tsx`. Use `jsx: "preserve"` and `jsxImportSource: "@quickgui/solid"` in TypeScript configuration, as in the scaffold.
 
 ```sh
 bun run check

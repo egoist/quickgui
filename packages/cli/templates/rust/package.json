@@ -1,0 +1,16 @@
+{
+  "name": {{PACKAGE_NAME}},
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "quickgui dev",
+    "build": "quickgui build",
+    "check": "quickgui check",
+    "test": "quickgui test",
+    "fmt": "quickgui fmt"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@quickgui/cli": "^0.1.3"
+  }
+}

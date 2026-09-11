@@ -876,9 +876,51 @@ impl Application {
         self
     }
 
+    /// Apply identity and bundled fonts written by `quickgui` packaging, when present.
+    #[cfg(not(target_arch = "wasm32"))]
+    pub(crate) fn apply_packaged_cli_metadata_from(&mut self, path: &Path) -> Result<(), AppError> {
+        let bytes = std::fs::read(path).map_err(|error| {
+            AppError::Platform(format!(
+                "could not read packaged QuickGUI metadata {}: {error}",
+                path.display()
+            ))
+        })?;
+        let metadata: PackagedCliMetadata = serde_json::from_slice(&bytes).map_err(|error| {
+            AppError::Platform(format!(
+                "invalid packaged QuickGUI metadata {}: {error}",
+                path.display()
+            ))
+        })?;
+        self.app_info = Some(
+            AppInfo::new(metadata.name, metadata.version, metadata.identifier)
+                .map_err(|error| AppError::Platform(error.to_string()))?,
+        );
+        let resource_dir = path.parent().unwrap_or_else(|| Path::new("."));
+        for relative in metadata.fonts {
+            let font_path = resource_dir.join(&relative);
+            let font = std::fs::read(&font_path).map_err(|error| {
+                AppError::Platform(format!(
+                    "could not read packaged font {}: {error}",
+                    font_path.display()
+                ))
+            })?;
+            self.fonts.push(FontSource::from(font));
+        }
+        Ok(())
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    fn apply_packaged_cli_metadata(&mut self) -> Result<(), AppError> {
+        let Some(path) = packaged_cli_metadata_path() else {
+            return Ok(());
+        };
+        self.apply_packaged_cli_metadata_from(&path)
+    }
+
     /// Convert this windowless application into an externally pumped native event loop.
     #[cfg(not(target_arch = "wasm32"))]
-    pub fn into_runner(self) -> Result<AppRunner, AppError> {
+    pub fn into_runner(mut self) -> Result<AppRunner, AppError> {
+        self.apply_packaged_cli_metadata()?;
         let event_loop = EventLoop::with_user_event().build()?;
         event_loop.set_control_flow(ControlFlow::Wait);
         let root_window = WindowHandle::next();
@@ -957,6 +999,71 @@ impl Application {
 impl Default for Application {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+#[derive(serde::Deserialize)]
+struct PackagedCliMetadata {
+    name: String,
+    version: String,
+    identifier: String,
+    #[serde(default)]
+    fonts: Vec<String>,
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn packaged_cli_metadata_path() -> Option<PathBuf> {
+    if let Some(path) = std::env::var_os("QUICKGUI_METADATA") {
+        return Some(PathBuf::from(path));
+    }
+    let executable = std::env::current_exe().ok()?;
+    let resource_dir = packaged_resource_dir(&executable);
+    let path = resource_dir.join("quickgui.json");
+    path.is_file().then_some(path)
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn packaged_resource_dir(executable: &Path) -> PathBuf {
+    let executable_dir = executable.parent().unwrap_or_else(|| Path::new("."));
+    #[cfg(target_os = "macos")]
+    if executable_dir
+        .file_name()
+        .is_some_and(|name| name == "MacOS")
+        && let Some(contents) = executable_dir.parent()
+        && contents.file_name().is_some_and(|name| name == "Contents")
+    {
+        return contents.join("Resources");
+    }
+    executable_dir.to_path_buf()
+}
+
+#[cfg(all(test, not(target_arch = "wasm32")))]
+mod packaged_cli_tests {
+    use super::*;
+
+    #[test]
+    fn packaged_cli_metadata_overrides_app_info() {
+        let unique = std::process::id();
+        let dir = std::env::temp_dir().join(format!("quickgui-cli-metadata-{unique}"));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("quickgui.json");
+        std::fs::create_dir_all(dir.join("fonts")).unwrap();
+        std::fs::write(dir.join("fonts/bundled.ttf"), b"font-bytes").unwrap();
+        std::fs::write(
+            &path,
+            r#"{"name":"Packaged","version":"2.0.0","identifier":"dev.quickgui.packaged","fonts":["fonts/bundled.ttf"]}"#,
+        )
+        .unwrap();
+        let mut application = Application::new()
+            .app_info(AppInfo::new("Original", "0.0.1", "dev.quickgui.original").unwrap());
+        application.apply_packaged_cli_metadata_from(&path).unwrap();
+        let info = application.app_info.as_ref().unwrap();
+        assert_eq!(info.name(), "Packaged");
+        assert_eq!(info.version(), "2.0.0");
+        assert_eq!(info.identifier(), "dev.quickgui.packaged");
+        assert_eq!(application.fonts.len(), 1);
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }
 

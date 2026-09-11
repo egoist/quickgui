@@ -41,7 +41,7 @@ test("the TypeScript updater guide loads real configuration and compiles the ext
     const config = await loadConfig(project).catch((error) => {
       throw error.cause ?? error;
     });
-    expect(config.frontend).toBe("typescript");
+    expect(config.language).toBe("typescript");
     expect(config.extensions).toEqual(["@quickgui/extension-updater"]);
     expect(typescriptExtensions(project, config.extensions)[0]?.package).toBe(
       "@quickgui/extension-updater",

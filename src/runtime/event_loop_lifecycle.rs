@@ -6,7 +6,12 @@ impl Runtime {
             return;
         }
 
+        let first_ready = !self.ready;
         self.ready = true;
+        if first_ready {
+            // Native Rust apps have no host C API; announce the same ready socket the CLI waits on.
+            notify_development_ready();
+        }
         event_loop.set_control_flow(ControlFlow::Wait);
         self.initialize_global_shortcuts();
         self.refresh_displays(event_loop);
@@ -35,5 +40,22 @@ impl Runtime {
         self.restore_native_tabbing_baseline(event_loop);
         self.pending_windows.clear();
         self.platform_requests.clear();
+    }
+}
+
+fn notify_development_ready() {
+    let Some(path) = std::env::var_os("QUICKGUI_READY_SOCKET") else {
+        return;
+    };
+    #[cfg(unix)]
+    {
+        use std::io::Write as _;
+        if let Ok(mut stream) = std::os::unix::net::UnixStream::connect(&path) {
+            let _ = stream.write_all(b"ready\n");
+        }
+    }
+    #[cfg(not(unix))]
+    {
+        let _ = &path;
     }
 }

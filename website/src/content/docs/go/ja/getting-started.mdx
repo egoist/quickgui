@@ -29,7 +29,7 @@ go mod edit -replace github.com/egoist/quickgui/go=../quickgui/go
 go mod tidy
 ```
 
-フロントエンドの選択プロンプトで **Go** を選択してください。生成された `quickgui.config.ts` で `defineConfig` のインポートを `../quickgui/packages/cli/src/index.ts` に変更し、ローカル CLI を使います。その後 QuickGUI チェックアウトから `bun packages/cli/src/cli.ts dev --project ../my-app` を実行します。`init` に `--frontend go` を渡すと、フロントエンドの選択を省略できます。
+言語の選択プロンプトで **Go** を選択してください。生成された `quickgui.config.ts` で `defineConfig` のインポートを `../quickgui/packages/cli/src/index.ts` に変更し、ローカル CLI を使います。その後 QuickGUI チェックアウトから `bun packages/cli/src/cli.ts dev --project ../my-app` を実行します。`init` に `--language go` を渡すと、言語の選択を省略できます。
 
 ## 最初のウィンドウ
 

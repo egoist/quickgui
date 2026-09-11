@@ -145,11 +145,31 @@ export interface MacAppStoreConfig {
   entitlements?: string;
 }
 
-export type Frontend = "go" | "typescript";
+export type Language = "go" | "rust" | "typescript";
+/** @deprecated Use {@link Language}. */
+export type Frontend = Language;
 
-export function parseFrontend(value: string): Frontend {
-  if (value === "go" || value === "typescript") return value;
-  throw new CliError(`Unknown frontend ${JSON.stringify(value)}; expected go or typescript`);
+export function parseLanguage(value: string): Language {
+  if (value === "go" || value === "rust" || value === "typescript") return value;
+  throw new CliError(
+    `Unknown language ${JSON.stringify(value)}; expected go, rust, or typescript`,
+  );
+}
+
+/** @deprecated Use {@link parseLanguage}. */
+export function parseFrontend(value: string): Language {
+  return parseLanguage(value);
+}
+
+export function languageLabel(language: Language): string {
+  switch (language) {
+    case "rust":
+      return "Rust";
+    case "typescript":
+      return "TypeScript";
+    default:
+      return "Go";
+  }
 }
 
 /** Application compilation and native shared-library options. */
@@ -162,7 +182,9 @@ export interface NativeConfig {
 
 export interface QuickGuiConfig {
   /** Application language. Existing projects default to Go. */
-  frontend?: Frontend;
+  language?: Language;
+  /** @deprecated Use {@link language}. Still accepted in existing projects. */
+  frontend?: Language;
   name: string;
   identifier: string;
   version?: string;
@@ -191,7 +213,7 @@ export interface QuickGuiConfig {
 }
 
 export interface ResolvedQuickGuiConfig {
-  frontend: Frontend;
+  language: Language;
   name: string;
   executableName: string;
   identifier: string;
@@ -267,10 +289,10 @@ export function resolveConfig(
   }
   const version = optionalString(input.version, "version", 64) ?? "0.1.0";
   const buildVersion = optionalString(input.buildVersion, "buildVersion", 64) ?? version;
-  const frontend = parseFrontend(optionalString(input.frontend, "frontend", 32) ?? "go");
+  const language = resolveLanguage(input);
   const entry = resolveRelative(
     projectRoot,
-    optionalString(input.entry, "entry", 1_024) ?? (frontend === "typescript" ? "app.tsx" : "."),
+    optionalString(input.entry, "entry", 1_024) ?? (language === "typescript" ? "app.tsx" : "."),
   );
   const outDir = resolveRelative(
     projectRoot,
@@ -294,10 +316,19 @@ export function resolveConfig(
   const native = objectOrEmpty(input.native, "native");
   if (native.extensions !== undefined)
     throw new CliError("Use top-level extensions instead of native.extensions");
-  if (frontend === "go" && input.extensions !== undefined)
+  if (language === "go" && input.extensions !== undefined)
     throw new CliError("extensions is for TypeScript; Go extensions are discovered from imports");
-  if (frontend === "typescript" && native.tags !== undefined)
+  if (language === "rust" && input.extensions !== undefined)
+    throw new CliError("extensions is for TypeScript; Rust enables crate features in Cargo.toml");
+  if (language === "typescript" && native.tags !== undefined)
     throw new CliError("native.tags contains Go build tags and is not supported by TypeScript");
+  if (language === "rust" && native.tags !== undefined)
+    throw new CliError("native.tags contains Go build tags; Rust uses Cargo features");
+  if (language === "rust" && native.libraryPath !== undefined) {
+    throw new CliError(
+      "native.libraryPath is for Go and TypeScript shared libraries; Rust links the quickgui crate",
+    );
+  }
   const linuxIcon = optionalString(linux.icon, "linux.icon", 1_024);
   const linuxMaintainer = optionalString(linux.maintainer, "linux.maintainer", 255);
   const linuxComment = optionalString(linux.comment, "linux.comment", 512);
@@ -310,7 +341,7 @@ export function resolveConfig(
   const windowsIcon = optionalString(windows.icon, "windows.icon", 1_024);
 
   return {
-    frontend,
+    language,
     name,
     executableName: executableName(name),
     identifier,
@@ -387,6 +418,15 @@ export function resolveConfig(
     projectRoot: resolve(projectRoot),
     configPath: resolve(configPath),
   };
+}
+
+function resolveLanguage(input: Record<string, unknown>): Language {
+  const language = optionalString(input.language, "language", 32);
+  const frontend = optionalString(input.frontend, "frontend", 32);
+  if (language && frontend && language !== frontend) {
+    throw new CliError("`language` and `frontend` must be the same value");
+  }
+  return parseLanguage(language ?? frontend ?? "go");
 }
 
 function resolveMacOSNotarization(

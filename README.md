@@ -27,7 +27,7 @@ The current focus is production-quality macOS behavior with low idle CPU and bou
 
 ## Go components
 
-The Go frontend loads the Rust shared library through purego in the same process. Builds use `CGO_ENABLED=0`; ordinary app edits only recompile Go. The TypeScript CLI handles development and packaging, with `quickgui.toml` or `quickgui.config.ts` configuration.
+The Go language binding loads the Rust shared library through purego in the same process. Builds use `CGO_ENABLED=0`; ordinary app edits only recompile Go. The TypeScript CLI handles development and packaging, with `quickgui.toml` or `quickgui.config.ts` configuration.
 
 ```go
 native.NewWindow(native.WindowOptions{
@@ -42,13 +42,17 @@ Components are ordinary `func()` declarations, the same as children blocks. Flue
 
 ## TypeScript with Bun and Solid 2
 
-The [TypeScript frontend](docs/typescript.md) uses Solid 2 JSX and `bun:ffi` with the same Rust shared library. Bun's main thread runs the native loop; a worker in the same process runs Solid and application I/O.
+The [TypeScript guide](docs/typescript.md) uses Solid 2 JSX and `bun:ffi` with the same Rust shared library. Bun's main thread runs the native loop; a worker in the same process runs Solid and application I/O.
 
 ```sh
 bun packages/cli/src/cli.ts dev --project examples/counter-typescript
 ```
 
-Create a project with `quickgui init my-app --frontend typescript`. The [counter example](examples/counter-typescript) includes reactive text, input, conditional content, and native window lifecycle handling.
+Create a project with `quickgui init my-app --language typescript`. The [counter example](examples/counter-typescript) includes reactive text, input, conditional content, and native window lifecycle handling.
+
+## Rust applications
+
+Rust apps call `Application::run` and link the `quickgui` crate. `quickgui init my-app --language rust` scaffolds a crate; `quickgui dev` and `quickgui build` run `cargo` and package the executable without `libquickgui_host`.
 
 ## View API
 

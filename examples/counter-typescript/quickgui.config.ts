@@ -1,7 +1,7 @@
 import { defineConfig } from "@quickgui/cli";
 
 export default defineConfig({
-  frontend: "typescript",
+  language: "typescript",
   name: "TypeScript Counter",
   identifier: "com.quickgui.counter.typescript",
   entry: "app.tsx",

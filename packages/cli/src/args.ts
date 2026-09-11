@@ -1,5 +1,5 @@
 import { CliError } from "./error.ts";
-import { parseFrontend, type Frontend } from "./config.ts";
+import { parseLanguage, type Language } from "./config.ts";
 import { parseExtensionType, type InitExtensionOptions } from "./init-extension.ts";
 import { parseTarget, type QuickGuiTarget } from "./targets.ts";
 
@@ -21,7 +21,7 @@ export type ParsedCliCommand =
   | ({ command: "init-extension" } & InitExtensionOptions)
   | {
       command: "init";
-      frontend?: Frontend;
+      language?: Language;
       directory: string;
       install: boolean;
       name?: string;
@@ -153,7 +153,8 @@ export function parseCliArgs(argv: string[]): ParsedCliCommand {
 
   if (command === "init") {
     const parsed = parseOptions(rest, {
-      "--frontend": { key: "frontend", value: true },
+      "--language": { key: "language", value: true },
+      "--frontend": { key: "language", value: true },
       "--name": { key: "name", value: true },
       "--identifier": { key: "identifier", value: true },
       "--no-install": { key: "noInstall", value: false },
@@ -161,10 +162,10 @@ export function parseCliArgs(argv: string[]): ParsedCliCommand {
     if (parsed.positionals.length > 1) throw new CliError("Usage: quickgui init [directory]");
     const name = stringOption(parsed, "name");
     const identifier = stringOption(parsed, "identifier");
-    const frontend = stringOption(parsed, "frontend");
+    const language = stringOption(parsed, "language");
     return {
       command: "init",
-      ...(frontend ? { frontend: parseFrontend(frontend) } : {}),
+      ...(language ? { language: parseLanguage(language) } : {}),
       directory: parsed.positionals[0] ?? "quickgui-app",
       install: !parsed.values.has("noInstall"),
       ...(name ? { name } : {}),

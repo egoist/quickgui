@@ -100,7 +100,7 @@ Implemented now:
 - element geometry on captured pointer events: `PointerEvent::size` carries the captured element's
   own laid-out size, so slider, splitter, and custom drag arithmetic uses the extent layout already
   decided instead of re-deriving it;
-- a Go frontend with `Component` functions, nested children blocks, typed styles, and fine-grained
+- a Go application language with `Component` functions, nested children blocks, typed styles, and fine-grained
   signals. Primitive and compound nodes declare protocol properties consumed by the Rust core;
   Go does not reimplement native control state, layout, or interaction policy. The SDK includes
   selection controls, tabs, menus, fields, ranges, overlays, virtual tables and trees, and macOS

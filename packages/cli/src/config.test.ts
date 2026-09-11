@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { loadConfig, parseFrontend, resolveConfig } from "./config.ts";
+import { loadConfig, parseLanguage, resolveConfig } from "./config.ts";
 import { parseCliArgs } from "./args.ts";
 import { shouldIgnoreChange } from "./dev.ts";
 import { errorMessage } from "./error.ts";
@@ -11,15 +11,31 @@ import { errorMessage } from "./error.ts";
 const roots: string[] = [];
 const minimal = 'name = "TOML App"\nidentifier = "com.example.toml"\n';
 
-test("only Go and TypeScript can be selected as application frontends", () => {
-  expect(parseFrontend("go")).toBe("go");
-  expect(parseFrontend("typescript")).toBe("typescript");
-  for (const frontend of ["zig", "moonbit"]) {
-    expect(() => parseFrontend(frontend)).toThrow("expected go or typescript");
-    expect(() => parseCliArgs(["init", "app", "--frontend", frontend])).toThrow(
-      "expected go or typescript",
+test("Go, Rust, and TypeScript can be selected as application languages", () => {
+  expect(parseLanguage("go")).toBe("go");
+  expect(parseLanguage("rust")).toBe("rust");
+  expect(parseLanguage("typescript")).toBe("typescript");
+  for (const language of ["zig", "moonbit"]) {
+    expect(() => parseLanguage(language)).toThrow("expected go, rust, or typescript");
+    expect(() => parseCliArgs(["init", "app", "--language", language])).toThrow(
+      "expected go, rust, or typescript",
     );
   }
+  expect(
+    resolveConfig({ name: "Demo", identifier: "com.example.demo", frontend: "typescript" }, "/p")
+      .language,
+  ).toBe("typescript");
+  expect(() =>
+    resolveConfig(
+      {
+        name: "Demo",
+        identifier: "com.example.demo",
+        language: "rust",
+        frontend: "go",
+      },
+      "/p",
+    ),
+  ).toThrow("must be the same value");
 });
 
 function project(): string {
@@ -112,14 +128,14 @@ test("TOML and TypeScript resolve top-level extension directories from the proje
   const extensions = ["vendor/my-service", join(root, "vendor/another-service")];
   writeFileSync(
     join(root, "quickgui.toml"),
-    minimal + `frontend = "typescript"\nextensions = ${JSON.stringify(extensions)}\n`,
+    minimal + `language = "typescript"\nextensions = ${JSON.stringify(extensions)}\n`,
   );
   writeFileSync(
     join(root, "quickgui.config.ts"),
     `export default ${JSON.stringify({
       name: "Zig App",
       identifier: "com.example.typescript",
-      frontend: "typescript",
+      language: "typescript",
       extensions,
     })}`,
   );
@@ -133,11 +149,11 @@ test("TOML and TypeScript resolve top-level extension directories from the proje
 });
 
 test("extensions validate at the top level and Go keeps import-based discovery", () => {
-  const input = { name: "Example", identifier: "com.example.app", frontend: "typescript" };
+  const input = { name: "Example", identifier: "com.example.app", language: "typescript" };
   expect(resolveConfig(input, "/project").extensions).toEqual([]);
   expect(() => resolveConfig({ ...input, extensions: "updater" }, "/project")).toThrow("extensions");
   expect(() => resolveConfig({ ...input, native: { extensions: ["updater"] } }, "/project")).toThrow("top-level extensions");
-  expect(() => resolveConfig({ ...input, frontend: "go", extensions: ["updater"] }, "/project")).toThrow("Go extensions are discovered from imports");
+  expect(() => resolveConfig({ ...input, language: "go", extensions: ["updater"] }, "/project")).toThrow("Go extensions are discovered from imports");
 });
 
 test("explicit relative and absolute TOML paths resolve resources from the project", async () => {

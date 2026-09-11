@@ -40,9 +40,9 @@ macOS bundles place core and extension images in `Contents/Frameworks`. Linux an
 
 ## Generic services
 
-`quickgui init-extension <directory> --type go|rust|zig` scaffolds reusable components (Go) or an independent native service (Rust, Zig). Native extensions export `quickgui_extension_v1` and do not depend on the renderer or a frontend runtime.
+`quickgui init-extension <directory> --type go|rust|zig` scaffolds reusable components (Go) or an independent native service (Rust, Zig). Native extensions export `quickgui_extension_v1` and do not depend on the renderer or an application-language runtime.
 
-The same service artifact works from both frontends. Go opts in through an imported manifest and `host.RequireExtension`; TypeScript lists extension packages or directories in `extensions` in `quickgui.toml`. Paths resolve from the app project, and the CLI reads `quickgui.extension.json` inside each directory. Both package the exact extension release before application startup. All scaffold build scripts are TypeScript run with Bun.
+The same service artifact works from Go and TypeScript applications. Go opts in through an imported manifest and `host.RequireExtension`; TypeScript lists extension packages or directories in `extensions` in `quickgui.toml`. Paths resolve from the app project, and the CLI reads `quickgui.extension.json` inside each directory. Both package the exact extension release before application startup. All scaffold build scripts are TypeScript run with Bun.
 
 Every request/reply/event extension uses `SERVICE_EXTENSION` (kind 2) and the same `ServiceApi`, keyed by its declared name. Registration copies metadata and function tables into a registry bounded to 32 extensions, rejects conflicting identities, and accepts identical repeated registration. Function pointers are copied out before invocation or shutdown, so foreign code never runs under the registry lock. `UPDATER_EXTENSION` remains an alias for binary/source compatibility.
 

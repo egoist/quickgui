@@ -1,6 +1,6 @@
 # Project CLI and application packaging
 
-`@quickgui/cli` supports Go and TypeScript applications and packages each with the matching Rust shared library. Go uses `CGO_ENABLED=0`. See the [TypeScript guide](typescript.md) for Bun and Solid 2 JSX, worker ownership, and checks.
+`@quickgui/cli` supports Go, TypeScript, and Rust applications. Go and TypeScript package the matching Rust shared library (`CGO_ENABLED=0` for Go). Rust apps compile the `quickgui` crate and do not load that library. See the [TypeScript guide](typescript.md) for Bun and Solid 2 JSX, worker ownership, and checks.
 
 ## Create a project
 
@@ -10,9 +10,9 @@ cd my-app
 bun run dev
 ```
 
-The CLI asks you to choose Go or TypeScript. Pass `--frontend go` or `--frontend typescript` to skip the prompt; an explicit frontend is required in non-interactive environments.
+The CLI asks you to choose Go, TypeScript, or Rust. Pass `--language go`, `--language typescript`, or `--language rust` to skip the prompt; an explicit language is required in non-interactive environments. `--frontend` is still accepted as an alias.
 
-The Go scaffold contains `main.go`, `go.mod`, `quickgui.config.ts`, and `package.json`. Pass your root component as `native.WindowOptions{Component: Counter}`. `native.Run` owns application startup. Initialization refuses to overwrite a non-empty directory; `--no-install` skips dependency installation and preparation.
+The Go scaffold contains `main.go`, `go.mod`, `quickgui.config.ts`, and `package.json`. Pass your root component as `native.WindowOptions{Component: Counter}`. `native.Run` owns application startup. The Rust scaffold contains `src/main.rs` and `Cargo.toml`; `Application::run` owns startup. Initialization refuses to overwrite a non-empty directory; `--no-install` skips dependency installation and preparation.
 
 ## Development
 
@@ -26,9 +26,9 @@ On macOS this creates an ad-hoc signed bundle under `.quickgui/dev/<target>/`. S
 
 Components and events run on a dedicated Go goroutine pinned to an OS thread. AppKit/Winit owns the process main thread. Background work dispatches its UI result with `native.Dispatch` or `ui.Async`.
 
-`quickgui fmt` formats Go files recursively using the project's SDK formatter. It wraps long and multiline QuickGUI calls, places callback arguments on separate lines, and then runs standard Go formatting. Use `quickgui fmt --check` to check without writing, or `--project path/to/app` to select a project. Generated files, hidden directories, `vendor`, and `node_modules` are skipped. The SDK must be present in the project's `go.mod`.
+`quickgui fmt` formats Go files recursively using the project's SDK formatter. It wraps long and multiline QuickGUI calls, places callback arguments on separate lines, and then runs standard Go formatting. TypeScript projects use the project's formatter; Rust projects use `rustfmt`. Use `quickgui fmt --check` to check without writing, or `--project path/to/app` to select a project. Generated files, hidden directories, `vendor`, `target`, and `node_modules` are skipped. The SDK must be present in a Go project's `go.mod`.
 
-From this repository, run `bun run build:native` once to stage the Rust library. Ordinary app edits only rebuild Go. A released `@quickgui/native` package supplies the library; consumers do not need Rust or a C compiler. Go 1.23+, Bun, and macOS Xcode Command Line Tools are required for development/packaging.
+From this repository, run `bun run build:native` once to stage the Rust library used by Go and TypeScript. Ordinary Go or TypeScript app edits only rebuild that language. Rust apps compile the crate on each change. A released `@quickgui/native` package supplies the shared library; Go and TypeScript consumers do not need a C compiler. Go 1.23+, a current stable Rust toolchain for Rust apps, Bun, and macOS Xcode Command Line Tools are required for development/packaging.
 
 ## Configuration
 
@@ -37,6 +37,7 @@ Both `quickgui.toml` and `quickgui.config.ts` are supported. `dev` and `build` l
 A `quickgui.toml` can contain:
 
 ```toml
+language = "go"
 name = "My App"
 identifier = "com.example.my-app"
 entry = "."
@@ -65,6 +66,7 @@ The equivalent TypeScript configuration is:
 import { defineConfig } from "@quickgui/cli";
 
 export default defineConfig({
+  language: "go",
   name: "My App",
   identifier: "com.example.my-app",
   entry: ".", // A Go main package, e.g. "cmd/app".
@@ -82,7 +84,7 @@ export default defineConfig({
 });
 ```
 
-`native.libraryPath` or `QUICKGUI_LIBRARY` selects a custom host library. Otherwise the CLI finds the matching asset in `@quickgui/native` or the repository build output. Rust and Go protocol versions must match. `native.tags` passes Go build tags. Application metadata and packaged font paths are injected at link time. There is no runtime TypeScript compiler, JSX lowering, or native-module code generator.
+`native.libraryPath` or `QUICKGUI_LIBRARY` selects a custom host library for Go and TypeScript. Otherwise the CLI finds the matching asset in `@quickgui/native` or the repository build output. Rust apps ignore that library and link the `quickgui` crate. `native.tags` passes Go build tags. Go application metadata and packaged font paths are injected at link time; Rust metadata is written to `quickgui.json`. There is no runtime TypeScript compiler, JSX lowering, or native-module code generator.
 
 ## Production
 
@@ -94,7 +96,7 @@ quickgui build --update-manifest --update-base-url https://dl.example.com/demo
 quickgui build --mas
 ```
 
-Production Go builds use `-trimpath -ldflags='-s -w …'`. macOS packages put the shared library in `Contents/Frameworks` and resources in `Contents/Resources`. The signed `.app` is packaged in a versioned DMG with an Applications link. Notarization uses an existing `notarytool` Keychain profile; development builds do not create DMGs. MAS builds use the configured app/installer identities and entitlements. Signed update manifests require the configured update signing key.
+Production Go builds use `-trimpath -ldflags='-s -w …'`. Production Rust builds use `cargo build --release`. macOS packages put the shared library for Go and TypeScript in `Contents/Frameworks` and resources in `Contents/Resources`. Rust apps omit that library and keep `quickgui.json` with the resources. The signed `.app` is packaged in a versioned DMG with an Applications link. Notarization uses an existing `notarytool` Keychain profile; development builds do not create DMGs. MAS builds use the configured app/installer identities and entitlements. Signed update manifests require the configured update signing key.
 
 The Go compiler maps `darwin-x64`, `linux-x64`, and `windows-x64` to `GOARCH=amd64`; arm64 targets use `GOARCH=arm64`. A matching native library and target packaging tools are required. Linux AppDir/Debian and Windows installer payloads include the shared library beside the executable. Published native assets currently cover macOS arm64/x64; Linux/Windows runtime and installer acceptance remain platform-specific work.
 

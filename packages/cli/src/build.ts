@@ -13,9 +13,9 @@ import {
 } from "node:fs";
 import { basename, dirname, extname, join, relative, resolve } from "node:path";
 
-import type { MacOSNotarizationConfig, ResolvedQuickGuiConfig } from "./config.ts";
+import { languageLabel, type ResolvedQuickGuiConfig } from "./config.ts";
 import { CliError, errorMessage } from "./error.ts";
-import { compileNativeApplication } from "./native-build.ts";
+import { requireRustManifest } from "./rust-build.ts";
 import {
   macDocumentTypesPlist,
   macTypeDeclarationsPlist,
@@ -263,7 +263,7 @@ async function buildMacApp(
   signArguments.push("--sign", identity);
   if (config.macos.entitlements) {
     signArguments.push("--entitlements", config.macos.entitlements);
-  } else if (config.frontend === "typescript") {
+  } else if (config.language === "typescript") {
     const entitlements = resolve(stagingRoot, "quickgui-bun.entitlements");
     writeFileSync(entitlements, bunEntitlements);
     signArguments.push("--entitlements", entitlements);
@@ -614,9 +614,10 @@ function validateInputs(
   config: ResolvedQuickGuiConfig,
   platform: "darwin" | "linux" | "windows",
 ): void {
+  if (config.language === "rust") requireRustManifest(config);
   if (!existsSync(config.entry)) {
     throw new CliError(
-      `${config.frontend === "typescript" ? "TypeScript" : "Go"} application package not found: ${config.entry}`,
+      `${languageLabel(config.language)} application package not found: ${config.entry}`,
     );
   }
   for (const resource of config.resources) {

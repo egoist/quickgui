@@ -232,6 +232,14 @@ for (const packageName of ["cli"]) {
       (_match, prefix, suffix) => `${prefix}${version}${suffix}`,
     ),
   );
+  edit("packages/cli/templates/rust/package.json", (contents) =>
+    replaceMatches(
+      "packages/cli/templates/rust/package.json",
+      contents,
+      new RegExp(`("@quickgui/${packageName}": "\\^)[^"]+(")`),
+      (_match, prefix, suffix) => `${prefix}${version}${suffix}`,
+    ),
+  );
 }
 
 for (const packageName of ["native", "solid", "cli"]) {
@@ -251,6 +259,14 @@ edit("packages/cli/templates/native/go.mod", (contents) =>
     contents,
     /(github\.com\/egoist\/quickgui\/go v)[^\s]+/,
     (_match, prefix) => `${prefix}${version}`,
+  ),
+);
+edit("packages/cli/templates/rust/Cargo.toml", (contents) =>
+  replaceMatches(
+    "packages/cli/templates/rust/Cargo.toml",
+    contents,
+    /^(quickgui = ")[^"]+(")/m,
+    (_match, prefix, suffix) => `${prefix}${version}${suffix}`,
   ),
 );
 

@@ -29,7 +29,7 @@ go mod edit -replace github.com/egoist/quickgui/go=../quickgui/go
 go mod tidy
 ```
 
-In the generated `quickgui.config.ts`, change the `defineConfig` import to `../quickgui/packages/cli/src/index.ts` to use the local CLI. Then run `bun packages/cli/src/cli.ts dev --project ../my-app` from the QuickGUI checkout. Pass `--frontend go` to `init` to skip the frontend prompt.
+In the generated `quickgui.config.ts`, change the `defineConfig` import to `../quickgui/packages/cli/src/index.ts` to use the local CLI. Then run `bun packages/cli/src/cli.ts dev --project ../my-app` from the QuickGUI checkout. Pass `--language go` to `init` to skip the language prompt.
 
 ## Your first window
 

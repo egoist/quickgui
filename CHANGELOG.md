@@ -4,6 +4,11 @@ All notable user-facing changes to QuickGUI are recorded here.
 
 ## Unreleased
 
+### CLI
+
+- `@quickgui/cli` now builds native Rust applications with `cargo`. Rust apps link the `quickgui` crate and do not bundle `libquickgui_host`. `quickgui init --language rust` scaffolds a crate; `fmt`, `check`, and `test` dispatch to Cargo. Packaged identity and fonts are written to `quickgui.json` beside the executable, or in `Contents/Resources` on macOS.
+- The application language option is `language` (`--language`, `language = "go"|"rust"|"typescript"`). The previous `frontend` name remains accepted as an alias.
+
 ### Framework
 
 - Added `Element::selected_style`, a paint-only state that follows the element's `selected` flag

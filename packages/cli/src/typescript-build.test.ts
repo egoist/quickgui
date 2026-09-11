@@ -22,11 +22,11 @@ afterEach(() => {
 });
 
 test("TypeScript is explicit, defaults to app.tsx, and rejects incompatible native options", () => {
-  expect(parseCliArgs(["init", "demo", "--frontend", "typescript", "--no-install"])).toMatchObject({
-    frontend: "typescript",
+  expect(parseCliArgs(["init", "demo", "--language", "typescript", "--no-install"])).toMatchObject({
+    language: "typescript",
     install: false,
   });
-  const input = { name: "Demo", identifier: "com.example.demo", frontend: "typescript" as const };
+  const input = { name: "Demo", identifier: "com.example.demo", language: "typescript" as const };
   expect(resolveConfig(input, "/example").entry).toBe("/example/app.tsx");
   expect(() => resolveConfig({ ...input, native: { tags: ["test"] } }, "/example")).toThrow(
     "not supported",
@@ -40,7 +40,7 @@ test("TypeScript is explicit, defaults to app.tsx, and rejects incompatible nati
       "/example",
     ).extensions,
   ).toEqual(["terminal", "@acme/extension-echo", "quickgui-extension-echo", "/example/extension"]);
-  expect(resolveConfig({ name: "Demo", identifier: "com.example.demo" }, "/example").frontend).toBe(
+  expect(resolveConfig({ name: "Demo", identifier: "com.example.demo" }, "/example").language).toBe(
     "go",
   );
 });
@@ -83,14 +83,14 @@ test("TypeScript scaffold pins Solid 2 and configures JSX and native window owne
   const project = join(root, "app");
   await initProject({
     directory: project,
-    frontend: "typescript",
+    language: "typescript",
     install: false,
     name: 'Quoted "App"',
   });
   mkdirSync(join(project, "node_modules/@quickgui"), { recursive: true });
   symlinkSync(resolve(import.meta.dir, ".."), join(project, "node_modules/@quickgui/cli"), "dir");
   const config = await loadConfig(project);
-  expect(config.frontend).toBe("typescript");
+  expect(config.language).toBe("typescript");
   expect(config.name).toBe('Quoted "App"');
   expect(existsSync(join(project, "go.mod"))).toBe(false);
   const manifest = JSON.parse(readFileSync(join(project, "package.json"), "utf8"));

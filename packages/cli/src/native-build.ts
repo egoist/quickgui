@@ -1,4 +1,4 @@
-/** Application compilation. All frontends reuse the Rust shared library without relinking it. */
+/** Application compilation. Go and TypeScript reuse the Rust shared library; Rust apps link the crate. */
 import { chmodSync, copyFileSync, constants, existsSync, mkdirSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import type { ResolvedQuickGuiConfig } from "./config.ts";
@@ -8,6 +8,7 @@ import { updaterMetadata } from "./packaging/appcast.ts";
 import { unpackResources } from "./extension-resources.ts";
 import { discoverExtensions, extensionLibraryName, resolveExtension } from "./extensions.ts";
 import { prepareGoWorkspace } from "./go-build.ts";
+import { compileRustApplication } from "./rust-build.ts";
 import { compileTypeScriptApplication, typescriptExtensions } from "./typescript-build.ts";
 
 export interface NativeCompileOptions {
@@ -103,7 +104,10 @@ export function goBuildPlan(options: NativeCompileOptions): {
 
 export async function compileNativeApplication(options: NativeCompileOptions): Promise<string[]> {
   const { config, target } = options;
-  const typescript = config.frontend === "typescript";
+  if (config.language === "rust") {
+    return compileRustApplication(options);
+  }
+  const typescript = config.language === "typescript";
   if (!typescript && !Bun.which("go"))
     throw new CliError("Go 1.23 or later is required on PATH");
   const library = resolveHostLibrary(target, config.projectRoot, config.native.libraryPath);

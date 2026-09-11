@@ -36,7 +36,7 @@ async function runInteractiveInit(directory: string, keys: string) {
   });
   try {
     const status = await child.exited;
-    expect(output).toContain("Which frontend would you like to use?");
+    expect(output).toContain("Which language would you like to use?");
     expect(answered).toBe(true);
     return { status, output };
   } finally {
@@ -44,11 +44,12 @@ async function runInteractiveInit(directory: string, keys: string) {
   }
 }
 
-for (const [frontend, keys, entry, otherEntry] of [
+for (const [language, keys, entry, otherEntry] of [
   ["go", "\r", "main.go", "app.tsx"],
   ["typescript", "\x1b[B\r", "app.tsx", "main.go"],
+  ["rust", "\x1b[B\x1b[B\r", "src/main.rs", "main.go"],
 ] as const) {
-  test(`init prompts and scaffolds the selected ${frontend} frontend`, async () => {
+  test(`init prompts and scaffolds the selected ${language} language`, async () => {
     const directory = destination();
     const { status } = await runInteractiveInit(directory, keys);
     expect(status).toBe(0);
@@ -56,10 +57,10 @@ for (const [frontend, keys, entry, otherEntry] of [
     expect(existsSync(join(directory, otherEntry))).toBe(false);
   });
 
-  test(`init accepts --frontend ${frontend} without a terminal`, async () => {
+  test(`init accepts --language ${language} without a terminal`, async () => {
     const directory = destination();
     const child = Bun.spawn(
-      [process.execPath, cli, "init", directory, "--frontend", frontend, "--no-install"],
+      [process.execPath, cli, "init", directory, "--language", language, "--no-install"],
       { stdin: "ignore", stdout: "pipe", stderr: "pipe", env: { ...process.env, PATH: "" } },
     );
     const [status, stdout, stderr] = await Promise.all([
@@ -69,7 +70,7 @@ for (const [frontend, keys, entry, otherEntry] of [
     ]);
     expect(status).toBe(0);
     expect(stderr).toBe("");
-    expect(stdout).not.toContain("Which frontend");
+    expect(stdout).not.toContain("Which language");
     expect(existsSync(join(directory, entry))).toBe(true);
     expect(existsSync(join(directory, otherEntry))).toBe(false);
   });
@@ -88,7 +89,7 @@ for (const [key, keys] of [
   });
 }
 
-test("init requires an explicit frontend without a terminal", async () => {
+test("init requires an explicit language without a terminal", async () => {
   const directory = destination();
   const child = Bun.spawn([process.execPath, cli, "init", directory, "--no-install"], {
     stdin: "ignore",
@@ -97,6 +98,6 @@ test("init requires an explicit frontend without a terminal", async () => {
   });
   const [status, stderr] = await Promise.all([child.exited, new Response(child.stderr).text()]);
   expect(status).toBe(1);
-  expect(stderr).toContain("--frontend go or --frontend typescript");
+  expect(stderr).toContain("--language go, --language rust, or --language typescript");
   expect(existsSync(directory)).toBe(false);
 });

@@ -29,7 +29,7 @@ go mod edit -replace github.com/egoist/quickgui/go=../quickgui/go
 go mod tidy
 ```
 
-在前端选择提示中选择 **Go**。在生成的 `quickgui.config.ts` 中，将 `defineConfig` 导入路径改为 `../quickgui/packages/cli/src/index.ts` 以使用本地 CLI。然后在 QuickGUI 源码目录运行 `bun packages/cli/src/cli.ts dev --project ../my-app`。给 `init` 传入 `--frontend go` 可跳过前端选择。
+在语言选择提示中选择 **Go**。在生成的 `quickgui.config.ts` 中，将 `defineConfig` 导入路径改为 `../quickgui/packages/cli/src/index.ts` 以使用本地 CLI。然后在 QuickGUI 源码目录运行 `bun packages/cli/src/cli.ts dev --project ../my-app`。给 `init` 传入 `--language go` 可跳过语言选择。
 
 ## 第一个窗口
 

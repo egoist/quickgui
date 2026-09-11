@@ -31,6 +31,7 @@
     "src/init-extension.ts",
     "src/native-build.ts",
     "src/go-build.ts",
+    "src/rust-build.ts",
     "src/typescript-build.ts",
     "src/typescript-compiler.ts",
     "src/targets.ts",

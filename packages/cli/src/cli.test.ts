@@ -303,6 +303,7 @@ test("project initialization renders a complete native scaffold", async () => {
     devDependencies: { "@quickgui/cli": "^0.1.3" },
   });
   expect(readFileSync(join(project, "quickgui.config.ts"), "utf8")).toContain('identifier: "com.example.sample-app"');
+  expect(readFileSync(join(project, "quickgui.config.ts"), "utf8")).toContain('language: "go"');
   const applicationSource = readFileSync(join(project, "main.go"), "utf8");
   expect(applicationSource).toContain('"github.com/egoist/quickgui/go/native"');
   expect(applicationSource).toContain("native.Run(");

@@ -2,18 +2,18 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSy
 import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { resolveConfig, type Frontend } from "./config.ts";
+import { resolveConfig, type Language } from "./config.ts";
 import { CliError } from "./error.ts";
 
 export interface InitProjectOptions {
-  frontend?: Frontend;
+  language?: Language;
   directory: string;
   install: boolean;
   name?: string;
   identifier?: string;
 }
 
-const templateFiles = [
+const goFiles = [
   ["package.json", "package.json"],
   ["quickgui.config.ts", "quickgui.config.ts"],
   ["go.mod", "go.mod"],
@@ -26,6 +26,14 @@ const typescriptFiles = [
   ["quickgui.config.ts", "quickgui.config.ts"],
   ["tsconfig.json", "tsconfig.json"],
   ["app.tsx", "app.tsx"],
+  ["gitignore", ".gitignore"],
+  ["README.md", "README.md"],
+] as const;
+const rustFiles = [
+  ["package.json", "package.json"],
+  ["quickgui.config.ts", "quickgui.config.ts"],
+  ["Cargo.toml", "Cargo.toml"],
+  ["src/main.rs", "src/main.rs"],
   ["gitignore", ".gitignore"],
   ["README.md", "README.md"],
 ] as const;
@@ -44,25 +52,21 @@ export async function initProject(options: InitProjectOptions): Promise<string> 
   const identifier = options.identifier?.trim() || `com.example.${identifierSegment(name)}`;
   resolveConfig({ name, identifier }, destination);
 
+  const language = options.language ?? "go";
   const replacements: Record<string, string> = {
     "{{APP_NAME}}": JSON.stringify(name),
     "{{IDENTIFIER}}": JSON.stringify(identifier),
     "{{PACKAGE_NAME}}": JSON.stringify(packageName(name)),
+    "{{CRATE_NAME}}": crateName(name),
     "{{GO_MODULE}}": `example.com/${packageName(name)}`,
     "{{README_TITLE}}": name.replaceAll("\n", " ").replaceAll("\r", " "),
   };
 
   mkdirSync(destination, { recursive: true });
-  const typescript = options.frontend === "typescript";
   const templateRoot = fileURLToPath(
-    new URL(
-      `../templates/${typescript ? "typescript" : "native"}/`,
-      import.meta.url,
-    ),
+    new URL(`../templates/${templateDirectory(language)}/`, import.meta.url),
   );
-  for (const [sourceName, targetName] of typescript
-    ? typescriptFiles
-    : templateFiles) {
+  for (const [sourceName, targetName] of templateFiles(language)) {
     const source = join(templateRoot, sourceName);
     if (!existsSync(source)) throw new CliError(`CLI template is missing: ${source}`);
     const target = join(destination, targetName);
@@ -87,9 +91,17 @@ export async function initProject(options: InitProjectOptions): Promise<string> 
         `Project created at ${destination}, but \`bun install\` failed with status ${status}`,
       );
     }
-    const argv = typescript
-      ? ["bun", "run", "check"]
-      : ["go", "mod", "tidy"];
+    const argv =
+      language === "typescript"
+        ? ["bun", "run", "check"]
+        : language === "rust"
+          ? ["cargo", "generate-lockfile"]
+          : ["go", "mod", "tidy"];
+    if (language === "rust" && !Bun.which("cargo")) {
+      throw new CliError(
+        `Project created at ${destination}, but cargo is required to finish a Rust project`,
+      );
+    }
     const prepare = Bun.spawn(argv, {
       cwd: destination,
       stdin: "inherit",
@@ -102,6 +114,18 @@ export async function initProject(options: InitProjectOptions): Promise<string> 
   }
 
   return destination;
+}
+
+function templateDirectory(language: Language): "native" | "typescript" | "rust" {
+  if (language === "typescript") return "typescript";
+  if (language === "rust") return "rust";
+  return "native";
+}
+
+function templateFiles(language: Language): readonly (readonly [string, string])[] {
+  if (language === "typescript") return typescriptFiles;
+  if (language === "rust") return rustFiles;
+  return goFiles;
 }
 
 function displayName(value: string): string {
@@ -123,6 +147,11 @@ function packageName(value: string): string {
     .slice(0, 214);
   if (!name) throw new CliError(`Could not derive a package name from ${JSON.stringify(value)}`);
   return name;
+}
+
+function crateName(value: string): string {
+  const name = packageName(value).replace(/[._]+/g, "-");
+  return /^[A-Za-z]/.test(name) ? name : `app-${name}`;
 }
 
 function identifierSegment(value: string): string {

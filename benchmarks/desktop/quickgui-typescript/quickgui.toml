@@ -1,6 +1,6 @@
 name = "Benchmark QuickGUI TypeScript"
 identifier = "dev.quickgui.benchmark.typescript"
-frontend = "typescript"
+language = "typescript"
 entry = "app.tsx"
 
 [macos]
