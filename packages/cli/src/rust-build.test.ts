@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 
 import { parseCliArgs } from "./args.ts";
 import { loadConfig, resolveConfig } from "./config.ts";
@@ -48,7 +48,7 @@ test("Rust builds invoke cargo without a shared host library", () => {
   expect(plan.argv.slice(0, 2)).toEqual(["cargo", "build"]);
   expect(plan.argv).toContain("--release");
   expect(plan.argv).toContain("--manifest-path");
-  expect(plan.argv.join(" ")).not.toContain("go");
+  expect(plan.argv[0]).not.toBe("go");
   expect(plan.argv.join(" ")).not.toContain("cgo");
   if (hostTarget() === "darwin-arm64") {
     expect(plan.argv).not.toContain("--target");
@@ -102,6 +102,8 @@ test("Rust scaffold writes a crate and language config", async () => {
       name: "Sample App",
       identifier: "com.example.sample-app",
     });
+    mkdirSync(join(project, "node_modules/@quickgui"), { recursive: true });
+    symlinkSync(resolve(import.meta.dir, ".."), join(project, "node_modules/@quickgui/cli"), "dir");
     const config = await loadConfig(project);
     expect(config.language).toBe("rust");
     expect(readFileSync(join(project, "Cargo.toml"), "utf8")).toContain('name = "sample-app"');
