@@ -2,7 +2,7 @@
 
 ## 响应式状态
 
-把字段放在 view 结构体上。用 `cx.listener` 注册 listener，以便事件能修改这些字段。
+把字段放在 `View` 结构体上。用 `cx.listener` 注册监听器，以便事件能修改这些字段。
 
 ```rust
 struct Counter {
@@ -32,11 +32,11 @@ let doubled = self.count * 2;
 text(format!("{doubled}"))
 ```
 
-当同一帧内多个子节点需要同一个昂贵的派生结果时，把它保存在 view 上。
+当同一帧内多个子节点需要同一个昂贵的派生结果时，把它保存在 `View` 上。
 
 ## 副作用与清理
 
-从 listener 或 `Application` 回调启动外部工作，并在 view 被丢弃时停止。关闭窗口会丢弃 view 及其 listener。
+从监听器或 `Application` 回调启动外部工作，并在 `View` 被丢弃时停止。关闭窗口会丢弃 `View` 及其监听器。
 
 ```rust
 impl Drop for WatcherView {
@@ -48,4 +48,4 @@ impl Drop for WatcherView {
 
 ## 批量更新
 
-调用 `cx.invalidate()` 会把窗口标记为脏。同一次事件中的多次 invalidation 只会触发一次 render。没有变化时不要安装定时器来重绘。
+调用 `cx.invalidate()` 会把窗口标记为脏。同一次事件中的多次 `invalidate` 只会触发一次 `render`。没有变化时不要安装定时器来重绘。

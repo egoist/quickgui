@@ -1,4 +1,4 @@
-`View::render` 会在你 invalidate 或操作系统请求重绘后构建界面。使用 `id`，让行在多次 render 之间保持身份。
+`View::render` 会在你调用 `invalidate` 或操作系统请求重绘后构建界面。使用 `id`，让行在多次 `render` 之间保持身份。
 
 ## 视图如何工作
 
@@ -28,7 +28,7 @@ div().children(self.items.iter().map(|item| {
 
 ## 窗口生命周期
 
-每次 `open_window` 都拥有独立的 view。关闭一个窗口不会丢弃其他窗口。处理 Dock 图标时，如果 `has_visible_windows` 为 false，就打开新窗口。
+每次 `open_window` 都拥有独立的 `View`。关闭一个窗口不会丢弃其他窗口。处理 Dock 图标时，如果 `has_visible_windows` 为 false，就打开新窗口。
 
 ## 当前窗口
 

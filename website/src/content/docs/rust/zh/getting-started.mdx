@@ -31,7 +31,7 @@ bun run dev
 
 ## 第一个窗口
 
-生成的 `src/main.rs` 会启动 [`Application`](https://docs.rs/quickgui)、打开窗口，并实现 [`View`](https://docs.rs/quickgui)。把状态保存在 view 上，修改后调用 `cx.invalidate()`。
+生成的 `src/main.rs` 会启动 [`Application`](https://docs.rs/quickgui)、打开窗口，并实现 [`View`](https://docs.rs/quickgui)。把状态保存在 `View` 上，修改后调用 `cx.invalidate()`。
 
 ```rust
 use quickgui::{
