@@ -1,18 +1,39 @@
-Rust 指南正文目前以英文提供，组件 API 参考包含中文说明。
-
-In-window overlays stay in the retained scene. Operating-system dialogs use platform prompts.
+应用内样式的内容用 QuickGUI 浮层；选文件和系统提示用系统对话框。
 
 ## Popover
 
-Compose `Popover` trigger, positioner, popup, and arrow parts. The core owns placement, collisions, focus, outside interaction, and dismissal. Store `open` on the view.
+组合 trigger、positioner、popup 和 arrow 部件。把 `open` 保存在 view 上。
+
+```rust
+let popover = Popover::new("help-trigger", "help-popup", open)
+    .side(AnchorSide::Bottom)
+    .side_offset(8.0);
+let mut root = popover.root().child(
+    popover.trigger().on_click(toggle).child("Account"),
+);
+if popover.is_open() {
+    root = root.child(popover.positioner().child(
+        popover.popup().w(240.0).p(16.0).on_dismiss(dismiss).children([
+            popover.title().child("Account"),
+            popover.close("Close").on_click(dismiss).child("Done"),
+        ]),
+    ));
+}
+root
+```
 
 ## Dialog
 
-`Dialog::new` and `Dialog::alert` add modal semantics plus title, description, backdrop, viewport, and close parts. Restore focus through `restore_focus_to`; do not install a second focus trap.
+`Dialog::new` 和 `Dialog::alert` 会添加标题、说明、背景遮罩和关闭控件。
+
+```rust
+let dialog = Dialog::new("save", open);
+dialog.root().child(dialog.title_with(text("Save changes")))
+```
 
 ## 系统浮窗
 
-`SystemPopover` owns a separate native panel anchored to a mounted node. It can cross the parent’s content bounds and is disposed with its owner.
+`SystemPopover` 打开原生子窗口，可以延伸到所属窗口边缘之外。
 
 ## 原生对话框
 

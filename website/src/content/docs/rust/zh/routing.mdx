@@ -1,6 +1,4 @@
-Rust 指南正文目前以英文提供，组件 API 参考包含中文说明。
-
-`Router` owns route matching, normalized locations, and bounded memory history. The view chooses which elements to mount from the current match.
+声明路由，在当前窗口中渲染匹配结果，并用 `push` / `replace` 导航。
 
 ## 路由声明
 
@@ -14,11 +12,11 @@ let router = Router::new(
 )?;
 ```
 
-`RouteDefinition::layout` declares a pathless ancestor. Relative child paths join their parent; an absolute child path starts at the root.
+`RouteDefinition::layout` 声明无路径的祖先。相对子路径会拼到父路径上；绝对子路径从根开始。
 
 ## 嵌套布局
 
-Match the route chain and wrap inner content with layout elements. Pathless layouts appear in `matched` ancestry without adding a URL segment.
+匹配路由链，并用布局元素包裹内部内容。无路径布局会出现在匹配结果中，但不会增加 URL 片段。
 
 ```rust
 RouteDefinition::layout("shell").parent("root")
@@ -31,7 +29,7 @@ self.router.push("/projects/42")?;
 cx.invalidate();
 ```
 
-The controller supports `push`, `replace`, `back`, and `forward`. Navigation stays in the native application.
+控制器支持 `push`、`replace`、`back` 和 `forward`。导航留在应用内部。
 
 ## 路由参数
 
@@ -48,5 +46,3 @@ if let Some(matched) = self.router.matched() {
     text("Page not found")
 }
 ```
-
-Query pairs are retained as bounded lists on `RouteLocation`.

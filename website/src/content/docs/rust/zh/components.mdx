@@ -1,6 +1,4 @@
-Rust 指南正文目前以英文提供，组件 API 参考包含中文说明。
-
-Implement `View` for application components. Primitives are functions that return `Element`. Compound components are copyable descriptors whose `*_part` methods decorate caller-owned elements.
+为需要保存状态的界面实现 `View`。无状态片段可以用返回 `Element` 的函数。
 
 ## 定义组件
 
@@ -8,6 +6,7 @@ Implement `View` for application components. Primitives are functions that retur
 struct Greeting {
     name: String,
 }
+
 impl View for Greeting {
     fn render(&mut self, _cx: &mut ViewContext<'_, Self>) -> impl IntoElement {
         text(format!("Hello, {}", self.name))
@@ -15,32 +14,35 @@ impl View for Greeting {
 }
 ```
 
-Child views can also be functions that return `Element` when they have no retained state.
+没有自己状态的子视图也可以写成返回 `Element` 的函数。
 
 ## 基础组件
 
-`div`, `text`, `button`, `text_input`, `text_area`, `Markdown`, `img`, `svg`, `custom_shader`, `VirtualList`, and optional `Terminal` are native building blocks. `submit_button` submits the nearest `form`.
+`div`、`text`、`button`、`text_input`、`text_area`、`Markdown`、`img`、`svg`、`custom_shader` 和 `VirtualList` 是基础构件。`submit_button` 会提交最近的 `form`。`Terminal` 需要对应的 crate feature。
 
 ## 复合组件
 
 ```rust
 let checkbox = Checkbox::new(self.checked);
 checkbox
-    .root().flex_row().gap(8.0).on_click(toggle)
+    .root()
+    .flex_row()
+    .gap(8.0)
+    .on_click(toggle)
     .child(checkbox.indicator_with(div().size(16.0, 16.0)))
     .child(text("Remember this device"))
 ```
 
-Compound roots coordinate named parts through ids and state you store on the view. Keep parts under the intended root so focus and value relationships stay explicit.
+把部件放在所属的 root 下，这样焦点和值才会保持关联。
 
 ## 受控状态
 
-Store values on the view and pass them into constructors such as `Checkbox::new`, `SliderState`, or `text_input`. Update those fields from listeners, then `invalidate`. There is no separate `defaultValue` layer: the view owns the state.
+把值保存在 view 上，传入构造函数，并在 listener 中更新。然后调用 `cx.invalidate()`。状态由 view 拥有。
 
 ## 组件类别
 
-The reference covers selection controls, tabs, disclosure, fields, menus, context menus, pickers, dialogs, popovers, preview cards, drawers, navigation menus, ranges, splitters, progress, meters, toggles, toolbars, toasts, calendars, date/time fields, scroll areas, tables, trees, and SwiftUI controls. Run `examples/base_ui_components.rs` for a gallery.
+[组件参考](/docs/rust/components/button) 覆盖表单、浮层、菜单、表格、树等。`examples/base_ui_components.rs` 是组件画廊。
 
 ## 设置各部件的样式
 
-Apply fluent style methods to each visual part. Parts remain unstyled so layout and colors belong to the application. State types such as `SliderState`, `TabsState`, `SelectState`, and `ScrollAreaState` expose the current native state for custom presentation.
+在每个可见部件上使用链式样式方法。部件默认无样式，颜色和布局由应用决定。`TabsState` 和 `SelectState` 等类型会暴露当前状态，便于自定义呈现。

@@ -1,10 +1,8 @@
-Rust 指南正文目前以英文提供，组件 API 参考包含中文说明。
-
-Call `Application::new().run(...)` once from `main`. Its startup callback creates windows and registers application services. Listeners run on the native UI thread.
+从 `main` 调用一次 `Application::new().run(...)`。启动回调负责创建窗口。
 
 ## 窗口生命周期
 
-`cx.open_window(WindowOptions::new("Title").size(width, height), view)` creates a window with its own `View` and retained tree. Closing the window drops that view. Handle macOS Dock reopening from `Application::on_reopen` when `has_visible_windows` is false.
+`cx.open_window(WindowOptions::new("Title").size(width, height), view)` 会创建一个带有自己 `View` 的窗口。关闭窗口会丢弃该 view。当 `has_visible_windows` 为 false 时，用 `Application::on_reopen` 处理 Dock 图标。
 
 ```rust
 Application::new()
@@ -26,8 +24,8 @@ cx.prompt_for_paths(PathPromptOptions::new().files(true));
 cx.message_box(MessageBoxOptions::new("Replace this file?"));
 ```
 
-Typed APIs cover dialogs, clipboard, shell, appearance, menus, displays, and other platform services. Capture `cx.window_handle()` during a listener when later work needs that window.
+带类型的 API 覆盖对话框、剪贴板、Shell、外观、菜单和显示器。如果后续工作需要该窗口，在 listener 中捕获 `cx.window_handle()`。
 
 ## 事件与文件监听
 
-Window events include focus, resize, appearance, minimize, fullscreen, and close. Application callbacks include reopen, activation, quit, and open URLs. Prefer native notifications over polling. Enable the `file-watcher` crate feature when you need filesystem events, and drop watchers with the owning view.
+窗口事件包括焦点、调整大小、外观、最小化、全屏和关闭。应用回调包括重新打开、激活、退出和打开 URL。需要文件系统事件时启用 `file-watcher` crate feature，并随所属 view 一起丢弃 watcher。

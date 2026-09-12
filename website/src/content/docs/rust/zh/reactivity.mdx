@@ -1,10 +1,8 @@
-Rust 指南正文目前以英文提供，组件 API 参考包含中文说明。
-
-Store state on the `View`. `render` reads that state to build elements. Call `cx.invalidate()` after a mutation so the window schedules another render. The native core still retains layout, paint, and accessibility between frames.
+把状态保存在 `View` 上。`render` 读取这些状态来构建元素。变更后调用 `cx.invalidate()`，窗口才会重绘。
 
 ## 响应式状态
 
-Keep fields on the view struct. Register listeners with `cx.listener` so activations can mutate those fields. A value you copy in `render` is the current frame's snapshot.
+把字段放在 view 结构体上。用 `cx.listener` 注册 listener，以便事件能修改这些字段。
 
 ```rust
 struct Counter {
@@ -23,20 +21,22 @@ impl View for Counter {
 }
 ```
 
+在 `render` 中复制的值是当前帧的快照。
+
 ## 派生状态
 
-Compute derived values in `render` from the fields you already store. Keep derivations pure; perform writes from listeners.
+在 `render` 中根据已有字段计算派生值。
 
 ```rust
 let doubled = self.count * 2;
 text(format!("{doubled}"))
 ```
 
-Store an expensive derivation on the view when several children need the same value in one frame.
+当同一帧内多个子节点需要同一个昂贵的派生结果时，把它保存在 view 上。
 
 ## 副作用与清理
 
-Rust views do not subscribe with Go/TypeScript-style effects. Start external work from listeners or `Application` callbacks, and drop that work when the view is dropped. Window close releases the view and its listeners.
+从 listener 或 `Application` 回调启动外部工作，并在 view 被丢弃时停止。关闭窗口会丢弃 view 及其 listener。
 
 ```rust
 impl Drop for WatcherView {
@@ -48,4 +48,4 @@ impl Drop for WatcherView {
 
 ## 批量更新
 
-Calling `cx.invalidate()` marks the window dirty. Multiple invalidations in one event coalesce into one render. Do not install a frame loop for ordinary state updates; the window sleeps while it is clean.
+调用 `cx.invalidate()` 会把窗口标记为脏。同一次事件中的多次 invalidation 只会触发一次 render。没有变化时不要安装定时器来重绘。

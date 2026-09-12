@@ -1,10 +1,8 @@
-Rust 指南正文目前以英文提供，组件 API 参考包含中文说明。
+`View::render` 会在你 invalidate 或操作系统请求重绘后构建界面。使用 `id`，让行在多次 render 之间保持身份。
 
-`View::render` builds an element tree after invalidation or OS damage. Native layout, painting, focus, input, and accessibility remain in the core. Stable `Element::id` values preserve identity across renders.
+## 视图如何工作
 
-## 渲染模型
-
-Return `impl IntoElement` from `render`. Fluent builders construct retained elements. The window sleeps until `invalidate` or platform damage. Do not rebuild from a timer when nothing changed.
+从 `render` 返回 `impl IntoElement`。窗口会休眠，直到 `invalidate` 或平台事件到来。
 
 ## 条件内容
 
@@ -16,9 +14,9 @@ if self.expanded {
 }
 ```
 
-Omitting a branch drops its nodes. Sibling elements with stable ids keep their identities.
+省略某个分支会丢弃那些节点。
 
-## 列表与节点身份
+## 列表
 
 ```rust
 div().children(self.items.iter().map(|item| {
@@ -26,11 +24,11 @@ div().children(self.items.iter().map(|item| {
 }))
 ```
 
-Give stateful rows stable `id`s. Use `VirtualList` or `TableState` for large collections and only mount visible rows.
+给有状态的行稳定的 `id`。长列表请使用 `VirtualList` 或 `Table`。
 
 ## 窗口生命周期
 
-Each `open_window` owns an independent view. Closing a child window must not drop its siblings. Handle macOS Dock reopening by constructing a fresh window when `has_visible_windows` is false.
+每次 `open_window` 都拥有独立的 view。关闭一个窗口不会丢弃其他窗口。处理 Dock 图标时，如果 `has_visible_windows` 为 false，就打开新窗口。
 
 ## 当前窗口
 
@@ -43,13 +41,11 @@ fn render(&mut self, cx: &mut ViewContext<'_, Self>) -> impl IntoElement {
 }
 ```
 
-`ViewContext` and `EventContext` expose the current `WindowHandle` during render and event dispatch.
-
-## 检查、测试与调试
+## 测试
 
 ```sh
 quickgui check
 quickgui test
 ```
 
-`examples/base_ui_components.rs` is the broad UI gallery. Enable the `inspector` crate feature for the in-app inspector. Native integration checks are separate from `cargo test`.
+`examples/base_ui_components.rs` 是 UI 画廊。启用 `inspector` crate feature 可使用应用内检查器。

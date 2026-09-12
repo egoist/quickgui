@@ -1,16 +1,14 @@
-Rust 指南正文目前以英文提供，组件 API 参考包含中文说明。
-
-A Rust application can share ordinary modules, or it can author a native extension that Go and TypeScript apps load. Rust apps themselves do not set `extensions` in `quickgui.config.ts`; they enable crate features and depend on crates.
+Rust 应用可以共享普通模块，也可以编写供 Go 和 TypeScript 应用加载的原生扩展。Rust 应用通过 crate feature 启用能力，而不是在配置中列出 `extensions`。
 
 ## 选择扩展类型
 
-| What you are adding | What you ship | Core changes |
-| --- | --- | --- |
-| Components or application logic | A Rust module or crate | None |
-| Optional QuickGUI capabilities | Cargo features such as `updater` and `terminal` | None |
-| A native service for Go or TypeScript | A `cdylib`, manifest, and typed wrapper | None |
+| 你要添加的内容 | 需要交付的内容 |
+| --- | --- |
+| 组件或应用逻辑 | 一个 Rust 模块或 crate |
+| 可选的 QuickGUI 能力 | `updater` 和 `terminal` 等 Cargo feature |
+| 供 Go 或 TypeScript 使用的原生服务 | 一个 `cdylib`、一份清单，以及类型化包装 |
 
-Native extensions run in the consumer's process. A Rust **app** already is that process: it links `quickgui` and does not load `libquickgui_host`.
+Rust **应用**已经链接 `quickgui`。它不会再加载单独的宿主库。
 
 ## 创建扩展项目
 
@@ -18,11 +16,11 @@ Native extensions run in the consumer's process. A Rust **app** already is that 
 quickgui init-extension my-extension --type rust
 ```
 
-Use this when Go or TypeScript apps should consume a native service. Extension scaffolds use the shared extension ABI. `--npm-package` sets the artifact package name.
+当 Go 或 TypeScript 应用需要消费原生服务时使用此方式。`--npm-package` 设置产物包名称。
 
 ## 共享组件
 
-Share UI by exporting functions that return `Element`:
+导出返回 `Element` 的函数：
 
 ```rust
 use quickgui::{Color, Element, text};
@@ -36,40 +34,35 @@ pub fn notice(message: impl Into<std::sync::Arc<str>>) -> Element {
 }
 ```
 
-Return `notice("Saved")` as a child. Keep application-wide services outside `View::render`.
+把 `notice("Saved")` 作为子节点返回。把应用级服务放在 `View::render` 之外。
 
 ## 组织原生扩展
 
-A native extension ships `quickgui.extension.json`, a versioned shared library, and declared resources. Its manifest identifies the service name, ABI, npm package, release version, library, and per-platform resources. Rust extensions can vendor [`extension_api.rs`](https://github.com/egoist/quickgui/blob/main/src/extension_api.rs) and build a `cdylib` without linking the renderer.
+原生扩展交付 `quickgui.extension.json`、带版本的共享库，以及声明的资源。Rust 扩展可以内置 [`extension_api.rs`](https://github.com/egoist/quickgui/blob/main/src/extension_api.rs)，并构建 `cdylib`，无需链接渲染器。原生接口见 Go 的[编写扩展](/docs/go/extensions)指南。
 
 ## 声明依赖
 
-Rust **applications** enable features in `Cargo.toml`. They must not set top-level `extensions`:
+Rust 应用在 `Cargo.toml` 中启用 feature：
 
 ```toml
 [dependencies]
 quickgui = { version = "0.1.3", features = ["terminal"] }
 ```
 
-Go and TypeScript consumers declare the extension package in their own config. Custom extensions may use a scoped package such as `@acme/extension-echo`.
+Go 和 TypeScript 使用者在自己的配置中声明扩展包。
 
 ## 实现原生接口
 
-Implement the bounded `ServiceApi` contract in the extension. Copy borrowed input before returning, keep event streams scoped to their sessions, and release worker resources when the session stops.
+实现 `invoke` 和 `shutdown`。返回前先复制借用的输入，把事件限制在所属会话内，并在会话停止时释放 worker。
 
 ## 自动注册
 
-Go and TypeScript CLIs resolve and bundle declared extensions. A Rust app has nothing to register: Cargo links the crates you depend on. Optional renderer backends stay behind Cargo features.
+Go 和 TypeScript CLI 会打包已声明的扩展。Rust 应用没有额外要注册的内容：Cargo 会链接你依赖的 crate。
 
 ## 构建与打包产物
 
-App edits rebuild the selected crate. Rebuild an extension when its native implementation changes, then rebuild the consuming Go or TypeScript application to stage those bytes.
+应用编辑只会重建所选 crate。原生实现变化时重建扩展，然后再重建使用它的 Go 或 TypeScript 应用。
 
 ## 测试与分发
 
-```rust
-// Extension authors test the packed cdylib with the generated demo app.
-// Rust applications call crate APIs directly instead of invokeExtension.
-```
-
-Test against a packed extension and CLI in a fresh Go or TypeScript project. Extension commands are asynchronous and share the bounded native event transport.
+用生成的演示应用测试打包后的 `cdylib`。Rust 应用直接调用 crate API，而不是 `invokeExtension`。

@@ -1,10 +1,8 @@
-Rust 指南正文目前以英文提供，组件 API 参考包含中文说明。
-
-Enable the `swift-ui` crate feature. Hosted controls are AppKit/SwiftUI views composed with QuickGUI’s retained scene, not replicas painted by wgpu.
+启用 `swift-ui` crate feature。普通 QuickGUI 组件不需要它。
 
 ## Host
 
-Construct `MacSwiftUiHost`, `sync` a descriptor tree, and mount the NSView with `native_view`.
+构造 `MacSwiftUiHost`，`sync` 描述符树，并用 `native_view` 挂载。
 
 ```rust
 let mut host = MacSwiftUiHost::new(|_id| {})?;
@@ -14,7 +12,7 @@ native_view(host.view())
 
 ## 原生控件
 
-The host includes buttons, toggles, sliders, steppers, progress views, gauges, text and secure fields, pickers, segmented controls, date/color pickers, and popovers. Each component’s reference lists its builder methods.
+按钮、开关、滑块、步进器、进度视图、仪表、文本框和安全输入框、选择器、分段控件、日期选择器和颜色选择器，以及 popover。
 
 ## 受控值
 
@@ -31,8 +29,8 @@ native_view(host.view())
 
 ## 尺寸
 
-`MacSwiftUiHost::fitting_size` reports intrinsic native sizing. Keep the parent’s dimensions constrained so native measurement and GPU layout agree.
+`MacSwiftUiHost::fitting_size` 报告控件的固有尺寸。需要固定宽度时约束父节点。
 
 ## 平台支持
 
-SwiftUI hosting is macOS-specific. System availability determines optional appearances, including Liquid Glass. Go and TypeScript expose the same core capability through their adapters.
+SwiftUI 托管需要 macOS。Liquid Glass 等可选外观取决于操作系统版本。
