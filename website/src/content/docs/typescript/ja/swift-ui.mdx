@@ -1,24 +1,35 @@
-TypeScript ガイド本文は現在英語です。コンポーネントの API リファレンスには日本語の説明があります。
+SwiftUI コントロールは `@quickgui/solid/swift-ui` からインポートし、`Host` で包みます。通常の QuickGUI コンポーネントにはこれは不要です。
 
 ## Host
 
-Import native SwiftUI components from `@quickgui/solid/swift-ui` and wrap them in `Host`. These controls are AppKit/SwiftUI views composed with QuickGUI’s retained scene, not replicas drawn by JavaScript.
+```tsx
+import { Host, Button } from "@quickgui/solid/swift-ui";
+
+<Host matchContents>
+  <Button label="Continue" />
+</Host>
+```
+
+ホストはネイティブビューの境界であり、コンテンツから自身のサイズを決められます。
 
 ## ネイティブコントロール
 
-The adapter includes buttons, labels, toggles, sliders, steppers, progress views, gauges, text and secure fields, pickers, segmented controls, date/color pickers, and popovers. Each component’s reference lists its exact prop and event types.
+ボタン、ラベル、トグル、スライダー、ステッパー、プログレスビュー、ゲージ、テキストフィールドとセキュアフィールド、ピッカー、セグメントコントロール、日付ピッカーとカラーピッカー、ポップオーバーがあります。見た目と動きはシステムコントロールと同じです。
 
 ## 制御値
 
 ```tsx
 import { Host, Toggle } from "@quickgui/solid/swift-ui";
-<Host matchContents><Toggle label="Notifications" isOn={enabled()} onIsOnChange={setEnabled} /></Host>
+
+<Host matchContents>
+  <Toggle label="Notifications" isOn={enabled()} onIsOnChange={setEnabled} />
+</Host>
 ```
 
 ## サイズ
 
-Use `matchContents` for intrinsic native sizing, including per-axis options where supported. Keep the parent’s dimensions constrained so native measurement and GPU layout agree.
+`matchContents` はコントロールからホストのサイズを決めます。幅を固定して高さを固有サイズにしたいときは、軸ごとのオプションがあります。
 
 ## 対応プラットフォーム
 
-SwiftUI hosting is macOS-specific. System availability determines optional appearances and controls, including Liquid Glass. Go exposes the same core capability through its own adapter.
+SwiftUI ホスティングには macOS が必要です。Liquid Glass のような任意の外観は、OS のバージョンに依存します。

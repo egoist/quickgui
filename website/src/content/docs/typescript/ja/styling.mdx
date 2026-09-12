@@ -1,14 +1,12 @@
-TypeScript ガイド本文は現在英語です。コンポーネントの API リファレンスには日本語の説明があります。
+レイアウト、タイポグラフィ、色の宣言はすべて、camelCase のキーで `style` に書きます。長さは論理ピクセルです。
 
 ## スタイルメソッド
-
-Put every layout, typography, and paint declaration in `style`, using camelCase keys. Numeric lengths are logical pixels; supported percentages and keywords are parsed by Rust. `color` and `textColor` declare inherited text color.
 
 ```tsx
 <View style={{ padding: 16, gap: 12, bg: "#18181b", color: "#fafafa" }} />
 ```
 
-The 272 fixed layout and style presets are boolean entries in `style`:
+真偽値のプリセットは、Go と同じヘルパーに対応しています。
 
 ```tsx
 <View style={{ flexCol: true, p3: true, gap2: true, roundedLg: true }}>
@@ -16,21 +14,19 @@ The 272 fixed layout and style presets are boolean entries in `style`:
 </View>
 ```
 
-Preset entries include `roundedLg`, `flexCol`, `itemsCenter`, `p3`, `textLg`, and `fontBold`. `roundedLg` uses an 8-pixel radius; `p3` uses 12 pixels from the four-pixel spacing scale. Custom values use fields such as `borderRadius`, `padding`, `gridTemplateColumns`, and `width`. `positionSticky` is the sticky-layout preset.
-
-Presets expand before style arrays merge. `false`, `null`, or `undefined` withdraws a preset and reveals the underlying style. The preset types and values are generated from Rust by `scripts/generate-style-helpers.ts`.
+`roundedLg` は 8 ピクセルの半径、`p3` は 12 ピクセルです。独自の値には `borderRadius`、`padding`、`gridTemplateColumns`、`width` を使います。falsy なプリセット（`false`、`null`、`undefined`）はそのプリセットをオフにします。
 
 ## スタイルのマージ
 
-Nested style arrays merge left to right; later fields override earlier ones. Falsy entries are ignored. Removing a style field withdraws that declaration.
+スタイルの配列は左から右へマージされます。後ろのフィールドが前のフィールドを上書きします。falsy なエントリは無視されます。
 
 ```tsx
 <View style={[base, selected() && selectedStyle, { padding: 20 }]} />
 ```
 
-## スタイルの再利用
+リアクティブなスタイルオブジェクトからフィールドを取り除くと、そのプロパティはクリアされます。
 
-Use `JSX.Style` for reusable styles. Keep getters in JSX when their values should update reactively.
+## スタイルの再利用
 
 ```tsx
 import type { JSX } from "@quickgui/solid";
@@ -39,17 +35,19 @@ const panel = { p3: true, roundedXl: true, bg: "#20242c" } satisfies JSX.Style;
 <View style={panel}><Text>Reusable panel</Text></View>
 ```
 
+値が変化に追従するようにするときは、getter を JSX に置きます。
+
 ## Flexbox
 
-Use `display`, `flexDirection`, `flexGrow`, `flexShrink`, `flexBasis`, alignment, and gap. Set `minWidth: 0` or `minHeight: 0` on flexible scroll containers so content can shrink into the available viewport.
+`display`、`flexDirection`、`flexGrow`、`flexShrink`、`flexBasis`、整列、gap を使います。フレックスでスクロールする子には `minWidth: 0` または `minHeight: 0` を設定し、縮小できるようにします。
 
 ## グリッド
 
-Use `display: "grid"`, track declarations, placement, and spans for two-dimensional layouts. Grid sizing and intrinsic measurements are native; children keep their identities when positions change.
+`display: "grid"` と、トラック、配置、スパンのフィールドを使います。
 
 ## テキストと色
 
-Font family, weight, size, line height, wrapping, ellipsis, decoration, and selection use retained native text. Colors accept hex, supported CSS color strings, or packed RGBA values. Images and SVGs share the core’s bounded caches.
+フォントファミリー、ウェイト、サイズ、折り返し、選択はテキストに適用されます。色は hex、CSS の色文字列、またはパックされた RGBA 値を受け付けます。
 
 ## インタラクション状態
 
@@ -64,4 +62,4 @@ Font family, weight, size, line height, wrapping, ellipsis, decoration, and sele
 
 ## グループと名前付きグループのホバー
 
-Use a named `group` on an ancestor and `groupHover` or `groupActive` on descendants to style coordinated states. The core resolves group membership and invalidates the affected retained subtree.
+祖先で `group` に名前を付け、子孫で `groupHover` または `groupActive` を使うと、一緒にスタイルされます。

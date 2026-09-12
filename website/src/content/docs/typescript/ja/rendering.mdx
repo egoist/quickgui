@@ -1,8 +1,8 @@
-TypeScript ガイド本文は現在英語です。コンポーネントの API リファレンスには日本語の説明があります。
+JSX が組み立てるのはネイティブ UI であり、HTML ではありません。子が状態の変化に合わせて現れたり消えたり並び替わったりするときは、`Show` と `For` を使います。
 
-## レンダリングモデル
+## ビューの仕組み
 
-The Solid universal compiler creates native nodes and retained bindings. It selects the reactive client build even though Bun normally resolves server conditions. Native layout, painting, focus, input, accessibility, and component state remain in Rust.
+コンポーネント関数は一度だけ実行されます。Solid は、変化する値を読むプロパティと子スロットを更新します。各ウィンドウは独自のルートを持ち、ウィンドウが閉じると破棄されます。
 
 ## 条件付きコンテンツ
 
@@ -12,19 +12,19 @@ The Solid universal compiler creates native nodes and retained bindings. It sele
 </Show>
 ```
 
-A conditional region owns its effects and nodes. Removing the region disposes those resources; unrelated sibling nodes keep their identities.
+枝を取り除くと、その副作用は破棄されます。兄弟のコンテンツはそのままです。
 
-## リストとノードの同一性
+## リスト
 
 ```tsx
 <For each={items()}>{item => <Text>{item.name}</Text>}</For>
 ```
 
-Use stable item identities for stateful rows. `For` moves existing nodes when order changes. Use `Table` or `Tree` for large native virtual collections and feed only requested visible data.
+状態を持つ行には安定した識別子を付け、並び替えても状態が保たれるようにします。長いコレクションには [Table](/docs/typescript/components/table) または [Tree](/docs/typescript/components/tree) を使います。
 
 ## ウィンドウのライフサイクル
 
-Each `Window` owns an independent Solid root. Closing a child window must not dispose its siblings. Handle macOS Dock reopening by constructing a fresh window when `hasVisibleWindows` is false.
+各 `Window` は独立したルートを持ちます。1 つのウィンドウを閉じても、他のウィンドウは閉じません。表示中のウィンドウがないとき（`hasVisibleWindows` が `false`）は、Dock アイコンから新しいウィンドウを開きます。
 
 ## 現在のウィンドウ
 
@@ -35,13 +35,13 @@ function Content() {
 }
 ```
 
-The current window exists during renderer construction and native event dispatch. Capture it in setup or pass it explicitly to asynchronous work.
+セットアップ中にウィンドウを保持するか、非同期処理に渡します。後から無関係なコールバックで取得し直してはいけません。
 
-## チェック・テスト・デバッグ
+## テスト
 
 ```sh
 quickgui check
 quickgui test
 ```
 
-The components gallery is the broad UI example. Quick Git exercises native menus, file dialogs, virtualized rows, splitters, shortcuts, multiple windows, background Git work, and persistence. Native integration checks are separate from headless adapter tests.
+`examples/components-typescript` は UI ギャラリーです。`examples/quick-git-typescript` は、メニュー、ダイアログ、複数ウィンドウを持つより大きなアプリです。

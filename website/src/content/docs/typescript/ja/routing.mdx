@@ -1,20 +1,37 @@
-TypeScript ガイド本文は現在英語です。コンポーネントの API リファレンスには日本語の説明があります。
+ルートを宣言し、現在のウィンドウでマッチした結果を描画し、リンクまたは `useNavigate` で移動します。
 
 ## ルートの宣言
 
 ```tsx
-import { Router, Route, Outlet, Link } from "@quickgui/solid/router";
+import { Router, Route, Link } from "@quickgui/solid/router";
+
 <Router initialPath="/">
-  <Route path="/" component={() => <Text>Home</Text>} />
+  <Route path="/" component={() => <Link href="/settings">Settings</Link>} />
+  <Route path="/settings" component={() => <Text>Settings</Text>} />
   <Route path="/projects/:id" component={Project} />
 </Router>
 ```
 
-Rust owns route matching, normalized locations, and bounded memory history. Solid declares routes and renders the matched component chain.
-
 ## 入れ子のレイアウト
 
-Nested routes are relative to their parent. Render `<Outlet />` or the layout component’s `children` where the next matched route belongs. A pathless route can provide a shared layout without adding a URL segment.
+入れ子のルートは親からの相対パスです。次にマッチしたルートを置く場所に `<Outlet />` を描画します。パスなしのルートは、URL セグメントを増やさずに共有レイアウトを提供できます。
+
+```tsx
+<Route path="/" component={Shell}>
+  <Route path="/" component={Home} />
+  <Route path="/settings" component={Settings} />
+</Route>
+
+function Shell() {
+  return (
+    <View style={{ flexCol: true, gap: 12 }}>
+      <Link href="/">Home</Link>
+      <Link href="/settings">Settings</Link>
+      <Outlet />
+    </View>
+  );
+}
+```
 
 ## ナビゲーション
 
@@ -24,7 +41,7 @@ const navigate = useNavigate();
 <Link href="/">Home</Link>
 ```
 
-The controller supports push, replace, back, forward, and relative history movement. Navigation remains in the native application; it does not require a browser history object.
+ルーターは push、replace、back、forward に対応しています。ナビゲーションはアプリ内で完結します。
 
 ## ルートパラメーター
 
@@ -35,4 +52,4 @@ function Project() {
 }
 ```
 
-`useLocation()` and `useSearchParams()` expose normalized reactive accessors. Repeated query keys are retained as arrays.
+`useLocation()` と `useSearchParams()` は、現在のパスとクエリを返します。テキストが最新のままになるよう、JSX 内で読みます。

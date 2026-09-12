@@ -1,21 +1,23 @@
-TypeScript ガイド本文は現在英語です。コンポーネントの API リファレンスには日本語の説明があります。
+拡張は、再利用できるコンポーネントの TypeScript パッケージか、アプリから呼び出せるネイティブライブラリです。まずは TypeScript パッケージから始めます。オプションのバックエンドが必要なときにネイティブライブラリを追加します。
 
 ## 拡張の種類を選ぶ
 
-Use an ordinary TypeScript package for reusable Solid components. Use a native extension when a feature needs a Rust, Go, or Zig service or an optional native renderer backend. All native extensions load into the same process.
+再利用する Solid コンポーネントには、通常の TypeScript パッケージを使います。機能に Rust、Go、Zig のサービスが必要なときはネイティブ拡張を使います。ネイティブ拡張はアプリと同じプロセスに読み込まれます。
 
 ## 拡張プロジェクトを作成する
 
 ```sh
-quickgui init-extension my-extension --type rust
+quickgui init-extension my-components --type go
+quickgui init-extension my-service --type rust
 ```
 
-Extension scaffolds use the shared extension ABI. A TypeScript consumer can use the same extension package as Go.
+TypeScript アプリは、Go と同じネイティブパッケージを利用します。`--npm-package` は成果物のパッケージ名を設定します。
 
 ## コンポーネントの共有
 
 ```tsx
 import { Button, type JSX } from "@quickgui/solid";
+
 export function PrimaryButton(props: JSX.NativeProps) {
   return (
     <Button
@@ -26,9 +28,11 @@ export function PrimaryButton(props: JSX.NativeProps) {
 }
 ```
 
+パッケージを公開し、アプリケーションの依存関係として追加します。
+
 ## ネイティブ拡張の構成
 
-A native extension ships `quickgui.extension.json`, a versioned shared library, and any declared resources. Its manifest identifies the service name, ABI, npm package, release version, library, and per-platform resources.
+ネイティブ拡張は `quickgui.extension.json`、バージョン付き共有ライブラリ、宣言したリソースを同梱します。マニフェストはサービス、ABI、npm パッケージ、バージョン、ライブラリの名前を指定します。ネイティブ契約については Go の[拡張の作成](/docs/go/extensions)ガイドと、[`native-extension` の例](https://github.com/egoist/quickgui/tree/main/examples/native-extension)を参照してください。
 
 ## 依存関係の宣言
 
@@ -36,29 +40,32 @@ A native extension ships `quickgui.extension.json`, a versioned shared library, 
 import { defineConfig } from "@quickgui/cli";
 
 export default defineConfig({
-  language: "typescript", name: "Terminal App", identifier: "com.example.terminal",
+  language: "typescript",
+  name: "Terminal App",
+  identifier: "com.example.terminal",
   extensions: ["@quickgui/extension-terminal"],
 });
 ```
 
-Add `@quickgui/extension-terminal` to application dependencies. Custom extensions may be selected by a scoped package such as `@acme/extension-echo`, an unscoped package such as `quickgui-extension-echo`, or a directory containing their manifest.
+対応する npm パッケージをアプリケーションの依存関係に追加します。独自の拡張では `@acme/extension-echo` のようなスコープ付きの名前を使えます。
 
 ## ネイティブインターフェースを実装する
 
-Implement the bounded `ServiceApi` or renderer extension contract in the native extension. Copy borrowed input before returning, keep event streams scoped to their sessions, and release worker resources when the session stops.
+ネイティブライブラリで `invoke` と `shutdown` を実装します。返す前に借用した入力をコピーし、イベントはそれぞれのセッションに限定し、セッションが止まったらワーカーを解放します。
 
 ## 自動登録
 
-The CLI resolves and bundles declared extensions. The worker registers their descriptors and exact versions through FFI before creating the application, so components use the same core renderer and native resource registry.
+CLI は宣言された拡張をバンドルします。アプリは起動時に読み込むので、コンポーネントは `app.whenReady()` のあとに呼び出せます。
 
 ## 成果物のビルドとパッケージ化
 
-App edits reuse prebuilt extension artifacts. Rebuild an extension when its native implementation changes, then rebuild the application to stage those bytes. Extension resources are copied before signing.
+実装が変わったらネイティブライブラリを再ビルドし、そのあとアプリを再ビルドします。マニフェストに列挙したリソースは、ライブラリの隣にコピーされます。
 
 ## テストと配布
 
 ```tsx
 import { ExtensionSession, invokeExtension } from "@quickgui/native";
+
 const result = await invokeExtension("acme-service", "lookup", { key: "example" });
 const session = new ExtensionSession("acme-service", {}, event => console.log(event));
 await session.ready;
@@ -66,4 +73,4 @@ await session.request("refresh", null);
 await session.close();
 ```
 
-Test against a packed extension and CLI in a fresh project. Extension commands are asynchronous and share the bounded native event transport.
+新しいプロジェクトで、パック済みの拡張に対してテストします。パッケージがないアプリにはライブラリがバンドルされないことを確認します。

@@ -1,21 +1,32 @@
-TypeScript ガイド本文は現在英語です。コンポーネントの API リファレンスには日本語の説明があります。
+ウィンドウは `app.whenReady()` のあとに作成します。各ウィンドウは独自の UI ルートを持ちます。
 
 ## ウィンドウのライフタイム
 
-Create a `Window` with `renderer: createRenderer(...)`. `onClose` and `on("closed", ...)` observe native destruction; `onCloseRequested` can hold a user close request. `close()` completes it. `whenReady()` resolves after the native window is mounted, including hidden windows. Returned snapshots use `bounds`, `viewportSize`, and `scaleFactor`.
+```tsx
+new Window({
+  title: "My App",
+  width: 720,
+  height: 480,
+  renderer: createRenderer(App),
+});
+```
+
+`onClose` と `on("closed", ...)` は、ウィンドウがなくなったあとに実行されます。`onCloseRequested` はクローズを保留できるので、保存を確認できます。`whenReady()` は、非表示のウィンドウも含め、ネイティブウィンドウが存在したあとに解決します。
+
+Dock アイコンは `app.on("reopen", ...)` で扱い、`hasVisibleWindows` が `false` のときにウィンドウを開きます。
 
 ## コマンドとサービス
 
 ```tsx
-import { app, Window, Clipboard, Dialog, Menu, Shell, Screen } from "@quickgui/native";
+import { app, Clipboard, Dialog, Menu, Shell, Screen } from "@quickgui/native";
+
 await app.whenReady();
 const displays = await Screen.getAllDisplays();
 const selected = await Dialog.showOpenDialog({ properties: ["openDirectory"] });
-// Menus, dialogs, clipboard, displays, appearance, and window operations use Rust services.
 ```
 
-Native result operations return promises. Window mutations declare work immediately and are submitted after native creation. System menus and file dialogs remain native controls.
+値を返す呼び出しは Promise です。メニュー、ファイルダイアログ、クリップボード、外観、通知、トレイアイコンは `@quickgui/native` から利用できます。
 
 ## イベントとファイル監視
 
-Window events include focus, resize, appearance, ready-to-show, minimize, fullscreen, and close. Application events include ready, reopen, activation, quit, open URLs, and keyboard-layout changes. Use Bun file watching and asynchronous I/O for application data; dispose watchers with their owner window. Quick Git demonstrates cancellation, bounded subprocess output, and per-window stores.
+ウィンドウのイベントには、フォーカス、リサイズ、外観、最小化、フルスクリーン、クローズがあります。アプリケーションのイベントには ready、reopen、アクティベーション、終了、URL を開く処理が含まれます。プロジェクトファイルには Bun のファイル監視を使い、ウィンドウに属するウォッチャーは `onCleanup` で停止します。

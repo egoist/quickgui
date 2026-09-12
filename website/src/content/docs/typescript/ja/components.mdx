@@ -1,17 +1,19 @@
-TypeScript ガイド本文は現在英語です。コンポーネントの API リファレンスには日本語の説明があります。
+通常の関数から JSX を返します。レイアウト、タイポグラフィ、色は `style` に書きます。
 
 ## コンポーネントの定義
-
-Return native JSX from ordinary TypeScript functions. Children and reactive prop getters are evaluated under the component owner; do not manually invoke components as setup side effects.
 
 ```tsx
 function Greeting(props: { name: string }) {
   return <Text>Hello, {props.name}</Text>;
 }
-<Greeting name={name()} />
+
+function Example() {
+  const [name] = createSignal("Ada");
+  return <Greeting name={name()} />;
+}
 ```
 
-`<View>some text</View>` にはテキストを直接渡せます。`<div>` と `<span>` はそれぞれ `View` と `Text` の別名で、コンポーネントのインポートは不要です。見た目の指定はすべて `style` 内の camelCase キーを使います。直接のスタイル属性、`class`、`className` はサポートしません。
+`<View>` はテキストを直接受け取れます。`<div>` と `<span>` は `View` と `Text` のエイリアスです。`class` も `className` もありません。見た目に関することはすべて `style` に書きます。
 
 ```tsx
 <div style={{ flexCol: true, gap2: true }}>
@@ -22,7 +24,7 @@ function Greeting(props: { name: string }) {
 
 ## プリミティブ
 
-`View`, `Text`, `Button`, `Input`, `TextArea`, `Markdown`, `Image`, `Svg`, `Shader`, `VirtualList`, and optional `Terminal` are native building blocks. `TextInput` is also available as the single-line input spelling.
+`View`、`Text`、`Button`、`Input`、`TextArea`、`Markdown`、`Image`、`Svg`、`Shader`、`VirtualList` が基本の部品です。`TextInput` は `Input` と同じです。`Terminal` は terminal パッケージを追加すると使えます。
 
 ## 複合コンポーネント
 
@@ -33,16 +35,21 @@ function Greeting(props: { name: string }) {
 </Checkbox.Root>
 ```
 
-Compound roots coordinate their named parts through Rust-owned state. Keep parts under the intended root so their scope, focus, and value relationships are explicit.
+フォーカスと値がつながったままになるよう、パーツは所属するルートの下に置きます。
 
 ## 制御された状態
 
-Use controlled values with the matching change callback, or `defaultValue`, `defaultChecked`, and `defaultOpen` where a component supports internal state. Native events describe the core decision; update the signal to accept that value.
+現在の値と変更コールバックを渡すか、コンポーネント自身に状態を持たせる場合は `defaultValue`、`defaultChecked`、`defaultOpen` を使います。
+
+```tsx
+const [name, setName] = createSignal("");
+<Input value={name()} onInput={event => setName(event.value ?? "")} />
+```
 
 ## コンポーネントの種類
 
-The reference covers selection controls, tabs, disclosure, fields, menus, context menus, pickers, dialogs, popovers, preview cards, drawers, navigation menus, ranges, splitters, progress, meters, toggles, toolbars, toasts, calendars, date/time fields, scroll areas, tables, trees, and SwiftUI controls. Run `examples/components-typescript` for the complete gallery.
+[コンポーネントリファレンス](/docs/typescript/components/button)では、フォーム、オーバーレイ、メニュー、テーブル、ツリーなどを扱っています。このリポジトリにはギャラリーとして `examples/components-typescript` があります。
 
 ## 各パーツのスタイル
 
-Apply `style` to each visual part. Parts intentionally remain unstyled so layout and colors belong to the application. State hooks such as `useSliderState`, `useTabsState`, `useSelectState`, `useMenuItemState`, and `useScrollAreaState` expose the current native state for custom presentation.
+見えるパーツごとに `style` を指定します。パーツはスタイルなしで提供されるので、色とレイアウトはアプリ側で決めます。`useTabsState` や `useSelectState` のようなフックは、独自の見た目のために現在の状態を公開します。

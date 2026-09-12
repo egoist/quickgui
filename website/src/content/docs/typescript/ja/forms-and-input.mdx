@@ -1,25 +1,58 @@
-TypeScript ガイド本文は現在英語です。コンポーネントの API リファレンスには日本語の説明があります。
+フィールドの値はシグナルに置き、受け入れた変更はイベントハンドラから書き戻します。
 
 ## テキスト入力
 
 ```tsx
 const [value, setValue] = createSignal("");
+const [notes, setNotes] = createSignal("");
+
 <Input value={value()} onInput={event => setValue(event.value ?? "")} placeholder="Name" />
 <TextArea value={notes()} onInput={event => setNotes(event.value ?? "")} />
 ```
 
+`onSubmit` は、1 行入力での Return を処理します。
+
 ## フィールド
 
-`Field`, `Fieldset`, labels, descriptions, controls, and error parts declare accessible relationships and validation. Field validity, touched/dirty state, validation triggers, and debounce deadlines are coordinated by Rust.
+`Field` はラベル、コントロール、説明、エラーをつなぎます。
+
+```tsx
+<Field.Root required invalid={name().length === 0} validationMessage="Enter a name">
+  <Field.Label><Text>Name</Text></Field.Label>
+  <Field.Control value={name()} onInput={event => setName(event.value ?? "")} />
+  <Field.Description><Text>Shown on your profile.</Text></Field.Description>
+  <Field.Error><Text>Enter a name.</Text></Field.Error>
+</Field.Root>
+```
 
 ## 選択コントロール
 
-Compose `Checkbox`, `CheckboxGroup`, `RadioGroup`, `Radio`, and `Switch` with their indicators and labels. Controlled state is updated through each root’s change callback; disabled/read-only state belongs to the native control.
+`Checkbox`、`CheckboxGroup`、`RadioGroup`、`Radio`、`Switch` を、インジケーターとラベルと組み合わせます。各ルートの変更コールバックから状態を更新します。
+
+```tsx
+<Checkbox.Root checked={checked()} onCheckedChange={setChecked}>
+  <Checkbox.Indicator><Text>✓</Text></Checkbox.Indicator>
+  <Text>Remember this device</Text>
+</Checkbox.Root>
+```
 
 ## Select
 
-`Select`, `Combobox`, and `Autocomplete` declare options ahead of native filtering and keyboard navigation. Their state hooks expose selection, query, highlight, and chips for custom parts. Keep option values stable.
+`Select` はリストから選びます。`Combobox` は入力と選択を組み合わせます。`Autocomplete` は自由入力を受け付けます。
+
+```tsx
+<Select.Root
+  ariaLabel="Theme"
+  items={[
+    { value: "system", label: "System" },
+    { value: "light", label: "Light" },
+    { value: "dark", label: "Dark" },
+  ]}
+  value={theme()}
+  onValueChange={setTheme}
+/>
+```
 
 ## イベント
 
-Input events carry text in `event.value`. Structured key, pointer, gesture, drop, component-change, and commit payloads have dedicated decoder helpers. Use declared handlers so the core knows which events must cross the FFI boundary.
+テキストイベントは文字列を `event.value` に入れます。ボタンは `onClick` を使います。UI の更新はそれらのハンドラ内で行い、遅い処理は別の場所で実行し、終わったらシグナルに書き込みます。

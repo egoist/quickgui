@@ -1,21 +1,55 @@
-TypeScript ガイド本文は現在英語です。コンポーネントの API リファレンスには日本語の説明があります。
+アプリのスタイルで描く内容には QuickGUI のオーバーレイを、ファイル選択やアラートにはシステムダイアログを使います。
 
 ## Popover
 
-Compose `Popover.Root`, trigger, portal, positioner, popup, arrow, title, description, and close parts. Rust owns placement, collisions, focus, outside interaction, and dismissal. Use controlled `open` or the supported default-open option.
+```tsx
+<Popover.Root open={open()} onOpenChange={setOpen}>
+  <Popover.Trigger><Text>Account</Text></Popover.Trigger>
+  <Popover.Portal>
+    <Popover.Positioner side="bottom" sideOffset={8}>
+      <Popover.Popup style={{ width: 240, padding: 16 }}>
+        <Popover.Title><Text>Account</Text></Popover.Title>
+        <Popover.Close><Text>Done</Text></Popover.Close>
+      </Popover.Popup>
+    </Popover.Positioner>
+  </Popover.Portal>
+</Popover.Root>
+```
+
+`side` は希望の方向です。はみ出す場合は配置が反転します。
 
 ## Dialog
 
-`Dialog` and `AlertDialog` add modal semantics and coordinated title, description, backdrop, viewport, and close parts. Restore focus through the native lifecycle; do not install a second JavaScript focus trap.
+```tsx
+<Dialog.Root open={open()} onOpenChange={setOpen}>
+  <Dialog.Trigger><Text>Edit profile</Text></Dialog.Trigger>
+  <Dialog.Portal>
+    <Dialog.Backdrop />
+    <Dialog.Viewport>
+      <Dialog.Popup>
+        <Dialog.Title><Text>Edit profile</Text></Dialog.Title>
+        <Dialog.Description><Text>Changes are saved immediately.</Text></Dialog.Description>
+        <Dialog.Close><Text>Done</Text></Dialog.Close>
+      </Dialog.Popup>
+    </Dialog.Viewport>
+  </Dialog.Portal>
+</Dialog.Root>
+```
+
+`AlertDialog` は確認用です。
 
 ## システムポップオーバー
 
-`SystemPopover` owns a separate native panel anchored to a mounted node. It can cross the parent’s content bounds and is disposed with its owner. The content receives its own renderer root; an anchor must belong to an open window.
+`SystemPopover` はネイティブの子ウィンドウを開き、オーナーウィンドウの端を超えて伸ばせます。コンテンツには幅と高さを指定します。
 
 ## ネイティブダイアログ
 
 ```tsx
 import { Dialog } from "@quickgui/native";
-const choice = await Dialog.showAlertDialog({ message: "Save changes?", buttons: [{ label: "Save" }, { label: "Cancel", role: "cancel" }] });
+
+const choice = await Dialog.showAlertDialog({
+  message: "Save changes?",
+  buttons: [{ label: "Save" }, { label: "Cancel", role: "cancel" }],
+});
 const result = await Dialog.showOpenDialog({ properties: ["openFile", "multiSelections"] });
 ```

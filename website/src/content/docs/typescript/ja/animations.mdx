@@ -1,27 +1,43 @@
-TypeScript ガイド本文は現在英語です。コンポーネントの API リファレンスには日本語の説明があります。
+ベーススタイルの `transition` でスタイル変更をアニメーションします。コンポーネントはフレームごとに再実行されません。
 
 ## ホバーのトランジション
 
 ```tsx
-<Button style={{ bg: "#2563eb", transition: { property: "bg", duration: 160 }, hover: { bg: "#1d4ed8" } }}>Hover</Button>
+<Button style={{
+  bg: "#2563eb",
+  transition: { property: "bg", duration: 160 },
+  hover: { bg: "#1d4ed8" },
+}}>Hover</Button>
 ```
 
 ## 状態によるアニメーション
 
-Change a reactive style value from application state. Rust interpolates supported transitions while retaining the node and its interaction state. Do not reconstruct the component on each frame.
+状態からスタイルを変え、ノードはマウントしたままにします。フレームごとにコンポーネントを作り直してはいけません。
+
+```tsx
+<View style={{
+  bg: selected() ? "#2563eb" : "#334155",
+  opacity: selected() ? 1 : 0.6,
+  transition: { property: ["bg", "opacity"], duration: 180 },
+}} />
+```
 
 ## 時間とフレームレート
 
-Transition durations accept supported numbers or duration strings. Set easing and `maxFps` when needed; the frame-rate value is a ceiling while animation is active, not an idle scheduling source.
+時間にはミリ秒、または `"180ms"` のような文字列を指定できます。上限を付けたいときはイージングと `maxFps` を設定します。`maxFps` を省略するとディスプレイに追従します。
 
 ## 対応するプロパティ
 
-Native transitions cover the documented color, border, radius, opacity, and shadow properties. Transforms are supported as native style declarations. Consult the typed transition property union for interpolation support.
+色、ボーダー、半径、不透明度、シャドウ、transform は補間されます。幅、高さ、パディングは補間されません。
 
 ## マウントと視差効果の抑制
 
-Keep an overlay mounted during its native exit transition when its component supports that lifecycle. Respect `reduceMotion` on window configuration and the platform preference instead of imposing a JavaScript animation loop.
+コンポーネントが対応している場合は、終了トランジションのあいだオーバーレイをマウントしたままにします。`Show` は子をすぐに取り除きます。トランジションはシステムの「視差効果を減らす」設定に従います。上書きするにはウィンドウの `reduceMotion` を設定します。
 
 ## アニメーション画像
 
-`Image` uses native image resources, including animated GIF/WebP sources. The core owns playback deadlines, cache limits, and visibility-based suspension; loading a static image does not request idle frames.
+`Image` は渡したパスの GIF と WebP ファイルを再生します。タイマーは不要です。
+
+```tsx
+<Image value={path} style={{ width: 96, height: 96, objectFit: "contain" }} />
+```
