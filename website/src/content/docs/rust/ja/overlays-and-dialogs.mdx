@@ -1,18 +1,39 @@
-Rust ガイド本文は現在英語です。コンポーネントの API リファレンスには日本語の説明があります。
-
-In-window overlays stay in the retained scene. Operating-system dialogs use platform prompts.
+アプリのスタイルを付けた内容には QuickGUI のオーバーレイを使い、ファイル選択や警告にはシステムダイアログを使います。
 
 ## Popover
 
-Compose `Popover` trigger, positioner, popup, and arrow parts. The core owns placement, collisions, focus, outside interaction, and dismissal. Store `open` on the view.
+`trigger`、`positioner`、`popup`、`arrow` のパーツを組み合わせます。`open` はビューに保持します。
+
+```rust
+let popover = Popover::new("help-trigger", "help-popup", open)
+    .side(AnchorSide::Bottom)
+    .side_offset(8.0);
+let mut root = popover.root().child(
+    popover.trigger().on_click(toggle).child("Account"),
+);
+if popover.is_open() {
+    root = root.child(popover.positioner().child(
+        popover.popup().w(240.0).p(16.0).on_dismiss(dismiss).children([
+            popover.title().child("Account"),
+            popover.close("Close").on_click(dismiss).child("Done"),
+        ]),
+    ));
+}
+root
+```
 
 ## Dialog
 
-`Dialog::new` and `Dialog::alert` add modal semantics plus title, description, backdrop, viewport, and close parts. Restore focus through `restore_focus_to`; do not install a second focus trap.
+`Dialog::new` と `Dialog::alert` は、タイトル、説明、バックドロップ、閉じるコントロールを追加します。
+
+```rust
+let dialog = Dialog::new("save", open);
+dialog.root().child(dialog.title_with(text("Save changes")))
+```
 
 ## システムポップオーバー
 
-`SystemPopover` owns a separate native panel anchored to a mounted node. It can cross the parent’s content bounds and is disposed with its owner.
+`SystemPopover` はネイティブの子ウィンドウを開き、オーナーウィンドウの端より外側まで伸ばせます。
 
 ## ネイティブダイアログ
 

@@ -1,20 +1,16 @@
-Rust ガイド本文は現在英語です。コンポーネントの API リファレンスには日本語の説明があります。
+これらのガイドは Rust 向けです。サイドバーで Go または TypeScript に切り替えられます。
 
-These guides use Rust. Choose Go or TypeScript in the sidebar for those language bindings.
-
-Rust apps link the `quickgui` crate into the executable. The CLI runs Cargo, packages the binary, and does not bundle `libquickgui_host`. Ordinary edits rebuild the selected crate; there is no FFI host library to reuse.
+QuickGUI の Rust アプリは `quickgui` クレートをリンクし、`Application::run` からネイティブウィンドウを開きます。
 
 ## 動作要件
 
-- A current stable Rust toolchain (1.90 or newer)
-- Bun 1.3 or newer
-- Xcode Command Line Tools on macOS (`xcode-select --install`)
+- Rust 1.90 以降
+- Bun 1.4 以降
+- macOS では Xcode Command Line Tools（`xcode-select --install`）
 
-The first development build compiles wgpu and takes longer. Later edits reuse incremental Cargo artifacts.
+初回の開発ビルドは時間がかかります。以降の編集では増分の Cargo 成果物を再利用します。現在サポートしている対象は macOS です。
 
 ## プロジェクトを作成
-
-Run the command below and choose **Rust** when prompted.
 
 ```sh
 bunx @quickgui/cli init my-app --language rust
@@ -22,11 +18,20 @@ cd my-app
 bun run dev
 ```
 
-`bun run dev` compiles the crate, packages and launches the app, and rebuilds on source changes. Pass `--language rust` to skip the language prompt.
+このリポジトリから作る場合：
+
+```sh
+git clone https://github.com/egoist/quickgui.git
+cd quickgui
+bun install
+bun packages/cli/src/cli.ts init ../my-app --language rust
+cd ../my-app
+bun run dev
+```
 
 ## 最初のウィンドウ
 
-The generated `src/main.rs` constructs an [`Application`](https://docs.rs/quickgui), opens a window, and implements [`View`](https://docs.rs/quickgui). Store state on the view and call `cx.invalidate()` after mutations.
+生成された `src/main.rs` は [`Application`](https://docs.rs/quickgui) を起動し、ウィンドウを開いて [`View`](https://docs.rs/quickgui) を実装します。状態はビューに保持し、変更したあとに `cx.invalidate()` を呼び出します。
 
 ```rust
 use quickgui::{
@@ -79,6 +84,8 @@ impl View for Counter {
 }
 ```
 
+表示中のウィンドウがないときに Dock アイコンをクリックすると、`on_reopen` がウィンドウを開き直します。
+
 ## 実行とビルド
 
 ```sh
@@ -89,8 +96,10 @@ bun run dev
 bun run build
 ```
 
-`check`, `test`, and `fmt` dispatch to Cargo. Production builds compile with `--release` and write packaged apps under `dist/`. Rust apps ship `quickgui.json` next to the executable (or in `Contents/Resources` on macOS) instead of a host shared library.
+これらのコマンドは Cargo を呼び出します。本番ビルドは `--release` でコンパイルし、パッケージ済みアプリを `dist/` に書き出します。
 
 ## 次のステップ
 
-Explore the [component reference](/docs/rust/components), [native services](/docs/rust/native-services), and [SwiftUI controls](/docs/rust/swift-ui). The checkout includes `examples/base_ui_components.rs` and related `examples/*.rs` galleries.
+- [コンポーネント](/docs/rust/components)を書く。
+- [ビューの状態](/docs/rust/reactivity)で同期を保つ。
+- [スタイルとレイアウト](/docs/rust/styling)を追加する。

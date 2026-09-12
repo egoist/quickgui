@@ -1,10 +1,8 @@
-Rust ガイド本文は現在英語です。コンポーネントの API リファレンスには日本語の説明があります。
+`View::render` は、無効化したあと、またはオペレーティングシステムが再描画を求めたときに UI を組み立てます。行が描画をまたいで同一のままになるよう、`id` を使います。
 
-`View::render` builds an element tree after invalidation or OS damage. Native layout, painting, focus, input, and accessibility remain in the core. Stable `Element::id` values preserve identity across renders.
+## ビューの仕組み
 
-## レンダリングモデル
-
-Return `impl IntoElement` from `render`. Fluent builders construct retained elements. The window sleeps until `invalidate` or platform damage. Do not rebuild from a timer when nothing changed.
+`render` からは `impl IntoElement` を返します。ウィンドウは `invalidate` またはプラットフォームのイベントまで休止します。
 
 ## 条件付きコンテンツ
 
@@ -16,9 +14,9 @@ if self.expanded {
 }
 ```
 
-Omitting a branch drops its nodes. Sibling elements with stable ids keep their identities.
+分岐を省略すると、そのノードはドロップされます。
 
-## リストとノードの同一性
+## リスト
 
 ```rust
 div().children(self.items.iter().map(|item| {
@@ -26,11 +24,11 @@ div().children(self.items.iter().map(|item| {
 }))
 ```
 
-Give stateful rows stable `id`s. Use `VirtualList` or `TableState` for large collections and only mount visible rows.
+状態を持つ行には、安定した `id` を付けます。長いコレクションには `VirtualList` または `Table` を使います。
 
 ## ウィンドウのライフサイクル
 
-Each `open_window` owns an independent view. Closing a child window must not drop its siblings. Handle macOS Dock reopening by constructing a fresh window when `has_visible_windows` is false.
+それぞれの `open_window` は独立したビューを所有します。1 つのウィンドウを閉じても、ほかのビューはドロップされません。Dock アイコンは、`has_visible_windows` が `false` のときに新しいウィンドウを開いて扱います。
 
 ## 現在のウィンドウ
 
@@ -43,13 +41,11 @@ fn render(&mut self, cx: &mut ViewContext<'_, Self>) -> impl IntoElement {
 }
 ```
 
-`ViewContext` and `EventContext` expose the current `WindowHandle` during render and event dispatch.
-
-## チェック・テスト・デバッグ
+## テスト
 
 ```sh
 quickgui check
 quickgui test
 ```
 
-`examples/base_ui_components.rs` is the broad UI gallery. Enable the `inspector` crate feature for the in-app inspector. Native integration checks are separate from `cargo test`.
+`examples/base_ui_components.rs` は UI ギャラリーです。アプリ内インスペクターには、`inspector` クレート機能を有効にします。

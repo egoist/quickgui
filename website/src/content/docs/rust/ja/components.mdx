@@ -1,6 +1,4 @@
-Rust ガイド本文は現在英語です。コンポーネントの API リファレンスには日本語の説明があります。
-
-Implement `View` for application components. Primitives are functions that return `Element`. Compound components are copyable descriptors whose `*_part` methods decorate caller-owned elements.
+状態を持つ画面には `View` を実装します。状態を持たない部品には、`Element` を返す関数が使えます。
 
 ## コンポーネントの定義
 
@@ -8,6 +6,7 @@ Implement `View` for application components. Primitives are functions that retur
 struct Greeting {
     name: String,
 }
+
 impl View for Greeting {
     fn render(&mut self, _cx: &mut ViewContext<'_, Self>) -> impl IntoElement {
         text(format!("Hello, {}", self.name))
@@ -15,32 +14,35 @@ impl View for Greeting {
 }
 ```
 
-Child views can also be functions that return `Element` when they have no retained state.
+子ビューも、自身の状態を持たないときは `Element` を返す関数にできます。
 
 ## プリミティブ
 
-`div`, `text`, `button`, `text_input`, `text_area`, `Markdown`, `img`, `svg`, `custom_shader`, `VirtualList`, and optional `Terminal` are native building blocks. `submit_button` submits the nearest `form`.
+`div`、`text`、`button`、`text_input`、`text_area`、`Markdown`、`img`、`svg`、`custom_shader`、`VirtualList` が基本の部品です。`submit_button` はいちばん近い `form` を送信します。`Terminal` はクレート機能を有効にすると使えます。
 
 ## 複合コンポーネント
 
 ```rust
 let checkbox = Checkbox::new(self.checked);
 checkbox
-    .root().flex_row().gap(8.0).on_click(toggle)
+    .root()
+    .flex_row()
+    .gap(8.0)
+    .on_click(toggle)
     .child(checkbox.indicator_with(div().size(16.0, 16.0)))
     .child(text("Remember this device"))
 ```
 
-Compound roots coordinate named parts through ids and state you store on the view. Keep parts under the intended root so focus and value relationships stay explicit.
+フォーカスと値がつながったままになるよう、パーツはその所属するルートの下に置きます。
 
 ## 制御された状態
 
-Store values on the view and pass them into constructors such as `Checkbox::new`, `SliderState`, or `text_input`. Update those fields from listeners, then `invalidate`. There is no separate `defaultValue` layer: the view owns the state.
+値はビューに保持し、コンストラクターへ渡し、リスナーから更新します。そのあと `cx.invalidate()` を呼び出します。状態の所有者はビューです。
 
 ## コンポーネントの種類
 
-The reference covers selection controls, tabs, disclosure, fields, menus, context menus, pickers, dialogs, popovers, preview cards, drawers, navigation menus, ranges, splitters, progress, meters, toggles, toolbars, toasts, calendars, date/time fields, scroll areas, tables, trees, and SwiftUI controls. Run `examples/base_ui_components.rs` for a gallery.
+[コンポーネントリファレンス](/docs/rust/components/button)では、フォーム、オーバーレイ、メニュー、テーブル、ツリーなどを扱います。`examples/base_ui_components.rs` はギャラリーです。
 
 ## 各パーツのスタイル
 
-Apply fluent style methods to each visual part. Parts remain unstyled so layout and colors belong to the application. State types such as `SliderState`, `TabsState`, `SelectState`, and `ScrollAreaState` expose the current native state for custom presentation.
+表示される各パーツに、チェーンできるスタイルメソッドを適用します。パーツはスタイルなしで提供されるので、色とレイアウトはアプリ側のものです。`TabsState` や `SelectState` のような型は、独自の見た目のために現在の状態を公開します。
