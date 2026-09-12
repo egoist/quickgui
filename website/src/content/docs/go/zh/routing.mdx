@@ -1,27 +1,20 @@
-路由根据应用当前路径选择组件并维护导航历史。路由内容在当前窗口中以原生 QuickGUI 节点渲染。
+路由器根据当前路径选择组件，并维护前进/后退历史。路由在当前窗口中渲染。
 
 ## 路由声明
 
-使用 `ui.Route` 和 `ui.Layout` 声明路由。布局通过 `ui.Outlet` 挂载匹配的子路由。用 `ui.UseParams` 读取参数，或用 `ui.UseRouter` 导航。
+用 `ui.Route` 声明路由。用 `ui.UseParams` 读取参数，用 `ui.UseRouter` 或 `ui.Link` 导航。
 
 ```go
 func RouterExample() *native.Node {
 	return ui.Router(ui.RouterProps{
 		InitialPath: "/",
 		Routes: []*ui.RouteDeclaration{
-			ui.Route(
-				"/",
-				func() *native.Node {
-					return ui.Link(
-						ui.LinkProps{Href: "/settings"},
-						"Settings",
-					)
-				},
-			),
-			ui.Route(
-				"/settings",
-				func() *ui.Element { return ui.Text("Settings") },
-			),
+			ui.Route("/", func() *native.Node {
+				return ui.Link(ui.LinkProps{Href: "/settings"}, "Settings")
+			}),
+			ui.Route("/settings", func() *ui.Element {
+				return ui.Text("Settings")
+			}),
 		},
 		Fallback: func() *ui.Element { return ui.Text("Page not found") },
 	})
@@ -30,9 +23,7 @@ func RouterExample() *native.Node {
 
 ## 嵌套布局
 
-用 `ui.Layout` 包裹相关路由。布局组件在匹配子路由的位置调用 `ui.Outlet()`。在同级路由之间导航会保留公共布局及其状态，只替换发生变化的路由分支。
-
-把共享导航放在 outlet 外部。Home 和 Settings 共用同一布局，因此切换页面时布局的局部状态会保留。outlet 只提供当前匹配的子页面。
+用 `ui.Layout` 包裹相关路由。在应显示匹配子路由的位置调用 `ui.Outlet()`。outlet 之外的共享界面在同级路由之间切换时会保留状态。
 
 ```go
 func NestedRouterExample() *native.Node {
@@ -40,21 +31,16 @@ func NestedRouterExample() *native.Node {
 		Routes: []*ui.RouteDeclaration{
 			ui.Layout(
 				func() *ui.Element {
-					return ui.View().Children(
-
-						ui.Link(ui.LinkProps{Href: "/"}, "Home"),
-						ui.Link(ui.LinkProps{Href: "/settings"}, "Settings"),
-						ui.Outlet(),
-					).Display("flex").FlexDirection("column").Gap(12)
+					return ui.View().
+						Display("flex").
+						FlexDirection("column").
+						Gap(12).
+						Child(ui.Link(ui.LinkProps{Href: "/"}, "Home")).
+						Child(ui.Link(ui.LinkProps{Href: "/settings"}, "Settings")).
+						Child(ui.Outlet())
 				},
-				ui.Route(
-					"/",
-					func() *ui.Element { return ui.Text("Home") },
-				),
-				ui.Route(
-					"/settings",
-					func() *ui.Element { return ui.Text("Settings") },
-				),
+				ui.Route("/", func() *ui.Element { return ui.Text("Home") }),
+				ui.Route("/settings", func() *ui.Element { return ui.Text("Settings") }),
 			),
 		},
 	})
@@ -63,7 +49,7 @@ func NestedRouterExample() *native.Node {
 
 ## 导航
 
-在路由组件内，`ui.UseRouter()` 提供 `Navigate`、`Replace`、`Back` 和 `Forward`。`ui.Link` 声明导航目标。普通导航添加历史记录，替换导航则修改当前记录。
+在路由内，`ui.UseRouter()` 提供 `Navigate`、`Replace`、`Back` 和 `Forward`。`ui.Link` 声明目标。`Navigate` 添加一条历史记录；`Replace` 更新当前记录。
 
 ```go
 func BackButton() *ui.Element {
@@ -74,33 +60,26 @@ func BackButton() *ui.Element {
 
 ## 路由参数
 
-使用 `ui.UseParams` 读取路径参数、`ui.UseSearchParams` 读取查询值、`ui.UseLocation` 读取当前位置。它们返回访问器；需要更新显示值时，在绑定中读取。仅参数发生变化时，匹配的路由组件会保持挂载。
+用 `ui.UseParams` 读取路径参数，用 `ui.UseSearchParams` 读取查询值，用 `ui.UseLocation` 读取当前位置。在显示值应更新的地方读取它们。只改变参数时，同一个路由组件会保持挂载。
 
-`:name` 路径段捕获一个参数。将读取保留在文本访问器内：如果在初始化时保存 `params()["name"]`，标签就会停留在初始值。查询参数与路径参数分别读取。这个路由初次显示 `quickgui` 和 `history`。
+`:name` 段捕获一个路径参数。查询字符串与路径是分开的。
 
 ```go
 func ParameterRouterExample() *native.Node {
 	return ui.Router(ui.RouterProps{
 		InitialPath: "/projects/quickgui?tab=history",
 		Routes: []*ui.RouteDeclaration{
-			ui.Route(
-				"/projects/:name",
-				func() *ui.Element {
-					params := ui.UseParams()
-					search := ui.UseSearchParams()
-					return ui.View().Children(
-						ui.Text(
-							"Project: ",
-							params()["name"],
-						),
-						ui.Text(
-							"Tab: ",
-							search()["tab"],
-						),
-					)
-				},
-			),
+			ui.Route("/projects/:name", func() *ui.Element {
+				params := ui.UseParams()
+				search := ui.UseSearchParams()
+				return ui.View().Children(
+					ui.Text("Project: ", params()["name"]),
+					ui.Text("Tab: ", search()["tab"]),
+				)
+			}),
 		},
 	})
 }
 ```
+
+此路由从 `quickgui` 和 `history` 开始。在初始化时读取 `params()["name"]` 会把标签固定在第一个值。

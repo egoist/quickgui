@@ -1,8 +1,8 @@
-SwiftUI 修饰器用于设置原生控件样式。反向托管可以把普通 QuickGUI 子树放入 SwiftUI。
+SwiftUI 修饰器用于设置原生控件样式。反向托管把 QuickGUI 子树放入 SwiftUI。
 
 ## 修饰器
 
-通过 `Modifiers` 按顺序应用 `ui.SwiftUI` 的修饰器工厂，包括 ButtonStyle、ButtonBorderShape、ControlSize、LabelStyle、Tint 和 Disabled。
+通过 `Modifiers` 按顺序传入 `ui.SwiftUI` 的修饰器工厂。可用工厂包括 ButtonStyle、ButtonBorderShape、ControlSize、LabelStyle、Tint 和 Disabled。
 
 ```go
 return ui.SwiftUI.Button(ui.SwiftUIButtonProps{
@@ -17,11 +17,11 @@ return ui.SwiftUI.Button(ui.SwiftUIButtonProps{
 
 ## Liquid Glass
 
-在支持的系统上，使用 `ui.SwiftUI.ButtonStyle("glass")` 请求原生玻璃按钮样式。最终外观由 macOS 决定。
+在支持的系统上，`ui.SwiftUI.ButtonStyle("glass")` 请求系统玻璃按钮。最终外观由 macOS 决定。
 
 ## 反向托管
 
-`ui.SwiftUI.QuickGUIHostView` 在原生层级中拥有一个 QuickGUI 子树。指定尺寸，并在回调中声明子节点，使其挂载到嵌入窗口的生命周期下。
+`ui.SwiftUI.QuickGUIHostView` 在 SwiftUI 中显示 QuickGUI 内容。设置其尺寸，并在回调中声明子节点。
 
 ```go
 func SwiftUiQuickguiHostViewExample() *native.Node {
@@ -31,9 +31,11 @@ func SwiftUiQuickguiHostViewExample() *native.Node {
 			return ui.SwiftUI.QuickGUIHostView(
 				ui.SwiftUIQuickGUIHostViewProps{Width: 320, Height: 180},
 				func() *ui.Element {
-					return ui.View().Child(
-						"QuickGUI inside SwiftUI",
-					).Width("100%").Height("100%").Padding(16)
+					return ui.View().
+						Width("100%").
+						Height("100%").
+						Padding(16).
+						Child("QuickGUI inside SwiftUI")
 				},
 			)
 		},
@@ -43,7 +45,7 @@ func SwiftUiQuickguiHostViewExample() *native.Node {
 
 ## SwiftUI Popover
 
-SwiftUI 浮窗通过 `Render` 组合原生触发器。其内容可以反向托管交互式 QuickGUI 组件。
+SwiftUI Popover 通过 `Render` 使用原生触发器。其内容可以托管可交互的 QuickGUI 组件。
 
 ```go
 func SwiftUiPopoverExample() *native.Node {
@@ -57,7 +59,12 @@ func SwiftUiPopoverExample() *native.Node {
 					OnIsPresentedChange: setOpen,
 				},
 				func() *native.Node {
-					return ui.Fragment([]*native.Node{ui.SwiftUI.Popover.Trigger(ui.SwiftUIPopoverTriggerProps{Render: func() *native.Node { return ui.SwiftUI.Button(ui.SwiftUIButtonProps{Label: "Account"}) }}),
+					return ui.Fragment([]*native.Node{
+						ui.SwiftUI.Popover.Trigger(ui.SwiftUIPopoverTriggerProps{
+							Render: func() *native.Node {
+								return ui.SwiftUI.Button(ui.SwiftUIButtonProps{Label: "Account"})
+							},
+						}),
 						ui.SwiftUI.Popover.Content(
 							ui.SwiftUIPopoverContentProps{},
 							func() *native.Node {
@@ -66,7 +73,8 @@ func SwiftUiPopoverExample() *native.Node {
 									"Account settings",
 								)
 							},
-						)})
+						),
+					})
 				},
 			)
 		},
@@ -76,4 +84,4 @@ func SwiftUiPopoverExample() *native.Node {
 
 ## 生命周期
 
-宿主在所属窗口挂载后创建嵌入表面，并在移除时关闭。应在提供的回调中声明反向托管的子节点，使绑定和资源归属嵌入窗口。不要跨窗口移动保留节点。
+所属窗口显示后才会创建嵌入表面，Host 被移除时关闭。在回调中声明反向托管的子节点，使它们归属于该表面。不要在窗口之间移动元素。

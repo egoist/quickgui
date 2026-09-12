@@ -1,8 +1,8 @@
-`ui.SwiftUI` 组件族在 Go 应用中嵌入真正的 macOS 控件。普通 QuickGUI 组件无需依赖它。
+`ui.SwiftUI` 组件族在 QuickGUI 窗口中嵌入真正的 macOS 控件。普通 QuickGUI 组件不依赖它。
 
 ## Host
 
-在 `ui.SwiftUI.Host` 内创建控件。Host 定义原生视图边界，并可根据内容确定自身尺寸。
+在 `ui.SwiftUI.Host` 内创建控件。Host 是原生视图边界，并可以根据内容自行确定尺寸。
 
 ```go
 func SwiftUiHostExample() *native.Node {
@@ -17,11 +17,11 @@ func SwiftUiHostExample() *native.Node {
 
 ## 原生控件
 
-可用控件包括 Button、Slider、Toggle、ProgressView、Stepper、TextField、SecureField、Picker、SegmentedControl、DatePicker、ColorPicker 和 Gauge。它们的原生外观由 macOS 提供。
+可用控件包括 Button、Slider、Toggle、ProgressView、Stepper、TextField、SecureField、Picker、SegmentedControl、DatePicker、ColorPicker 和 Gauge。它们看起来像当前 macOS 系统控件。
 
 ## 受控值
 
-绑定访问器，并保存原生回调返回的值。SwiftUI 控件与 QuickGUI 节点可以共享同一个信号。DatePicker 使用以毫秒表示的 Unix 时间戳。
+绑定访问器，并从变更回调保存值。SwiftUI 控件和 QuickGUI 节点可以共享同一个信号。DatePicker 使用以毫秒为单位的 Unix 时间戳。
 
 ```go
 func SwiftUiToggleExample() *native.Node {
@@ -41,7 +41,7 @@ func SwiftUiToggleExample() *native.Node {
 
 ## 尺寸
 
-`MatchContents: true` 让两个方向都使用固有尺寸。要保留固有高度并自定义宽度，可使用 `ui.SwiftUIMatchContents{Vertical: true}`，并在 `PartProps.Style` 设置宽度。
+`MatchContents: true` 根据控件确定两个轴的尺寸。使用 `ui.SwiftUIMatchContents{Vertical: true}` 获取固有高度，并自行设置宽度。
 
 ```go
 ui.SwiftUIHostProps{
@@ -52,4 +52,4 @@ ui.SwiftUIHostProps{
 
 ## 平台支持
 
-SwiftUI 托管需要 macOS。预编译原生宿主包含桥接层，Go 应用仍然无需 CGO。原生样式可能随操作系统版本变化。
+SwiftUI 托管仅支持 macOS。外观可能随操作系统版本变化。样式、玻璃效果以及在 SwiftUI 中嵌入 QuickGUI 参见[修饰器与托管](/docs/go/swift-ui-hosting)。

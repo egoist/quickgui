@@ -1,81 +1,98 @@
-导入 `github.com/egoist/quickgui/go/updater` 即可启用自动更新扩展。macOS 使用 Sparkle；Windows 和 Linux 使用兼容的 appcast 与 Ed25519 签名。未导入该包的应用不会打包更新器或 Sparkle，普通 Go 修改仍复用预编译原生产物。
+导入 `github.com/egoist/quickgui/go/updater` 即可启用自动更新。未导入该包的应用不会包含更新器。
 
 ## 配置
 
-使用 `quickgui keygen --sparkle --out-dir /secure/update-keys` 生成密钥。不要将私钥提交到版本控制。将 `.pub` 文件的内容填入配置：
+生成一对 Ed25519 密钥：
+
+```sh
+bunx @quickgui/cli keygen --sparkle --out-dir /secure/my-app-update-keys
+```
+
+不要将私钥 `.key` 提交到版本控制。将 `.pub` 文件的内容复制到 `quickgui.toml`：
 
 ```toml
 [updates]
 baseUrl = "https://downloads.example.com/my-app"
 publicKey = "BASE64_PUBLIC_KEY_FROM_THE_PUB_FILE"
 automaticChecks = true
+# Optional; {target} expands to darwin-arm64, windows-x64, and so on.
 feedUrl = "https://downloads.example.com/my-app/appcast-{target}.xml"
+# Optional release notes, at most 16 KiB of plain text.
+notesFile = "RELEASE_NOTES.md"
 ```
 
-`feedUrl` 可省略，默认是 `baseUrl/appcast-{target}.xml`。`{target}` 会替换为 `darwin-arm64`、`windows-x64` 等目标。CLI 将公开配置嵌入 Go 程序，并在 macOS 上写入 Sparkle 的 Info.plist 设置、打包框架并签署嵌套辅助程序。私钥不会嵌入应用。
+CLI 会将版本、标识符、feed URL 和公钥嵌入应用。私钥永远不会被嵌入。
+
+Developer ID 应用受支持。App Store 和沙盒构建应通过 Go build tag 或平台专用文件省略 updater 导入。
 
 ## 应用用法
 
-在 `native.Run` 的启动回调中调用一次 `updater.Start`，供窗口、菜单和设置共享：
+在 `native.Run` 就绪之后、组件之外启动更新器。在设置、菜单和更新横幅之间共享同一个句柄。关闭窗口不得关闭更新器。
 
 ```go
-updates := updater.Start(updater.Options{}, func(event updater.Event) {
-	if event.Error != "" {
-		log.Print(event.Error)
-	}
-	if event.QuitRequired {
-		native.App.Quit(false, nil)
-	}
-	// 将状态、版本和进度写入 UI signal。
-}, func(err error) {
-	if err != nil {
-		log.Print(err)
-	}
-})
+import (
+	"log"
+
+	"github.com/egoist/quickgui/go/native"
+	"github.com/egoist/quickgui/go/updater"
+)
+
+var updates *updater.Updater
+
+func startUpdater() {
+	updates = updater.Start(updater.Options{}, func(event updater.Event) {
+		if event.Error != "" {
+			log.Print(event.Error)
+		}
+		if event.QuitRequired {
+			native.App.Quit(false, nil)
+		}
+	}, func(err error) {
+		if err != nil {
+			log.Print(err)
+		}
+	})
+}
 ```
 
-菜单使用 `updates.Check(done)`，更新提示使用 `updates.Install(done)`，设置使用 `updates.SetAutomaticChecks(enabled, done)`。所有回调都在 Go UI 协程执行。`State()` 返回缓存状态，不调用原生服务，也不轮询。
+从「检查更新」菜单项调用 `updates.Check(done)`，从可用更新横幅调用 `updates.Install(done)`，从设置调用 `updates.SetAutomaticChecks(enabled, done)`。回调在 UI goroutine 上运行。`State()` 返回最近一次事件。
+
+`Options` 可以覆盖 feed URL 和公钥。开发构建会保持禁用，除非你对测试 feed 和可丢弃的应用包设置 `AllowDevelopment: true`。
 
 ## 生命周期
 
-状态包括 `idle`、`checking`、`available`、`downloading`、`installing` 和 `disabled`。事件包含版本、纯文本说明、下载字节数、自动检查偏好及错误。
+`Event.Status` 为 `idle`、`checking`、`available`、`downloading`、`installing` 或 `disabled`。事件包含版本、说明、进度、自动检查偏好，以及可选错误。
 
-macOS 的自动检查结果保留供应用内提示使用，手动检查会显示 Sparkle 原生窗口。Windows/Linux 在启用自动检查时每次启动检查一次，也会在启用该设置时检查，不使用空闲轮询。手动检查可接管正在进行的自动检查。持久化的用户偏好优先于打包默认值。
+在 macOS 上，Sparkle 负责下载、验证、安装和重新启动。定时检查的结果可用于应用内横幅；手动检查可以显示 Sparkle 的标准窗口。
 
-`QuitRequired` 表示辅助程序已验证安装输入，并正在等待应用正常退出。应用可以通过退出钩子保存工作或取消退出。两分钟内未退出会取消此次安装，保留当前应用。`Close()` 取消检查和交接前的下载；已经接受的安装交接由辅助程序持有。
-
-开发构建默认禁用更新。只有为测试配置了专用 feed 和可丢弃应用时，才使用 `updater.Options{AllowDevelopment: true}`。不要在关闭单个窗口时关闭应用级更新器。
+在 Windows 和 Linux 上，启用自动检查时每次启动检查一次。`QuitRequired` 表示安装程序已就绪：处理完未保存的工作后调用 `native.App.Quit(false, nil)`。如果退出被取消，辅助程序会等待两分钟，并保持正在运行的应用不变。
 
 ## 平台支持
 
 | 平台 | 更新包 | 安装方式 |
-| --- | --- | --- |
-| macOS | 包含签名 `.app` 的 ZIP | 内嵌 Sparkle 2.9.4 负责验证、安装和重启 |
-| Windows | QuickGUI NSIS `.exe` | 等待旧进程退出，静默安装到当前目录，再重启 |
-| Linux | Type-2 `.AppImage` | 替换当前用户拥有的 AppImage；替换或启动失败时还原旧版本 |
+| --- | --- |
+| macOS | 包含已签名 `.app` 的 ZIP | Sparkle |
+| Windows | QuickGUI NSIS `.exe` 安装程序 | 辅助程序等待退出后静默运行安装程序，然后重新启动 |
+| Linux | Type-2 `.AppImage` | 辅助程序等待退出后替换用户拥有的 AppImage |
 
-Linux 的 `.deb`、系统二进制、解包后的 AppDir 和 root 安装返回 `disabled`，应使用包管理器。新的 AppImage 必须保留 updater 导入，以确认启动成功。Windows 回滚由安装器负责。
+Linux 的 `.deb` 软件包、系统二进制文件以及 root 拥有的安装会报告 `disabled`；请改用包管理器。
 
-便携后端支持 HTTPS appcast、原始 Ed25519 签名、语义版本及 Windows 最低系统要求；跳过 delta 和不支持的渠道/分阶段发布约束。feed 最大 1 MiB，更新包最大 512 MiB，说明最大 16 KiB。辅助程序会在安装前再次核对长度和签名。macOS 扩展目前用于非沙盒应用；App Store 或沙盒构建必须通过构建标签等方式排除 updater 导入。
+这些 feed 是带 Ed25519 签名的 HTTPS Sparkle appcast。每个架构有独立的 feed。不会生成增量包或分阶段发布。
 
 ## 发布更新
 
-将私钥保存在 CI 的 `QUICKGUI_UPDATER_PRIVATE_KEY` 或 `SPARKLE_PRIVATE_KEY` 中，也可用 `updates.ed25519SecretKey` 指向本地私钥文件。运行：
+将私钥放在 `QUICKGUI_UPDATER_PRIVATE_KEY`（或 `SPARKLE_PRIVATE_KEY`）中。本地签名时，`updates.ed25519SecretKey` 可以指向密钥文件。
 
 ```sh
-quickgui build --update-manifest
+bunx @quickgui/cli build --update-manifest
 ```
 
-CLI 签署最终产物并生成 `appcast-<target>.xml`。先上传带版本号的更新包，再替换 HTTPS feed。每个架构使用独立 feed。`updates.manifest = true` 可在每次生产构建时生成 feed。macOS 应使用 Developer ID 签名与公证；Windows 需要 `makensis`，Linux 需要 `appimagetool`。签名密钥不匹配或缺少更新产物会使构建失败。
+CLI 会签署平台产物并写入 `appcast-<target>.xml`。先上传带版本号的产物，再替换其 HTTPS URL 上的 feed。`updates.manifest = true` 会在每次生产构建时生成 feed。
 
-旧 Rust Minisign `UpdateClient` 仍可通过显式 Cargo feature 使用，但不再包含在默认核心中。Go 使用新的 `updater.Start`，原 `native.Updater` 已移除。
+macOS 归档应包含 Developer ID 签名并已公证的应用。Windows 需要 `makensis`。Linux 需要 `appimagetool` 才能生成可更新的 AppImage。
+
+参见[更新器示例](https://github.com/egoist/quickgui/tree/main/examples/updater)和 [Sparkle 文档](https://sparkle-project.org/documentation/)。
 
 ## 原生产物
 
-```sh
-bun packages/native/build.ts --extension updater
-```
-
-CLI 根据 Go 导入解析完全相同版本的扩展包，并附带 Sparkle 或安装辅助程序。终端用户只需安装打包后的应用。目前 npm 发布矩阵提供 macOS 产物；Windows/Linux 可在目标主机从源码构建。
-
-完整 API 和发布说明见[英文指南](/docs/go/updater)，可运行示例位于 [examples/updater](https://github.com/egoist/quickgui/tree/main/examples/updater)。
+生产构建在应用导入该包时已经包含更新器。最终用户运行打包后的应用，无需安装额外的更新器工具。

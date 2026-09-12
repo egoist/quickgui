@@ -1,15 +1,19 @@
-从 `main` 调用一次 `native.Run`。在启动回调中创建窗口并注册应用服务。原生完成回调和 UI 状态更新运行在 Go 的 UI goroutine 上。
+从 `main` 调用一次 `native.Run`。其启动回调打开窗口并注册应用级行为。完成回调和 UI 更新在 UI goroutine 上运行。
 
 ## 窗口生命周期
 
-`native.NewWindow(native.WindowOptions{Component: App})` 创建拥有独立组件所有者和保留树的窗口。关闭窗口会释放绑定、监听器并执行组件清理。后续操作需要窗口句柄时，应在构建组件或处理事件时获取 `native.CurrentWindow()`。
+`native.NewWindow(native.WindowOptions{Component: App})` 打开一个拥有独立组件树的窗口。关闭窗口会释放该树。如果后续工作需要窗口，请在构建组件或处理事件时捕获 `native.CurrentWindow()`。
+
+在 macOS 上处理 Dock 重新打开：如果没有可见窗口，就打开一个。
 
 ## 命令与服务
 
-对话框、剪贴板、Shell、外观、菜单等平台服务使用具有类型的 `native` API。需要结果的操作通过完成回调返回，在不阻塞 UI goroutine 的前提下处理错误。独立提供程序使用 `native.InvokeExtension` 和 `native.OpenExtension`。
+对话框、剪贴板、Shell、外观、菜单及其他平台功能请使用带类型的 `native` API。返回结果的调用接受完成回调；在回调中处理错误，不要阻塞 UI。
 
-应用后台任务可使用随组件取消的 `ui.Async`，或通过 `native.Dispatch` 将结果送回 UI goroutine。信号只能在 UI 侧读写。服务与会话所有权见[编写扩展](/docs/go/extensions)。
+组件中的后台工作使用 `ui.Async`。要从其他 goroutine 送回结果，使用 `native.Dispatch`。只在 UI goroutine 上读写信号。
+
+独立的原生服务使用 `native.InvokeExtension` 和 `native.OpenExtension`。参见[编写扩展](/docs/go/extensions)。
 
 ## 事件与文件监听
 
-`native.WatchFiles(paths, changed, ready)` 使用操作系统文件通知并返回停止函数。组件资源通过 `ui.OnCleanup` 清理，应用级监听器应保留取消函数。存在原生事件或监听器时避免轮询。扩展会话关闭后，其事件也会停止。
+`native.WatchFiles(paths, changed, ready)` 监听文件变化并返回停止函数。用 `ui.OnCleanup` 注册组件拥有的监听器。优先使用这些事件，而不是轮询。

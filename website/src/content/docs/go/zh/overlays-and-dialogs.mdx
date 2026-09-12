@@ -1,15 +1,16 @@
-应用自定义样式的内容使用 QuickGUI 浮层；平台文件选择与警告使用原生对话框。
+窗口内 UI 使用 QuickGUI 浮层，文件选择和警告使用系统对话框。
 
 ## Popover
 
-Popover 由触发器、定位器和弹出内容组成。方向是偏好值，核心负责处理碰撞；可在根内通过 `ui.UsePopoverPlacement` 读取最终位置。
+Popover 由触发器、定位器和弹出层组成。请求的方向是偏好值；碰撞会自动解决。在根内用 `ui.UsePopoverPlacement` 读取结果。
 
 ```go
 func PopoverExample() *native.Node {
 	return ui.Popover.Root(
 		ui.PopoverRootProps{},
 		func() *native.Node {
-			return ui.Fragment([]*native.Node{ui.Popover.Trigger(ui.PopoverTriggerProps{}, "Account"),
+			return ui.Fragment([]*native.Node{
+				ui.Popover.Trigger(ui.PopoverTriggerProps{}, "Account"),
 				ui.Popover.Positioner(
 					ui.PopoverPositionerProps{},
 					func() *native.Node {
@@ -18,12 +19,15 @@ func PopoverExample() *native.Node {
 								Width(240).
 								Padding(16)}},
 							func() *native.Node {
-								return ui.Fragment([]*native.Node{ui.Popover.Title(ui.PartProps{}, "Account"),
-									ui.Popover.Close(ui.PartProps{}, "Done")})
+								return ui.Fragment([]*native.Node{
+									ui.Popover.Title(ui.PartProps{}, "Account"),
+									ui.Popover.Close(ui.PartProps{}, "Done"),
+								})
 							},
 						)
 					},
-				)})
+				),
+			})
 		},
 	)
 }
@@ -31,36 +35,42 @@ func PopoverExample() *native.Node {
 
 ## Dialog
 
-在 `Dialog.Portal` 下创建模态内容。`Dialog.Title` 和 `Dialog.Description` 提供无障碍名称与描述。`AlertDialog` 增加确认语义。受控根会收到新的打开状态及其原因。
+把模态内容放在 `Dialog.Portal` 下。`Dialog.Title` 和 `Dialog.Description` 为对话框提供无障碍名称。`AlertDialog` 用于确认。受控根会收到下一个打开状态以及变化原因。
 
 ```go
 func DialogExample() *native.Node {
 	return ui.Dialog.Root(
 		ui.DialogRootProps{},
 		func() *native.Node {
-			return ui.Fragment([]*native.Node{ui.Dialog.Trigger(ui.PartProps{}, "Open dialog"),
+			return ui.Fragment([]*native.Node{
+				ui.Dialog.Trigger(ui.PartProps{}, "Open dialog"),
 				ui.Dialog.Portal(
 					ui.PartProps{},
 					func() *native.Node {
-						return ui.Fragment([]*native.Node{ui.Dialog.Backdrop(ui.PartProps{}),
+						return ui.Fragment([]*native.Node{
+							ui.Dialog.Backdrop(ui.PartProps{}),
 							ui.Dialog.Viewport(
 								ui.PartProps{},
 								func() *native.Node {
 									return ui.Dialog.Popup(
 										ui.DialogPopupProps{},
 										func() *native.Node {
-											return ui.Fragment([]*native.Node{ui.Dialog.Title(ui.PartProps{}, "Confirm action"),
+											return ui.Fragment([]*native.Node{
+												ui.Dialog.Title(ui.PartProps{}, "Confirm action"),
 												ui.Dialog.Description(
 													ui.PartProps{},
 													"Review the details before continuing.",
 												),
-												ui.Dialog.Close(ui.PartProps{}, "Cancel")})
+												ui.Dialog.Close(ui.PartProps{}, "Cancel"),
+											})
 										},
 									)
 								},
-							)})
+							),
+						})
 					},
-				)})
+				),
+			})
 		},
 	)
 }
@@ -68,14 +78,15 @@ func DialogExample() *native.Node {
 
 ## 系统浮窗
 
-`ui.SystemPopover` 将内容托管在操作系统浮窗中。指定逻辑宽高，然后声明普通 QuickGUI 子节点。
+`ui.SystemPopover` 在操作系统面板中显示其内容。设置逻辑宽高，然后声明普通 QuickGUI 子节点。
 
 ```go
 func SystemPopoverExample() *native.Node {
 	return ui.SystemPopover.Root(
 		ui.PopoverRootProps{},
 		func() *native.Node {
-			return ui.Fragment([]*native.Node{ui.SystemPopover.Trigger(ui.PopoverTriggerProps{}, "Account"),
+			return ui.Fragment([]*native.Node{
+				ui.SystemPopover.Trigger(ui.PopoverTriggerProps{}, "Account"),
 				ui.SystemPopover.Content(
 					ui.PopoverContentProps{
 						Width:     240,
@@ -83,7 +94,8 @@ func SystemPopoverExample() *native.Node {
 						Placement: "bottom-start",
 					},
 					"Account settings",
-				)})
+				),
+			})
 		},
 	)
 }
@@ -91,14 +103,12 @@ func SystemPopoverExample() *native.Node {
 
 ## 原生对话框
 
-原生对话框使用异步回调。在渲染时捕获父窗口，并明确传给请求。取消打开面板时返回 `Canceled: true`。
+系统文件对话框异步完成。在渲染时捕获父窗口，并将其传给请求。取消的面板返回 `Canceled: true`。
 
 ```go
 func OpenFolderButton() *ui.Element {
 	window := native.CurrentWindow()
-	return ui.Button(
-		"Open folder",
-	).OnClick(func() {
+	return ui.Button("Open folder").OnClick(func() {
 		native.ShowOpenDialog(
 			native.OpenDialogOptions{
 				Window:     window,
@@ -112,6 +122,5 @@ func OpenFolderButton() *ui.Element {
 			},
 		)
 	})
-
 }
 ```

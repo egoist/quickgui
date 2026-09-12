@@ -1,8 +1,6 @@
-QuickGUI 项目将应用代码放在 Go 模块中，用一个小型 Bun 包提供开发命令。
+生成的项目是一个 Go 模块，外加一个用于开发命令的小型 Bun 包。
 
 ## 生成的文件
-
-CLI 会生成以下文件。解析依赖后请提交 `go.sum`。
 
 ```text
 my-app/
@@ -14,53 +12,64 @@ my-app/
 └── README.md
 ```
 
+首次成功执行 `go mod tidy` 后请提交 `go.sum`。较大的应用可拆分为普通 Go 包。
+
 ## 应用入口
 
-`main.go` 启动 `native.Run` 并创建窗口。组件与延迟构建回调返回 `*ui.Element` 或 `*native.Node`。所有构建的节点必须返回、赋值或传给父节点；不支持隐式声明块。较大的应用可拆分为普通 Go 包。
+`main.go` 调用 `native.Run`，并在该回调中打开窗口。组件是返回 `*ui.Element` 的函数。返回你构建的元素，或将其作为子节点传入。
 
 ```go
 func ViewExample() *ui.Element {
-	return ui.View().Children(
-
-		ui.Text("Hello from Go"),
-		ui.Button("Continue").OnClick(func() {}),
-	).Padding(20).Gap(12)
+	return ui.View().
+		Padding(20).
+		Gap(12).
+		Child(ui.Text("Hello from Go")).
+		Child(ui.Button("Continue").OnClick(func() {}))
 }
 ```
 
 ## 配置
 
-`entry` 指定要构建的 Go 包。配置文件由 Bun CLI 执行，不属于运行中的应用。
+`entry` 是要构建的 Go 包。配置文件仅供 CLI 使用。
 
 ```ts
 import { defineConfig } from "@quickgui/cli";
 
 export default defineConfig({
+  language: "go",
   name: "My App",
   identifier: "com.example.my-app",
   entry: ".",
 });
 ```
 
-也可以使用 `quickgui.toml`，配置项相同：
+`quickgui.toml` 接受相同的设置：
 
 ```toml
 name = "My App"
 identifier = "com.example.my-app"
 entry = "."
-
-[native]
-tags = ["production"]
 ```
 
-CLI 优先查找 `quickgui.toml`，再查找 `quickgui.config.ts`。使用 `quickgui dev --config configs/dev.toml` 或 `quickgui build --config configs/release.toml` 可明确指定配置文件。相对路径以项目目录为基准，`dev` 会重新加载配置修改。版本号需使用字符串，例如 `version = "0.1.0"`，应用级配置项应放在 `[native]` 表之前。
+CLI 先读取 `quickgui.toml`，再读取 `quickgui.config.ts`。传入 `--config configs/dev.toml` 可指定文件。请为版本号加引号，例如 `version = "0.1.0"`。相对路径以项目目录为基准，`dev` 会重新加载配置修改。
 
 ## 软件包
 
-窗口与平台服务使用 `github.com/egoist/quickgui/go/native`，UI 使用 `github.com/egoist/quickgui/go/ui`，所有权与上下文使用 `github.com/egoist/quickgui/go/reactive`。`@quickgui/cli` 是开发依赖。请固定相互兼容的 Go SDK 和 CLI 版本。
+| 软件包 | 用途 |
+| --- | --- |
+| `github.com/egoist/quickgui/go/native` | 窗口、菜单、对话框及其他平台 API |
+| `github.com/egoist/quickgui/go/ui` | 组件、信号和样式 |
+| `github.com/egoist/quickgui/go/reactive` | 较大应用中的所有者和上下文 |
+| `@quickgui/cli` | `dev`、`fmt` 和 `build` |
 
-如需共享自己的组件或构建可选的原生后端，请阅读[编写扩展](/docs/go/extensions)。
+要共享组件或添加原生服务，请参阅[编写扩展](/docs/go/extensions)。
 
 ## 本地开发
 
-开发本地 SDK 时，在 `go.mod` 中通过 `replace` 将 `github.com/egoist/quickgui/go` 指向源码目录中的 `go`。使用 `bun packages/cli/src/cli.ts dev --project path/to/app` 运行本地 CLI。普通 Go 修改会复用原生共享库。
+```bash
+bun run dev
+bun run fmt
+bun run build
+```
+
+`go mod tidy` 安装 Go 依赖。开发应用不需要 C 编译器。

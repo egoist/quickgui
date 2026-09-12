@@ -1,14 +1,12 @@
-使用 `ui.Style().Transition(...)` 为保留节点的变化添加动画。原生运行时推进动画帧，组件不会逐帧重新执行。从 `github.com/egoist/quickgui/go/ui` 导入 `ui`。
+用 `ui.Style().Transition(...)` 为样式变化添加动画。组件不会为每一帧重新运行。
 
 ## 悬停过渡
 
-将过渡放在基础样式上，让指针移入和移出时都生效。同一声明也适用于 `Active`、`Focus`、`Expanded`、`DragOver` 等绘制状态。
+把过渡放在基础样式上，这样指针移入和移出时都会运行。同一声明也适用于 `Active`、`Focus`、`Expanded` 和 `DragOver`。
 
 ```go
 func HoverAction() *ui.Element {
-	return ui.Button(
-		"Continue",
-	).
+	return ui.Button("Continue").
 		Padding(12).
 		BorderRadius(8).
 		BackgroundColor("#334155").
@@ -21,41 +19,43 @@ func HoverAction() *ui.Element {
 
 ## 状态驱动的动画
 
-通过信号或 `ui.When` 改变目标值。下面的卡片在颜色和透明度变化时保留同一个节点及其子节点。
+用信号或 `ui.When` 改变目标。下面的卡片在颜色和不透明度动画时保持相同的子节点。
 
 ```go
 func AnimatedSelection() *ui.Element {
 	selected, setSelected := ui.CreateSignal(false)
-	return ui.View().Children(
-
-		ui.Button("Toggle emphasis").OnClick(func() { setSelected(!selected()) }),
-		ui.View().Child(
-			"Your selection",
-		).
-			Padding(20).
-			BorderRadius(12).
-			BackgroundColor("#334155").
-			TextColor("white").
-			Opacity(0.6).
-			Transition("background-color 180ms ease-out, opacity 180ms ease-out").
-			When(selected, ui.Style().
-				BackgroundColor("#2563eb"), ui.Style().
-				Opacity(1)),
-	).Display("flex").FlexDirection("column").Gap(12)
+	return ui.View().
+		Display("flex").
+		FlexDirection("column").
+		Gap(12).
+		Child(ui.Button("Toggle emphasis").OnClick(func() { setSelected(!selected()) })).
+		Child(
+			ui.View().
+				Padding(20).
+				BorderRadius(12).
+				BackgroundColor("#334155").
+				TextColor("white").
+				Opacity(0.6).
+				Transition("background-color 180ms ease-out, opacity 180ms ease-out").
+				When(selected, ui.Style().BackgroundColor("#2563eb"), ui.Style().Opacity(1)).
+				Child("Your selection"),
+		)
 }
 ```
 
-过渡尚未结束时再次改变目标，会从当前显示的值继续，包括反向过渡。
+在过渡进行中更新目标会从当前可见值继续，反向时也是如此。
 
 ## 时长与帧率
 
-多个属性共用一组时间设置时，使用 `ui.TransitionDeclaration`。此示例的时长需要导入 `time`。
+多个属性共用一组时间设置时，使用 `ui.TransitionDeclaration`。
 
 ```go
 func CappedTransition() *ui.Element {
-	return ui.Button(
-		"Hover me",
-	).Padding(12).BackgroundColor("#334155").TextColor("white").Opacity(0.8).
+	return ui.Button("Hover me").
+		Padding(12).
+		BackgroundColor("#334155").
+		TextColor("white").
+		Opacity(0.8).
 		Transition(ui.TransitionDeclaration{
 			Properties: []string{"background-color", "opacity"},
 			Duration:   180 * time.Millisecond,
@@ -66,50 +66,46 @@ func CappedTransition() *ui.Element {
 }
 ```
 
-将独立的过渡选项直接传给基础组件：
-
 | 字段 | 用法 |
 | --- | --- |
-| `ui.Style().TransitionProperty(...)` | 以逗号分隔的字符串，或由支持的属性名组成的 `[]string`。 |
-| `ui.Style().TransitionDuration(...)` | 毫秒数、`time.Duration`，或 `"180ms"`、`"0.18s"` 等字符串。宿主将时长限制在 0–10 秒。 |
-| `ui.Style().TransitionEasing(...)` | `"linear"`、`"ease"`、`"ease-in"`、`"ease-out"` 或 `"ease-in-out"`。`"ease"` 是默认值 `"ease-in-out"` 的别名，使用 QuickGUI 的缓动曲线。 |
-| `ui.Style().TransitionTimingFunction(...)` | `ui.Style().TransitionEasing(...)` 的别名。 |
-| `ui.Style().TransitionMaxFps(...)` | 可选的帧率上限。不指定时跟随显示呈现；即使限帧，也会在过渡截止时间完成。 |
+| `TransitionProperty(...)` | 由支持的名称组成的逗号分隔字符串或 `[]string`。 |
+| `TransitionDuration(...)` | 毫秒数、`time.Duration`，或 `"180ms"` / `"0.18s"`。时长限制在 0–10 秒。 |
+| `TransitionEasing(...)` | `"linear"`、`"ease"`、`"ease-in"`、`"ease-out"` 或 `"ease-in-out"`。`"ease"` 与 `"ease-in-out"` 相同。 |
+| `TransitionTimingFunction(...)` | 与 `TransitionEasing` 相同。 |
+| `TransitionMaxFps(...)` | 可选的帧率上限。省略则跟随显示器。 |
 
-同一个节点的所有过渡属性共用时长、缓动和帧率上限。逗号分隔的简写会收集属性名，最后出现的时长和缓动应用于整个列表。不支持延迟、`cubic-bezier()` 或逐属性独立计时。独立字段会覆盖简写中的对应设置。
+一个节点的所有选中属性共用一组时长、缓动和帧率上限。不支持延迟、`cubic-bezier()` 以及按属性设置不同时间。
 
-只提供时长，例如 `ui.Style().Transition(180 * time.Millisecond)`，会过渡背景色、边框色和文字颜色。显式选择 `"all"` 才会包含所有支持的绘制属性。使用 `ui.Style().Transition("none")` 移除简写声明。
+`Transition(180 * time.Millisecond)` 会为背景、边框和文字颜色添加动画。使用 `"all"` 覆盖所有支持的绘制属性，或使用 `"none"` 清除简写。
 
 ## 支持的属性
 
-| 过渡名称 | Go 样式选项 |
+| 过渡名称 | 样式方法 |
 | --- | --- |
-| `background-color` 或 `background` | `ui.Style().BackgroundColor(...)` 或纯色 `ui.Style().Background(...)` |
-| `border-color` | `ui.Style().BorderColor(...)` |
-| `border-width` | `ui.Style().BorderWidth(...)` 和各边宽度 |
-| `border-radius` | `ui.Style().BorderRadius(...)` 和各角半径 |
-| `color` | 继承的 `ui.Style().TextColor(...)` |
-| `opacity` | 子树的 `ui.Style().Opacity(...)` |
-| `box-shadow` | `ui.Style().BoxShadow(...)` |
-| `transform` | 子树的 `ui.Style().Transform(...)`，包括平移、缩放和旋转 |
+| `background-color` 或 `background` | `BackgroundColor(...)` 或纯色 `Background(...)` |
+| `border-color` | `BorderColor(...)` |
+| `border-width` | `BorderWidth(...)` 及各边宽度 |
+| `border-radius` | `BorderRadius(...)` 及各角半径 |
+| `color` | 继承的 `TextColor(...)` |
+| `opacity` | `Opacity(...)` |
+| `box-shadow` | `BoxShadow(...)` |
+| `transform` | `Transform(...)`（translate、scale、rotate） |
 
-`"all"` 指的是上表中的属性。`Transition` 不会插值渐变色标、宽高、内边距或其他布局值。不支持的过渡属性名会被拒绝。
+宽度、高度、内边距和渐变不会插值。不支持的名称会被拒绝。
 
-要让开关滑块平滑移动，可设置 `ui.Style().Transform("translateX(20px)")` 和 `ui.Style().Transition("transform 160ms ease-out")`，取消选中时将目标改为 `"translateX(0px)"`。绘制子树及其命中区域会一起移动，不影响相邻元素的布局。变换会插值仿射矩阵的平移、缩放、斜切和最短路径旋转；`TransformOrigin` 本身会立即改变。
-
-Go UI API 提供绘制属性过渡和动态图像。CSS 关键帧、时间线回调和弹簧声明不是 Go 样式属性。
+对于滑动的开关滑块，将 `Transform("translateX(20px)")` 过渡到 `"translateX(0px)"`。这样会移动绘制的控件，而不会改变相邻布局。
 
 ## 挂载与减少动态效果
 
-过渡用于已有节点的变化，初始样式会直接应用。改变目标时应保持节点挂载。`ui.Show` 在条件为 false 时立即移除子节点，不会等待淡出。仅将透明度设为零仍会保留布局和输入行为。
+过渡为已有节点上的变化添加动画。首次绘制会立即应用。改变目标时保持节点挂载。`ui.Show` 在条件为 false 时移除子节点，不会等待淡出。不透明度为 `0` 仍会占据布局，并可以接收输入。
 
-对话框的 `ui.DialogRootProps.EnterDuration`、`ExitDuration` 控制过渡完成时机与关闭内容的保留时间，`OnOpenChangeComplete` 报告完成。这些时长本身不会产生视觉样式。参见 [Dialog](/zh/docs/go/components/dialog)。
+对话框使用 `EnterDuration` 和 `ExitDuration` 控制打开和关闭的时机；参见 [Dialog](/docs/go/components/dialog)。
 
-过渡遵循系统的“减少动态效果”偏好。`native.WindowOptions.ReduceMotion` 接受 `*bool` 以显式指定窗口策略；保持 nil 则跟随系统。启用后直接采用目标值。隐藏或被遮挡的窗口会暂停局部过渡，已完成的过渡不再请求帧。
+过渡遵循系统的「减少动态效果」设置。设置 `native.WindowOptions.ReduceMotion` 可为单个窗口覆盖它。
 
 ## 动态图像
 
-把动态 GIF 或 WebP 的路径传给 `ui.Image`。原生解码器保留帧和文件的循环策略，不需要 Go 定时器或逐帧更新信号。
+把 GIF 或 WebP 路径传给 `ui.Image`。播放跟随文件，不需要定时器。
 
 ```go
 func AnimatedImage(path string) *ui.Element {
@@ -118,4 +114,4 @@ func AnimatedImage(path string) *ui.Element {
 }
 ```
 
-路径必须指向可用文件，也可以使用 data URL。通过 CLI 的 `resources` 选项打包文件资源。参见 [Image](/zh/docs/go/components/image) 和[项目配置](/zh/docs/go/project-structure#配置)。
+路径必须能解析为文件，也可以传入 data URL。用 CLI 的 `resources` 选项打包资源。参见 [Image](/docs/go/components/image) 和[项目配置](/docs/go/project-structure#configuration)。

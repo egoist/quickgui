@@ -1,8 +1,8 @@
-QuickGUI 将无样式基础组件与具备无障碍行为的复合控件组合在一起。两者都可以通过普通 Go 函数进行组合。
+组件是返回元素的普通 Go 函数。从 `View`、`Text` 和 `Button` 等基础组件开始，再组合侧栏中具备无障碍支持的控件。
 
 ## 定义组件
 
-Go 组件返回 `*ui.Element` 或 `*native.Node`。参数使用普通类型，子节点直接组合。编译器根据返回类型识别组件，因此 `CounterLabel(count())` 无需注解或 `ui.View().Child(func() *ui.Element { ... })` 包装即可保持响应式。窗口根组件可直接传入函数。
+组件返回 `*ui.Element`。传入普通类型的参数和子节点。在调用处读取信号，例如 `CounterLabel(count())`，会让该参数保持同步。
 
 ```go
 func CounterLabel(count int) *ui.Element {
@@ -18,7 +18,7 @@ func ComponentExample() *ui.Element {
 }
 ```
 
-结构体参数也使用普通 Go 类型。更新 `quantity` 只改变绑定的文本，`LineItem` 和它的节点会保持挂载。
+结构体参数的工作方式相同。更新 `quantity` 会改变绑定的文本，而 `LineItem` 保持挂载。
 
 ```go
 type Product struct {
@@ -40,18 +40,21 @@ func Cart() *ui.Element {
 }
 ```
 
-容器可以直接接收子节点，如下所示。子节点回调是可选的，仅在挂载时执行一次；需要延迟构建或继承复合控件上下文时再使用。事件处理器仍使用回调。
+用 `ui.View()` 和 `.Child(...)` 或 `.Children(...)` 构建容器。子节点回调是可选的：需要等到父节点就绪后再构建时再使用，例如在复合控件内部。
 
 ```go
 func CardComponent(title string, children ...any) *ui.Element {
-	return ui.View().Children(
-		ui.Text(title).FontWeight(600),
-		children,
-	).Padding(20).Gap(12).FlexCol()
+	return ui.View().
+		Padding(20).
+		Gap(12).
+		FlexCol().
+		Child(ui.Text(title).FontWeight(600)).
+		Children(children...)
 }
 
 func CardComposition() *ui.Element {
-	return CardComponent("Account",
+	return CardComponent(
+		"Account",
 		ui.Text("Manage your account settings."),
 		ui.Button("Save").OnClick(func() { log.Print("Saved") }),
 	)
@@ -60,13 +63,11 @@ func CardComposition() *ui.Element {
 
 ## 基础组件
 
-从 `ui.View`、`ui.Text`、`ui.Button` 和 `ui.Input` 开始。使用 `ui.View()` 创建容器，通过 `.Child(...)` 或 `.Children(...)` 追加子节点，并链式设置样式、属性和事件。组件与延迟构建回调均返回节点。
+从 `ui.View`、`ui.Text`、`ui.Button` 和 `ui.Input` 开始。在返回的元素上链式设置样式、属性和处理函数。
 
 ```go
 func ButtonExample(save func()) *ui.Element {
-	return ui.Button(
-		"Save changes",
-	).
+	return ui.Button("Save changes").
 		Height(40).
 		PaddingLeft(16).
 		PaddingRight(16).
@@ -75,28 +76,28 @@ func ButtonExample(save func()) *ui.Element {
 		BorderRadius(8).
 		Hover(func(s ui.StyleBuilder) ui.StyleBuilder { return s.BackgroundColor("#3b82f6") }).
 		OnClick(save)
-
 }
 ```
 
 ## 复合组件
 
-复合组件族暴露 `ui.Tabs.Root`、`ui.Tabs.List`、`ui.Tabs.Panel` 等部件。核心负责角色、键盘导航、焦点与控件状态。请在根节点的子节点回调中创建部件，以确保上下文已经存在。
+诸如标签页之类的组件族会暴露部件：`ui.Tabs.Root`、`ui.Tabs.List`、`ui.Tabs.Tab` 和 `ui.Tabs.Panel`。在根节点的子节点回调中创建部件，以便共享焦点、键盘行为和选择状态。
 
 ```go
 func TabsExample() *native.Node {
 	return ui.Tabs.Root(
 		ui.TabsRootProps{DefaultValue: "overview", Activation: "automatic"},
 		func() *native.Node {
-			return ui.Fragment([]*native.Node{ui.Tabs.List(
-				ui.PartProps{},
-				func() *native.Node {
-					return ui.Fragment([]*native.Node{ui.Tabs.Tab(ui.TabsTabProps{Value: "overview"}, "Overview"),
-						ui.Tabs.Tab(ui.TabsTabProps{Value: "settings"}, "Settings")})
-				},
-			),
+			return ui.Fragment([]*native.Node{
+				ui.Tabs.List(ui.PartProps{}, func() *native.Node {
+					return ui.Fragment([]*native.Node{
+						ui.Tabs.Tab(ui.TabsTabProps{Value: "overview"}, "Overview"),
+						ui.Tabs.Tab(ui.TabsTabProps{Value: "settings"}, "Settings"),
+					})
+				}),
 				ui.Tabs.Panel(ui.TabsPanelProps{Value: "overview"}, "Overview content"),
-				ui.Tabs.Panel(ui.TabsPanelProps{Value: "settings"}, "Settings content")})
+				ui.Tabs.Panel(ui.TabsPanelProps{Value: "settings"}, "Settings content"),
+			})
 		},
 	)
 }
@@ -104,7 +105,7 @@ func TabsExample() *native.Node {
 
 ## 受控状态
 
-受控值使用访问器，其回调保存控件接受的新值。使用默认值可让组件自己管理状态。可选标量使用指针，多选值使用切片。
+传入当前值的访问器，并在变更回调中保存下一个值。省略值并设置默认值时，控件会自行管理状态。可选标量使用指针；多选用切片。
 
 ```go
 func CheckboxExample() *native.Node {
@@ -115,8 +116,10 @@ func CheckboxExample() *native.Node {
 			OnCheckedChange: func(next bool, _ *native.Event) { setChecked(next) },
 		},
 		func() *native.Node {
-			return ui.Fragment([]*native.Node{ui.Checkbox.Indicator(ui.PartProps{}, "✓"), ui.Text("Remember me").
-				Node})
+			return ui.Fragment([]*native.Node{
+				ui.Checkbox.Indicator(ui.PartProps{}, "✓"),
+				ui.Text("Remember me").Node,
+			})
 		},
 	)
 }
@@ -124,15 +127,13 @@ func CheckboxExample() *native.Node {
 
 ## 组件类别
 
-参考文档覆盖表单、选择器、布局与数据、浮层、菜单和路由。`examples/components` 包含原始画廊的全部 42 个演示，包括 5,000 行表格和懒加载树。独立的 `examples/swift-ui` 画廊演示原生 SwiftUI 托管。
+侧栏列出了表单、选择器、布局、数据、浮层、菜单和路由。每个控件都有独立页面，包含用法、结构和属性。
 
-```bash
-bun packages/cli/src/cli.ts dev --project examples/components
-```
+完整界面示例见[表单与输入](/docs/go/forms-and-input)和[浮层与对话框](/docs/go/overlays-and-dialogs)。
 
 ## 设置各部件的样式
 
-通过 `PartProps.Style` 设置部件样式。使用 `ui.Style()` 和链式方法构建样式，通过 `.Merge(...)` 合并共享构建器。部件也接受构建器切片及返回这些值的访问器。选中状态和主题信号会更新保留的部件，不必重建子节点。
+在每个部件上设置 `PartProps.Style`。用 `ui.Style()` 和链式方法构建样式，并用 `.Merge(...)` 组合它们。
 
 ```go
 ui.PartProps{
@@ -147,4 +148,4 @@ ui.PartProps{
 }
 ```
 
-组件侧栏中每个原生控件都有独立页面。完整使用流程见[表单与输入](/docs/go/forms-and-input)和[浮层与对话框](/docs/go/overlays-and-dialogs)。
+选择状态和主题信号会就地更新部件。共享构建器见[样式与布局](/docs/go/styling)。

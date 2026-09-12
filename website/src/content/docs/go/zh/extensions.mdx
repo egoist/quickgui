@@ -1,39 +1,39 @@
-扩展可以是组合 QuickGUI 组件的 Go 包，也可以带有独立构建的原生库。原生服务通过名称自动注册，可以使用自己的 Go 模块、npm scope 和发布周期，无需修改 QuickGUI 核心或 CLI。
+将 UI 作为 Go 包共享；需要 QuickGUI 未附带的额外库时，再添加原生服务。
 
 ## 选择扩展类型
 
-| 功能 | 分发内容 | 是否修改核心 |
-| --- | --- | --- |
-| 组件、主题和应用逻辑 | Go 模块 | 不需要 |
-| 原生服务、SDK 或可选后端 | Go 包、清单及实现服务 ABI 的原生库 | 不需要 |
-| 使用原生数据的界面 | 原生服务及基于现有元素的 Go 组件 | 不需要 |
+| 要添加的内容 | 分发内容 |
+| --- | --- |
+| 组件、主题或辅助函数 | Go 模块 |
+| 原生服务或 SDK | Go 包加上原生库 |
+| 基于该服务的 UI | 两者都要：服务和你的组件 |
 
-应用通过 purego 在同一进程内加载所选库。扩展拥有自己的原生依赖，核心负责布局、渲染和事件循环。修改 Go 代码会复用原生库，使用者无需每次重编译后端。
+现有 API 已够用时，从 Go 包开始。需要自定义 SDK 之类的能力时，再添加原生扩展。[自动更新](/docs/go/updater) 就是后者的例子。
+
+使用者导入你的 Go 包。CLI 会找到其清单并附带匹配的原生库。
 
 ## 创建扩展项目
 
 ```sh
-quickgui init-extension my-components --type go
-quickgui init-extension my-service --type zig
-quickgui init-extension my-service --type rust
+bunx @quickgui/cli init-extension my-components --type go
+bunx @quickgui/cli init-extension my-service --type zig
+bunx @quickgui/cli init-extension my-service --type rust
 ```
 
-默认类型为 `go`，生成可复用组件和响应式演示。`zig` 和 `rust` 生成独立原生服务、类型化 Go 封装、清单、ABI 定义和 npm 产物包。所有模板都包含 `cmd/demo` 和 `quickgui.toml`：
+`--type go`（默认）会搭建可复用组件。`zig` 和 `rust` 会搭建带 Go 封装和演示应用的原生服务。
 
 ```sh
 cd my-service
 bun run dev
 ```
 
-用 `--module github.com/acme/my-service` 设置 Go 模块路径，用 `--npm-package @acme/extension-my-service` 设置原生产物包。`--name` 覆盖根据目录推导的名称；默认模块和产物包为 `example.com/<name>` 和 `quickgui-extension-<name>`。`--no-install` 跳过 `bun install` 和 `go mod tidy`。初始化不会覆盖非空目录。
+用 `--module github.com/acme/my-service` 设置 Go 模块路径，用 `--npm-package @acme/extension-my-service` 设置原生包。`--name` 覆盖由目录推导的服务名称。
 
-Zig 模板要求 Zig 0.16.x，Rust 模板使用稳定版 Cargo/Rust。构建脚本均为 Bun 执行的 TypeScript。`bun run build` 为当前机器构建原生库并放入 `artifacts/lib/<target>/`。清单为 Go 封装、生成的原生常量和 npm 包提供统一的名称和版本。`bun run dev` 先构建一次原生库，之后监视 Go 编辑并复用该库；修改原生代码后重启命令。纯 Go 扩展不需要原生构建或产物包。
-
-包发布前，可在本仓库运行 `bun packages/cli/src/cli.ts init-extension <directory> --type <type> --no-install`，再用 `replace` 将生成项目的 Go SDK 依赖指向本地 `go` 目录，并把 CLI 依赖改为本地 `file:` 路径，最后安装依赖。生成的 README 包含开发与发布说明。
+`bun run build` 为当前机器编译原生库，输出到 `artifacts/lib/<target>/`。`bun run dev` 先构建一次，之后重载 Go 编辑。修改原生代码后请重启。纯 Go 扩展会跳过原生构建。
 
 ## 共享组件
 
-在自己的仓库创建 Go 模块，依赖 Go SDK 并导出组件函数。这种扩展不需要原生清单或 npm 包：
+依赖 QuickGUI Go 模块并导出组件函数：
 
 ```go
 package notice
@@ -41,25 +41,22 @@ package notice
 import "github.com/egoist/quickgui/go/ui"
 
 func Notice(message func() string, styles ...ui.StyleBuilder) *ui.Element {
-	return ui.Text(
-		message(),
-	).
+	return ui.Text(message()).
 		Padding(12).
 		BackgroundColor("#eff6ff").
 		TextColor("#1e40af").
 		BorderRadius(8).
-		Style(ui.Style().
-			Merge(styles...))
+		Style(ui.Style().Merge(styles...))
 }
 ```
 
-返回 `notice.Notice(message, ui.Style().Padding(16))`，或将其结果作为子节点传入。访问器保持响应式，调用者的样式在默认样式之后合并。组件函数与延迟构建回调必须返回节点。组件资源使用 `ui.OnCleanup` 清理，应用级服务放在组件所有权之外。
+调用 `notice.Notice(message, ui.Style().Padding(16))`，或将结果作为子节点传入。用 Go 版本标签发布模块。使用者通过 `go get` 添加。
 
-通过 Go 版本标签发布模块，并说明支持的 SDK 版本。使用者通过你的模块路径执行 `go get`。传递导入 `terminal` 或 `updater` 也会引入对应后端，因此请将可选集成放在独立包或带构建标签的文件中。
+将可选的原生集成放在独立包中，这样只需要 UI 的应用不会把它们拉进来。由已挂载组件拥有的资源请使用 `ui.OnCleanup`。
 
 ## 组织原生扩展
 
-可运行的 [`native-extension` 示例](https://github.com/egoist/quickgui/tree/main/examples/native-extension) 将 Go 包与名为 `acme-echo` 的 C 库组合。C 库只依赖独立的 [ABI 头文件](https://github.com/egoist/quickgui/blob/main/include/quickgui_extension.h)，不依赖核心 crate。自己的仓库可以采用以下布局：
+将 Go 包与小型原生库配对。[`native-extension` 示例](https://github.com/egoist/quickgui/tree/main/examples/native-extension) 展示了这种布局：
 
 ```text
 go.mod
@@ -67,21 +64,19 @@ echo/
   echo.go
   quickgui.extension.json
 native/
-  quickgui_extension.h
   echo.c
 artifacts/
   package.json
   lib/darwin-arm64/libquickgui_acme_echo.dylib
-build-extension.ts
 ```
 
-将头文件复制到项目中。C、C++、Rust 等能导出 C ABI 的语言均可实现后端。Rust 可以复制等价的 [`extension_api.rs`](https://github.com/egoist/quickgui/blob/main/src/extension_api.rs) 定义并编译为 `cdylib`，无需链接 `quickgui`、`quickgui-host`、WGPU 或 Taffy。[updater 后端](https://github.com/egoist/quickgui/tree/main/crates/quickgui-updater)提供异步服务参考。
+C、C++、Zig 和 Rust 都可以实现该服务，只要导出下文所述的 C 入口点。服务通过 JSON 与 Go 封装通信；它不会添加新的 UI 基础组件。
 
-本例后端的独立版本为 `1.0.0`，其描述符、清单、npm 包和 `RequireExtension` 版本必须一致。服务 ABI 版本和表布局决定核心兼容性，后端发布版本不必等于 QuickGUI 版本。请说明支持的 Go SDK 和服务 ABI 版本。内置 terminal 的类型化渲染接口仍要求匹配核心版本。
+请让扩展的发布版本在清单、npm 包和 `RequireExtension` 调用中保持一致。
 
 ## 声明依赖
 
-清单必须放在实际导入的 Go 包源码旁边，而非仅放在模块根目录或应用配置中：
+将 `quickgui.extension.json` 放在被导入的 Go 包旁边：
 
 ```json
 {
@@ -94,9 +89,9 @@ build-extension.ts
 }
 ```
 
-名称以小写字母开头，最多 64 个小写字母、数字或连字符。选择不易冲突的名称；`host` 为保留名称，`terminal` 使用内置类型化接口。`library` 为 `quickgui_` 加上把名称中的连字符替换为下划线后的字符串，不含 `lib` 或扩展名。npm 包可使用任意合法 scope，也可不带 scope。清单上限为 16 KiB，应用最多加载 32 个后端。
+名称以小写字母开头，可以包含数字和连字符。`host` 为保留名称。`library` 字段为 `quickgui_` 加上将连字符换成下划线后的名称。
 
-Go 包在初始化时声明相同版本，并封装类型化操作：
+在包中注册依赖并封装调用：
 
 ```go
 package echo
@@ -123,124 +118,57 @@ func Send(message string, done func(string, error)) {
 }
 ```
 
-`RequireExtension` 只记录依赖，`init` 中不要加载库、打开窗口或启动工作线程。在 `native.Run` 就绪后于 UI goroutine 调用操作，回复也在该 goroutine 执行。`native.InvokeExtension` 接受可编码为 JSON 的值，返回后端的 JSON 结果，并保留显式 `null` 字段。方法名以 ASCII 字母开头，最多 64 个 ASCII 字母、数字、点、下划线或连字符。
+不要在 `init` 中打开窗口或启动工作线程。在 `native.Run` 就绪后再调用操作。回复在 UI goroutine 上运行。
 
-持续服务使用 `native.OpenExtension(name, options, changed, ready)`，等待 `ready` 成功后再发命令。`session.Request("lookup", value, done)` 返回 JSON，`session.Command` 仅返回错误。每条命令拥有独立回复，事件订阅一直保留到 `session.Close()`。所有者销毁时在 UI goroutine 关闭会话，`start` 和 `stop` 保留给生命周期操作。公开包应将底层 JSON 包装为自己的类型化 API。
+对于长期运行的服务，`native.OpenExtension(name, options, changed, ready)` 返回一个会话。需要 JSON 结果时使用 `session.Request`，只需成功或错误时使用 `session.Command`。所有者消失时关闭会话。
 
-CLI 使用与编译相同的入口、目标和构建标签运行 `go list -deps`。传递导入会计入依赖，被排除文件不会。清单负责打包，`RequireExtension` 负责加载，两者缺一不可。
+导入该包即足以让 CLI 打包它。清单和 `RequireExtension` 两者都需要。
 
 ## 实现原生接口
 
-导出具有 C 链接和默认符号可见性的 `quickgui_extension_v1`，返回静态描述符。它包含名称、后端精确版本、ABI `1`、服务类型 `2` 和两个函数的表。所有服务共享同一个类型，不为每个后端增加新类型。公共头文件包含完整布局和回调签名。
+从原生库导出 `quickgui_extension_v1`。它返回一个描述符，包含名称、版本以及两个函数：`invoke` 和 `shutdown`。要保留请求字节时先复制它们，将耗时工作放到工作线程上，并用 JSON 回复。
 
-Rust 的 `ServiceApi` 实现 `invoke` 和 `shutdown`。以下片段使用本地 `abi.rs` 定义：
+常见请求：
 
-```rust
-mod abi;
+| 请求 | 使用时机 |
+| --- | --- |
+| `echo` 等方法 | 一次性的 `InvokeExtension` |
+| `start` | `OpenExtension` 打开了会话 |
+| `send` 等命令 | 在该会话上执行工作 |
+| `stop` | 会话正在关闭 |
+| `shutdown` | 应用正在退出 |
 
-static API: abi::ServiceApi = abi::ServiceApi { invoke, shutdown };
-
-static EXTENSION: abi::Extension = abi::Extension {
-    abi_version: abi::ABI_VERSION,
-    descriptor_size: size_of::<abi::Extension>() as u32,
-    kind: abi::SERVICE_EXTENSION,
-    api_size: size_of::<abi::ServiceApi>() as u32,
-    name: abi::Bytes::new(b"acme-echo"),
-    version: abi::Bytes::new(env!("CARGO_PKG_VERSION").as_bytes()),
-    api: std::ptr::addr_of!(API).cast(),
-};
-
-/// # Safety
-/// Use this descriptor only according to the matching QuickGUI extension ABI.
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn quickgui_extension_v1() -> *const abi::Extension {
-    &EXTENSION
-}
-```
-
-边界上只传递 C 布局、固定宽度字段、借用字节和函数指针。语言对象及分配器所有权留在各自库中。描述符、字符串和函数表使用静态生命周期。要保留请求时先复制借用数据，将耗时操作入队并立即返回。不要等待网络、工作线程或原生主线程；为队列、会话和保留数据设置上限，Rust panic 不可跨越 `extern "C"`。
-
-| 请求 | 参数 | 后端职责 |
-| --- | --- | --- |
-| `echo` 等单次方法 | `InvokeExtension` 传入的 JSON 值 | 回复一次并释放 sink |
-| `start` | `OpenExtension` 的选项 JSON | 将请求 ID 用作会话 ID，回复并保留事件 sink |
-| 会话命令 | `{"session":123,"value":"hello"}` | 查找会话并完成此命令自己的回复 |
-| `stop` | `{"session":123}` | 取消会话资源并回复 |
-| `shutdown` 函数 | 无 | 取消全部会话，不阻塞 UI |
-
-`ServiceSink.emit` 的 kind `0` 是成功 JSON 回复，`1` 是 UTF-8 错误，`2` 是 JSON 事件。无结果时回复 `null`。请求与输出载荷各最多 64 KiB。字节只在 `emit` 调用期间借用，host 会复制到事件队列；工作线程可从任意线程发送。必须在主线程运行的系统 API 应异步调度到主线程。
-
-启动 sink 在首次回复后继续发送事件，命令使用各自 sink。包括失败和拒绝任务，每个 sink 都必须在最后一次回调后且仅调用一次 `release`。关闭会话后停止事件并释放工作线程。库因函数指针而在进程生命周期中保持加载，这不应延长会话资源的寿命。
-
-[C echo 实现](https://github.com/egoist/quickgui/blob/main/examples/native-extension/backend/echo.c)展示完整单次请求。可视功能应将变化数据传给基于现有元素的响应式 Go 组件。服务 ABI 不会添加自定义渲染节点；新的渲染元素仍需要渲染器实现。
+每个请求只回复一次。关闭会话必须停止之后的事件。完整的一次性服务见 [C echo 示例](https://github.com/egoist/quickgui/blob/main/examples/native-extension/backend/echo.c)。
 
 ## 自动注册
 
-应用启动前，Go 加载器打开所选库，调用入口并将描述符和请求版本交给核心。核心先检查描述符头，再验证名称、版本、ABI、函数表大小和非空回调，随后按名称保存服务，自动路由 `extension/acme-echo/<method>` 和应用退出。
-
-相同注册可重复执行；同名不同版本或函数表会被拒绝。CLI 也拒绝同名但不同 npm 包的冲突。调用后端时不持有注册表锁。注册表和库保留至进程退出，后端的 `shutdown` 必须取消剩余会话。无需添加后端专属注册代码。
+应用启动时，每个已打包的扩展按名称和版本加载。导入你的包即完成选择。同名但版本冲突会导致启动失败。
 
 ## 构建与打包产物
 
-使用 Bun 运行 TypeScript 构建脚本。示例的 [`build-extension.ts`](https://github.com/egoist/quickgui/blob/main/examples/native-extension/build-extension.ts) 使用 Clang 独立编译 C 库并暂存当前目标。Rust 后端可在自己的仓库调用 Cargo：
+为每个支持的操作系统和架构构建原生库，并放到 `artifacts/lib/<target>/` 下。目标目录为 `darwin-arm64`、`darwin-x64`、`linux-arm64`、`linux-x64`、`windows-arm64` 和 `windows-x64`。
 
-```ts
-import { copyFileSync, mkdirSync } from "node:fs";
-import { join, resolve } from "node:path";
-
-const root = import.meta.dir;
-const platforms: Partial<Record<NodeJS.Platform, string>> = {
-  darwin: "darwin", linux: "linux", win32: "windows",
-};
-const platform = platforms[process.platform];
-if (!platform || !["arm64", "x64"].includes(process.arch)) {
-  throw new Error("Unsupported build host");
-}
-const build = Bun.spawn(["cargo", "build", "--manifest-path", "native/Cargo.toml", "--lib", "--release"], {
-  cwd: root,
-  stdin: "inherit",
-  stdout: "inherit",
-  stderr: "inherit",
-});
-if (await build.exited !== 0) throw new Error("Native build failed");
-
-const filename = platform === "darwin" ? "libquickgui_acme_echo.dylib"
-  : platform === "windows" ? "quickgui_acme_echo.dll" : "libquickgui_acme_echo.so";
-const destination = join(root, "artifacts/lib", `${platform}-${process.arch}`);
-const cargoTarget = resolve(root, process.env.CARGO_TARGET_DIR ?? "native/target");
-mkdirSync(destination, { recursive: true });
-copyFileSync(join(cargoTarget, "release", filename), join(destination, filename));
-```
-
-将 Rust 库名设置为 `quickgui_acme_echo`、crate 类型设置为 `cdylib`，在每个目标主机运行 `bun build-extension.ts`。该脚本不交叉编译。目标目录为 `darwin-arm64`、`darwin-x64`、`linux-arm64`、`linux-x64`、`windows-arm64` 和 `windows-x64`，只分发已经构建验证的目标。
-
-原生 npm 包公开包元数据并包含产物：
+将产物作为 npm 包发布：
 
 ```json
 {
   "name": "@acme/extension-echo",
   "version": "1.0.0",
-  "files": ["lib", "README.md"],
-  "exports": { "./package.json": "./package.json" }
+  "files": ["lib", "README.md"]
 }
 ```
 
-将 `@acme` 改为自己的 scope，使用自己的发布流程。Go 导入决定是否需要这个可选包，不要加入核心 npm 依赖。构建和发布不需要修改 QuickGUI 内置 `--extension` 命令或版本同步脚本。消费者修改 Go 时复用预编译库。
-
-资源通过清单的 `resources` 声明，以 `darwin`、`linux`、`windows` 为键，每个平台最多 16 个不同文件 basename，两种架构共用同一列表。文件与库放在同一目标目录。目录资源可用 [`packResources`](https://github.com/egoist/quickgui/blob/main/packages/cli/src/extension-resources.ts) 生成 `.qgr`，在条目和字节上限内保留执行权限和受限相对符号链接。资源不能覆盖核心或后端库。macOS framework 仍须满足系统签名要求。Sparkle 资源沿用现有 macOS 签名与 bundle 配置，其他服务不需要更新器设置。
+如果需要辅助可执行文件或其他文件，在清单的 `resources` 对象中为 `darwin`、`linux` 或 `windows` 列出它们的名称，并把这些文件放在库旁边。
 
 ## 测试与分发
 
-在 QuickGUI checkout 中运行独立示例：
+用 `go get` 添加你的 Go 模块，导入该包，然后在使用者应用中运行 `bun run dev` 或 `bun run build`。本地原生二进制可将 `QUICKGUI_EXTENSION_DIR` 设为产物目录。
 
-```sh
-bun examples/native-extension/build-extension.ts dev
-```
+发布前：
 
-自己的应用通过 `go get` 添加模块、导入 Go 包，然后运行 `quickgui dev` 或 `quickgui build`。离线或私有分发可预先安装匹配的 npm 包，也可由 CLI 下载公共 npm 精确版本。开发时可将 `QUICKGUI_EXTENSION_DIR` 设为目标产物目录的绝对路径；它必须包含全部直接和传递依赖的库与资源。
+- 未导入该包的应用不得包含它。
+- 缺失的库或版本不匹配必须明确失败。
+- 关闭会话或退出应用必须停止回调和工作线程。
+- 打包 npm 归档，在全新应用中安装，并在每个要发布的目标上运行该应用。
 
-解析顺序为显式目录、已安装 npm 包、公共 npm 精确版本下载。checkout 回退只用于 QuickGUI 内置包。下载校验 SHA-512，只提取声明产物，缓存包含 npm 包身份。私有 registry 不自动下载，请先用包管理器安装。
-
-发布前验证导入选择、缺失和冲突错误、会话取消与释放、空闲休眠及队列上限，并遵循[性能指南](https://github.com/egoist/quickgui/blob/main/docs/go/architecture/performance.md)。用 `bun pm pack` 打包，在独立消费者项目安装归档，关闭源码暂存回退并在每个支持的系统与架构上运行。
-
-[`scripts/check-extensions.ts`](https://github.com/egoist/quickgui/blob/main/scripts/check-extensions.ts) 构建独立 C 库，通过 purego 验证真实回复，并用独立 Go 模块和 npm scope 打包消费者，同时检查内置扩展组合。自己的扩展仓库也应有等效测试。最终用户只需打包后的应用，无需 Bun、Cargo、npm 包或原生工具链。
+最终用户收到的是打包后的应用。运行它不需要 Bun、Go 或原生工具链。

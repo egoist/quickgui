@@ -1,8 +1,8 @@
-将字段值保存在信号中，并在回调中写回接受的变更。
+将字段值保存在信号中，并从回调写回已接受的变更。
 
 ## 文本输入
 
-`ui.Input` 和 `ui.TextArea` 托管原生文本编辑器。将 `ui.Value` 绑定到访问器，并在 `OnInput` 中从 `event.Value` 更新。单行输入中的 Return 由 `OnSubmit` 处理。
+`ui.Input` 和 `ui.TextArea` 是原生文本编辑器。将 `Value` 绑定到当前字符串，并在 `OnInput` 中从 `event.Value` 更新它。`OnSubmit` 处理单行输入中的 Return。
 
 ```go
 func InputExample() *ui.Element {
@@ -17,7 +17,7 @@ func InputExample() *ui.Element {
 
 ## 字段
 
-`Field.Root` 将标签、控件、描述和错误关联起来。从应用状态设置 `Required`、`Invalid` 和 `ValidationMessage`。`ValidationMode` 与 `ValidationDebounceTime` 控制核心何时请求验证；验证规则由应用定义。
+`Field.Root` 将标签、控件、描述和错误关联起来。从你的状态驱动 `Required`、`Invalid` 和 `ValidationMessage`。`ValidationMode` 和 `ValidationDebounceTime` 控制何时运行验证；规则由应用负责。
 
 ```go
 func FieldExample() *native.Node {
@@ -28,14 +28,16 @@ func FieldExample() *native.Node {
 			Filled:   func() bool { return email() != "" },
 		},
 		func() *native.Node {
-			return ui.Fragment([]*native.Node{ui.Field.Label(ui.FieldLabelProps{}, "Email"),
+			return ui.Fragment([]*native.Node{
+				ui.Field.Label(ui.FieldLabelProps{}, "Email"),
 				ui.Field.Control(ui.FieldControlProps{InputPartProps: ui.InputPartProps{
 					Value:       email,
 					Placeholder: "you@example.com",
 					OnInput:     func(event *native.Event) { setEmail(event.Value) },
 				}}),
 				ui.Field.Description(ui.PartProps{}, "Used for receipts"),
-				ui.Field.Error(ui.PartProps{}, "Enter a valid email address")})
+				ui.Field.Error(ui.PartProps{}, "Enter a valid email address"),
+			})
 		},
 	)
 }
@@ -43,7 +45,7 @@ func FieldExample() *native.Node {
 
 ## 选项
 
-复选框通过 `ui.CheckedState` 接受 `bool` 或 `ui.CheckedIndeterminate`。单选组保存一个值；复选组和切换组可保存多个值。只读控件与禁用控件具有不同语义。
+复选框通过 `ui.CheckedState` 接受 `bool` 或 `ui.CheckedIndeterminate`。单选组保存一个值。复选框组和切换组可以保存多个值。只读与禁用是分开的。
 
 ```go
 func CheckboxGroupExample() *native.Node {
@@ -55,9 +57,11 @@ func CheckboxGroupExample() *native.Node {
 			OnValueChange: func(next []string, _ *native.Event) { setValues(next) },
 		},
 		func() *native.Node {
-			return ui.Fragment([]*native.Node{ui.Checkbox.Root(ui.CheckboxProps{Parent: true}, "All notifications"),
+			return ui.Fragment([]*native.Node{
+				ui.Checkbox.Root(ui.CheckboxProps{Parent: true}, "All notifications"),
 				ui.Checkbox.Root(ui.CheckboxProps{Value: "email"}, "Email"),
-				ui.Checkbox.Root(ui.CheckboxProps{Value: "push"}, "Push")})
+				ui.Checkbox.Root(ui.CheckboxProps{Value: "push"}, "Push"),
+			})
 		},
 	)
 }
@@ -65,7 +69,7 @@ func CheckboxGroupExample() *native.Node {
 
 ## 选择器
 
-通过 `PickerSourceProps.Items` 声明选项。Select 使用选中值；Combobox 结合文本过滤与选择；Autocomplete 允许自由输入。多选控件使用 `Values` 和 `OnValuesChange`。
+用 `PickerSourceProps.Items` 声明选项。Select 保存选中值。Combobox 增加文本过滤。Autocomplete 允许自由输入。多选选择器使用 `Values` 和 `OnValuesChange`。
 
 ```go
 func SelectExample() *native.Node {
@@ -79,7 +83,10 @@ func SelectExample() *native.Node {
 			OnValueChange: func(next *string, _ *native.Event) { setValue(next) },
 		},
 		func() *native.Node {
-			return ui.Fragment([]*native.Node{ui.Select.Value(ui.PartProps{}), ui.Select.Icon(ui.PartProps{}, "▾")})
+			return ui.Fragment([]*native.Node{
+				ui.Select.Value(ui.PartProps{}),
+				ui.Select.Icon(ui.PartProps{}, "▾"),
+			})
 		},
 	)
 }
@@ -87,4 +94,4 @@ func SelectExample() *native.Node {
 
 ## 事件
 
-普通按钮接受 `ui.OnClick(func() { ... })`；需要 `*native.Event` 时使用 `ui.OnClickEvent`。复合组件回调返回类型明确的值，并按需附带原生事件。UI 状态更新应位于 UI goroutine；后台任务使用 `ui.Async`。
+按钮接受 `ui.OnClick(func() { ... })`。需要 `*native.Event` 时使用 `ui.OnClickEvent`。复合组件回调传入类型化的值，并在相关时附带事件。信号写入应在 UI goroutine 上进行；后台工作使用 `ui.Async`。

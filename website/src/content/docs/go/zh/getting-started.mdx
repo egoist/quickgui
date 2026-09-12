@@ -1,47 +1,36 @@
-这些指南使用 Go 前端。可在侧栏中选择使用 Solid 2 JSX 的 TypeScript 前端。
-
-QuickGUI 应用是普通的 Go 程序。用 Go 编写组件和细粒度响应式状态，并以 `CGO_ENABLED=0` 构建。purego 在同一进程中加载预编译原生库；Bun 仅运行开发与打包 CLI。
+QuickGUI 应用是普通的 Go 程序。用 Go 编写窗口和组件，再由 CLI 运行、热重载，并打包为原生 macOS 应用。
 
 ## 系统要求
 
 - macOS 14 或更新版本
 - Go 1.23 或更新版本
-- Bun 1.3 或更新版本
+- Bun 1.4 或更新版本
 - Xcode Command Line Tools（`xcode-select --install`）
 
-当前打包的 UI 应用面向 macOS。普通应用构建直接使用预编译原生宿主。
+当前打包的应用面向 macOS。
 
 ## 创建项目
 
-CLI 尚未发布。请从 [QuickGUI 源码仓库](https://github.com/egoist/quickgui)运行 Go 计数器：
-
 ```bash
-bun install
-bun packages/cli/src/cli.ts dev --project examples/counter
+bunx @quickgui/cli init my-app --language go
+cd my-app
+bun run dev
 ```
 
-若要创建独立应用，生成项目时跳过安装注册表依赖：
-
-```bash
-bun packages/cli/src/cli.ts init ../my-app --no-install
-cd ../my-app
-go mod edit -replace github.com/egoist/quickgui/go=../quickgui/go
-go mod tidy
-```
-
-在语言选择提示中选择 **Go**。在生成的 `quickgui.config.ts` 中，将 `defineConfig` 导入路径改为 `../quickgui/packages/cli/src/index.ts` 以使用本地 CLI。然后在 QuickGUI 源码目录运行 `bun packages/cli/src/cli.ts dev --project ../my-app`。给 `init` 传入 `--language go` 可跳过语言选择。
+CLI 会创建 Go 模块、安装依赖并打开应用。省略 `--language go` 可在交互式提示中选择语言。
 
 ## 第一个窗口
 
-生成的 `main.go` 从 `native` 导入窗口 API，从 `ui` 导入组件。将组件函数直接传给 `WindowOptions.Component`。调用一次 `native.Run` 启动应用事件循环。
+生成的 `main.go` 会启动应用、打开窗口并渲染组件。将组件函数传给 `WindowOptions.Component`。在 `main` 中只调用一次 `native.Run`。
 
 ```go
 package main
 
 import (
+	"log"
+
 	"github.com/egoist/quickgui/go/native"
 	"github.com/egoist/quickgui/go/ui"
-	"log"
 )
 
 func Counter() *ui.Element {
@@ -87,18 +76,22 @@ func main() {
 }
 ```
 
+在标签中读取 `count()` 会让该文本保持同步。点击按钮会更新信号，窗口的其余部分保持不变。
+
 ## 运行与构建
 
-监视器会重新构建 Go 源码并重启开发应用。格式化命令为较长的组件调用添加一致的换行，输出仍是标准 Go 语法。生产构建输出到 `dist/darwin-*`。
+在项目目录中执行：
 
 ```bash
-bun packages/cli/src/cli.ts dev --project ../my-app
-bun packages/cli/src/cli.ts fmt --project ../my-app
-bun packages/cli/src/cli.ts build --project ../my-app
+bun run dev
+bun run fmt
+bun run build
 ```
+
+`dev` 会在你编辑时重新构建并重启。`fmt` 格式化 Go 源码。`build` 将打包后的应用写入 `dist/`。
 
 ## 后续步骤
 
-- 了解[组件与信号](/docs/go/reactivity)。
-- 添加[样式与条件选项](/docs/go/styling)。
+- 用[信号](/docs/go/reactivity)保存并更新状态。
+- 用[样式](/docs/go/styling)布置窗口。
 - 浏览[组件参考](/docs/go/components)。

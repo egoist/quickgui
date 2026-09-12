@@ -1,27 +1,28 @@
-信号将状态连接到读取它的文本和属性。更新只改变保留的节点，不会重新执行整个组件。
+信号保存 UI 读取的值。信号变化时，只有读取它的文本和属性会更新。
 
 ## 响应式状态
 
-在组件文本和链式属性中直接读取信号，例如 `ui.Text("Count: ", count())` 和 `.Width(width())`。自定义组件使用普通参数类型，`LineItem(product, quantity())` 会自动保持响应式。初始化赋值 `initial := count()` 仍是快照。显式访问器继续有效；直接使用 Go 命令会绕过视图编译器，因此需要显式访问器。
+用 `ui.CreateSignal` 创建信号。在文本和样式方法中读取它，例如 `ui.Text("Count: ", count())` 和 `.Width(width())`。在初始化时读取，例如 `initial := count()`，只是快照，之后不会更新。
 
-字符串和数字信号可以直接作为子节点：`ui.Text("Count: ", count)`。前缀会保留，只有数字文本会更新。数字绑定使用 `strconv`，无需解析格式字符串。需要单个字符串的属性可以在访问器中使用 `strconv.Itoa(count())` 和字符串拼接。
+自定义组件接受普通 Go 值。把 `count()` 传入 `LineItem(product, count())` 会让该参数保持实时更新。
+
+也可以把字符串或数字信号作为子节点传入：`ui.Text("Count: ", count)`。前缀保持不变，只有数字会更新。
 
 ```go
 func TextExample() *ui.Element {
 	count, setCount := ui.CreateSignal(0)
 	return ui.View().Children(
-		ui.Text(
-			"Count: ",
-			count(),
-		).FontSize(20),
+		ui.Text("Count: ", count()).FontSize(20),
 		ui.Button("Increment").OnClick(func() { setCount(count() + 1) }),
 	)
 }
 ```
 
+事件处理函数已经会合并写入。从其他 UI 代码批量写入时使用 `ui.Batch`。
+
 ## 派生状态
 
-使用 `ui.CreateMemo` 计算依赖其他信号的值。它返回访问器，使用方可以像订阅普通信号一样订阅派生值。
+`ui.CreateMemo` 根据其他信号计算值。读取该 memo 的方式与读取信号相同。
 
 ```go
 func DerivedExample() *ui.Element {
@@ -36,9 +37,9 @@ func DerivedExample() *ui.Element {
 
 ## 副作用与清理
 
-使用 `ui.CreateEffect` 将副作用与它读取的信号同步。每次运行都会根据实际读取追踪依赖，包括条件分支。通过 `ui.OnCleanup` 注册清理逻辑；释放所属组件时会移除副作用和订阅。动态文本和属性应直接绑定，不要在副作用中重建视图。
+使用 `ui.CreateEffect` 处理视图之外的工作，例如订阅或窗口标题。副作用会先运行一次，之后在它读过的值变化时再次运行。用 `ui.OnCleanup` 注册清理函数；它会在下一次副作用之前以及组件消失时运行。
 
-副作用适合视图树之外的工作，例如同步订阅或更新原生窗口标题。它会在初次创建时运行，并在读取过的值变化后再次运行。在副作用中注册的清理会在下次执行之前以及所属作用域销毁时运行。下面用日志展示生命周期；实际应用中可替换为订阅的启动和停止操作。每次执行时保存当前主题，让清理操作引用旧主题。
+直接绑定会变化的文本和属性。不要在副作用中重建视图。
 
 ```go
 func EffectExample() *ui.Element {
@@ -50,9 +51,7 @@ func EffectExample() *ui.Element {
 	})
 	return ui.View().Children(
 		ui.Text("Watching: ", topic()),
-		ui.Button(
-			"Switch topic",
-		).OnClick(func() {
+		ui.Button("Switch topic").OnClick(func() {
 			if topic() == "Inbox" {
 				setTopic("Archive")
 			} else {
@@ -63,11 +62,13 @@ func EffectExample() *ui.Element {
 }
 ```
 
+捕获该次运行的值，让清理逻辑引用上一个主题。
+
 ## 批量更新
 
-事件处理函数会自动批处理信号写入。在其他位置使用 `ui.Batch(func() { ... })` 合并相关写入，让依赖工作一起刷新。`ui.Untrack` 可在不订阅当前计算的情况下读取状态。信号应在 UI goroutine 上访问；使用 `ui.Async` 或 `native.Dispatch` 传回后台结果。
+按钮点击和其他事件处理函数会自动批处理写入。在其他位置把相关写入包在 `ui.Batch` 中，让观察者看到一次结果。`ui.Untrack` 读取值但不订阅。
 
-这里将两个字段作为一次更新修改。观察者会在批处理结束后读到 “Grace Hopper”，不会读到中间的 “Grace Lovelace”。按钮事件本身已经自动批处理；显式批处理让其他 UI 代码调用 `applyProfile` 时也具有相同语义。批处理是同步的：后台任务应先把结果派发回 UI 线程，再写入信号。日志示例使用 Go 标准库的 `log` 包。
+在 UI goroutine 上读写信号。用 `ui.Async` 或 `native.Dispatch` 送回后台结果。
 
 ```go
 func BatchedExample() *ui.Element {
@@ -86,3 +87,5 @@ func BatchedExample() *ui.Element {
 	)
 }
 ```
+
+这次批处理之后，观察者会看到 “Grace Hopper”，而不是中间名字。批处理是同步的：先完成后台工作，再写入信号。
