@@ -1,10 +1,8 @@
-Rust ガイド本文は現在英語です。コンポーネントの API リファレンスには日本語の説明があります。
-
-Apply `SwiftUiModifier` values in declaration order. Convenience builders such as `style`, `control_size`, and `disabled` append those modifiers.
+`SwiftUiModifier` 値は宣言順に適用します。`style`、`control_size`、`disabled` などのビルダーはそれらのモディファイアを追加します。
 
 ## モディファイア
 
-Button style, border shape, control size, label style, tint, and disabled state are supported. Apply them on the descriptor before `sync`.
+ボタンスタイル、境界形状、コントロールサイズ、ラベルスタイル、ティント、無効状態に対応しています。`sync` の前にディスクリプターへ適用します。
 
 ## Liquid Glass
 
@@ -15,7 +13,7 @@ SwiftUiButton::new(1)
     .control_size(SwiftUiControlSize::Large)
 ```
 
-The operating system draws native glass where available. Layout and hit testing remain owned by the native hosting layer.
+macOS は利用できる場所でガラスを描画します。
 
 ## リバースホスティング
 
@@ -23,12 +21,12 @@ The operating system draws native glass where available. Layout and hit testing 
 SwiftUiQuickGuiHost::pending(1)
 ```
 
-Embed a QuickGUI subtree back into the SwiftUI tree with `SwiftUiQuickGuiHost` and `MacSwiftUiHost::set_embedded_view`. The hosted surface is an ordinary QuickGUI renderer.
+`SwiftUiQuickGuiHost` と `MacSwiftUiHost::set_embedded_view` で、QuickGUI の内容を SwiftUI へ戻して埋め込みます。
 
 ## SwiftUI ポップオーバー
 
-`SwiftUiPopover` has explicit `trigger` and `content` element lists. A `SwiftUiQuickGuiHost` inside that content owns a separate ordinary QuickGUI renderer.
+`SwiftUiPopover` には明示的な `trigger` と `content` のリストがあります。その内容の `SwiftUiQuickGuiHost` が通常の QuickGUI コンポーネントをホストします。
 
 ## ライフサイクル
 
-Native and Rust ownership must agree: an embedded renderer is disposed with its host, and a presented panel is disposed with its owner. Dropping `MacSwiftUiHost` releases the NSHostingView.
+`MacSwiftUiHost` をドロップするとネイティブビューが解放されます。埋め込みサーフェスはホストとともに、提示されたパネルは所有者とともに破棄されます。

@@ -1,36 +1,59 @@
-TypeScript ガイド本文は現在英語です。コンポーネントの API リファレンスには日本語の説明があります。
+生成されるプロジェクトは TypeScript アプリに、開発コマンド用の小さな Bun パッケージを加えたものです。
 
 ## 生成されるファイル
 
-The scaffold contains `app.tsx`, `quickgui.config.ts`, `tsconfig.json`, and `package.json`. Keep reusable components and application data access in ordinary TypeScript modules. Generated build files live in `.quickgui` and release artifacts in `dist`.
+```text
+my-app/
+├── app.tsx
+├── quickgui.config.ts
+├── tsconfig.json
+├── package.json
+└── README.md
+```
+
+再利用するコンポーネントとデータアクセスは通常の TypeScript モジュールに置きます。生成ファイルは `.quickgui` にあり、リリースビルドは `dist/` に出力されます。
 
 ## アプリケーションのエントリ
 
-Import `app` and `Window` from `@quickgui/native`; import components and `createRenderer` from `@quickgui/solid`. Await `app.whenReady()` before opening windows. Each window owns and disposes one renderer root. The CLI starts the event consumer; application code does not call `app.run()`.
+`app.tsx` は `@quickgui/native` から `app` と `Window` を、`@quickgui/solid` からコンポーネントと `createRenderer` をインポートします。ウィンドウを開く前に `app.whenReady()` を待ってください。各ウィンドウは独自のレンダラーを持ち、閉じると破棄されます。
+
+アプリケーションコードから `app.run()` を呼ばないでください。アプリは CLI が起動します。
 
 ## 設定
 
-```tsx
+```ts
 import { defineConfig } from "@quickgui/cli";
+
 export default defineConfig({
-  language: "typescript", name: "My App", identifier: "com.example.my-app",
-  entry: "app.tsx", fonts: ["assets/MyFont.ttf"], resources: ["assets"],
+  language: "typescript",
+  name: "My App",
+  identifier: "com.example.my-app",
+  entry: "app.tsx",
+  fonts: ["assets/MyFont.ttf"],
+  resources: ["assets"],
 });
 ```
 
-TOML supports the same configuration keys. Set `jsx` to `preserve` and `jsxImportSource` to `@quickgui/solid` in `tsconfig.json`; the CLI applies the Solid universal transform.
+`quickgui.toml` も同じキーを受け付けます。`tsconfig.json` では `jsx` を `preserve`、`jsxImportSource` を `@quickgui/solid` に設定します。
 
 ## パッケージ
 
-Applications depend directly on `@quickgui/native`, `@quickgui/solid`, and `solid-js`. `@quickgui/cli`, TypeScript, and Bun type definitions are development dependencies. Optional terminal and updater extensions are separate packages.
+| パッケージ | 用途 |
+| --- | --- |
+| `@quickgui/native` | ウィンドウ、メニュー、ダイアログなどのプラットフォーム API |
+| `@quickgui/solid` | コンポーネントと JSX |
+| `solid-js` | シグナル、memo、エフェクト |
+| `@quickgui/cli` | `dev`、`check`、`test`、`build` |
+
+ターミナルとアップデーターのサポートは任意パッケージです。[拡張の作成](/docs/typescript/extensions)を参照してください。
 
 ## ローカル開発
 
 ```sh
-bun install
-bun run build:native
-bun run --cwd examples/components-typescript dev
-bun run --cwd examples/quick-git-typescript dev
+bun run dev
+bun run check
+bun run test
+bun run build
 ```
 
-Use `quickgui check` for typechecking and `quickgui test` for application tests with the same Solid compiler and reactive client runtime as packaged builds.
+`dev` は編集に合わせて TypeScript を再読み込みします。

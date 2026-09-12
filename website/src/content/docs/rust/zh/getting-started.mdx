@@ -1,20 +1,15 @@
-Rust 指南正文目前以英文提供，组件 API 参考包含中文说明。
-
-These guides use Rust. Choose Go or TypeScript in the sidebar for those language bindings.
-
-Rust apps link the `quickgui` crate into the executable. The CLI runs Cargo, packages the binary, and does not bundle `libquickgui_host`. Ordinary edits rebuild the selected crate; there is no FFI host library to reuse.
+QuickGUI 的 Rust 应用是普通的 Cargo 包。你实现一个 `View`，CLI 负责运行、热重载并打包原生 macOS 应用。
 
 ## 系统要求
 
-- A current stable Rust toolchain (1.90 or newer)
-- Bun 1.3 or newer
-- Xcode Command Line Tools on macOS (`xcode-select --install`)
+- macOS 14 或更新版本
+- Rust 1.90 或更新版本
+- Bun 1.4 或更新版本
+- Xcode Command Line Tools（`xcode-select --install`）
 
-The first development build compiles wgpu and takes longer. Later edits reuse incremental Cargo artifacts.
+首次 `dev` 构建会编译图形依赖，耗时更长。之后的编辑会复用增量 Cargo 产物。当前打包的应用面向 macOS。
 
 ## 创建项目
-
-Run the command below and choose **Rust** when prompted.
 
 ```sh
 bunx @quickgui/cli init my-app --language rust
@@ -22,11 +17,11 @@ cd my-app
 bun run dev
 ```
 
-`bun run dev` compiles the crate, packages and launches the app, and rebuilds on source changes. Pass `--language rust` to skip the language prompt.
+CLI 会创建 crate、安装依赖并打开应用。省略 `--language rust` 可在提示时选择语言。
 
 ## 第一个窗口
 
-The generated `src/main.rs` constructs an [`Application`](https://docs.rs/quickgui), opens a window, and implements [`View`](https://docs.rs/quickgui). Store state on the view and call `cx.invalidate()` after mutations.
+生成的 `src/main.rs` 会启动应用、打开窗口并实现 `View`。把状态保存在视图上，更改后调用 `cx.invalidate()`。
 
 ```rust
 use quickgui::{
@@ -81,6 +76,8 @@ impl View for Counter {
 
 ## 运行与构建
 
+在项目目录中执行：
+
 ```sh
 bun run check
 bun run test
@@ -89,8 +86,10 @@ bun run dev
 bun run build
 ```
 
-`check`, `test`, and `fmt` dispatch to Cargo. Production builds compile with `--release` and write packaged apps under `dist/`. Rust apps ship `quickgui.json` next to the executable (or in `Contents/Resources` on macOS) instead of a host shared library.
+`check`、`test` 和 `fmt` 会运行 Cargo。`build` 将打包后的应用写入 `dist/`。
 
 ## 后续步骤
 
-Explore the [component reference](/docs/rust/components), [native services](/docs/rust/native-services), and [SwiftUI controls](/docs/rust/swift-ui). The checkout includes `examples/base_ui_components.rs` and related `examples/*.rs` galleries.
+- 在[视图](/docs/rust/reactivity)上保存状态。
+- 浏览[组件参考](/docs/rust/components)。
+- 打开[窗口与系统对话框](/docs/rust/native-services)。

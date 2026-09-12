@@ -1,25 +1,32 @@
-TypeScript ガイド本文は現在英語です。コンポーネントの API リファレンスには日本語の説明があります。
+フィールド値はシグナルに保存し、受け入れた変更をコールバックから書き戻します。
 
 ## テキスト入力
 
 ```tsx
 const [value, setValue] = createSignal("");
-<Input value={value()} onInput={event => setValue(event.value ?? "")} placeholder="Name" />
-<TextArea value={notes()} onInput={event => setNotes(event.value ?? "")} />
+<Input
+  value={value()}
+  onInput={(event) => setValue(event.value ?? "")}
+  placeholder="Name"
+/>
+<TextArea
+  value={notes()}
+  onInput={(event) => setNotes(event.value ?? "")}
+/>
 ```
 
 ## フィールド
 
-`Field`, `Fieldset`, labels, descriptions, controls, and error parts declare accessible relationships and validation. Field validity, touched/dirty state, validation triggers, and debounce deadlines are coordinated by Rust.
+`Field` と `Fieldset` はラベル、説明、コントロール、エラーを関連付けます。validity、touched、dirty の状態はアプリ側で駆動します。検証モードとデバウンスはフィールド上にあります。
 
 ## 選択コントロール
 
-Compose `Checkbox`, `CheckboxGroup`, `RadioGroup`, `Radio`, and `Switch` with their indicators and labels. Controlled state is updated through each root’s change callback; disabled/read-only state belongs to the native control.
+`Checkbox`、`CheckboxGroup`、`RadioGroup`、`Radio`、`Switch` をインジケーターとラベルで組み合わせます。各ルートの変更コールバックから制御状態を更新します。無効と読み取り専用は別です。
 
 ## Select
 
-`Select`, `Combobox`, and `Autocomplete` declare options ahead of native filtering and keyboard navigation. Their state hooks expose selection, query, highlight, and chips for custom parts. Keep option values stable.
+`Select`、`Combobox`、`Autocomplete` はオプション一覧を受け取ります。オプション値は安定させてください。状態フックは選択、クエリ、ハイライト、チップを公開し、カスタムパーツに使えます。
 
 ## イベント
 
-Input events carry text in `event.value`. Structured key, pointer, gesture, drop, component-change, and commit payloads have dedicated decoder helpers. Use declared handlers so the core knows which events must cross the FFI boundary.
+テキストイベントは文字列を `event.value` に入れます。ポインター、キー、ジェスチャー、ドロップ、送信のハンドラーは型付きのペイロードを持ちます。必要なハンドラーを宣言すると、コントロールがそのイベントを発行できます。

@@ -1,8 +1,8 @@
-TypeScript ガイド本文は現在英語です。コンポーネントの API リファレンスには日本語の説明があります。
+Solid コンポーネントはマウント時に一度実行されます。テキストとプロパティを同期するには、JSX でシグナルを読みます。
 
 ## リアクティブな状態
 
-Solid components construct once. Read signals directly in JSX to bind only the affected property or child region. A plain read in setup is a snapshot; use an accessor when the value must remain reactive.
+`createSignal` でシグナルを作成します。値をライブに保つときは JSX で読みます。セットアップ中の読み取りはスナップショットです。
 
 ```tsx
 const [count, setCount] = createSignal(0);
@@ -12,7 +12,7 @@ const [count, setCount] = createSignal(0);
 
 ## 派生状態
 
-Use `createMemo` for derived state shared by multiple bindings. Keep derivations pure; perform writes from events or effects.
+他のシグナルから計算する値には `createMemo` を使います。計算は純関数のままにし、書き込みはイベントまたはエフェクトから行います。
 
 ```tsx
 const doubled = createMemo(() => count() * 2);
@@ -21,15 +21,19 @@ const doubled = createMemo(() => count() * 2);
 
 ## 副作用とクリーンアップ
 
-Solid 2 effects separate dependency reads from their side effect. Register cleanup under the same owner so closing a window or removing a branch releases subscriptions.
+購読など、ビューの外の処理には `createEffect` を使います。ウィンドウを閉じたり分岐を外したりしたときに止まるよう、クリーンアップを登録します。
 
 ```tsx
 import { createEffect, onCleanup } from "solid-js";
-createEffect(() => count(), value => console.log(value));
+
+createEffect(
+  () => count(),
+  (value) => console.log(value),
+);
 const stop = watchProject();
 onCleanup(stop);
 ```
 
 ## 更新のバッチ処理
 
-Solid 2 batches ordinary signal writes automatically. QuickGUI coalesces resulting node mutations into a native batch and skips equivalent values. Use `flush()` in deterministic tests when assertions must observe queued render effects immediately; do not install a frame loop or polling timer for normal state updates.
+イベントハンドラー内のシグナル書き込みはまとめて反映されます。テストで UI の確定をすぐ待つ必要があるときは `flush()` を使います。

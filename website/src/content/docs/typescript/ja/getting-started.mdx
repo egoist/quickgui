@@ -1,43 +1,73 @@
-TypeScript ガイド本文は現在英語です。コンポーネントの API リファレンスには日本語の説明があります。
+QuickGUI の TypeScript アプリは Solid 2 の JSX を使います。ウィンドウとコンポーネントは TypeScript で記述し、CLI がネイティブ macOS アプリの実行、再読み込み、パッケージ化を行います。
 
 ## 動作要件
 
-Use Bun 1.4 or later, TypeScript 7, and Xcode Command Line Tools on macOS. Solid, its universal renderer, and its compiler are pinned to 2.0.0-rc.7. QuickGUI uses the Rust renderer through Bun FFI; it does not embed a webview.
+- macOS 14 以降
+- Bun 1.4 以降
+- Xcode Command Line Tools（`xcode-select --install`）
+
+雛形は Solid 2 と TypeScript 7 を固定します。現在、パッケージ化したアプリは macOS が対象です。
 
 ## プロジェクトを作成
 
-次のコマンドを実行し、プロンプトで **TypeScript** を選択してください。
-
 ```sh
-bunx @quickgui/cli init my-app
+bunx @quickgui/cli init my-app --language typescript
 cd my-app
 bun run dev
 ```
 
-In a checkout, install workspace dependencies and stage the shared library once with `bun run build:native`. Ordinary application edits compile TypeScript and reuse that library.
+CLI はプロジェクトを作成し、依存関係をインストールしてアプリを開きます。`--language typescript` を省略すると、対話的に言語を選べます。
 
 ## 最初のウィンドウ
 
+生成された `app.tsx` はアプリの準備完了を待ち、ウィンドウを開き、Solid コンポーネントを描画します。
+
 ```tsx
+import { createSignal } from "solid-js";
 import { app, Window } from "@quickgui/native";
 import { Button, Text, View, createRenderer } from "@quickgui/solid";
-import { createSignal } from "solid-js";
+
 function Counter() {
   const [count, setCount] = createSignal(0);
-  return <View padding={24} display="flex" flexDirection="column" gap={12}>
-    <Text>Count: {count()}</Text>
-    <Button onClick={() => setCount(count() + 1)}>Increment</Button>
-  </View>;
+  return (
+    <View
+      width="100%"
+      height="100%"
+      display="flex"
+      flexDirection="column"
+      alignItems="center"
+      justifyContent="center"
+      gap={16}
+    >
+      <Text fontSize={24}>Count: {count()}</Text>
+      <Button padding={12} onClick={() => setCount(count() + 1)}>
+        Increment
+      </Button>
+    </View>
+  );
 }
+
 function openWindow() {
-  new Window({ title: "Counter", width: 720, height: 480, renderer: createRenderer(Counter) });
+  new Window({
+    title: "My App",
+    width: 640,
+    height: 460,
+    renderer: createRenderer(Counter),
+  });
 }
-app.on("reopen", ({ hasVisibleWindows }) => { if (!hasVisibleWindows) openWindow(); });
+
+app.on("reopen", ({ hasVisibleWindows }) => {
+  if (!hasVisibleWindows) openWindow();
+});
 await app.whenReady();
 openWindow();
 ```
 
+JSX で `count()` を読むとそのテキストが同期します。ボタンをクリックするとシグナルが更新され、ウィンドウの残りはそのままです。
+
 ## 実行とビルド
+
+プロジェクトディレクトリで次を実行します。
 
 ```sh
 bun run check
@@ -46,8 +76,10 @@ bun run dev
 bun run build
 ```
 
-The CLI owns the process main thread and native event loop. Application code runs in a Bun worker. Production builds bundle the executable and native libraries and create an app bundle and DMG on macOS.
+`dev` は編集に合わせて再ビルドします。`check` は型検査を行います。`build` はパッケージ済みアプリを `dist/` に書き出し、macOS では `.app` と DMG を含めます。
 
 ## 次のステップ
 
-Explore the [component reference](/docs/typescript/components), [native services](/docs/typescript/native-services), and [SwiftUI controls](/docs/typescript/swift-ui). The checkout includes `examples/components-typescript` and `examples/quick-git-typescript` as complete applications.
+- [シグナル](/docs/typescript/reactivity)で状態を保存し、更新する。
+- [コンポーネントリファレンス](/docs/typescript/components)を確認する。
+- [ウィンドウとシステムのダイアログ](/docs/typescript/native-services)を開く。

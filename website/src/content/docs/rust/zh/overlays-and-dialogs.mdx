@@ -1,18 +1,16 @@
-Rust 指南正文目前以英文提供，组件 API 参考包含中文说明。
-
-In-window overlays stay in the retained scene. Operating-system dialogs use platform prompts.
+窗口内界面使用 QuickGUI 浮层；文件选择和警告使用系统对话框。
 
 ## Popover
 
-Compose `Popover` trigger, positioner, popup, and arrow parts. The core owns placement, collisions, focus, outside interaction, and dismissal. Store `open` on the view.
+组合 `Popover` 的触发器、定位器、弹出层和箭头部件。放置与关闭由系统处理。把 `open` 存在视图上。
 
 ## Dialog
 
-`Dialog::new` and `Dialog::alert` add modal semantics plus title, description, backdrop, viewport, and close parts. Restore focus through `restore_focus_to`; do not install a second focus trap.
+`Dialog::new` 和 `Dialog::alert` 增加模态行为，以及标题、说明、背景、视口和关闭部件。用 `restore_focus_to` 恢复焦点；不要再加第二层焦点陷阱。
 
 ## 系统浮窗
 
-`SystemPopover` owns a separate native panel anchored to a mounted node. It can cross the parent’s content bounds and is disposed with its owner.
+`SystemPopover` 是锚定到已挂载节点的操作系统面板。它可以延伸到父窗口之外。随其所有者一起释放。
 
 ## 原生对话框
 

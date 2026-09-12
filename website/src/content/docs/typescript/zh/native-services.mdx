@@ -1,21 +1,37 @@
-TypeScript 指南正文目前以英文提供，组件 API 参考包含中文说明。
+打开窗口前请先等待 `app.whenReady()`。窗口和对话框的回调在你的应用代码中运行。
 
 ## 窗口生命周期
 
-Create a `Window` with `renderer: createRenderer(...)`. `onClose` and `on("closed", ...)` observe native destruction; `onCloseRequested` can hold a user close request. `close()` completes it. `whenReady()` resolves after the native window is mounted, including hidden windows. Returned snapshots use `bounds`, `viewportSize`, and `scaleFactor`.
+用 `renderer: createRenderer(...)` 创建窗口。`onClose` 和 `on("closed", ...)` 用于观察窗口关闭。`onCloseRequested` 可以推迟用户关闭；`close()` 完成关闭。`whenReady()` 在窗口存在后解析，包括隐藏窗口。
+
+```tsx
+const window = new Window({
+  title: "My App",
+  width: 720,
+  height: 480,
+  renderer: createRenderer(App),
+});
+window.on("closed", () => {
+  // Release window-owned resources here.
+});
+```
+
+在 macOS 上，当 Dock 重新打开并报告 `hasVisibleWindows` 为 false 时，打开一个新窗口。
 
 ## 命令与服务
 
 ```tsx
-import { app, Window, Clipboard, Dialog, Menu, Shell, Screen } from "@quickgui/native";
+import { app, Clipboard, Dialog, Menu, Screen, Shell } from "@quickgui/native";
+
 await app.whenReady();
 const displays = await Screen.getAllDisplays();
 const selected = await Dialog.showOpenDialog({ properties: ["openDirectory"] });
-// Menus, dialogs, clipboard, displays, appearance, and window operations use Rust services.
 ```
 
-Native result operations return promises. Window mutations declare work immediately and are submitted after native creation. System menus and file dialogs remain native controls.
+对话框、剪贴板、菜单、显示器和外观 API 返回 Promise。系统菜单和文件对话框是平台控件。
 
 ## 事件与文件监听
 
-Window events include focus, resize, appearance, ready-to-show, minimize, fullscreen, and close. Application events include ready, reopen, activation, quit, open URLs, and keyboard-layout changes. Use Bun file watching and asynchronous I/O for application data; dispose watchers with their owner window. Quick Git demonstrates cancellation, bounded subprocess output, and per-window stores.
+窗口事件包括焦点、调整大小、外观、ready-to-show、最小化、全屏和关闭。应用事件包括就绪、重新打开、激活、退出和打开 URL。
+
+用 Bun 监听文件，并在所属窗口关闭时停止监听。

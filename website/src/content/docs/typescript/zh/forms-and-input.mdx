@@ -1,25 +1,32 @@
-TypeScript 指南正文目前以英文提供，组件 API 参考包含中文说明。
+把字段值保存在信号中，并从回调把已接受的更改写回。
 
 ## 文本输入
 
 ```tsx
 const [value, setValue] = createSignal("");
-<Input value={value()} onInput={event => setValue(event.value ?? "")} placeholder="Name" />
-<TextArea value={notes()} onInput={event => setNotes(event.value ?? "")} />
+<Input
+  value={value()}
+  onInput={(event) => setValue(event.value ?? "")}
+  placeholder="Name"
+/>
+<TextArea
+  value={notes()}
+  onInput={(event) => setNotes(event.value ?? "")}
+/>
 ```
 
 ## 字段
 
-`Field`, `Fieldset`, labels, descriptions, controls, and error parts declare accessible relationships and validation. Field validity, touched/dirty state, validation triggers, and debounce deadlines are coordinated by Rust.
+`Field` 和 `Fieldset` 将标签、说明、控件和错误关联起来。由应用驱动有效性、touched 和 dirty 状态。验证模式和防抖在字段上设置。
 
 ## 选项
 
-Compose `Checkbox`, `CheckboxGroup`, `RadioGroup`, `Radio`, and `Switch` with their indicators and labels. Controlled state is updated through each root’s change callback; disabled/read-only state belongs to the native control.
+用指示器和标签组合 `Checkbox`、`CheckboxGroup`、`RadioGroup`、`Radio` 和 `Switch`。从每个根的变更回调更新受控状态。禁用与只读是分开的。
 
 ## 选择器
 
-`Select`, `Combobox`, and `Autocomplete` declare options ahead of native filtering and keyboard navigation. Their state hooks expose selection, query, highlight, and chips for custom parts. Keep option values stable.
+`Select`、`Combobox` 和 `Autocomplete` 接收选项列表。保持选项值稳定。状态 hook 会公开选择、查询、高亮和标签项，便于自定义部件。
 
 ## 事件
 
-Input events carry text in `event.value`. Structured key, pointer, gesture, drop, component-change, and commit payloads have dedicated decoder helpers. Use declared handlers so the core knows which events must cross the FFI boundary.
+文本事件把字符串放在 `event.value` 中。指针、按键、手势、拖放和提交处理函数具有带类型的载荷。声明你需要的处理函数，控件才能发出对应事件。

@@ -1,10 +1,15 @@
-Rust 指南正文目前以英文提供，组件 API 参考包含中文说明。
-
-`View::render` builds an element tree after invalidation or OS damage. Native layout, painting, focus, input, and accessibility remain in the core. Stable `Element::id` values preserve identity across renders.
+`View::render` 在 `invalidate` 之后，或操作系统请求重绘时构建树。给应跨渲染保持身份的元素稳定的 `id`。
 
 ## 渲染模型
 
-Return `impl IntoElement` from `render`. Fluent builders construct retained elements. The window sleeps until `invalidate` or platform damage. Do not rebuild from a timer when nothing changed.
+从 `render` 返回 `impl IntoElement`。窗口会休眠直到有变化。界面空闲时不要用定时器重建。
+
+```rust
+div()
+    .p(16.0)
+    .child(text("Hello"))
+    .child(button().child("Continue"))
+```
 
 ## 条件内容
 
@@ -16,7 +21,7 @@ if self.expanded {
 }
 ```
 
-Omitting a branch drops its nodes. Sibling elements with stable ids keep their identities.
+省略某个分支会丢弃其节点。具有稳定 id 的兄弟元素保持身份。
 
 ## 列表与节点身份
 
@@ -26,11 +31,11 @@ div().children(self.items.iter().map(|item| {
 }))
 ```
 
-Give stateful rows stable `id`s. Use `VirtualList` or `TableState` for large collections and only mount visible rows.
+为有状态的行提供稳定的 `id`，而不是位置。大型集合请使用 `VirtualList` 或 `TableState`，以便只挂载可见行。
 
 ## 窗口生命周期
 
-Each `open_window` owns an independent view. Closing a child window must not drop its siblings. Handle macOS Dock reopening by constructing a fresh window when `has_visible_windows` is false.
+每次 `open_window` 都有自己的视图。关闭一个窗口不会丢弃其兄弟窗口。在 macOS 上，当 Dock 重新打开并报告 `has_visible_windows` 为 false 时，打开一个新窗口。
 
 ## 当前窗口
 
@@ -43,13 +48,13 @@ fn render(&mut self, cx: &mut ViewContext<'_, Self>) -> impl IntoElement {
 }
 ```
 
-`ViewContext` and `EventContext` expose the current `WindowHandle` during render and event dispatch.
+`ViewContext` 和 `EventContext` 在渲染和事件期间提供当前窗口。
 
 ## 检查、测试与调试
 
 ```sh
-quickgui check
-quickgui test
+bun run check
+bun run test
 ```
 
-`examples/base_ui_components.rs` is the broad UI gallery. Enable the `inspector` crate feature for the in-app inspector. Native integration checks are separate from `cargo test`.
+启用 `inspector` crate 功能可使用应用内检查器。

@@ -1,6 +1,4 @@
-Rust 指南正文目前以英文提供，组件 API 参考包含中文说明。
-
-Implement `View` for application components. Primitives are functions that return `Element`. Compound components are copyable descriptors whose `*_part` methods decorate caller-owned elements.
+为持有状态的界面实现 `View`。基础组件是返回 `Element` 的函数。复合控件装饰你拥有的元素。
 
 ## 定义组件
 
@@ -15,13 +13,15 @@ impl View for Greeting {
 }
 ```
 
-Child views can also be functions that return `Element` when they have no retained state.
+没有自身状态的子视图也可以是返回 `Element` 的函数。
 
 ## 基础组件
 
-`div`, `text`, `button`, `text_input`, `text_area`, `Markdown`, `img`, `svg`, `custom_shader`, `VirtualList`, and optional `Terminal` are native building blocks. `submit_button` submits the nearest `form`.
+`div`、`text`、`button`、`text_input`、`text_area`、`Markdown`、`img`、`svg`、`custom_shader` 和 `VirtualList` 是构建块。`submit_button` 会提交最近的 `form`。可选的 `Terminal` 通过 crate 功能提供。
 
 ## 复合组件
+
+把部件放在根节点下，以便共享焦点和选择。
 
 ```rust
 let checkbox = Checkbox::new(self.checked);
@@ -31,16 +31,18 @@ checkbox
     .child(text("Remember this device"))
 ```
 
-Compound roots coordinate named parts through ids and state you store on the view. Keep parts under the intended root so focus and value relationships stay explicit.
-
 ## 受控状态
 
-Store values on the view and pass them into constructors such as `Checkbox::new`, `SliderState`, or `text_input`. Update those fields from listeners, then `invalidate`. There is no separate `defaultValue` layer: the view owns the state.
+把值存在视图上，并传入 `Checkbox::new` 或 `text_input` 等构造函数。从监听器更新这些字段，然后 `invalidate`。状态由视图拥有。
 
 ## 组件类别
 
-The reference covers selection controls, tabs, disclosure, fields, menus, context menus, pickers, dialogs, popovers, preview cards, drawers, navigation menus, ranges, splitters, progress, meters, toggles, toolbars, toasts, calendars, date/time fields, scroll areas, tables, trees, and SwiftUI controls. Run `examples/base_ui_components.rs` for a gallery.
+侧栏列出选择、标签页、字段、菜单、选择器、对话框、表格、树等控件。每个控件都有独立页面，包含用法、结构和 props。
+
+完整界面示例见[表单与输入](/docs/rust/forms-and-input)和[浮层与对话框](/docs/rust/overlays-and-dialogs)。
 
 ## 设置各部件的样式
 
-Apply fluent style methods to each visual part. Parts remain unstyled so layout and colors belong to the application. State types such as `SliderState`, `TabsState`, `SelectState`, and `ScrollAreaState` expose the current native state for custom presentation.
+对每个视觉部件应用链式样式方法。部件默认无样式，布局和颜色由应用决定。`SliderState`、`TabsState`、`SelectState` 等类型会公开当前状态，便于自定义呈现。
+
+辅助方法与复用见[样式与布局](/docs/rust/styling)。

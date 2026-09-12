@@ -1,43 +1,73 @@
-TypeScript 指南正文目前以英文提供，组件 API 参考包含中文说明。
+QuickGUI 的 TypeScript 应用使用 Solid 2 JSX。用 TypeScript 编写窗口和组件，CLI 负责运行、热重载并打包原生 macOS 应用。
 
 ## 系统要求
 
-Use Bun 1.4 or later, TypeScript 7, and Xcode Command Line Tools on macOS. Solid, its universal renderer, and its compiler are pinned to 2.0.0-rc.7. QuickGUI uses the Rust renderer through Bun FFI; it does not embed a webview.
+- macOS 14 或更新版本
+- Bun 1.4 或更新版本
+- Xcode Command Line Tools（`xcode-select --install`）
+
+脚手架会固定 Solid 2 和 TypeScript 7。当前打包的应用面向 macOS。
 
 ## 创建项目
 
-运行以下命令，并在提示时选择 **TypeScript**。
-
 ```sh
-bunx @quickgui/cli init my-app
+bunx @quickgui/cli init my-app --language typescript
 cd my-app
 bun run dev
 ```
 
-In a checkout, install workspace dependencies and stage the shared library once with `bun run build:native`. Ordinary application edits compile TypeScript and reuse that library.
+CLI 会创建项目、安装依赖并打开应用。省略 `--language typescript` 可在提示时选择语言。
 
 ## 第一个窗口
 
+生成的 `app.tsx` 会等待应用就绪、打开窗口，并渲染一个 Solid 组件。
+
 ```tsx
+import { createSignal } from "solid-js";
 import { app, Window } from "@quickgui/native";
 import { Button, Text, View, createRenderer } from "@quickgui/solid";
-import { createSignal } from "solid-js";
+
 function Counter() {
   const [count, setCount] = createSignal(0);
-  return <View padding={24} display="flex" flexDirection="column" gap={12}>
-    <Text>Count: {count()}</Text>
-    <Button onClick={() => setCount(count() + 1)}>Increment</Button>
-  </View>;
+  return (
+    <View
+      width="100%"
+      height="100%"
+      display="flex"
+      flexDirection="column"
+      alignItems="center"
+      justifyContent="center"
+      gap={16}
+    >
+      <Text fontSize={24}>Count: {count()}</Text>
+      <Button padding={12} onClick={() => setCount(count() + 1)}>
+        Increment
+      </Button>
+    </View>
+  );
 }
+
 function openWindow() {
-  new Window({ title: "Counter", width: 720, height: 480, renderer: createRenderer(Counter) });
+  new Window({
+    title: "My App",
+    width: 640,
+    height: 460,
+    renderer: createRenderer(Counter),
+  });
 }
-app.on("reopen", ({ hasVisibleWindows }) => { if (!hasVisibleWindows) openWindow(); });
+
+app.on("reopen", ({ hasVisibleWindows }) => {
+  if (!hasVisibleWindows) openWindow();
+});
 await app.whenReady();
 openWindow();
 ```
 
+在 JSX 中读取 `count()` 可让该文本保持同步。点击按钮会更新信号，窗口其余部分保持不变。
+
 ## 运行与构建
+
+在项目目录中执行：
 
 ```sh
 bun run check
@@ -46,8 +76,10 @@ bun run dev
 bun run build
 ```
 
-The CLI owns the process main thread and native event loop. Application code runs in a Bun worker. Production builds bundle the executable and native libraries and create an app bundle and DMG on macOS.
+`dev` 会在编辑时重新构建。`check` 进行类型检查。`build` 将打包后的应用写入 `dist/`，在 macOS 上包含 `.app` 和 DMG。
 
 ## 后续步骤
 
-Explore the [component reference](/docs/typescript/components), [native services](/docs/typescript/native-services), and [SwiftUI controls](/docs/typescript/swift-ui). The checkout includes `examples/components-typescript` and `examples/quick-git-typescript` as complete applications.
+- 使用[信号](/docs/typescript/reactivity)存储和更新状态。
+- 浏览[组件参考](/docs/typescript/components)。
+- 打开[窗口与系统对话框](/docs/typescript/native-services)。

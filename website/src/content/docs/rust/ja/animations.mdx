@@ -1,6 +1,4 @@
-Rust ガイド本文は現在英語です。コンポーネントの API リファレンスには日本語の説明があります。
-
-Native transitions interpolate paint-only style changes while the element stays mounted.
+`transition` でスタイルの変化をアニメーションします。ビューは毎フレーム描画されません。
 
 ## ホバーのトランジション
 
@@ -14,20 +12,20 @@ button()
 
 ## 状態によるアニメーション
 
-Change a style field from view state and call `invalidate`. The core interpolates supported transitions. Do not reconstruct the view on each frame.
+ビューの状態からスタイルフィールドを変更し、`invalidate` を呼びます。対応するプロパティは、要素がマウントされたままアニメーションします。
 
 ## 時間とフレームレート
 
-`Transition::new` takes a `Duration`. Set easing with `with_easing` and cap cadence with `max_fps` while animation is active. That ceiling is not an idle scheduling source.
+`Transition::new` は `Duration` を取ります。イージングは `with_easing`、実行中の周期上限は `max_fps` で設定します。
 
 ## 対応するプロパティ
 
-`TransitionProperties` covers background, border color and width, radius, text color, box shadow, opacity, and transform. Layout lengths stay declaration-time values because they require Taffy.
+`TransitionProperties` は背景、境界線の色と幅、角丸、文字色、ボックスシャドウ、不透明度、変換を対象にします。幅、高さ、パディングは補間しません。
 
 ## マウントと視差効果の抑制
 
-Keep an overlay mounted for its exit transition when the component supports that lifecycle. Respect the platform reduced-motion preference instead of imposing a frame loop.
+コンポーネントが対応している場合は、閉じるアニメーションが終わるまでオーバーレイをマウントしたままにします。システムの「視差効果を減らす」設定に従ってください。フレームループでアニメーションを駆動しないでください。
 
 ## アニメーション画像
 
-`img` uses native image resources, including animated GIF/WebP sources. The core owns playback deadlines, cache limits, and visibility-based suspension; loading a static image does not request idle frames.
+`img` はアニメーション GIF と WebP を再生します。タイマーは不要です。[Image](/docs/rust/components/image) を参照してください。

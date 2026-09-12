@@ -1,17 +1,15 @@
-Rust 指南正文目前以英文提供，组件 API 参考包含中文说明。
-
-Enable the `updater` feature on the `quickgui` crate. Rust apps do not load `@quickgui/extension-updater`; they call `UpdateClient` in-process.
+在 `quickgui` crate 上启用 `updater` 功能。Rust 应用直接调用 `UpdateClient`。
 
 ## 配置
 
-Generate an Ed25519 key pair, then copy the public key into the project:
+生成签名密钥，然后将公钥复制到项目中：
 
 ```sh
 bunx @quickgui/cli keygen --sparkle --out-dir "$HOME/.config/my-app/update-keys"
 cp "$HOME/.config/my-app/update-keys/quickgui-update.pub" ./update-public-key.pub
 ```
 
-Keep the private `quickgui-update.key` outside version control.
+不要将 `quickgui-update.key` 纳入版本控制。
 
 ```ts
 import { readFileSync } from "node:fs";
@@ -34,18 +32,18 @@ export default defineConfig({
 });
 ```
 
-Do not set `extensions`. Enable the crate feature:
+启用 crate 功能，而不是在 `extensions` 中列出：
 
 ```toml
 [dependencies]
 quickgui = { version = "0.1.3", features = ["updater"] }
 ```
 
-The CLI embeds the public key, application version, identifier, and feed URL in packaged metadata. A `darwin-arm64` build checks `https://downloads.example.com/my-app/appcast-darwin-arm64.xml` unless `updates.feedUrl` overrides it.
+`darwin-arm64` 构建会检查 `https://downloads.example.com/my-app/appcast-darwin-arm64.xml`，除非用 `updates.feedUrl` 覆盖。
 
 ## 应用用法
 
-Construct one `UpdateClient` after the application starts, outside `View::render`, so every window shares the session:
+应用启动后、在 `View::render` 之外构造一个 `UpdateClient`，让所有窗口共享它：
 
 ```rust
 use quickgui::{UpdateClient, default_update_target};
@@ -58,15 +56,15 @@ if let Some(update) = client.check("https://downloads.example.com/my-app/{{targe
 }
 ```
 
-A Check for Updates action can call `check` from a listener and `cx.invalidate()` when UI state should show progress.
+“检查更新”操作可以从监听器调用 `check`，并在横幅需要更新时调用 `cx.invalidate()`。
 
 ## 生命周期
 
-Keep the client for the process lifetime. Closing a window must not drop it if other windows still need update status. Cooperative cancellation uses `UpdateCancellation` around download and staging.
+在进程生命周期内保留该客户端。如果其他窗口仍需要更新状态，关闭窗口时不得丢弃它。用 `UpdateCancellation` 取消下载和暂存。
 
 ## 平台支持
 
-macOS can also emit Sparkle appcasts when `updates.publicKey` is set. Windows and Linux use the signed JSON updater. Development builds should point at a disposable feed.
+设置 `updates.publicKey` 后，macOS 可以发出 Sparkle appcast。Windows 和 Linux 使用已签名的 JSON 清单。把开发构建指向可丢弃的更新源。
 
 ## 发布更新
 
@@ -74,8 +72,8 @@ macOS can also emit Sparkle appcasts when `updates.publicKey` is set. Windows an
 bun run build --update-manifest
 ```
 
-Signing needs the Minisign secret key in `updates.minisignSecretKey` or `QUICKGUI_MINISIGN_SECRET_KEY`. The private key is never embedded in the application.
+签名使用 `updates.minisignSecretKey` 或 `QUICKGUI_MINISIGN_SECRET_KEY` 中的 Minisign 密钥。私钥不会嵌入应用。
 
 ## 原生产物
 
-Packaged Rust apps include the executable and `quickgui.json`. The updater client reads the embedded public key and current version from that metadata when you pass the values from `AppInfo`.
+只要启用了 crate 功能，生产构建就会包含更新器支持。最终用户运行打包后的应用即可，无需安装额外的更新器工具。

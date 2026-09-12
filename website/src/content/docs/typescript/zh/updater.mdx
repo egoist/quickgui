@@ -1,23 +1,19 @@
-TypeScript 指南正文目前以英文提供，组件 API 参考包含中文说明。
+安装 `@quickgui/extension-updater` 即可提供自动更新。
 
 ## 配置
-
-Install the updater extension in your application:
 
 ```sh
 bun add @quickgui/extension-updater
 ```
 
-Generate the update-signing keys, then copy the public key into your project:
+生成签名密钥，然后将公钥复制到项目中：
 
 ```sh
 bunx @quickgui/cli keygen --sparkle --out-dir "$HOME/.config/my-app/update-keys"
 cp "$HOME/.config/my-app/update-keys/quickgui-update.pub" ./update-public-key.pub
 ```
 
-Keep the private `quickgui-update.key` outside version control. The public `update-public-key.pub` file belongs with your application source.
-
-Use this complete `quickgui.config.ts`, replacing the application metadata and download URL:
+不要将 `quickgui-update.key` 纳入版本控制。
 
 ```ts
 import { readFileSync } from "node:fs";
@@ -41,13 +37,11 @@ export default defineConfig({
 });
 ```
 
-The CLI embeds the public key, application version, identifier, and feed URL in the application. With this configuration, a `darwin-arm64` build checks `https://downloads.example.com/my-app/appcast-darwin-arm64.xml`. Set `updates.feedUrl` to override that default; it can contain `{target}`.
-
-Production applications require the public-key configuration. The private key is needed when signing release artifacts with `--update-manifest`, and is never embedded in the application.
+`darwin-arm64` 构建会检查 `https://downloads.example.com/my-app/appcast-darwin-arm64.xml`，除非用 `updates.feedUrl` 覆盖。该 URL 中的 `{target}` 会被展开。私钥仅在使用 `--update-manifest` 签名时使用。
 
 ## 应用用法
 
-Create `updates.ts` and import it once from your application's `app.tsx`. Start the updater after application readiness, outside components, so every window shares one session:
+在 `app.whenReady()` 之后、在组件之外启动更新器，让所有窗口共享同一个会话：
 
 ```ts
 import { app } from "@quickgui/native";
@@ -55,19 +49,15 @@ import Updater from "@quickgui/extension-updater";
 
 await app.whenReady();
 
-export const updater = new Updater({}, event => {
+export const updater = new Updater({}, (event) => {
   if (event.error) console.error(event.error);
-
   if (event.quitRequired) {
-    // The installer is ready; normal quit hooks can save work or cancel quitting.
     void app.quit().catch(console.error);
   }
 });
 
 await updater.ready;
 ```
-
-The empty options object uses the settings embedded from `quickgui.config.ts`. A Check for Updates action can use that shared instance:
 
 ```tsx
 import { Button } from "@quickgui/solid";
@@ -86,37 +76,31 @@ export function CheckForUpdatesButton() {
 
 ## 生命周期
 
-`updater.ready` rejects if initialization fails. Commands return promises; handle their errors at the action that invokes them.
+如果启动失败，`updater.ready` 会拒绝。各命令返回 Promise。
 
-| API | Use |
+| API | 用途 |
 | --- | --- |
-| `updater.check()` | Manually check for an update. |
-| `updater.install()` | Install an available update from your update banner. |
-| `updater.setAutomaticChecks(enabled)` | Change the automatic-check preference from settings. |
-| `updater.state` | Read the last native event without polling. |
-| `updater.close()` | Stop a session that the application no longer needs. |
+| `updater.check()` | 检查是否有更新。 |
+| `updater.install()` | 安装已有的更新。 |
+| `updater.setAutomaticChecks(enabled)` | 更改自动检查偏好。 |
+| `updater.state` | 读取最近一次事件。 |
+| `updater.close()` | 停止会话。 |
 
-The callback receives status, version, notes, progress, and errors. Status is `idle`, `checking`, `available`, `downloading`, `installing`, or `disabled`. Import `UpdateEvent` and `UpdaterOptions` types from `@quickgui/extension-updater` when needed.
+状态为 `idle`、`checking`、`available`、`downloading`、`installing` 或 `disabled`。关闭窗口时不得关闭共享的更新器。
 
-Closing a window must not close the shared updater. Native sessions are cleaned up when the application quits.
-
-Development builds report `disabled` by default. To test against a deliberately configured test feed and disposable app bundle, replace the options object with `{ allowDevelopment: true }`. On macOS, the supplied public key must match the key embedded in the app bundle.
+开发构建会保持禁用，除非传入 `{ allowDevelopment: true }`，并提供测试更新源和可丢弃的应用包。
 
 ## 平台支持
 
-The extension uses Sparkle on macOS. Windows and Linux have native implementations for signed NSIS installers and AppImages respectively; the current npm artifacts cover macOS, so other targets require extension builds on their target hosts. Linux package-manager installations report `disabled`.
-
-The native extension owns download verification, installation, and relaunch. The TypeScript API sends commands and receives events through the existing in-process extension bridge.
+macOS 使用 Sparkle。Windows 使用已签名的 NSIS 安装包；Linux 使用 AppImage。预构建的更新器软件包目前覆盖 macOS。通过 Linux 软件包管理器安装的版本会报告 `disabled`。
 
 ## 发布更新
 
-Increase `version` in `quickgui.config.ts` for each release. Load the private signing key into the build environment:
+每次发布时递增 `quickgui.config.ts` 中的 `version`。加载私钥：
 
 ```sh
 export QUICKGUI_UPDATER_PRIVATE_KEY="$(cat "$HOME/.config/my-app/update-keys/quickgui-update.key")"
 ```
-
-For a macOS release, use your Developer ID signing identity and configured notary profile:
 
 ```sh
 bunx @quickgui/cli build --target darwin-arm64 --update-manifest \
@@ -124,16 +108,10 @@ bunx @quickgui/cli build --target darwin-arm64 --update-manifest \
   --notarize my-app-notary
 ```
 
-The CLI signs the finished update archive and writes `appcast-darwin-arm64.xml`. Upload the versioned archive to the directory configured by `updates.baseUrl` first, then upload the appcast to its feed URL. The CLI reports the artifact and appcast paths. Repeat with `--target darwin-x64` for Intel Macs; each architecture uses its own feed.
+先上传已签名的归档，再上传生成的 `appcast-darwin-arm64.xml`。Intel Mac 请再用 `--target darwin-x64` 重复一次。每种架构都有各自的更新源。
 
-For CI, provide `QUICKGUI_UPDATER_PRIVATE_KEY` through the CI secret store and keep the public-key file in the checkout. `SPARKLE_PRIVATE_KEY` is also accepted. For local signing, `updates.ed25519SecretKey` can point to the private key file instead of using an environment variable. Set `updates.manifest: true` to generate a signed appcast on every production build, or `updates.notesFile` to include a release-notes text file.
-
-The private key must match `updates.publicKey`. Missing keys, mismatched keys, and unsupported update payloads fail the release build.
+在 CI 中将 `QUICKGUI_UPDATER_PRIVATE_KEY` 存为密钥。也接受 `SPARKLE_PRIVATE_KEY`。本地签名时，`updates.ed25519SecretKey` 可以指向密钥文件。设置 `updates.manifest: true` 可在每次生产构建时生成更新源。
 
 ## 原生产物
 
-```sh
-bun packages/native/build.ts --extension updater
-```
-
-In a source checkout, build the extension once. Packaged applications include its shared library, Sparkle resources or portable handoff helper, and the update metadata selected by the CLI.
+只要在 `extensions` 中列出该软件包，生产构建就会包含更新器。最终用户运行打包后的应用即可，无需安装额外的更新器工具。

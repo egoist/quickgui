@@ -1,27 +1,35 @@
-TypeScript 指南正文目前以英文提供，组件 API 参考包含中文说明。
+用元素上的 `transition` 为样式变化添加动画。组件不会为每一帧重新运行。
 
 ## 悬停过渡
 
 ```tsx
-<Button style={{ bg: "#2563eb", transition: { property: "bg", duration: 160 }, hover: { bg: "#1d4ed8" } }}>Hover</Button>
+<Button
+  style={{
+    bg: "#2563eb",
+    transition: { property: "bg", duration: 160 },
+    hover: { bg: "#1d4ed8" },
+  }}
+>
+  Hover
+</Button>
 ```
 
 ## 状态驱动的动画
 
-Change a reactive style value from application state. Rust interpolates supported transitions while retaining the node and its interaction state. Do not reconstruct the component on each frame.
+根据应用状态改变样式。节点保持挂载，同时颜色、透明度和其他受支持属性进行动画。
 
 ## 时长与帧率
 
-Transition durations accept supported numbers or duration strings. Set easing and `maxFps` when needed; the frame-rate value is a ceiling while animation is active, not an idle scheduling source.
+时长接受数字或 `"180ms"` 这样的字符串。需要时设置缓动和 `maxFps`。`maxFps` 仅在动画运行期间生效。
 
 ## 支持的属性
 
-Native transitions cover the documented color, border, radius, opacity, and shadow properties. Transforms are supported as native style declarations. Consult the typed transition property union for interpolation support.
+过渡覆盖背景、边框、圆角、文本颜色、透明度、阴影和变换。宽度、高度和内边距不会插值。完整列表见 `@quickgui/solid` 中带类型的过渡属性联合。
 
 ## 挂载与减少动态效果
 
-Keep an overlay mounted during its native exit transition when its component supports that lifecycle. Respect `reduceMotion` on window configuration and the platform preference instead of imposing a JavaScript animation loop.
+若组件支持，请让浮层保持挂载直到关闭动画结束。遵循窗口上的 `reduceMotion` 以及系统偏好。不要用 JavaScript 定时器驱动动画。
 
 ## 动态图像
 
-`Image` uses native image resources, including animated GIF/WebP sources. The core owns playback deadlines, cache limits, and visibility-based suspension; loading a static image does not request idle frames.
+`Image` 会播放动态 GIF 和 WebP 文件。不需要定时器。参见 [Image](/docs/typescript/components/image)。

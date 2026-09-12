@@ -1,17 +1,15 @@
-Rust ガイド本文は現在英語です。コンポーネントの API リファレンスには日本語の説明があります。
-
-Enable the `updater` feature on the `quickgui` crate. Rust apps do not load `@quickgui/extension-updater`; they call `UpdateClient` in-process.
+`quickgui` crate の `updater` 機能を有効にします。Rust アプリは `UpdateClient` を直接呼びます。
 
 ## 設定
 
-Generate an Ed25519 key pair, then copy the public key into the project:
+署名キーを生成し、公開鍵をプロジェクトへコピーします。
 
 ```sh
 bunx @quickgui/cli keygen --sparkle --out-dir "$HOME/.config/my-app/update-keys"
 cp "$HOME/.config/my-app/update-keys/quickgui-update.pub" ./update-public-key.pub
 ```
 
-Keep the private `quickgui-update.key` outside version control.
+`quickgui-update.key` はバージョン管理に入れないでください。
 
 ```ts
 import { readFileSync } from "node:fs";
@@ -34,18 +32,18 @@ export default defineConfig({
 });
 ```
 
-Do not set `extensions`. Enable the crate feature:
+`extensions` に列挙する代わりに crate 機能を有効にします。
 
 ```toml
 [dependencies]
 quickgui = { version = "0.1.3", features = ["updater"] }
 ```
 
-The CLI embeds the public key, application version, identifier, and feed URL in packaged metadata. A `darwin-arm64` build checks `https://downloads.example.com/my-app/appcast-darwin-arm64.xml` unless `updates.feedUrl` overrides it.
+`darwin-arm64` ビルドは、`updates.feedUrl` で上書きしない限り `https://downloads.example.com/my-app/appcast-darwin-arm64.xml` を確認します。
 
 ## アプリでの使用
 
-Construct one `UpdateClient` after the application starts, outside `View::render`, so every window shares the session:
+アプリ開始後、`View::render` の外で 1 つの `UpdateClient` を構築し、すべてのウィンドウで共有します。
 
 ```rust
 use quickgui::{UpdateClient, default_update_target};
@@ -58,15 +56,15 @@ if let Some(update) = client.check("https://downloads.example.com/my-app/{{targe
 }
 ```
 
-A Check for Updates action can call `check` from a listener and `cx.invalidate()` when UI state should show progress.
+更新の確認アクションはリスナーから `check` を呼び、バナーを更新するときに `cx.invalidate()` を呼べます。
 
 ## ライフサイクル
 
-Keep the client for the process lifetime. Closing a window must not drop it if other windows still need update status. Cooperative cancellation uses `UpdateCancellation` around download and staging.
+クライアントはプロセスの寿命のあいだ保持します。他のウィンドウが更新状態をまだ必要なら、ウィンドウを閉じてもドロップしないでください。ダウンロードとステージングのキャンセルには `UpdateCancellation` を使います。
 
 ## 対応プラットフォーム
 
-macOS can also emit Sparkle appcasts when `updates.publicKey` is set. Windows and Linux use the signed JSON updater. Development builds should point at a disposable feed.
+`updates.publicKey` を設定すると、macOS は Sparkle の appcast を出力できます。Windows と Linux は署名済み JSON マニフェストを使います。開発ビルドは使い捨てのフィードを指してください。
 
 ## 更新の公開
 
@@ -74,8 +72,8 @@ macOS can also emit Sparkle appcasts when `updates.publicKey` is set. Windows an
 bun run build --update-manifest
 ```
 
-Signing needs the Minisign secret key in `updates.minisignSecretKey` or `QUICKGUI_MINISIGN_SECRET_KEY`. The private key is never embedded in the application.
+署名は `updates.minisignSecretKey` または `QUICKGUI_MINISIGN_SECRET_KEY` の Minisign 秘密鍵を使います。秘密鍵はアプリに埋め込まれません。
 
 ## ネイティブ成果物
 
-Packaged Rust apps include the executable and `quickgui.json`. The updater client reads the embedded public key and current version from that metadata when you pass the values from `AppInfo`.
+crate 機能が有効なら、本番ビルドにはすでにアップデーターサポートが含まれます。エンドユーザーはパッケージ済みアプリを実行するだけで、追加のアップデーター用ツールは不要です。

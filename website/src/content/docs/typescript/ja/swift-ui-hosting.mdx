@@ -1,8 +1,8 @@
-TypeScript ガイド本文は現在英語です。コンポーネントの API リファレンスには日本語の説明があります。
+SwiftUI モディファイアはネイティブコントロールをスタイルします。リバースホスティングは QuickGUI の内容を SwiftUI の中に置きます。
 
 ## モディファイア
 
-Apply typed modifier factories from `@quickgui/solid/swift-ui/modifiers` in declaration order. They include control size, tint, disabled state, label style, button border shape, and button style.
+`@quickgui/solid/swift-ui/modifiers` のモディファイアファクトリーを順に適用します。コントロールサイズ、ティント、無効化、ラベルスタイル、ボタンの境界形状、ボタンスタイルが含まれます。
 
 ## Liquid Glass
 
@@ -10,22 +10,24 @@ Apply typed modifier factories from `@quickgui/solid/swift-ui/modifiers` in decl
 <Button label="Continue" modifiers={[buttonStyle("glass"), controlSize("large")]} />
 ```
 
-The operating system draws native glass where available. Layout and hit testing remain owned by the native hosting layer.
+macOS は利用できる場所でガラスを描画します。
 
 ## リバースホスティング
 
 ```tsx
 <Host matchContents>
   <QuickGUIHostView width={320} height={180}>
-    <View padding={16}><Text>QuickGUI inside SwiftUI</Text></View>
+    <View padding={16}>
+      <Text>QuickGUI inside SwiftUI</Text>
+    </View>
   </QuickGUIHostView>
 </Host>
 ```
 
 ## SwiftUI ポップオーバー
 
-Use `Popover.Trigger` with a rendered SwiftUI control and `Popover.Content` for the presented hierarchy. A `QuickGUIHostView` inside that content owns a separate ordinary QuickGUI renderer.
+SwiftUI コントロールには `Popover.Trigger` を、提示するツリーには `Popover.Content` を使います。その内容の `QuickGUIHostView` が通常の QuickGUI コンポーネントをホストします。
 
 ## ライフサイクル
 
-Native and Solid ownership must agree: an embedded renderer is disposed with its host, and a presented panel is disposed with its owner. Unmounting removes handlers and retained resources; never keep a detached host alive through a global subscription.
+埋め込みサーフェスはホストとともに破棄されます。提示されたパネルは所有者とともに破棄されます。グローバルな購読で切り離されたホストを生かし続けないでください。

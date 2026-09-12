@@ -1,10 +1,19 @@
-TypeScript 指南正文目前以英文提供，组件 API 参考包含中文说明。
+组件在挂载时运行，并返回应显示的树。之后的信号更新会改变绑定的文本和属性。当子节点结构本身会变化时，使用 `<Show>` 和 `<For>`。
 
 ## 渲染模型
 
-The Solid universal compiler creates native nodes and retained bindings. It selects the reactive client build even though Bun normally resolves server conditions. Native layout, painting, focus, input, accessibility, and component state remain in Rust.
+从组件返回原生 JSX。布局、绘制、焦点和无障碍都是原生的。你不会渲染到 HTML。
+
+```tsx
+<View padding={20} gap={12}>
+  <Text>Hello</Text>
+  <Button onClick={() => {}}>Continue</Button>
+</View>
+```
 
 ## 条件内容
+
+初始化阶段的普通 `if` 只在组件创建时运行。子节点稍后需要出现或消失时，使用 `<Show>`。
 
 ```tsx
 <Show when={expanded()} fallback={<Text>Collapsed</Text>}>
@@ -12,19 +21,19 @@ The Solid universal compiler creates native nodes and retained bindings. It sele
 </Show>
 ```
 
-A conditional region owns its effects and nodes. Removing the region disposes those resources; unrelated sibling nodes keep their identities.
+移除该分支会释放其副作用和节点。兄弟节点保持各自的身份。
 
 ## 列表与节点身份
 
 ```tsx
-<For each={items()}>{item => <Text>{item.name}</Text>}</For>
+<For each={items()}>{(item) => <Text>{item.name}</Text>}</For>
 ```
 
-Use stable item identities for stateful rows. `For` moves existing nodes when order changes. Use `Table` or `Tree` for large native virtual collections and feed only requested visible data.
+为有状态的行提供稳定身份（例如 id），而不是位置。重排序会移动已有行。大型集合请使用 `Table` 或 `Tree`，以便只挂载可见行。
 
 ## 窗口生命周期
 
-Each `Window` owns an independent Solid root. Closing a child window must not dispose its siblings. Handle macOS Dock reopening by constructing a fresh window when `hasVisibleWindows` is false.
+每个 `Window` 都有自己的 Solid 根。关闭一个窗口不会释放其兄弟窗口。在 macOS 上，当 Dock 重新打开并报告 `hasVisibleWindows` 为 false 时，打开一个新窗口。
 
 ## 当前窗口
 
@@ -35,13 +44,13 @@ function Content() {
 }
 ```
 
-The current window exists during renderer construction and native event dispatch. Capture it in setup or pass it explicitly to asynchronous work.
+在初始化阶段捕获窗口，或把它传入后续的异步工作。
 
 ## 检查、测试与调试
 
 ```sh
-quickgui check
-quickgui test
+bun run check
+bun run test
 ```
 
-The components gallery is the broad UI example. Quick Git exercises native menus, file dialogs, virtualized rows, splitters, shortcuts, multiple windows, background Git work, and persistence. Native integration checks are separate from headless adapter tests.
+`check` 使用与应用相同的 JSX 转换进行类型检查。`test` 运行应用测试。

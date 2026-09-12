@@ -1,10 +1,8 @@
-Rust ガイド本文は現在英語です。コンポーネントの API リファレンスには日本語の説明があります。
-
-Store state on the `View`. `render` reads that state to build elements. Call `cx.invalidate()` after a mutation so the window schedules another render. The native core still retains layout, paint, and accessibility between frames.
+状態は `View` に保存します。`render` はその状態を読んでツリーを構築します。変更後に `cx.invalidate()` を呼ぶと、ウィンドウが再描画します。
 
 ## リアクティブな状態
 
-Keep fields on the view struct. Register listeners with `cx.listener` so activations can mutate those fields. A value you copy in `render` is the current frame's snapshot.
+フィールドはビューの構造体に置きます。イベントがそれらのフィールドを変えられるよう、`cx.listener` でリスナーを登録します。`render` でコピーした値はそのフレームのスナップショットです。
 
 ```rust
 struct Counter {
@@ -25,18 +23,18 @@ impl View for Counter {
 
 ## 派生状態
 
-Compute derived values in `render` from the fields you already store. Keep derivations pure; perform writes from listeners.
+すでに保存しているフィールドから、`render` 内で派生値を計算します。計算は純関数のままにし、書き込みはリスナーから行います。
 
 ```rust
 let doubled = self.count * 2;
 text(format!("{doubled}"))
 ```
 
-Store an expensive derivation on the view when several children need the same value in one frame.
+同じフレームで複数の子がコストの高い結果を必要とするときは、ビューに保存します。
 
 ## 副作用とクリーンアップ
 
-Rust views do not subscribe with Go/TypeScript-style effects. Start external work from listeners or `Application` callbacks, and drop that work when the view is dropped. Window close releases the view and its listeners.
+外部の処理はリスナーまたは `Application` のコールバックから開始します。ビューがドロップされたらその処理もドロップします。ウィンドウを閉じるとビューとそのリスナーがドロップされます。
 
 ```rust
 impl Drop for WatcherView {
@@ -48,4 +46,4 @@ impl Drop for WatcherView {
 
 ## 更新のバッチ処理
 
-Calling `cx.invalidate()` marks the window dirty. Multiple invalidations in one event coalesce into one render. Do not install a frame loop for ordinary state updates; the window sleeps while it is clean.
+`cx.invalidate()` はウィンドウを dirty にします。1 つのイベント内の複数の無効化は 1 回の描画になります。通常の状態更新でフレームループを回さないでください。変化がなければウィンドウはスリープします。

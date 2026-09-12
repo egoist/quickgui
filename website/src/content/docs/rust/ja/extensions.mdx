@@ -1,28 +1,24 @@
-Rust ガイド本文は現在英語です。コンポーネントの API リファレンスには日本語の説明があります。
-
-A Rust application can share ordinary modules, or it can author a native extension that Go and TypeScript apps load. Rust apps themselves do not set `extensions` in `quickgui.config.ts`; they enable crate features and depend on crates.
+UI は Rust モジュールとして共有するか、Go と TypeScript アプリ向けのネイティブ拡張を作成します。Rust アプリ自身は crate 機能を有効にし、設定の `extensions` は使いません。
 
 ## 拡張の種類を選ぶ
 
-| What you are adding | What you ship | Core changes |
-| --- | --- | --- |
-| Components or application logic | A Rust module or crate | None |
-| Optional QuickGUI capabilities | Cargo features such as `updater` and `terminal` | None |
-| A native service for Go or TypeScript | A `cdylib`, manifest, and typed wrapper | None |
-
-Native extensions run in the consumer's process. A Rust **app** already is that process: it links `quickgui` and does not load `libquickgui_host`.
+| 追加するもの | 配布するもの |
+| --- | --- |
+| コンポーネントやヘルパー | Rust モジュールまたは crate |
+| 任意の QuickGUI 機能 | `updater` や `terminal` などの Cargo 機能 |
+| Go または TypeScript 向けのネイティブサービス | ライブラリー、マニフェスト、型付きラッパー |
 
 ## 拡張プロジェクトを作成する
 
 ```sh
-quickgui init-extension my-extension --type rust
+bunx @quickgui/cli init-extension my-extension --type rust
 ```
 
-Use this when Go or TypeScript apps should consume a native service. Extension scaffolds use the shared extension ABI. `--npm-package` sets the artifact package name.
+Go または TypeScript アプリがサービスを利用する場合に使います。`--npm-package` は成果物パッケージ名を設定します。
 
 ## コンポーネントの共有
 
-Share UI by exporting functions that return `Element`:
+`Element` を返す関数をエクスポートします。
 
 ```rust
 use quickgui::{Color, Element, text};
@@ -36,40 +32,35 @@ pub fn notice(message: impl Into<std::sync::Arc<str>>) -> Element {
 }
 ```
 
-Return `notice("Saved")` as a child. Keep application-wide services outside `View::render`.
+`notice("Saved")` を子として返します。アプリ全体のサービスは `View::render` の外に置きます。
 
 ## ネイティブ拡張の構成
 
-A native extension ships `quickgui.extension.json`, a versioned shared library, and declared resources. Its manifest identifies the service name, ABI, npm package, release version, library, and per-platform resources. Rust extensions can vendor [`extension_api.rs`](https://github.com/egoist/quickgui/blob/main/src/extension_api.rs) and build a `cdylib` without linking the renderer.
+ネイティブ拡張は `quickgui.extension.json`、バージョン付き共有ライブラリー、宣言した追加ファイルを同梱します。配置は [Go の拡張ガイド](/docs/go/extensions) と [`native-extension` の例](https://github.com/egoist/quickgui/tree/main/examples/native-extension) を参照してください。
 
 ## 依存関係の宣言
 
-Rust **applications** enable features in `Cargo.toml`. They must not set top-level `extensions`:
+Rust の**アプリケーション**は `Cargo.toml` で機能を有効にします。
 
 ```toml
 [dependencies]
 quickgui = { version = "0.1.3", features = ["terminal"] }
 ```
 
-Go and TypeScript consumers declare the extension package in their own config. Custom extensions may use a scoped package such as `@acme/extension-echo`.
+Go と TypeScript の利用者は、それぞれの設定で拡張パッケージを宣言します。
 
 ## ネイティブインターフェースを実装する
 
-Implement the bounded `ServiceApi` contract in the extension. Copy borrowed input before returning, keep event streams scoped to their sessions, and release worker resources when the session stops.
+ネイティブライブラリーは JSON リクエストと任意のセッションに応答します。保持する前に受信バイトをコピーし、遅い処理は worker で行い、セッションが閉じたら処理を止めてください。エントリポイントとリクエスト一覧は[ネイティブインターフェースを実装する](/docs/go/extensions#implement-the-native-contract)を参照してください。
 
 ## 自動登録
 
-Go and TypeScript CLIs resolve and bundle declared extensions. A Rust app has nothing to register: Cargo links the crates you depend on. Optional renderer backends stay behind Cargo features.
+Cargo は依存する crate をリンクします。`extensions` の列挙は、パッケージ済みライブラリーを読み込む Go と TypeScript アプリ向けです。
 
 ## 成果物のビルドとパッケージ化
 
-App edits rebuild the selected crate. Rebuild an extension when its native implementation changes, then rebuild the consuming Go or TypeScript application to stage those bytes.
+アプリの編集は crate を再ビルドします。ネイティブ拡張のコードを変更したらライブラリーを再ビルドし、続けて利用側の Go または TypeScript アプリを再ビルドします。
 
 ## テストと配布
 
-```rust
-// Extension authors test the packed cdylib with the generated demo app.
-// Rust applications call crate APIs directly instead of invokeExtension.
-```
-
-Test against a packed extension and CLI in a fresh Go or TypeScript project. Extension commands are asynchronous and share the bounded native event transport.
+Rust アプリは crate API を直接呼びます。他言語向けにネイティブライブラリーを配布する場合は、公開前に新しい Go または TypeScript アプリでパッケージ済み成果物を試してください。

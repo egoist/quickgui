@@ -1,39 +1,46 @@
-TypeScript 指南正文目前以英文提供，组件 API 参考包含中文说明。
+组件是返回原生 JSX 的普通 TypeScript 函数。从 `View`、`Text`、`Button` 等基础组件开始，再组合侧栏中具备无障碍行为的控件。
 
 ## 定义组件
 
-Return native JSX from ordinary TypeScript functions. Children and reactive prop getters are evaluated under the component owner; do not manually invoke components as setup side effects.
+像任何 Solid 组件一样传递 props。在调用处读取信号可让该 prop 保持实时。
 
 ```tsx
 function Greeting(props: { name: string }) {
   return <Text>Hello, {props.name}</Text>;
 }
+
 <Greeting name={name()} />
 ```
 
 ## 基础组件
 
-`View`, `Text`, `Button`, `Input`, `TextArea`, `Markdown`, `Image`, `Svg`, `Shader`, `VirtualList`, and optional `Terminal` are native building blocks. `TextInput` is also available as the single-line input spelling.
+`View`、`Text`、`Button`、`Input`、`TextArea`、`Markdown`、`Image`、`Svg`、`Shader` 和 `VirtualList` 是构建块。`TextInput` 与单行 `Input` 相同。可选的 `Terminal` 以扩展形式提供。
 
 ## 复合组件
 
+复选框等组件族会暴露具名部件。把部件放在根节点下，以便共享焦点、键盘行为和选择。
+
 ```tsx
 <Checkbox.Root checked={checked()} onCheckedChange={setChecked}>
-  <Checkbox.Indicator><Text>✓</Text></Checkbox.Indicator>
+  <Checkbox.Indicator>
+    <Text>✓</Text>
+  </Checkbox.Indicator>
   <Text>Remember this device</Text>
 </Checkbox.Root>
 ```
 
-Compound roots coordinate their named parts through Rust-owned state. Keep parts under the intended root so their scope, focus, and value relationships are explicit.
-
 ## 受控状态
 
-Use controlled values with the matching change callback, or `defaultValue`, `defaultChecked`, and `defaultOpen` where a component supports internal state. Native events describe the core decision; update the signal to accept that value.
+传入当前值和变更回调；若希望控件自行持有状态，则使用 `defaultValue`、`defaultChecked` 和 `defaultOpen`。用回调报告的值更新你的信号。
 
 ## 组件类别
 
-The reference covers selection controls, tabs, disclosure, fields, menus, context menus, pickers, dialogs, popovers, preview cards, drawers, navigation menus, ranges, splitters, progress, meters, toggles, toolbars, toasts, calendars, date/time fields, scroll areas, tables, trees, and SwiftUI controls. Run `examples/components-typescript` for the complete gallery.
+侧栏列出选择、标签页、字段、菜单、选择器、对话框、表格、树等控件。每个控件都有独立页面，包含用法、结构和 props。
+
+完整界面示例见[表单与输入](/docs/typescript/forms-and-input)和[浮层与对话框](/docs/typescript/overlays-and-dialogs)。
 
 ## 设置各部件的样式
 
-Apply `style` to each visual part. Parts intentionally remain unstyled so layout and colors belong to the application. State hooks such as `useSliderState`, `useTabsState`, `useSelectState`, `useMenuItemState`, and `useScrollAreaState` expose the current native state for custom presentation.
+在每个视觉部件上设置 `style`。部件默认无样式，布局和颜色由应用决定。`useSliderState`、`useTabsState`、`useSelectState` 等 hook 会公开当前状态，便于自定义呈现。
+
+样式对象与辅助方法见[样式与布局](/docs/typescript/styling)。

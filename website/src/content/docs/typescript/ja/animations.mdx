@@ -1,27 +1,35 @@
-TypeScript ガイド本文は現在英語です。コンポーネントの API リファレンスには日本語の説明があります。
+要素の `transition` でスタイルの変化をアニメーションします。コンポーネントは毎フレーム再実行されません。
 
 ## ホバーのトランジション
 
 ```tsx
-<Button style={{ bg: "#2563eb", transition: { property: "bg", duration: 160 }, hover: { bg: "#1d4ed8" } }}>Hover</Button>
+<Button
+  style={{
+    bg: "#2563eb",
+    transition: { property: "bg", duration: 160 },
+    hover: { bg: "#1d4ed8" },
+  }}
+>
+  Hover
+</Button>
 ```
 
 ## 状態によるアニメーション
 
-Change a reactive style value from application state. Rust interpolates supported transitions while retaining the node and its interaction state. Do not reconstruct the component on each frame.
+アプリの状態からスタイルを変更します。ノードはマウントされたままで、色、不透明度、その他の対応プロパティがアニメーションします。
 
 ## 時間とフレームレート
 
-Transition durations accept supported numbers or duration strings. Set easing and `maxFps` when needed; the frame-rate value is a ceiling while animation is active, not an idle scheduling source.
+時間には数値、または `"180ms"` のような文字列を渡せます。必要なときにイージングと `maxFps` を設定します。`maxFps` はアニメーション実行中だけ適用されます。
 
 ## 対応するプロパティ
 
-Native transitions cover the documented color, border, radius, opacity, and shadow properties. Transforms are supported as native style declarations. Consult the typed transition property union for interpolation support.
+トランジションは背景、境界線、角丸、文字色、不透明度、影、変換を対象にします。幅、高さ、パディングは補間しません。完全な一覧は `@quickgui/solid` の型付きトランジションプロパティのユニオンを参照してください。
 
 ## マウントと視差効果の抑制
 
-Keep an overlay mounted during its native exit transition when its component supports that lifecycle. Respect `reduceMotion` on window configuration and the platform preference instead of imposing a JavaScript animation loop.
+コンポーネントが対応している場合は、閉じるアニメーションが終わるまでオーバーレイをマウントしたままにします。ウィンドウの `reduceMotion` とシステムの設定に従ってください。JavaScript のタイマーでアニメーションを駆動しないでください。
 
 ## アニメーション画像
 
-`Image` uses native image resources, including animated GIF/WebP sources. The core owns playback deadlines, cache limits, and visibility-based suspension; loading a static image does not request idle frames.
+`Image` はアニメーション GIF と WebP を再生します。タイマーは不要です。[Image](/docs/typescript/components/image) を参照してください。

@@ -1,29 +1,34 @@
-TypeScript ガイド本文は現在英語です。コンポーネントの API リファレンスには日本語の説明があります。
+UI は TypeScript パッケージとして共有するか、QuickGUI が同梱しない追加ライブラリーが必要なときにネイティブサービスを追加します。
 
 ## 拡張の種類を選ぶ
 
-Use an ordinary TypeScript package for reusable Solid components. Use a native extension when a feature needs a Rust, Go, or Zig service or an optional native renderer backend. All native extensions load into the same process.
+再利用する Solid コンポーネントには通常の TypeScript パッケージを使います。機能に Rust、Go、Zig のサービスが必要なときはネイティブ拡張を使います。TypeScript アプリは Go と同じネイティブパッケージを利用できます。
 
 ## 拡張プロジェクトを作成する
 
 ```sh
-quickgui init-extension my-extension --type rust
+bunx @quickgui/cli init-extension my-extension --type rust
 ```
 
-Extension scaffolds use the shared extension ABI. A TypeScript consumer can use the same extension package as Go.
+雛形にはデモアプリとネイティブライブラリーのテンプレートが含まれます。成果物パッケージ名は `--npm-package @acme/extension-my-service` で指定します。
 
 ## コンポーネントの共有
 
 ```tsx
 import { Button, type JSX } from "@quickgui/solid";
+
 export function PrimaryButton(props: JSX.NativeProps) {
   return <Button bg="#2563eb" color="#ffffff" rounded-lg p-3 {...props} />;
 }
 ```
 
+パッケージを公開し、他の TypeScript モジュールと同じようにアプリからインポートします。
+
 ## ネイティブ拡張の構成
 
-A native extension ships `quickgui.extension.json`, a versioned shared library, and any declared resources. Its manifest identifies the service name, ABI, npm package, release version, library, and per-platform resources.
+ネイティブ拡張は `quickgui.extension.json`、バージョン付き共有ライブラリー、宣言した追加ファイルを同梱します。マニフェストにはサービス、バージョン、npm パッケージ、ライブラリーファイルを書きます。
+
+ネイティブの配置は [Go の拡張ガイド](/docs/go/extensions) と [`native-extension` の例](https://github.com/egoist/quickgui/tree/main/examples/native-extension) を参照してください。
 
 ## 依存関係の宣言
 
@@ -31,34 +36,37 @@ A native extension ships `quickgui.extension.json`, a versioned shared library, 
 import { defineConfig } from "@quickgui/cli";
 
 export default defineConfig({
-  language: "typescript", name: "Terminal App", identifier: "com.example.terminal",
+  language: "typescript",
+  name: "Terminal App",
+  identifier: "com.example.terminal",
   extensions: ["@quickgui/extension-terminal"],
 });
 ```
 
-Add `@quickgui/extension-terminal` to application dependencies. Custom extensions may be selected by a scoped package such as `@acme/extension-echo`, an unscoped package such as `quickgui-extension-echo`, or a directory containing their manifest.
+対応する npm パッケージを依存関係に追加します。独自拡張は `@acme/extension-echo` のようなスコープ付きパッケージ、スコープなしパッケージ、またはマニフェストを含むディレクトリにできます。
 
 ## ネイティブインターフェースを実装する
 
-Implement the bounded `ServiceApi` or renderer extension contract in the native extension. Copy borrowed input before returning, keep event streams scoped to their sessions, and release worker resources when the session stops.
+ネイティブライブラリーは JSON リクエストと任意のセッションに応答します。保持する前に受信バイトをコピーし、遅い処理は worker で行い、セッションが閉じたら処理を止めてください。エントリポイントとリクエスト一覧は[ネイティブインターフェースを実装する](/docs/go/extensions#implement-the-native-contract)を参照してください。
 
 ## 自動登録
 
-The CLI resolves and bundles declared extensions. The worker registers their descriptors and exact versions through FFI before creating the application, so components use the same core renderer and native resource registry.
+`extensions` にパッケージを列挙すれば十分です。CLI が同梱し、アプリは起動時に読み込みます。
 
 ## 成果物のビルドとパッケージ化
 
-App edits reuse prebuilt extension artifacts. Rebuild an extension when its native implementation changes, then rebuild the application to stage those bytes. Extension resources are copied before signing.
+サポートする各 OS とアーキテクチャでネイティブライブラリーをビルドします。アプリの編集ではそれらのビルド済みファイルを再利用します。ネイティブコードを変更したら拡張を再ビルドし、続けてアプリを再ビルドします。
 
 ## テストと配布
 
 ```tsx
 import { ExtensionSession, invokeExtension } from "@quickgui/native";
+
 const result = await invokeExtension("acme-service", "lookup", { key: "example" });
-const session = new ExtensionSession("acme-service", {}, event => console.log(event));
+const session = new ExtensionSession("acme-service", {}, (event) => console.log(event));
 await session.ready;
 await session.request("refresh", null);
 await session.close();
 ```
 
-Test against a packed extension and CLI in a fresh project. Extension commands are asynchronous and share the bounded native event transport.
+公開する前に、新しいアプリでパッケージ済み成果物を試してください。エンドユーザーが受け取るのはパッケージ済みアプリケーションであり、実行にネイティブツールチェーンは不要です。

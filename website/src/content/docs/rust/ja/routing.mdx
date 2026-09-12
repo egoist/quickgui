@@ -1,6 +1,4 @@
-Rust ガイド本文は現在英語です。コンポーネントの API リファレンスには日本語の説明があります。
-
-`Router` owns route matching, normalized locations, and bounded memory history. The view chooses which elements to mount from the current match.
+ルーターは現在のパスからマッチを選び、戻る／進む履歴を保持します。ビューはマッチしたツリーをマウントします。
 
 ## ルートの宣言
 
@@ -14,11 +12,11 @@ let router = Router::new(
 )?;
 ```
 
-`RouteDefinition::layout` declares a pathless ancestor. Relative child paths join their parent; an absolute child path starts at the root.
+`RouteDefinition::layout` はパスなしの祖先を宣言します。相対の子パスは親に結合され、絶対の子パスはルートから始まります。
 
 ## 入れ子のレイアウト
 
-Match the route chain and wrap inner content with layout elements. Pathless layouts appear in `matched` ancestry without adding a URL segment.
+ルートチェーンをマッチし、内側の内容をレイアウト要素で包みます。パスなしレイアウトは URL セグメントを増やさずに `matched` の祖先に現れます。
 
 ```rust
 RouteDefinition::layout("shell").parent("root")
@@ -31,7 +29,7 @@ self.router.push("/projects/42")?;
 cx.invalidate();
 ```
 
-The controller supports `push`, `replace`, `back`, and `forward`. Navigation stays in the native application.
+ルーターは `push`、`replace`、`back`、`forward` に対応します。ナビゲーションはアプリ内に留まります。
 
 ## ルートパラメーター
 
@@ -49,4 +47,4 @@ if let Some(matched) = self.router.matched() {
 }
 ```
 
-Query pairs are retained as bounded lists on `RouteLocation`.
+クエリの組は `RouteLocation` にあります。

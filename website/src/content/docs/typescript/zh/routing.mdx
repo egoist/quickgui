@@ -1,20 +1,35 @@
-TypeScript 指南正文目前以英文提供，组件 API 参考包含中文说明。
+路由器根据当前路径选择组件，并保留前进/后退历史。路由在当前窗口中渲染。
 
 ## 路由声明
 
 ```tsx
-import { Router, Route, Outlet, Link } from "@quickgui/solid/router";
+import { Router, Route, Link } from "@quickgui/solid/router";
+
 <Router initialPath="/">
   <Route path="/" component={() => <Text>Home</Text>} />
   <Route path="/projects/:id" component={Project} />
 </Router>
 ```
 
-Rust owns route matching, normalized locations, and bounded memory history. Solid declares routes and renders the matched component chain.
-
 ## 嵌套布局
 
-Nested routes are relative to their parent. Render `<Outlet />` or the layout component’s `children` where the next matched route belongs. A pathless route can provide a shared layout without adding a URL segment.
+嵌套路由相对于其父路由。在下一层匹配应出现的位置渲染 `<Outlet />` 或布局的 `children`。无路径路由可以共享布局，而不增加 URL 段。
+
+```tsx
+<Route
+  path="/"
+  component={(props) => (
+    <View>
+      <Link href="/">Home</Link>
+      <Link href="/settings">Settings</Link>
+      {props.children}
+    </View>
+  )}
+>
+  <Route path="/" component={() => <Text>Home</Text>} />
+  <Route path="/settings" component={() => <Text>Settings</Text>} />
+</Route>
+```
 
 ## 导航
 
@@ -24,7 +39,7 @@ const navigate = useNavigate();
 <Link href="/">Home</Link>
 ```
 
-The controller supports push, replace, back, forward, and relative history movement. Navigation remains in the native application; it does not require a browser history object.
+`navigate` 支持 push、replace、back 和 forward。导航始终在应用内部进行。
 
 ## 路由参数
 
@@ -35,4 +50,4 @@ function Project() {
 }
 ```
 
-`useLocation()` and `useSearchParams()` expose normalized reactive accessors. Repeated query keys are retained as arrays.
+`useLocation()` 和 `useSearchParams()` 返回会随 URL 更新的访问器。重复的查询键是数组。

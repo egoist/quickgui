@@ -1,28 +1,24 @@
-Rust 指南正文目前以英文提供，组件 API 参考包含中文说明。
-
-A Rust application can share ordinary modules, or it can author a native extension that Go and TypeScript apps load. Rust apps themselves do not set `extensions` in `quickgui.config.ts`; they enable crate features and depend on crates.
+将 UI 作为 Rust 模块共享，或为 Go 和 TypeScript 应用编写原生扩展。Rust 应用本身启用 crate 功能，不在配置中设置 `extensions`。
 
 ## 选择扩展类型
 
-| What you are adding | What you ship | Core changes |
-| --- | --- | --- |
-| Components or application logic | A Rust module or crate | None |
-| Optional QuickGUI capabilities | Cargo features such as `updater` and `terminal` | None |
-| A native service for Go or TypeScript | A `cdylib`, manifest, and typed wrapper | None |
-
-Native extensions run in the consumer's process. A Rust **app** already is that process: it links `quickgui` and does not load `libquickgui_host`.
+| 要添加的内容 | 发布内容 |
+| --- | --- |
+| 组件或辅助函数 | Rust 模块或 crate |
+| 可选的 QuickGUI 能力 | `updater`、`terminal` 等 Cargo 功能 |
+| 供 Go 或 TypeScript 使用的原生服务 | 库、清单和带类型的封装 |
 
 ## 创建扩展项目
 
 ```sh
-quickgui init-extension my-extension --type rust
+bunx @quickgui/cli init-extension my-extension --type rust
 ```
 
-Use this when Go or TypeScript apps should consume a native service. Extension scaffolds use the shared extension ABI. `--npm-package` sets the artifact package name.
+当 Go 或 TypeScript 应用需要消费该服务时使用。`--npm-package` 设置产物包名称。
 
 ## 共享组件
 
-Share UI by exporting functions that return `Element`:
+导出返回 `Element` 的函数：
 
 ```rust
 use quickgui::{Color, Element, text};
@@ -36,40 +32,35 @@ pub fn notice(message: impl Into<std::sync::Arc<str>>) -> Element {
 }
 ```
 
-Return `notice("Saved")` as a child. Keep application-wide services outside `View::render`.
+把 `notice("Saved")` 作为子节点返回。把应用级服务放在 `View::render` 之外。
 
 ## 组织原生扩展
 
-A native extension ships `quickgui.extension.json`, a versioned shared library, and declared resources. Its manifest identifies the service name, ABI, npm package, release version, library, and per-platform resources. Rust extensions can vendor [`extension_api.rs`](https://github.com/egoist/quickgui/blob/main/src/extension_api.rs) and build a `cdylib` without linking the renderer.
+原生扩展会附带 `quickgui.extension.json`、带版本号的共享库，以及你声明的其他文件。布局见 [Go 扩展指南](/docs/go/extensions)，也可参考 [`native-extension` 示例](https://github.com/egoist/quickgui/tree/main/examples/native-extension)。
 
 ## 声明依赖
 
-Rust **applications** enable features in `Cargo.toml`. They must not set top-level `extensions`:
+Rust **应用**在 `Cargo.toml` 中启用功能：
 
 ```toml
 [dependencies]
 quickgui = { version = "0.1.3", features = ["terminal"] }
 ```
 
-Go and TypeScript consumers declare the extension package in their own config. Custom extensions may use a scoped package such as `@acme/extension-echo`.
+Go 和 TypeScript 的使用者在各自的配置中声明扩展包。
 
 ## 实现原生接口
 
-Implement the bounded `ServiceApi` contract in the extension. Copy borrowed input before returning, keep event streams scoped to their sessions, and release worker resources when the session stops.
+原生库响应 JSON 请求和可选会话。保留传入字节前请先复制，把耗时工作放到 worker 上，并在会话关闭时停止工作。入口点和请求列表见[实现原生接口](/docs/go/extensions#implement-the-native-contract)。
 
 ## 自动注册
 
-Go and TypeScript CLIs resolve and bundle declared extensions. A Rust app has nothing to register: Cargo links the crates you depend on. Optional renderer backends stay behind Cargo features.
+Cargo 会链接你依赖的 crate。列出 `extensions` 是给加载已打包库的 Go 和 TypeScript 应用用的。
 
 ## 构建与打包产物
 
-App edits rebuild the selected crate. Rebuild an extension when its native implementation changes, then rebuild the consuming Go or TypeScript application to stage those bytes.
+应用编辑会重建 crate。修改原生扩展代码后，先重建库，再重建消费它的 Go 或 TypeScript 应用。
 
 ## 测试与分发
 
-```rust
-// Extension authors test the packed cdylib with the generated demo app.
-// Rust applications call crate APIs directly instead of invokeExtension.
-```
-
-Test against a packed extension and CLI in a fresh Go or TypeScript project. Extension commands are asynchronous and share the bounded native event transport.
+Rust 应用直接调用 crate API。若为其他语言发布原生库，请先在全新的 Go 或 TypeScript 应用中试用打包后的包，再发布。

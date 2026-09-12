@@ -1,21 +1,27 @@
-TypeScript ガイド本文は現在英語です。コンポーネントの API リファレンスには日本語の説明があります。
+ウィンドウ内の UI には QuickGUI のオーバーレイを、ファイル選択や警告にはシステムのダイアログを使います。
 
 ## Popover
 
-Compose `Popover.Root`, trigger, portal, positioner, popup, arrow, title, description, and close parts. Rust owns placement, collisions, focus, outside interaction, and dismissal. Use controlled `open` or the supported default-open option.
+`Popover.Root`、トリガー、portal、ポジショナー、ポップアップ、矢印、タイトル、説明、クローズを組み合わせます。配置と閉じる操作は処理済みです。制御された `open`、または default-open オプションを使います。
 
 ## Dialog
 
-`Dialog` and `AlertDialog` add modal semantics and coordinated title, description, backdrop, viewport, and close parts. Restore focus through the native lifecycle; do not install a second JavaScript focus trap.
+`Dialog` と `AlertDialog` はモーダル動作に加え、タイトル、説明、背景、ビューポート、クローズのパーツを追加します。フォーカスはダイアログ自身のライフサイクルで戻ります。二重のフォーカストラップを追加しないでください。
 
 ## システムポップオーバー
 
-`SystemPopover` owns a separate native panel anchored to a mounted node. It can cross the parent’s content bounds and is disposed with its owner. The content receives its own renderer root; an anchor must belong to an open window.
+`SystemPopover` はマウント済みノードにアンカーした OS のパネルです。親ウィンドウの外まで広がることができます。所有者とともに破棄してください。
 
 ## ネイティブダイアログ
 
 ```tsx
 import { Dialog } from "@quickgui/native";
-const choice = await Dialog.showAlertDialog({ message: "Save changes?", buttons: [{ label: "Save" }, { label: "Cancel", role: "cancel" }] });
-const result = await Dialog.showOpenDialog({ properties: ["openFile", "multiSelections"] });
+
+const choice = await Dialog.showAlertDialog({
+  message: "Save changes?",
+  buttons: [{ label: "Save" }, { label: "Cancel", role: "cancel" }],
+});
+const result = await Dialog.showOpenDialog({
+  properties: ["openFile", "multiSelections"],
+});
 ```

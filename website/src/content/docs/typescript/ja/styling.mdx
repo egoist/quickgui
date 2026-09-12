@@ -1,14 +1,14 @@
-TypeScript ガイド本文は現在英語です。コンポーネントの API リファレンスには日本語の説明があります。
+ネイティブコンポーネントは kebab-case の属性、または camelCase フィールドの `style` オブジェクトでスタイルします。数値の長さは論理ピクセルです。
 
 ## スタイルメソッド
 
-Use kebab-case native style attributes or a `style` object with camelCase fields. Numeric lengths are logical pixels; supported percentages and keywords are parsed by Rust. `color` and `textColor` declare inherited text color.
+`color` と `textColor` は継承される文字色を設定します。
 
 ```tsx
 <View padding={16} gap={12} bg="#18181b" color="#fafafa" />
 ```
 
-Rust's 272 fixed layout and style presets are available as boolean attributes and style fields:
+`flex-col`、`p-3`、`rounded-lg`、`items-center`、`text-lg`、`font-bold` などのヘルパーはブール属性です。`p-3` は 12 ピクセル、`rounded-lg` は 8 ピクセルです。サイズ引数は取りません。独自の値には `padding={14}`、`border-radius={10}`、`width="50%"` を使います。
 
 ```tsx
 <View flex-col p-3 gap-2 rounded-lg>
@@ -16,13 +16,11 @@ Rust's 272 fixed layout and style presets are available as boolean attributes an
 </View>
 ```
 
-Preset helpers are boolean attributes: `rounded-lg`, `flex-col`, `items-center`, `p-3`, `text-lg`, and `font-bold`. `rounded-lg` uses Rust's 8-pixel radius; `p-3` uses 12 pixels from Rust's four-pixel spacing scale. Helpers take no size or string value. For custom values, use native style attributes such as `border-radius={10}`, `padding={14}`, `grid-template-columns={3}`, and `width="50%"`. Corner radii use attributes such as `border-top-left-radius={8}`. `position-sticky` is the boolean sticky-layout helper.
-
-Helpers expand before style arrays merge. Direct helper props override the corresponding style fields; `false`, `null`, or `undefined` withdraws a helper and reveals the underlying style. The helper types and values are generated from Rust by `scripts/generate-style-helpers.ts`.
+ヘルパーを `false`、`null`、`undefined` にするとオフになります。
 
 ## スタイルのマージ
 
-Nested style arrays merge left to right; later fields override earlier ones. Falsy entries are ignored. Removing a style field withdraws that declaration.
+スタイル配列は左から右へマージされます。後のフィールドが勝ちます。偽値の項目は無視されます。
 
 ```tsx
 <View style={[base, selected() && selectedStyle, { padding: 20 }]} />
@@ -30,7 +28,7 @@ Nested style arrays merge left to right; later fields override earlier ones. Fal
 
 ## スタイルの再利用
 
-Use `JSX.Style` for reusable styles. Keep getters in JSX when their values should update reactively.
+共有オブジェクトには `JSX.Style` を使います。値をライブに保つときは JSX 内で getter を使います。
 
 ```tsx
 import type { JSX } from "@quickgui/solid";
@@ -41,27 +39,46 @@ const panel = { "p-3": true, "rounded-xl": true, bg: "#20242c" } satisfies JSX.S
 
 ## Flexbox
 
-Use `display`, `flexDirection`, `flexGrow`, `flexShrink`, `flexBasis`, alignment, and gap. Set `minWidth: 0` or `minHeight: 0` on flexible scroll containers so content can shrink into the available viewport.
+`display`、`flexDirection`、`flexGrow`、`flexShrink`、配置、`gap` を使います。伸縮するスクロール子には `minWidth={0}` または `minHeight={0}` を設定し、縮小できるようにします。
 
 ## グリッド
 
-Use `display: "grid"`, track declarations, placement, and spans for two-dimensional layouts. Grid sizing and intrinsic measurements are native; children keep their identities when positions change.
+`display="grid"` にトラックリスト、配置、スパンを組み合わせます。
+
+```tsx
+<View display="grid" gridTemplateColumns="220px 1fr" gap={16}>
+  <Text>Sidebar</Text>
+  <Text>Content</Text>
+</View>
+```
 
 ## テキストと色
 
-Font family, weight, size, line height, wrapping, ellipsis, decoration, and selection use retained native text. Colors accept hex, supported CSS color strings, or packed RGBA values. Images and SVGs share the core’s bounded caches.
+フォントファミリー、ウェイト、サイズ、折り返し、省略、選択はネイティブテキストです。色は十六進、CSS カラー文字列、またはパックされた RGBA 値を受け付けます。
 
 ## インタラクション状態
 
 ```tsx
-<Button style={{
-  bg: "#2563eb",
-  hover: { bg: "#1d4ed8" },
-  active: { opacity: 0.8 },
-  focusVisible: { outlineColor: "#93c5fd", outlineWidth: 2 },
-}}>Save</Button>
+<Button
+  style={{
+    bg: "#2563eb",
+    hover: { bg: "#1d4ed8" },
+    active: { opacity: 0.8 },
+    focusVisible: { outlineColor: "#93c5fd", outlineWidth: 2 },
+  }}
+>
+  Save
+</Button>
 ```
 
 ## グループと名前付きグループのホバー
 
-Use a named `group` on an ancestor and `groupHover` or `groupActive` on descendants to style coordinated states. The core resolves group membership and invalidates the affected retained subtree.
+祖先に `group` を、子孫に `groupHover` または `groupActive` を設定すると、まとめてスタイルできます。
+
+```tsx
+<View group="card" padding={20}>
+  <Text color="#64748b" groupHover={{ color: "#2563eb" }}>
+    Changes when the card is hovered
+  </Text>
+</View>
+```

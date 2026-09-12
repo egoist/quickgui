@@ -1,39 +1,46 @@
-TypeScript ガイド本文は現在英語です。コンポーネントの API リファレンスには日本語の説明があります。
+コンポーネントはネイティブ JSX を返す通常の TypeScript 関数です。`View`、`Text`、`Button` などのプリミティブから始め、サイドバーのアクセシブルなコントロールを組み合わせます。
 
 ## コンポーネントの定義
 
-Return native JSX from ordinary TypeScript functions. Children and reactive prop getters are evaluated under the component owner; do not manually invoke components as setup side effects.
+他の Solid コンポーネントと同じように props を渡します。呼び出し側でシグナルを読むとその prop がライブになります。
 
 ```tsx
 function Greeting(props: { name: string }) {
   return <Text>Hello, {props.name}</Text>;
 }
+
 <Greeting name={name()} />
 ```
 
 ## プリミティブ
 
-`View`, `Text`, `Button`, `Input`, `TextArea`, `Markdown`, `Image`, `Svg`, `Shader`, `VirtualList`, and optional `Terminal` are native building blocks. `TextInput` is also available as the single-line input spelling.
+`View`、`Text`、`Button`、`Input`、`TextArea`、`Markdown`、`Image`、`Svg`、`Shader`、`VirtualList` が構成要素です。`TextInput` は 1 行の `Input` と同じです。任意の `Terminal` は拡張として利用できます。
 
 ## 複合コンポーネント
 
+チェックボックスなどのファミリーは名前付きパーツを公開します。フォーカス、キーボード操作、選択を共有できるよう、パーツはルートの下に置きます。
+
 ```tsx
 <Checkbox.Root checked={checked()} onCheckedChange={setChecked}>
-  <Checkbox.Indicator><Text>✓</Text></Checkbox.Indicator>
+  <Checkbox.Indicator>
+    <Text>✓</Text>
+  </Checkbox.Indicator>
   <Text>Remember this device</Text>
 </Checkbox.Root>
 ```
 
-Compound roots coordinate their named parts through Rust-owned state. Keep parts under the intended root so their scope, focus, and value relationships are explicit.
-
 ## 制御された状態
 
-Use controlled values with the matching change callback, or `defaultValue`, `defaultChecked`, and `defaultOpen` where a component supports internal state. Native events describe the core decision; update the signal to accept that value.
+現在値と変更コールバックを渡すか、コントロール自身に状態を持たせるときは `defaultValue`、`defaultChecked`、`defaultOpen` を使います。コールバックが報告した値でシグナルを更新します。
 
 ## コンポーネントの種類
 
-The reference covers selection controls, tabs, disclosure, fields, menus, context menus, pickers, dialogs, popovers, preview cards, drawers, navigation menus, ranges, splitters, progress, meters, toggles, toolbars, toasts, calendars, date/time fields, scroll areas, tables, trees, and SwiftUI controls. Run `examples/components-typescript` for the complete gallery.
+サイドバーには選択、タブ、フィールド、メニュー、ピッカー、ダイアログ、テーブル、ツリーなどが並びます。各コントロールには使い方、構造、props のページがあります。
+
+画面全体の例は[フォームと入力](/docs/typescript/forms-and-input)と[オーバーレイとダイアログ](/docs/typescript/overlays-and-dialogs)を参照してください。
 
 ## 各パーツのスタイル
 
-Apply `style` to each visual part. Parts intentionally remain unstyled so layout and colors belong to the application. State hooks such as `useSliderState`, `useTabsState`, `useSelectState`, `useMenuItemState`, and `useScrollAreaState` expose the current native state for custom presentation.
+視覚パーツごとに `style` を設定します。パーツはスタイルなしで提供されるため、レイアウトと色はアプリ側のものです。`useSliderState`、`useTabsState`、`useSelectState` などのフックは、カスタム表示用に現在の状態を公開します。
+
+スタイルオブジェクトとヘルパーは[スタイルとレイアウト](/docs/typescript/styling)を参照してください。

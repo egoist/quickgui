@@ -1,6 +1,4 @@
-Rust 指南正文目前以英文提供，组件 API 参考包含中文说明。
-
-Native transitions interpolate paint-only style changes while the element stays mounted.
+用 `transition` 为样式变化添加动画。视图不会为每一帧渲染。
 
 ## 悬停过渡
 
@@ -14,20 +12,20 @@ button()
 
 ## 状态驱动的动画
 
-Change a style field from view state and call `invalidate`. The core interpolates supported transitions. Do not reconstruct the view on each frame.
+根据视图状态改变样式字段并调用 `invalidate`。元素保持挂载时，受支持的属性会进行动画。
 
 ## 时长与帧率
 
-`Transition::new` takes a `Duration`. Set easing with `with_easing` and cap cadence with `max_fps` while animation is active. That ceiling is not an idle scheduling source.
+`Transition::new` 接受 `Duration`。用 `with_easing` 设置缓动，用 `max_fps` 在动画运行期间限制帧率。
 
 ## 支持的属性
 
-`TransitionProperties` covers background, border color and width, radius, text color, box shadow, opacity, and transform. Layout lengths stay declaration-time values because they require Taffy.
+`TransitionProperties` 覆盖背景、边框颜色和宽度、圆角、文本颜色、盒阴影、透明度和变换。宽度、高度和内边距不会插值。
 
 ## 挂载与减少动态效果
 
-Keep an overlay mounted for its exit transition when the component supports that lifecycle. Respect the platform reduced-motion preference instead of imposing a frame loop.
+若组件支持，请让浮层保持挂载直到关闭动画结束。遵循系统的“减少动态效果”偏好。不要用帧循环驱动动画。
 
 ## 动态图像
 
-`img` uses native image resources, including animated GIF/WebP sources. The core owns playback deadlines, cache limits, and visibility-based suspension; loading a static image does not request idle frames.
+`img` 会播放动态 GIF 和 WebP 文件。不需要定时器。参见 [Image](/docs/rust/components/image)。

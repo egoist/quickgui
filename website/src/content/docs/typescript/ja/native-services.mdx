@@ -1,21 +1,37 @@
-TypeScript ガイド本文は現在英語です。コンポーネントの API リファレンスには日本語の説明があります。
+ウィンドウを開く前に `app.whenReady()` を待ってください。ウィンドウとダイアログのコールバックはアプリケーションコードで実行されます。
 
 ## ウィンドウのライフタイム
 
-Create a `Window` with `renderer: createRenderer(...)`. `onClose` and `on("closed", ...)` observe native destruction; `onCloseRequested` can hold a user close request. `close()` completes it. `whenReady()` resolves after the native window is mounted, including hidden windows. Returned snapshots use `bounds`, `viewportSize`, and `scaleFactor`.
+`renderer: createRenderer(...)` でウィンドウを作成します。`onClose` と `on("closed", ...)` で閉じたタイミングを観察できます。`onCloseRequested` はユーザーによるクローズを遅らせられ、`close()` で完了します。`whenReady()` は非表示ウィンドウも含め、ウィンドウが存在したあとに解決します。
+
+```tsx
+const window = new Window({
+  title: "My App",
+  width: 720,
+  height: 480,
+  renderer: createRenderer(App),
+});
+window.on("closed", () => {
+  // Release window-owned resources here.
+});
+```
+
+macOS では、Dock の再オープンが `hasVisibleWindows` が false だと報告したときに新しいウィンドウを開きます。
 
 ## コマンドとサービス
 
 ```tsx
-import { app, Window, Clipboard, Dialog, Menu, Shell, Screen } from "@quickgui/native";
+import { app, Clipboard, Dialog, Menu, Screen, Shell } from "@quickgui/native";
+
 await app.whenReady();
 const displays = await Screen.getAllDisplays();
 const selected = await Dialog.showOpenDialog({ properties: ["openDirectory"] });
-// Menus, dialogs, clipboard, displays, appearance, and window operations use Rust services.
 ```
 
-Native result operations return promises. Window mutations declare work immediately and are submitted after native creation. System menus and file dialogs remain native controls.
+ダイアログ、クリップボード、メニュー、ディスプレイ、外観は Promise を返します。システムメニューとファイルダイアログはプラットフォームのコントロールです。
 
 ## イベントとファイル監視
 
-Window events include focus, resize, appearance, ready-to-show, minimize, fullscreen, and close. Application events include ready, reopen, activation, quit, open URLs, and keyboard-layout changes. Use Bun file watching and asynchronous I/O for application data; dispose watchers with their owner window. Quick Git demonstrates cancellation, bounded subprocess output, and per-window stores.
+ウィンドウイベントにはフォーカス、リサイズ、外観、ready-to-show、最小化、フルスクリーン、クローズがあります。アプリイベントには ready、再オープン、アクティベーション、終了、URL を開くことがあります。
+
+ファイルは Bun で監視し、所属ウィンドウが閉じたら watcher を停止します。

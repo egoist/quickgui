@@ -1,6 +1,4 @@
-Rust 指南正文目前以英文提供，组件 API 参考包含中文说明。
-
-Fluent methods set layout, paint, typography, and interaction styles. Numeric lengths are logical pixels.
+链式方法设置布局、绘制、排版和交互样式。数值长度使用逻辑像素。
 
 ## 样式方法
 
@@ -12,11 +10,11 @@ div()
     .text_color(Color::rgb8(250, 250, 250))
 ```
 
-Fixed presets such as `flex_col`, `p_3`, `rounded_lg`, and `text_lg` match the helpers generated for Go and TypeScript. `p_3` is 12 pixels on the four-pixel spacing scale. For custom values, use `rounded(10.0)`, `p(14.0)`, and `w` / `h`.
+`flex_col`、`p_3`、`rounded_lg`、`text_lg` 等辅助方法与 QuickGUI 使用的间距和圆角比例一致。`p_3` 为 12 像素。自定义值请使用 `p(14.0)`、`rounded(10.0)` 以及 `w` / `h`。
 
 ## 合并样式
 
-Later fluent calls override earlier ones for the same property. `when` applies a branch only if the condition is true:
+同一属性以后面的链式调用为准。`when` 仅在条件为真时应用分支：
 
 ```rust
 div().p(12.0).when(self.selected, |style| style.bg(Color::rgb8(37, 99, 235)))
@@ -24,7 +22,7 @@ div().p(12.0).when(self.selected, |style| style.bg(Color::rgb8(37, 99, 235)))
 
 ## 复用样式
 
-Write functions that take and return `Element`:
+编写接收并返回 `Element` 的函数：
 
 ```rust
 fn panel(child: impl IntoElement) -> Element {
@@ -34,15 +32,24 @@ fn panel(child: impl IntoElement) -> Element {
 
 ## Flexbox
 
-Use `flex`, `flex_col`, `flex_grow`, alignment, and `gap`. Set `min_w(0.0)` or `min_h(0.0)` on flexible scroll containers so content can shrink.
+使用 `flex`、`flex_col`、`flex_grow`、对齐和 `gap`。在可伸缩的滚动子项上设置 `min_w(0.0)` 或 `min_h(0.0)`，以便它们可以缩小。
 
 ## 网格布局
 
-Use `grid` plus track, placement, and span methods for two-dimensional layouts. Grid sizing is native; children keep ids when positions change.
+使用 `grid` 以及轨道、放置和跨度方法。
+
+```rust
+div()
+    .grid()
+    .grid_template_columns([GridTrack::px(220.0), GridTrack::fr(1.0)])
+    .gap(16.0)
+    .child(text("Sidebar"))
+    .child(text("Content"))
+```
 
 ## 文本与颜色
 
-Font family, weight, size, wrapping, and selection use retained native text. Colors accept `Color::rgb8`, `Color::rgba8`, and packed linear values. Images and SVGs share the core’s bounded caches.
+字族、字重、字号、换行和选择都是原生文本。颜色接受 `Color::rgb8`、`Color::rgba8` 和打包值。
 
 ## 交互状态
 
@@ -55,4 +62,4 @@ button()
 
 ## 分组与具名分组悬停
 
-Use a named `group` on an ancestor and `group_hover` on descendants to style coordinated states. The core resolves group membership and invalidates the affected retained subtree.
+在祖先上设置具名 `group`，在后代上设置 `group_hover`，即可一起设置样式。

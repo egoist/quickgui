@@ -1,10 +1,15 @@
-Rust ガイド本文は現在英語です。コンポーネントの API リファレンスには日本語の説明があります。
-
-`View::render` builds an element tree after invalidation or OS damage. Native layout, painting, focus, input, and accessibility remain in the core. Stable `Element::id` values preserve identity across renders.
+`View::render` は `invalidate` のあと、または OS が再描画を求めたときにツリーを構築します。描画をまたいで同一性を保つ要素には安定した `id` を与えます。
 
 ## レンダリングモデル
 
-Return `impl IntoElement` from `render`. Fluent builders construct retained elements. The window sleeps until `invalidate` or platform damage. Do not rebuild from a timer when nothing changed.
+`render` から `impl IntoElement` を返します。ウィンドウは何かが変わるまでスリープします。UI がアイドルのときにタイマーで再構築しないでください。
+
+```rust
+div()
+    .p(16.0)
+    .child(text("Hello"))
+    .child(button().child("Continue"))
+```
 
 ## 条件付きコンテンツ
 
@@ -16,7 +21,7 @@ if self.expanded {
 }
 ```
 
-Omitting a branch drops its nodes. Sibling elements with stable ids keep their identities.
+分岐を省略するとそのノードはドロップされます。安定した id を持つ兄弟要素は同一性を保ちます。
 
 ## リストとノードの同一性
 
@@ -26,11 +31,11 @@ div().children(self.items.iter().map(|item| {
 }))
 ```
 
-Give stateful rows stable `id`s. Use `VirtualList` or `TableState` for large collections and only mount visible rows.
+状態を持つ行には位置ではなく安定した `id` を与えます。大きな集合では `VirtualList` や `TableState` を使い、見える行だけをマウントします。
 
 ## ウィンドウのライフサイクル
 
-Each `open_window` owns an independent view. Closing a child window must not drop its siblings. Handle macOS Dock reopening by constructing a fresh window when `has_visible_windows` is false.
+各 `open_window` は独自のビューを持ちます。1 つのウィンドウを閉じても兄弟はドロップされません。macOS では、Dock の再オープンが `has_visible_windows` が false だと報告したときに新しいウィンドウを開きます。
 
 ## 現在のウィンドウ
 
@@ -43,13 +48,13 @@ fn render(&mut self, cx: &mut ViewContext<'_, Self>) -> impl IntoElement {
 }
 ```
 
-`ViewContext` and `EventContext` expose the current `WindowHandle` during render and event dispatch.
+`ViewContext` と `EventContext` は、描画とイベントのあいだ現在のウィンドウを提供します。
 
 ## チェック・テスト・デバッグ
 
 ```sh
-quickgui check
-quickgui test
+bun run check
+bun run test
 ```
 
-`examples/base_ui_components.rs` is the broad UI gallery. Enable the `inspector` crate feature for the in-app inspector. Native integration checks are separate from `cargo test`.
+アプリ内インスペクターには `inspector` crate 機能を有効にします。

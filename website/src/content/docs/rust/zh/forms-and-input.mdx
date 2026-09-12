@@ -1,6 +1,4 @@
-Rust 指南正文目前以英文提供，组件 API 参考包含中文说明。
-
-Text controls are controlled: pass the current value into `text_input` / `text_area` and write edits from `on_input`.
+文本控件是受控的：把当前值传入 `text_input` / `text_area`，并从 `on_input` 写入编辑。
 
 ## 文本输入
 
@@ -14,16 +12,16 @@ text_area(self.notes.as_str())
 
 ## 字段
 
-`Field` and `Fieldset` declare accessible relationships among labels, descriptions, controls, and errors. Validation mode and debounce deadlines live on `FieldState`.
+`Field` 和 `Fieldset` 将标签、说明、控件和错误关联起来。验证模式和防抖在 `FieldState` 上设置。
 
 ## 选项
 
-Compose `Checkbox`, `CheckboxGroup`, `RadioGroup`, `Radio`, and `Switch` with their indicators and labels. Store checked values on the view and update them from listeners.
+用指示器和标签组合 `Checkbox`、`CheckboxGroup`、`RadioGroup`、`Radio` 和 `Switch`。把选中值存在视图上，并从监听器更新。
 
 ## 选择器
 
-`SelectState`, `ComboboxState`, and `AutocompleteState` declare options ahead of native filtering and keyboard navigation. Keep option values stable.
+`SelectState`、`ComboboxState` 和 `AutocompleteState` 接收选项列表。保持选项值稳定。
 
 ## 事件
 
-Input listeners receive the next text. Pointer, key, gesture, drop, and submit handlers are registered on `ViewContext`. Use declared listeners so the core knows which events the view observes.
+输入监听器接收下一段文本。指针、按键、手势、拖放和提交处理函数在 `ViewContext` 上注册。声明你需要的监听器，控件才能发出对应事件。

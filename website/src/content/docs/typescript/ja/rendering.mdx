@@ -1,10 +1,19 @@
-TypeScript ガイド本文は現在英語です。コンポーネントの API リファレンスには日本語の説明があります。
+コンポーネントはマウント時に実行され、表示すべきツリーを返します。その後のシグナル更新は、バインドされたテキストとプロパティを変更します。子構造そのものが変わるときは `<Show>` と `<For>` を使います。
 
 ## レンダリングモデル
 
-The Solid universal compiler creates native nodes and retained bindings. It selects the reactive client build even though Bun normally resolves server conditions. Native layout, painting, focus, input, accessibility, and component state remain in Rust.
+コンポーネントからネイティブ JSX を返します。レイアウト、描画、フォーカス、アクセシビリティはネイティブです。HTML には描画しません。
+
+```tsx
+<View padding={20} gap={12}>
+  <Text>Hello</Text>
+  <Button onClick={() => {}}>Continue</Button>
+</View>
+```
 
 ## 条件付きコンテンツ
+
+セットアップ中の普通の `if` は、コンポーネント作成中にだけ実行されます。子をあとから出したり消したりするときは `<Show>` を使います。
 
 ```tsx
 <Show when={expanded()} fallback={<Text>Collapsed</Text>}>
@@ -12,19 +21,19 @@ The Solid universal compiler creates native nodes and retained bindings. It sele
 </Show>
 ```
 
-A conditional region owns its effects and nodes. Removing the region disposes those resources; unrelated sibling nodes keep their identities.
+分岐を外すと、そのエフェクトとノードが解放されます。兄弟ノードの同一性は保たれます。
 
 ## リストとノードの同一性
 
 ```tsx
-<For each={items()}>{item => <Text>{item.name}</Text>}</For>
+<For each={items()}>{(item) => <Text>{item.name}</Text>}</For>
 ```
 
-Use stable item identities for stateful rows. `For` moves existing nodes when order changes. Use `Table` or `Tree` for large native virtual collections and feed only requested visible data.
+状態を持つ行には位置ではなく、id などの安定した同一性を与えます。並べ替えると既存の行が移動します。大きな集合では `Table` や `Tree` を使い、見える行だけをマウントします。
 
 ## ウィンドウのライフサイクル
 
-Each `Window` owns an independent Solid root. Closing a child window must not dispose its siblings. Handle macOS Dock reopening by constructing a fresh window when `hasVisibleWindows` is false.
+各 `Window` は独自の Solid ルートを持ちます。1 つのウィンドウを閉じても兄弟は破棄されません。macOS では、Dock の再オープンが `hasVisibleWindows` が false だと報告したときに新しいウィンドウを開きます。
 
 ## 現在のウィンドウ
 
@@ -35,13 +44,13 @@ function Content() {
 }
 ```
 
-The current window exists during renderer construction and native event dispatch. Capture it in setup or pass it explicitly to asynchronous work.
+セットアップ中にウィンドウを保持するか、あとの非同期処理へ渡してください。
 
 ## チェック・テスト・デバッグ
 
 ```sh
-quickgui check
-quickgui test
+bun run check
+bun run test
 ```
 
-The components gallery is the broad UI example. Quick Git exercises native menus, file dialogs, virtualized rows, splitters, shortcuts, multiple windows, background Git work, and persistence. Native integration checks are separate from headless adapter tests.
+`check` はアプリと同じ JSX 変換で型検査します。`test` はアプリケーションテストを実行します。

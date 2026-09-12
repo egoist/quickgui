@@ -1,10 +1,8 @@
-Rust ガイド本文は現在英語です。コンポーネントの API リファレンスには日本語の説明があります。
-
-Call `Application::new().run(...)` once from `main`. Its startup callback creates windows and registers application services. Listeners run on the native UI thread.
+`main` から `Application::new().run(...)` を一度呼びます。起動コールバックでウィンドウを開き、アプリ全体の振る舞いを登録します。リスナーは UI スレッドで実行されます。
 
 ## ウィンドウのライフタイム
 
-`cx.open_window(WindowOptions::new("Title").size(width, height), view)` creates a window with its own `View` and retained tree. Closing the window drops that view. Handle macOS Dock reopening from `Application::on_reopen` when `has_visible_windows` is false.
+`cx.open_window(WindowOptions::new("Title").size(width, height), view)` は独自の `View` を持つウィンドウを開きます。ウィンドウを閉じるとそのビューはドロップされます。
 
 ```rust
 Application::new()
@@ -26,8 +24,8 @@ cx.prompt_for_paths(PathPromptOptions::new().files(true));
 cx.message_box(MessageBoxOptions::new("Replace this file?"));
 ```
 
-Typed APIs cover dialogs, clipboard, shell, appearance, menus, displays, and other platform services. Capture `cx.window_handle()` during a listener when later work needs that window.
+型付き API はダイアログ、クリップボード、シェル、外観、メニュー、ディスプレイをカバーします。あとの処理でそのウィンドウが必要なら、リスナー内で `cx.window_handle()` を保持します。
 
 ## イベントとファイル監視
 
-Window events include focus, resize, appearance, minimize, fullscreen, and close. Application callbacks include reopen, activation, quit, and open URLs. Prefer native notifications over polling. Enable the `file-watcher` crate feature when you need filesystem events, and drop watchers with the owning view.
+ウィンドウイベントにはフォーカス、リサイズ、外観、最小化、フルスクリーン、クローズがあります。アプリのコールバックには再オープン、アクティベーション、終了、URL を開くことがあります。ファイルシステムのイベントには `file-watcher` crate 機能を有効にし、所有するビューとともに watcher をドロップします。

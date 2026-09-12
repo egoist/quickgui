@@ -1,8 +1,8 @@
-TypeScript 指南正文目前以英文提供，组件 API 参考包含中文说明。
+Solid 组件在挂载时运行一次。在 JSX 中读取信号，让文本和属性保持同步。
 
 ## 响应式状态
 
-Solid components construct once. Read signals directly in JSX to bind only the affected property or child region. A plain read in setup is a snapshot; use an accessor when the value must remain reactive.
+用 `createSignal` 创建信号。需要保持实时时，在 JSX 中读取它。在初始化阶段读取则是快照。
 
 ```tsx
 const [count, setCount] = createSignal(0);
@@ -12,7 +12,7 @@ const [count, setCount] = createSignal(0);
 
 ## 派生状态
 
-Use `createMemo` for derived state shared by multiple bindings. Keep derivations pure; perform writes from events or effects.
+用 `createMemo` 计算依赖其他信号的值。保持计算纯净；从事件或副作用中写入。
 
 ```tsx
 const doubled = createMemo(() => count() * 2);
@@ -21,15 +21,19 @@ const doubled = createMemo(() => count() * 2);
 
 ## 副作用与清理
 
-Solid 2 effects separate dependency reads from their side effect. Register cleanup under the same owner so closing a window or removing a branch releases subscriptions.
+用 `createEffect` 处理视图之外的工作，例如订阅。注册清理逻辑，以便关闭窗口或移除分支时停止该工作。
 
 ```tsx
 import { createEffect, onCleanup } from "solid-js";
-createEffect(() => count(), value => console.log(value));
+
+createEffect(
+  () => count(),
+  (value) => console.log(value),
+);
 const stop = watchProject();
 onCleanup(stop);
 ```
 
 ## 批量更新
 
-Solid 2 batches ordinary signal writes automatically. QuickGUI coalesces resulting node mutations into a native batch and skips equivalent values. Use `flush()` in deterministic tests when assertions must observe queued render effects immediately; do not install a frame loop or polling timer for normal state updates.
+事件处理函数中的信号写入会一起刷新。测试中若断言需要 UI 立即稳定，请使用 `flush()`。

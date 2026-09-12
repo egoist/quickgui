@@ -1,29 +1,34 @@
-TypeScript 指南正文目前以英文提供，组件 API 参考包含中文说明。
+将 UI 作为 TypeScript 包共享，或在需要 QuickGUI 未附带的额外库时添加原生服务。
 
 ## 选择扩展类型
 
-Use an ordinary TypeScript package for reusable Solid components. Use a native extension when a feature needs a Rust, Go, or Zig service or an optional native renderer backend. All native extensions load into the same process.
+可复用的 Solid 组件使用普通 TypeScript 包。功能需要 Rust、Go 或 Zig 服务时，使用原生扩展。TypeScript 应用可以消费与 Go 相同的原生包。
 
 ## 创建扩展项目
 
 ```sh
-quickgui init-extension my-extension --type rust
+bunx @quickgui/cli init-extension my-extension --type rust
 ```
 
-Extension scaffolds use the shared extension ABI. A TypeScript consumer can use the same extension package as Go.
+脚手架包含演示应用和原生库模板。用 `--npm-package @acme/extension-my-service` 设置产物包名称。
 
 ## 共享组件
 
 ```tsx
 import { Button, type JSX } from "@quickgui/solid";
+
 export function PrimaryButton(props: JSX.NativeProps) {
   return <Button bg="#2563eb" color="#ffffff" rounded-lg p-3 {...props} />;
 }
 ```
 
+发布该包后，像导入其他 TypeScript 模块一样从应用中导入即可。
+
 ## 组织原生扩展
 
-A native extension ships `quickgui.extension.json`, a versioned shared library, and any declared resources. Its manifest identifies the service name, ABI, npm package, release version, library, and per-platform resources.
+原生扩展会附带 `quickgui.extension.json`、带版本号的共享库，以及你声明的其他文件。清单指定服务、版本、npm 包和库文件。
+
+原生布局见 [Go 扩展指南](/docs/go/extensions)，也可参考 [`native-extension` 示例](https://github.com/egoist/quickgui/tree/main/examples/native-extension)。
 
 ## 声明依赖
 
@@ -31,34 +36,37 @@ A native extension ships `quickgui.extension.json`, a versioned shared library, 
 import { defineConfig } from "@quickgui/cli";
 
 export default defineConfig({
-  language: "typescript", name: "Terminal App", identifier: "com.example.terminal",
+  language: "typescript",
+  name: "Terminal App",
+  identifier: "com.example.terminal",
   extensions: ["@quickgui/extension-terminal"],
 });
 ```
 
-Add `@quickgui/extension-terminal` to application dependencies. Custom extensions may be selected by a scoped package such as `@acme/extension-echo`, an unscoped package such as `quickgui-extension-echo`, or a directory containing their manifest.
+将对应的 npm 包加入依赖。自定义扩展可以是 `@acme/extension-echo` 这类带作用域的包、无作用域包，或包含清单的目录。
 
 ## 实现原生接口
 
-Implement the bounded `ServiceApi` or renderer extension contract in the native extension. Copy borrowed input before returning, keep event streams scoped to their sessions, and release worker resources when the session stops.
+原生库响应 JSON 请求和可选会话。保留传入字节前请先复制，把耗时工作放到 worker 上，并在会话关闭时停止工作。入口点和请求列表见[实现原生接口](/docs/go/extensions#implement-the-native-contract)。
 
 ## 自动注册
 
-The CLI resolves and bundles declared extensions. The worker registers their descriptors and exact versions through FFI before creating the application, so components use the same core renderer and native resource registry.
+在 `extensions` 中列出该包即可。CLI 会将其打包，应用在启动时加载。
 
 ## 构建与打包产物
 
-App edits reuse prebuilt extension artifacts. Rebuild an extension when its native implementation changes, then rebuild the application to stage those bytes. Extension resources are copied before signing.
+在每个要支持的操作系统和架构上构建原生库。应用编辑会复用这些预构建文件。修改原生代码后先重建扩展，再重建应用。
 
 ## 测试与分发
 
 ```tsx
 import { ExtensionSession, invokeExtension } from "@quickgui/native";
+
 const result = await invokeExtension("acme-service", "lookup", { key: "example" });
-const session = new ExtensionSession("acme-service", {}, event => console.log(event));
+const session = new ExtensionSession("acme-service", {}, (event) => console.log(event));
 await session.ready;
 await session.request("refresh", null);
 await session.close();
 ```
 
-Test against a packed extension and CLI in a fresh project. Extension commands are asynchronous and share the bounded native event transport.
+发布前先在全新应用中试用打包后的包。最终用户收到的是打包好的应用，无需原生工具链即可运行。

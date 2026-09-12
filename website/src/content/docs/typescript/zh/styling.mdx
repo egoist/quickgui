@@ -1,14 +1,14 @@
-TypeScript 指南正文目前以英文提供，组件 API 参考包含中文说明。
+用 kebab-case 属性或带 camelCase 字段的 `style` 对象为原生组件设置样式。数值长度使用逻辑像素。
 
 ## 样式方法
 
-Use kebab-case native style attributes or a `style` object with camelCase fields. Numeric lengths are logical pixels; supported percentages and keywords are parsed by Rust. `color` and `textColor` declare inherited text color.
+`color` 和 `textColor` 设置继承的文本颜色。
 
 ```tsx
 <View padding={16} gap={12} bg="#18181b" color="#fafafa" />
 ```
 
-Rust's 272 fixed layout and style presets are available as boolean attributes and style fields:
+`flex-col`、`p-3`、`rounded-lg`、`items-center`、`text-lg`、`font-bold` 等辅助项是布尔属性。`p-3` 为 12 像素；`rounded-lg` 为 8 像素。它们不接受尺寸参数。自定义值请使用 `padding={14}`、`border-radius={10}` 或 `width="50%"`。
 
 ```tsx
 <View flex-col p-3 gap-2 rounded-lg>
@@ -16,13 +16,11 @@ Rust's 272 fixed layout and style presets are available as boolean attributes an
 </View>
 ```
 
-Preset helpers are boolean attributes: `rounded-lg`, `flex-col`, `items-center`, `p-3`, `text-lg`, and `font-bold`. `rounded-lg` uses Rust's 8-pixel radius; `p-3` uses 12 pixels from Rust's four-pixel spacing scale. Helpers take no size or string value. For custom values, use native style attributes such as `border-radius={10}`, `padding={14}`, `grid-template-columns={3}`, and `width="50%"`. Corner radii use attributes such as `border-top-left-radius={8}`. `position-sticky` is the boolean sticky-layout helper.
-
-Helpers expand before style arrays merge. Direct helper props override the corresponding style fields; `false`, `null`, or `undefined` withdraws a helper and reveals the underlying style. The helper types and values are generated from Rust by `scripts/generate-style-helpers.ts`.
+将辅助项设为 `false`、`null` 或 `undefined` 会关闭它。
 
 ## 合并样式
 
-Nested style arrays merge left to right; later fields override earlier ones. Falsy entries are ignored. Removing a style field withdraws that declaration.
+样式数组从左到右合并。后面的字段覆盖前面的。假值项会被忽略。
 
 ```tsx
 <View style={[base, selected() && selectedStyle, { padding: 20 }]} />
@@ -30,7 +28,7 @@ Nested style arrays merge left to right; later fields override earlier ones. Fal
 
 ## 复用样式
 
-Use `JSX.Style` for reusable styles. Keep getters in JSX when their values should update reactively.
+用 `JSX.Style` 表示共享对象。需要保持实时时，在 JSX 中使用 getter。
 
 ```tsx
 import type { JSX } from "@quickgui/solid";
@@ -41,27 +39,46 @@ const panel = { "p-3": true, "rounded-xl": true, bg: "#20242c" } satisfies JSX.S
 
 ## Flexbox
 
-Use `display`, `flexDirection`, `flexGrow`, `flexShrink`, `flexBasis`, alignment, and gap. Set `minWidth: 0` or `minHeight: 0` on flexible scroll containers so content can shrink into the available viewport.
+使用 `display`、`flexDirection`、`flexGrow`、`flexShrink`、对齐和 `gap`。在可伸缩的滚动子项上设置 `minWidth={0}` 或 `minHeight={0}`，以便它们可以缩小。
 
 ## 网格布局
 
-Use `display: "grid"`, track declarations, placement, and spans for two-dimensional layouts. Grid sizing and intrinsic measurements are native; children keep their identities when positions change.
+使用 `display="grid"`，配合轨道列表、放置和跨度。
+
+```tsx
+<View display="grid" gridTemplateColumns="220px 1fr" gap={16}>
+  <Text>Sidebar</Text>
+  <Text>Content</Text>
+</View>
+```
 
 ## 文本与颜色
 
-Font family, weight, size, line height, wrapping, ellipsis, decoration, and selection use retained native text. Colors accept hex, supported CSS color strings, or packed RGBA values. Images and SVGs share the core’s bounded caches.
+字族、字重、字号、换行、省略和选择都是原生文本。颜色接受十六进制、CSS 颜色字符串或打包的 RGBA 值。
 
 ## 交互状态
 
 ```tsx
-<Button style={{
-  bg: "#2563eb",
-  hover: { bg: "#1d4ed8" },
-  active: { opacity: 0.8 },
-  focusVisible: { outlineColor: "#93c5fd", outlineWidth: 2 },
-}}>Save</Button>
+<Button
+  style={{
+    bg: "#2563eb",
+    hover: { bg: "#1d4ed8" },
+    active: { opacity: 0.8 },
+    focusVisible: { outlineColor: "#93c5fd", outlineWidth: 2 },
+  }}
+>
+  Save
+</Button>
 ```
 
 ## 分组与具名分组悬停
 
-Use a named `group` on an ancestor and `groupHover` or `groupActive` on descendants to style coordinated states. The core resolves group membership and invalidates the affected retained subtree.
+在祖先上设置 `group`，在后代上设置 `groupHover` 或 `groupActive`，即可一起设置样式。
+
+```tsx
+<View group="card" padding={20}>
+  <Text color="#64748b" groupHover={{ color: "#2563eb" }}>
+    Changes when the card is hovered
+  </Text>
+</View>
+```

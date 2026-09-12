@@ -1,6 +1,4 @@
-Rust ガイド本文は現在英語です。コンポーネントの API リファレンスには日本語の説明があります。
-
-Text controls are controlled: pass the current value into `text_input` / `text_area` and write edits from `on_input`.
+テキストコントロールは制御されています。現在値を `text_input` / `text_area` に渡し、編集は `on_input` から書き込みます。
 
 ## テキスト入力
 
@@ -14,16 +12,16 @@ text_area(self.notes.as_str())
 
 ## フィールド
 
-`Field` and `Fieldset` declare accessible relationships among labels, descriptions, controls, and errors. Validation mode and debounce deadlines live on `FieldState`.
+`Field` と `Fieldset` はラベル、説明、コントロール、エラーを関連付けます。検証モードとデバウンスは `FieldState` 上にあります。
 
 ## 選択コントロール
 
-Compose `Checkbox`, `CheckboxGroup`, `RadioGroup`, `Radio`, and `Switch` with their indicators and labels. Store checked values on the view and update them from listeners.
+`Checkbox`、`CheckboxGroup`、`RadioGroup`、`Radio`、`Switch` をインジケーターとラベルで組み合わせます。チェック値はビューに保存し、リスナーから更新します。
 
 ## Select
 
-`SelectState`, `ComboboxState`, and `AutocompleteState` declare options ahead of native filtering and keyboard navigation. Keep option values stable.
+`SelectState`、`ComboboxState`、`AutocompleteState` はオプション一覧を受け取ります。オプション値は安定させてください。
 
 ## イベント
 
-Input listeners receive the next text. Pointer, key, gesture, drop, and submit handlers are registered on `ViewContext`. Use declared listeners so the core knows which events the view observes.
+入力リスナーは次のテキストを受け取ります。ポインター、キー、ジェスチャー、ドロップ、送信のハンドラーは `ViewContext` に登録します。必要なリスナーを宣言すると、コントロールがそのイベントを発行できます。

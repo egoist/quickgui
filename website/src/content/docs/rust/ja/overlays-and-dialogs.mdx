@@ -1,18 +1,16 @@
-Rust ガイド本文は現在英語です。コンポーネントの API リファレンスには日本語の説明があります。
-
-In-window overlays stay in the retained scene. Operating-system dialogs use platform prompts.
+ウィンドウ内の UI には QuickGUI のオーバーレイを、ファイル選択や警告にはシステムのダイアログを使います。
 
 ## Popover
 
-Compose `Popover` trigger, positioner, popup, and arrow parts. The core owns placement, collisions, focus, outside interaction, and dismissal. Store `open` on the view.
+`Popover` のトリガー、ポジショナー、ポップアップ、矢印のパーツを組み合わせます。配置と閉じる操作は処理済みです。`open` はビューに保存します。
 
 ## Dialog
 
-`Dialog::new` and `Dialog::alert` add modal semantics plus title, description, backdrop, viewport, and close parts. Restore focus through `restore_focus_to`; do not install a second focus trap.
+`Dialog::new` と `Dialog::alert` はモーダル動作に加え、タイトル、説明、背景、ビューポート、クローズのパーツを追加します。フォーカスは `restore_focus_to` で戻し、二重のフォーカストラップを追加しないでください。
 
 ## システムポップオーバー
 
-`SystemPopover` owns a separate native panel anchored to a mounted node. It can cross the parent’s content bounds and is disposed with its owner.
+`SystemPopover` はマウント済みノードにアンカーした OS のパネルです。親ウィンドウの外まで広がることができます。所有者とともに破棄してください。
 
 ## ネイティブダイアログ
 
