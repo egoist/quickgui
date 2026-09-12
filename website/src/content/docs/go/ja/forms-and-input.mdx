@@ -1,8 +1,8 @@
-フィールド値をシグナルで保持し、コールバックで受け入れた変更を書き戻します。
+フィールドの値はシグナルに保持し、受け入れた変更をコールバックから書き戻します。
 
 ## テキスト入力
 
-`ui.Input` と `ui.TextArea` はネイティブテキストエディターをホストします。`ui.Value` にアクセサーを渡し、`OnInput` で `event.Value` から更新します。単一行入力での Return は `OnSubmit` が処理します。
+`ui.Input` と `ui.TextArea` はネイティブのテキストエディターです。`Value` を現在の文字列に結び付け、`OnInput` で `event.Value` から更新します。`OnSubmit` は 1 行入力の Return を処理します。
 
 ```go
 func InputExample() *ui.Element {
@@ -17,7 +17,7 @@ func InputExample() *ui.Element {
 
 ## フィールド
 
-`Field.Root` はラベル、コントロール、説明、エラーを関連付けます。アプリ状態から `Required`、`Invalid`、`ValidationMessage` を設定します。`ValidationMode` と `ValidationDebounceTime` は検証要求のタイミングを設定し、検証ルールはアプリが定義します。
+`Field.Root` はラベル、コントロール、説明、エラーを関連付けます。`Required`、`Invalid`、`ValidationMessage` は状態から駆動します。`ValidationMode` と `ValidationDebounceTime` は検証の実行タイミングを制御し、ルール自体はアプリが持ちます。
 
 ```go
 func FieldExample() *native.Node {
@@ -28,14 +28,16 @@ func FieldExample() *native.Node {
 			Filled:   func() bool { return email() != "" },
 		},
 		func() *native.Node {
-			return ui.Fragment([]*native.Node{ui.Field.Label(ui.FieldLabelProps{}, "Email"),
+			return ui.Fragment([]*native.Node{
+				ui.Field.Label(ui.FieldLabelProps{}, "Email"),
 				ui.Field.Control(ui.FieldControlProps{InputPartProps: ui.InputPartProps{
 					Value:       email,
 					Placeholder: "you@example.com",
 					OnInput:     func(event *native.Event) { setEmail(event.Value) },
 				}}),
 				ui.Field.Description(ui.PartProps{}, "Used for receipts"),
-				ui.Field.Error(ui.PartProps{}, "Enter a valid email address")})
+				ui.Field.Error(ui.PartProps{}, "Enter a valid email address"),
+			})
 		},
 	)
 }
@@ -43,7 +45,7 @@ func FieldExample() *native.Node {
 
 ## 選択コントロール
 
-チェックボックスは `ui.CheckedState` を通して `bool` または `ui.CheckedIndeterminate` を受け取ります。ラジオグループは一つの値を、チェックボックスやトグルのグループは複数の値を保持できます。読み取り専用と無効状態は別の意味を持ちます。
+チェックボックスは `ui.CheckedState` を通じて `bool` または `ui.CheckedIndeterminate` を受け取ります。ラジオグループは値を 1 つ保持します。チェックボックスグループとトグルグループは複数の値を保持できます。読み取り専用は無効状態とは別です。
 
 ```go
 func CheckboxGroupExample() *native.Node {
@@ -55,9 +57,11 @@ func CheckboxGroupExample() *native.Node {
 			OnValueChange: func(next []string, _ *native.Event) { setValues(next) },
 		},
 		func() *native.Node {
-			return ui.Fragment([]*native.Node{ui.Checkbox.Root(ui.CheckboxProps{Parent: true}, "All notifications"),
+			return ui.Fragment([]*native.Node{
+				ui.Checkbox.Root(ui.CheckboxProps{Parent: true}, "All notifications"),
 				ui.Checkbox.Root(ui.CheckboxProps{Value: "email"}, "Email"),
-				ui.Checkbox.Root(ui.CheckboxProps{Value: "push"}, "Push")})
+				ui.Checkbox.Root(ui.CheckboxProps{Value: "push"}, "Push"),
+			})
 		},
 	)
 }
@@ -65,7 +69,7 @@ func CheckboxGroupExample() *native.Node {
 
 ## Select
 
-`PickerSourceProps.Items` で選択肢を宣言します。Select は選択値、Combobox はテキスト検索と選択、Autocomplete は自由入力を扱います。複数選択には `Values` と `OnValuesChange` を使います。
+選択肢は `PickerSourceProps.Items` で宣言します。Select は選んだ値を保持します。Combobox はテキストでの絞り込みを追加します。Autocomplete は自由入力を許可します。複数選択のピッカーは `Values` と `OnValuesChange` を使います。
 
 ```go
 func SelectExample() *native.Node {
@@ -79,7 +83,10 @@ func SelectExample() *native.Node {
 			OnValueChange: func(next *string, _ *native.Event) { setValue(next) },
 		},
 		func() *native.Node {
-			return ui.Fragment([]*native.Node{ui.Select.Value(ui.PartProps{}), ui.Select.Icon(ui.PartProps{}, "▾")})
+			return ui.Fragment([]*native.Node{
+				ui.Select.Value(ui.PartProps{}),
+				ui.Select.Icon(ui.PartProps{}, "▾"),
+			})
 		},
 	)
 }
@@ -87,4 +94,4 @@ func SelectExample() *native.Node {
 
 ## イベント
 
-通常のボタンには `ui.OnClick(func() { ... })` を渡します。`*native.Event` が必要な場合は `ui.OnClickEvent` を使います。複合コントロールのコールバックは型付きの値と、必要に応じてネイティブイベントを受け取ります。UI 状態は UI goroutine で更新し、バックグラウンド処理には `ui.Async` を使います。
+ボタンは `ui.OnClick(func() { ... })` を受け取ります。`*native.Event` が必要なときは `ui.OnClickEvent` を使います。複合コンポーネントのコールバックは型付きの値と、必要な場合はイベントを渡します。シグナルの書き込みは UI ゴルーチンで行い、バックグラウンド処理には `ui.Async` を使います。

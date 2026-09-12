@@ -1,47 +1,36 @@
-このガイドは Go フロントエンドを使います。Solid 2 JSX を使う TypeScript はサイドバーから選べます。
-
-QuickGUI アプリは通常の Go プログラムです。Go でコンポーネントと細粒度のリアクティブな状態を記述し、`CGO_ENABLED=0` でビルドします。purego が同じプロセス内でビルド済みネイティブライブラリを読み込み、Bun は開発・パッケージング用 CLI を実行します。
+QuickGUI アプリは通常の Go プログラムです。ウィンドウとコンポーネントを Go で記述すると、CLI がネイティブの macOS アプリとして実行、リロード、パッケージ化します。
 
 ## 動作要件
 
 - macOS 14 以降
 - Go 1.23 以降
-- Bun 1.3 以降
+- Bun 1.4 以降
 - Xcode Command Line Tools（`xcode-select --install`）
 
-現在、パッケージ化した UI アプリは macOS が対象です。通常のアプリビルドではビルド済みのネイティブホストを使用します。
+パッケージ化したアプリは現在 macOS が対象です。
 
 ## プロジェクトを作成
 
-CLI はまだ公開されていません。[QuickGUI のチェックアウト](https://github.com/egoist/quickgui)から Go のカウンターを実行してください。
-
 ```bash
-bun install
-bun packages/cli/src/cli.ts dev --project examples/counter
+bunx @quickgui/cli init my-app --language go
+cd my-app
+bun run dev
 ```
 
-別のアプリを作るには、レジストリのパッケージをインストールせずに雛形を生成します。
-
-```bash
-bun packages/cli/src/cli.ts init ../my-app --no-install
-cd ../my-app
-go mod edit -replace github.com/egoist/quickgui/go=../quickgui/go
-go mod tidy
-```
-
-言語の選択プロンプトで **Go** を選択してください。生成された `quickgui.config.ts` で `defineConfig` のインポートを `../quickgui/packages/cli/src/index.ts` に変更し、ローカル CLI を使います。その後 QuickGUI チェックアウトから `bun packages/cli/src/cli.ts dev --project ../my-app` を実行します。`init` に `--language go` を渡すと、言語の選択を省略できます。
+CLI は Go モジュールを作成し、依存関係をインストールしてアプリを開きます。言語を対話的に選ぶ場合は `--language go` を省略してください。
 
 ## 最初のウィンドウ
 
-生成された `main.go` は、ウィンドウ API を `native`、コンポーネントを `ui` からインポートします。コンポーネント関数を `WindowOptions.Component` に直接渡し、`native.Run` を一度呼んでイベントループを開始します。
+生成された `main.go` はアプリを起動し、ウィンドウを開いてコンポーネントを描画します。コンポーネント関数を `WindowOptions.Component` に渡し、`main` から `native.Run` を一度呼び出してください。
 
 ```go
 package main
 
 import (
+	"log"
+
 	"github.com/egoist/quickgui/go/native"
 	"github.com/egoist/quickgui/go/ui"
-	"log"
 )
 
 func Counter() *ui.Element {
@@ -87,18 +76,22 @@ func main() {
 }
 ```
 
+ラベルで `count()` を読むと、そのテキストが同期されます。ボタンをクリックするとシグナルが更新され、ウィンドウの残りの部分はそのままです。
+
 ## 実行とビルド
 
-ウォッチャーは Go ソースを再ビルドして開発アプリを再起動します。フォーマッターは通常の Go 構文を保ちながら、長いコンポーネント呼び出しの改行を整えます。配布用バンドルは `dist/darwin-*` に出力されます。
+プロジェクトディレクトリで次のコマンドを実行します。
 
 ```bash
-bun packages/cli/src/cli.ts dev --project ../my-app
-bun packages/cli/src/cli.ts fmt --project ../my-app
-bun packages/cli/src/cli.ts build --project ../my-app
+bun run dev
+bun run fmt
+bun run build
 ```
+
+`dev` は編集に合わせて再ビルドして再起動します。`fmt` は Go ソースを整形します。`build` はパッケージ化したアプリを `dist/` に出力します。
 
 ## 次のステップ
 
-- [コンポーネントとシグナル](/docs/go/reactivity)を理解する。
-- [スタイルと条件付きオプション](/docs/go/styling)を追加する。
-- [コンポーネントリファレンス](/docs/go/components)を確認する。
+- [シグナル](/docs/go/reactivity)で状態を保存・更新する。
+- [スタイル](/docs/go/styling)でウィンドウをレイアウトする。
+- [コンポーネントリファレンス](/docs/go/components)を参照する。

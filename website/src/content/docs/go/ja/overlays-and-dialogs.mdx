@@ -1,15 +1,16 @@
-アプリ独自のスタイルには QuickGUI オーバーレイ、ファイル選択やアラートにはネイティブダイアログを使います。
+ウィンドウ内の UI には QuickGUI のオーバーレイを、ファイル選択やアラートにはシステムのダイアログを使います。
 
 ## Popover
 
-Popover はトリガー、Positioner、Popup を組み合わせます。指定した方向は優先設定で、コアが衝突を解決します。ルート内の `ui.UsePopoverPlacement` で確定位置を取得できます。
+ポップオーバーはトリガー、ポジショナー、ポップアップで構成されます。希望する辺は優先指定であり、衝突は自動で解決されます。結果はルート内で `ui.UsePopoverPlacement` から読み取ります。
 
 ```go
 func PopoverExample() *native.Node {
 	return ui.Popover.Root(
 		ui.PopoverRootProps{},
 		func() *native.Node {
-			return ui.Fragment([]*native.Node{ui.Popover.Trigger(ui.PopoverTriggerProps{}, "Account"),
+			return ui.Fragment([]*native.Node{
+				ui.Popover.Trigger(ui.PopoverTriggerProps{}, "Account"),
 				ui.Popover.Positioner(
 					ui.PopoverPositionerProps{},
 					func() *native.Node {
@@ -18,12 +19,15 @@ func PopoverExample() *native.Node {
 								Width(240).
 								Padding(16)}},
 							func() *native.Node {
-								return ui.Fragment([]*native.Node{ui.Popover.Title(ui.PartProps{}, "Account"),
-									ui.Popover.Close(ui.PartProps{}, "Done")})
+								return ui.Fragment([]*native.Node{
+									ui.Popover.Title(ui.PartProps{}, "Account"),
+									ui.Popover.Close(ui.PartProps{}, "Done"),
+								})
 							},
 						)
 					},
-				)})
+				),
+			})
 		},
 	)
 }
@@ -31,36 +35,42 @@ func PopoverExample() *native.Node {
 
 ## Dialog
 
-モーダル内容は `Dialog.Portal` の下で作成します。`Dialog.Title` と `Dialog.Description` がアクセシブルな名前と説明を提供します。`AlertDialog` は確認の意味を加えます。制御されたルートは次の開閉状態とその理由を受け取ります。
+モーダルの内容は `Dialog.Portal` の下に置きます。`Dialog.Title` と `Dialog.Description` はアクセシビリティのためにダイアログに名前を付けます。確認には `AlertDialog` を使います。制御されたルートは、次の開閉状態とその理由を受け取ります。
 
 ```go
 func DialogExample() *native.Node {
 	return ui.Dialog.Root(
 		ui.DialogRootProps{},
 		func() *native.Node {
-			return ui.Fragment([]*native.Node{ui.Dialog.Trigger(ui.PartProps{}, "Open dialog"),
+			return ui.Fragment([]*native.Node{
+				ui.Dialog.Trigger(ui.PartProps{}, "Open dialog"),
 				ui.Dialog.Portal(
 					ui.PartProps{},
 					func() *native.Node {
-						return ui.Fragment([]*native.Node{ui.Dialog.Backdrop(ui.PartProps{}),
+						return ui.Fragment([]*native.Node{
+							ui.Dialog.Backdrop(ui.PartProps{}),
 							ui.Dialog.Viewport(
 								ui.PartProps{},
 								func() *native.Node {
 									return ui.Dialog.Popup(
 										ui.DialogPopupProps{},
 										func() *native.Node {
-											return ui.Fragment([]*native.Node{ui.Dialog.Title(ui.PartProps{}, "Confirm action"),
+											return ui.Fragment([]*native.Node{
+												ui.Dialog.Title(ui.PartProps{}, "Confirm action"),
 												ui.Dialog.Description(
 													ui.PartProps{},
 													"Review the details before continuing.",
 												),
-												ui.Dialog.Close(ui.PartProps{}, "Cancel")})
+												ui.Dialog.Close(ui.PartProps{}, "Cancel"),
+											})
 										},
 									)
 								},
-							)})
+							),
+						})
 					},
-				)})
+				),
+			})
 		},
 	)
 }
@@ -68,14 +78,15 @@ func DialogExample() *native.Node {
 
 ## システムポップオーバー
 
-`ui.SystemPopover` は OS のポップオーバー内に内容をホストします。論理幅と高さを指定し、通常の QuickGUI の子を宣言します。
+`ui.SystemPopover` は本体を OS のパネルに表示します。論理幅と高さを設定し、通常の QuickGUI の子を宣言します。
 
 ```go
 func SystemPopoverExample() *native.Node {
 	return ui.SystemPopover.Root(
 		ui.PopoverRootProps{},
 		func() *native.Node {
-			return ui.Fragment([]*native.Node{ui.SystemPopover.Trigger(ui.PopoverTriggerProps{}, "Account"),
+			return ui.Fragment([]*native.Node{
+				ui.SystemPopover.Trigger(ui.PopoverTriggerProps{}, "Account"),
 				ui.SystemPopover.Content(
 					ui.PopoverContentProps{
 						Width:     240,
@@ -83,7 +94,8 @@ func SystemPopoverExample() *native.Node {
 						Placement: "bottom-start",
 					},
 					"Account settings",
-				)})
+				),
+			})
 		},
 	)
 }
@@ -91,14 +103,12 @@ func SystemPopoverExample() *native.Node {
 
 ## ネイティブダイアログ
 
-ネイティブダイアログは非同期コールバックを使います。レンダリング時に親ウィンドウを取得してリクエストへ明示的に渡します。キャンセルされた場合は `Canceled: true` が返ります。
+システムのファイルダイアログは非同期で完了します。描画中に親ウィンドウをキャプチャし、リクエストに渡してください。キャンセルされたパネルは `Canceled: true` を返します。
 
 ```go
 func OpenFolderButton() *ui.Element {
 	window := native.CurrentWindow()
-	return ui.Button(
-		"Open folder",
-	).OnClick(func() {
+	return ui.Button("Open folder").OnClick(func() {
 		native.ShowOpenDialog(
 			native.OpenDialogOptions{
 				Window:     window,
@@ -112,6 +122,5 @@ func OpenFolderButton() *ui.Element {
 			},
 		)
 	})
-
 }
 ```

@@ -1,22 +1,22 @@
-コンポーネントはマウント時に保持ツリーを作成します。リアクティブなバインディングが対象ノードを更新し、レイアウト、描画、アクセシビリティはネイティブコアが担当します。
+コンポーネントはマウント時に実行され、表示すべきツリーを返します。その後のシグナル更新は、バインドされたテキストとプロパティを変えます。子の構造自体が変わりうるときは `ui.Show` と `ui.For` を使います。
 
 ## レンダリングモデル
 
-すべてのコンポーネントと UI 構築コールバックは `*ui.Element` または `*native.Node` を返します。子ノードを直接渡し、複数の兄弟には `ui.Fragment(...)` を返します。UI 構築結果の破棄と戻り値のない宣言ブロックはコンパイルエラーになります。イベントやエフェクトのコールバックは従来のシグネチャです。
+すべてのコンポーネントは `*ui.Element` を返します。要素は子として渡すか、複数の兄弟には `ui.Fragment(...)` を返します。作成した要素は必ず使ってください。返す、代入する、または親へ渡します。
 
 ```go
 func ViewExample() *ui.Element {
-	return ui.View().Children(
-
-		ui.Text("Hello from Go"),
-		ui.Button("Continue").OnClick(func() {}),
-	).Padding(20).Gap(12)
+	return ui.View().
+		Padding(20).
+		Gap(12).
+		Child(ui.Text("Hello from Go")).
+		Child(ui.Button("Continue").OnClick(func() {}))
 }
 ```
 
 ## 条件付きコンテンツ
 
-状態に応じて子をマウントまたは削除するには `ui.Show` を使います。通常の Go の `if` は構築時だけ実行されます。同じ分岐が選ばれている間はノードを保持し、分岐を削除するとバインディングも破棄します。
+通常の Go の `if` はコンポーネントの作成中にしか実行されません。あとから子を出したり消したりするときは `ui.Show` を使います。
 
 ```go
 func DisclosureExample() *ui.Element {
@@ -31,11 +31,13 @@ func DisclosureExample() *ui.Element {
 }
 ```
 
+条件が同じ分岐にとどまっている間、その分岐の状態は保持されます。分岐を離れると、副作用と購読は解除されます。
+
 ## リストとノードの同一性
 
-`ui.For` でリアクティブなリストを作り、一意で安定したキーを渡します。保持された行が変更されるデータを読むには `ui.KeyedFor` の項目アクセサーを使います。削除した行は購読を解除し、キー付きの行の移動はネイティブノードの同一性を保ちます。仮想化されたテーブルやリストは、大きな集合でも可視行だけをマウントします。
+変化しうるリストには `ui.For` を使います。各行には位置ではなく、データベース ID のような安定した一意のキーを指定してください。`ui.KeyedFor` は行に現在の項目へのアクセサーも渡すため、名前の変更ではラベルだけが更新され、行は再作成されません。
 
-キーには位置ではなく、データベースの ID などの安定した識別子を使います。この例では既存の行を並べ替え、行アクセサーを通して ID 1 のラベルを更新します。親はリストを作り直しません。データを変更するときは新しいスライスを渡してください。保存済みのスライスを直接書き換えても購読側に通知されません。
+リストデータを編集するときは、新しいスライスをセッターに渡してください。保存済みスライスをその場で変更しても UI には通知されません。
 
 ```go
 type ListPerson struct {
@@ -46,21 +48,14 @@ type ListPerson struct {
 func KeyedListExample() *ui.Element {
 	people, setPeople := ui.CreateSignal([]ListPerson{{1, "Ada"}, {2, "Grace"}})
 	return ui.View().Children(
-		ui.Button(
-			"Reorder and rename",
-		).OnClick(func() {
+		ui.Button("Reorder and rename").OnClick(func() {
 			setPeople([]ListPerson{{2, "Grace"}, {1, "Ada Lovelace"}})
 		}),
-
 		ui.KeyedFor(
 			people,
 			func(person ListPerson) any { return person.ID },
 			func(person func() ListPerson, index func() int) *ui.Element {
-				return ui.Text(
-					index(),
-					": ",
-					person().Name,
-				)
+				return ui.Text(index(), ": ", person().Name)
 			},
 			func() *ui.Element { return ui.Text("No people") },
 		),
@@ -68,11 +63,13 @@ func KeyedListExample() *ui.Element {
 }
 ```
 
+並び替えでは既存の行が移動します。大きなコレクションでは、表示中の行だけをマウントする仮想化テーブルまたはリストを使ってください。
+
 ## ウィンドウのライフサイクル
 
-`WindowOptions.Component` はウィンドウごとにリアクティブルートを作成します。閉じるとノードとエフェクトが破棄されます。リソースの後始末は `ui.OnCleanup` に登録します。バックグラウンド処理には `ui.Async` を使うと、結果が UI goroutine に返され、コンポーネント破棄時にキャンセルされます。
+各ウィンドウは独自のコンポーネントルートを持ちます。ウィンドウを閉じると、要素、エフェクト、`ui.OnCleanup` のコールバックが解放されます。
 
-バックグラウンド処理はコンポーネントのマウント時に開始します。`load` は UI goroutine の外で動き、コンテキストのキャンセルに従う必要があります。完了コールバックでは安全にシグナルを書き込めます。所有する分岐の削除やウィンドウの終了時にはコンテキストがキャンセルされ、遅れて届いた完了通知も破棄されます。この例では標準の `context` パッケージを使います。
+バックグラウンド処理はコンポーネントのマウント中に開始します。`ui.Async` は `load` を UI ゴルーチンの外で実行し、結果を書き戻します。ウィンドウを閉じるか分岐を外すとコンテキストがキャンセルされ、遅れて届いた結果は無視されます。
 
 ```go
 func LoadingPanel(load func(context.Context) (string, error)) *ui.Element {
@@ -93,7 +90,7 @@ func LoadingPanel(load func(context.Context) (string, error)) *ui.Element {
 
 ## 現在のウィンドウ
 
-コンポーネントのマウント時に `native.CurrentWindow()` を取得し、コールバックではそのウィンドウを使います。無関係な goroutine から取得しないでください。ウィンドウイベントやネイティブリクエストは非同期コールバックで結果を返します。
+コンポーネントのマウント中に `native.CurrentWindow()` をキャプチャし、そのハンドルをコールバックで使います。
 
 ```go
 func CloseButton() *ui.Element {
@@ -104,4 +101,11 @@ func CloseButton() *ui.Element {
 
 ## チェック・テスト・デバッグ
 
-アプリのモジュールで `quickgui test` を実行し、開発ビルドと同じビューコンパイラーを使います。`quickgui fmt --check` で書式を確認します。アプリはネイティブ Go 実行ファイルなので、通常の Go 診断やデバッガーは元のソースを使用します。
+アプリのモジュールで次を実行します。
+
+```bash
+bun run test
+bun run fmt --check
+```
+
+`test` はアプリと同じビューをコンパイルします。標準の Go 診断とデバッガーは元のソースファイルに対して使えます。

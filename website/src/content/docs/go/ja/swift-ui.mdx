@@ -1,8 +1,8 @@
-`ui.SwiftUI` は Go アプリに本物の macOS コントロールを埋め込みます。通常の QuickGUI コンポーネントはこれを使わずに動作します。
+`ui.SwiftUI` ファミリーは、本物の macOS コントロールを QuickGUI ウィンドウに埋め込みます。通常の QuickGUI コンポーネントはこれなしでも動作します。
 
 ## Host
 
-コントロールは `ui.SwiftUI.Host` の中で作成します。Host はネイティブビューの境界を定義し、内容に応じてサイズを決められます。
+コントロールは `ui.SwiftUI.Host` の内側に作成します。ホストはネイティブビューの境界であり、内容から自身のサイズを決められます。
 
 ```go
 func SwiftUiHostExample() *native.Node {
@@ -17,11 +17,11 @@ func SwiftUiHostExample() *native.Node {
 
 ## ネイティブコントロール
 
-Button、Slider、Toggle、ProgressView、Stepper、TextField、SecureField、Picker、SegmentedControl、DatePicker、ColorPicker、Gauge が使えます。プラットフォームの外観は macOS が提供します。
+Button、Slider、Toggle、ProgressView、Stepper、TextField、SecureField、Picker、SegmentedControl、DatePicker、ColorPicker、Gauge が利用できます。見た目は現在の macOS システムコントロールと同じです。
 
 ## 制御値
 
-アクセサーをバインドし、ネイティブコールバックが返した値を保存します。SwiftUI コントロールと QuickGUI ノードは同じシグナルを共有できます。DatePicker はミリ秒単位の Unix タイムスタンプを使います。
+アクセサーを結び付け、変更コールバックから値を保存します。SwiftUI コントロールと QuickGUI ノードは同じシグナルを共有できます。DatePicker はミリ秒単位の Unix タイムスタンプを使います。
 
 ```go
 func SwiftUiToggleExample() *native.Node {
@@ -41,7 +41,7 @@ func SwiftUiToggleExample() *native.Node {
 
 ## サイズ
 
-`MatchContents: true` は両軸を固有サイズにします。固有の高さとアプリ指定の幅を組み合わせる場合は `ui.SwiftUIMatchContents{Vertical: true}` を使い、`PartProps.Style` で幅を設定します。
+`MatchContents: true` は両軸をコントロールからサイズします。固有の高さだけにする場合は `ui.SwiftUIMatchContents{Vertical: true}` を使い、幅は自分で設定します。
 
 ```go
 ui.SwiftUIHostProps{
@@ -52,4 +52,4 @@ ui.SwiftUIHostProps{
 
 ## 対応プラットフォーム
 
-SwiftUI ホスティングには macOS が必要です。ビルド済みのネイティブホストにブリッジが含まれ、Go アプリは引き続き CGO なしでビルドできます。ネイティブスタイルは OS バージョンにより異なる場合があります。
+SwiftUI のホスティングは macOS 専用です。見た目は OS のバージョンによって変わることがあります。スタイル、ガラス、SwiftUI 内への QuickGUI の埋め込みは [モディファイアとホスティング](/docs/go/swift-ui-hosting) を参照してください。

@@ -1,27 +1,20 @@
-ルーターは現在のアプリ内パスからコンポーネントを選び、ナビゲーション履歴を管理します。ルートは現在のウィンドウにネイティブ QuickGUI コンテンツを描画します。
+ルーターは現在のパスからコンポーネントを選び、戻る／進むの履歴を保持します。ルートは現在のウィンドウに描画されます。
 
 ## ルートの宣言
 
-`ui.Route` と `ui.Layout` でルートを宣言します。レイアウトは `ui.Outlet` で一致した子を表示します。パラメーターには `ui.UseParams`、ナビゲーションには `ui.UseRouter` を使います。
+ルートは `ui.Route` で宣言します。パラメーターは `ui.UseParams`、ナビゲーションは `ui.UseRouter` または `ui.Link` で行います。
 
 ```go
 func RouterExample() *native.Node {
 	return ui.Router(ui.RouterProps{
 		InitialPath: "/",
 		Routes: []*ui.RouteDeclaration{
-			ui.Route(
-				"/",
-				func() *native.Node {
-					return ui.Link(
-						ui.LinkProps{Href: "/settings"},
-						"Settings",
-					)
-				},
-			),
-			ui.Route(
-				"/settings",
-				func() *ui.Element { return ui.Text("Settings") },
-			),
+			ui.Route("/", func() *native.Node {
+				return ui.Link(ui.LinkProps{Href: "/settings"}, "Settings")
+			}),
+			ui.Route("/settings", func() *ui.Element {
+				return ui.Text("Settings")
+			}),
 		},
 		Fallback: func() *ui.Element { return ui.Text("Page not found") },
 	})
@@ -30,9 +23,7 @@ func RouterExample() *native.Node {
 
 ## 入れ子のレイアウト
 
-関連するルートを `ui.Layout` で包みます。レイアウトのコンポーネントは、該当する子の位置で `ui.Outlet()` を呼びます。兄弟ルート間の移動では共通レイアウトと状態を保持し、変更された分岐だけを置き換えます。
-
-共通ナビゲーションは outlet の外に置きます。Home と Settings は同じレイアウトを共有するため、切り替えてもレイアウトのローカル状態は残ります。outlet は選択中の子ページだけを供給します。
+関連するルートは `ui.Layout` で包みます。マッチした子を表示する位置で `ui.Outlet()` を呼び出します。`ui.Outlet()` の外側にある共通の枠は、兄弟ルート間を移動しても状態を保持します。
 
 ```go
 func NestedRouterExample() *native.Node {
@@ -40,21 +31,16 @@ func NestedRouterExample() *native.Node {
 		Routes: []*ui.RouteDeclaration{
 			ui.Layout(
 				func() *ui.Element {
-					return ui.View().Children(
-
-						ui.Link(ui.LinkProps{Href: "/"}, "Home"),
-						ui.Link(ui.LinkProps{Href: "/settings"}, "Settings"),
-						ui.Outlet(),
-					).Display("flex").FlexDirection("column").Gap(12)
+					return ui.View().
+						Display("flex").
+						FlexDirection("column").
+						Gap(12).
+						Child(ui.Link(ui.LinkProps{Href: "/"}, "Home")).
+						Child(ui.Link(ui.LinkProps{Href: "/settings"}, "Settings")).
+						Child(ui.Outlet())
 				},
-				ui.Route(
-					"/",
-					func() *ui.Element { return ui.Text("Home") },
-				),
-				ui.Route(
-					"/settings",
-					func() *ui.Element { return ui.Text("Settings") },
-				),
+				ui.Route("/", func() *ui.Element { return ui.Text("Home") }),
+				ui.Route("/settings", func() *ui.Element { return ui.Text("Settings") }),
 			),
 		},
 	})
@@ -63,7 +49,7 @@ func NestedRouterExample() *native.Node {
 
 ## ナビゲーション
 
-ルート内の `ui.UseRouter()` は `Navigate`、`Replace`、`Back`、`Forward` を提供します。`ui.Link` で移動先を宣言できます。通常の移動は履歴に追加し、置換は現在の履歴を変更します。
+ルート内では `ui.UseRouter()` が `Navigate`、`Replace`、`Back`、`Forward` を公開します。`ui.Link` は行き先を宣言します。`Navigate` は履歴エントリを追加し、`Replace` は現在のエントリを更新します。
 
 ```go
 func BackButton() *ui.Element {
@@ -74,33 +60,26 @@ func BackButton() *ui.Element {
 
 ## ルートパラメーター
 
-`ui.UseParams` でパスパラメーター、`ui.UseSearchParams` でクエリ値、`ui.UseLocation` で現在位置を読みます。いずれもアクセサーなので、表示を更新する値はバインディング内で読み取ります。パラメーターだけが変わる場合、該当するルートのコンポーネントは保持されます。
+パスパラメーターは `ui.UseParams`、クエリの値は `ui.UseSearchParams`、現在のロケーションは `ui.UseLocation` で読みます。表示値が更新されるべき場所で読み取ってください。パラメーターだけが変わっても、同じルートコンポーネントはマウントされたままです。
 
-`:name` はパスの1区間をパラメーターとして取得します。読み取りはテキストのアクセサー内に置いてください。初期化時に `params()["name"]` を保存すると表示が初期値のままになります。クエリとパスのパラメーターは別々に読み取ります。このルートの初期表示は `quickgui` と `history` です。
+`:name` セグメントはパスパラメーターを 1 つ取り込みます。クエリ文字列はパスとは別です。
 
 ```go
 func ParameterRouterExample() *native.Node {
 	return ui.Router(ui.RouterProps{
 		InitialPath: "/projects/quickgui?tab=history",
 		Routes: []*ui.RouteDeclaration{
-			ui.Route(
-				"/projects/:name",
-				func() *ui.Element {
-					params := ui.UseParams()
-					search := ui.UseSearchParams()
-					return ui.View().Children(
-						ui.Text(
-							"Project: ",
-							params()["name"],
-						),
-						ui.Text(
-							"Tab: ",
-							search()["tab"],
-						),
-					)
-				},
-			),
+			ui.Route("/projects/:name", func() *ui.Element {
+				params := ui.UseParams()
+				search := ui.UseSearchParams()
+				return ui.View().Children(
+					ui.Text("Project: ", params()["name"]),
+					ui.Text("Tab: ", search()["tab"]),
+				)
+			}),
 		},
 	})
 }
 ```
+
+このルートは `quickgui` と `history` から始まります。セットアップ中に `params()["name"]` を読むと、ラベルは最初の値のまま固定されます。

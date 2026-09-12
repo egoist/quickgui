@@ -1,24 +1,32 @@
-Go の要素と `ui.Style()` は、`.P4()`、`.MxAuto()`、`.GridCols(3)`、`.RoundedLg()` などの fluent スタイルメソッドを共有します。子要素は `.Child(...)` または `.Children(...)` で追加し、共通スタイルは `.Style(shared)` で適用します。
+`.P4()`、`.MxAuto()`、`.GridCols(3)`、`.RoundedLg()` などの fluent メソッドで要素にスタイルを付けます。共有ビルダーは `.Style(shared)` で適用します。
 
 ```go
-return ui.View().Children(ui.Text("hello"), ui.Input().Value("xxx")).
-	FlexCol().PaddingLeft(20).RoundedLg().TextAlign("center")
+return ui.View().
+	FlexCol().
+	PaddingLeft(20).
+	RoundedLg().
+	TextAlign("center").
+	Child(ui.Text("hello")).
+	Child(ui.Input().Value("xxx"))
 ```
 
 ## スタイルメソッド
 
-宣言は順番に適用され、同じプロパティは後の値が優先されます。明示的なゼロも上書きします。数値の長さは論理ピクセルで、文字列ではパーセントも使えます。
+宣言は順番に適用されます。同じプロパティでは後の値が優先され、明示的なゼロも上書きします。数値の長さは論理ピクセルです。文字列ではパーセントも使えます。
 
 ```go
 func Card() *ui.Element {
-	return ui.View().Child(ui.Text("Hello").TextColor("#e2e8f0")).
-		Padding(20).BorderRadius(12).Bg("#111827")
+	return ui.View().
+		Padding(20).
+		BorderRadius(12).
+		Bg("#111827").
+		Child(ui.Text("Hello").TextColor("#e2e8f0"))
 }
 ```
 
 ## スタイルのマージ
 
-`.Style(base).Style(overrides)` は宣言を順番にマージします。ビルダーの合成には `.Merge(...)` を使います。同じインタラクション状態のプロパティもマージされます。
+`.Style(base).Style(overrides)` は順番にマージします。再利用可能なビルダーの合成には `.Merge(...)` を使います。繰り返しのホバーなど、インタラクション状態も同じようにマージされます。
 
 ```go
 func MergedCard() *ui.Element {
@@ -30,61 +38,69 @@ func MergedCard() *ui.Element {
 
 ## スタイルの再利用
 
-`ui.Style()` は `ui.StyleBuilder` を返します。各メソッドは新しい値を返し、共有スタイルを変更しません。派生スタイルを作るときは戻り値を代入してください。`.Style(...)` または複合パーツの `PartProps.Style` に渡します。パーツはビルダーのスライスや、それらを返すアクセサーも受け取れます。プロパティのアクセサーは各ノードで独立してバインドされます。
+`ui.Style()` は `ui.StyleBuilder` を返します。各メソッドは新しいビルダーを返すため、共有スタイルは変更されません。バリエーションを派生するときは戻り値を代入してください。`.Style(...)` またはパーツの `PartProps.Style` フィールドに渡します。
 
 ```go
 func SharedCard() *native.Node {
-	var children []*native.Node
 	card := ui.Style().Padding(20).BorderRadius(12)
 	emphasized := card.PaddingLeft(28).Bg("#1e293b")
-	children = append(children, ui.View().Child("Hello").Style(card).Bg("#111827").Node)
-	children = append(children, ui.View().Child("Another card").Style(emphasized).Node)
-	return ui.Fragment(children)
+	return ui.Fragment([]*native.Node{
+		ui.View().Child("Hello").Style(card).Bg("#111827").Node,
+		ui.View().Child("Another card").Style(emphasized).Node,
+	})
 }
 ```
 
-ビルダーの `.When(condition, func(s ui.StyleBuilder) ui.StyleBuilder { ... })` は真偽値に応じてスタイルを派生します。リアクティブな条件には、要素の `.When(getter, style)` またはパーツのスタイルアクセサーを使います。プロパティには `.Width(width)` のように getter を渡してください。セットアップ時の `width()` は現在の値を取得するだけです。
+`.When(condition, func(s ui.StyleBuilder) ui.StyleBuilder { ... })` は真偽値からビルダーを派生します。変化しうる値には、要素の `.When(getter, style)` を使うか、アクセサー内でスタイルを組み立てます。`.Width(width)` のように渡すと同期され続け、セットアップ時の `width()` は現在の値をキャプチャするだけです。
 
 ## Flexbox
 
-`.Flex()`、`.FlexRow()`、`.FlexCol()` で flex レイアウトを設定します。スクロールする子要素には `.MinHeight(0)` や `.MinWidth(0)` を指定して縮小できるようにします。
+`.Flex()`、`.FlexRow()`、`.FlexCol()` を使います。スクロールする flex の子には `.MinHeight(0)` または `.MinWidth(0)` を指定して縮小できるようにします。
 
 ```go
 func Row() *ui.Element {
-	return ui.View().Children(
-		ui.Text("Flexible content").Flex1().MinWidth(0),
-		ui.Button("Action").FlexShrink(0),
-	).Flex().Gap(12).ItemsCenter()
+	return ui.View().
+		Flex().
+		Gap(12).
+		ItemsCenter().
+		Child(ui.Text("Flexible content").Flex1().MinWidth(0)).
+		Child(ui.Button("Action").FlexShrink(0))
 }
 ```
 
 ## グリッド
 
-グリッドはトラック文字列を受け取ります。要素とスタイルビルダーで Rust と共通のレイアウトヘルパーを使えます。
+`Display("grid")` と、`GridTemplateColumns("220px 1fr")` のようなトラックリストを設定します。
 
 ```go
 func Grid() *ui.Element {
-	return ui.View().Children(ui.Text("Sidebar"), ui.Text("Content")).
-		Display("grid").GridTemplateColumns("220px 1fr").Gap(16)
+	return ui.View().
+		Display("grid").
+		GridTemplateColumns("220px 1fr").
+		Gap(16).
+		Child(ui.Text("Sidebar")).
+		Child(ui.Text("Content"))
 }
 ```
 
 ## テキストと色
 
-文字のスタイルはノードツリーを通じて継承されます。色には16進数、`rgb()`/`rgba()`、パックした RGBA 値を使えます。子要素では異なるプロパティだけを上書きします。余白とボーダーは継承されません。
+タイポグラフィはツリーを下へ継承されます。色には 16 進数、`rgb()` / `rgba()`、またはパックした RGBA 値を使えます。子では異なるプロパティだけを上書きします。パディングとボーダーは継承されません。
 
 ```go
 func TypographyExample() *ui.Element {
-	return ui.View().Children(
-		ui.Text("Inbox").FontSize(24).FontWeight(600),
-		ui.Text("All caught up."),
-	).TextColor("#334155").FontSize(14).Padding(20)
+	return ui.View().
+		TextColor("#334155").
+		FontSize(14).
+		Padding(20).
+		Child(ui.Text("Inbox").FontSize(24).FontWeight(600)).
+		Child(ui.Text("All caught up."))
 }
 ```
 
 ## インタラクション状態
 
-要素とスタイルビルダーの `.Hover(...)`、`.Active(...)`、`.FocusStyle(...)`、`.DisabledStyle(...)`、`.SelectedStyle(...)` はコールバックを受け取ります。状態はネイティブコアで処理されます。描画の変化をアニメーションにするには基底スタイルに `.Transition(...)` を指定します。[トランジションとアニメーション](/docs/go/animations)も参照してください。
+ポインター、キーボード、選択の状態には `.Hover(...)`、`.Active(...)`、`.FocusStyle(...)`、`.DisabledStyle(...)`、`.SelectedStyle(...)` を使います。色と不透明度をアニメーションするには基底スタイルに `.Transition(...)` を追加します。[トランジションとアニメーション](/docs/go/animations) を参照してください。
 
 ```go
 func SelectableButton() *ui.Element {
@@ -99,18 +115,21 @@ func SelectableButton() *ui.Element {
 
 ## グループと名前付きグループのホバー
 
-`.Group(true)` は名前なしグループ、`.Group("card")` は名前付きグループを作ります。`.GroupHover(...)` は最も近い祖先グループに従い、`.GroupHoverNamed("card", ...)` はその名前を持つ最も近い祖先に従います。ルールは宣言順に追加され、重複するプロパティではノード自身のホバーが優先されます。
+`.Group(true)` は名前なしグループ、`.Group("card")` は名前付きグループです。`.GroupHover(...)` は最も近い祖先グループに従い、`.GroupHoverNamed("card", ...)` はその名前を持つ最も近い祖先に従います。重複するプロパティでは、ノード自身のホバースタイルが優先されます。
 
 ```go
 func GroupExample() *ui.Element {
-	return ui.View().Child(
-		ui.Text("Changes when the card is hovered").
-			TextColor("#64748b").
-			GroupHoverNamed("card", func(s ui.StyleBuilder) ui.StyleBuilder {
-				return s.TextColor("#2563eb")
-			}),
-	).Group("card").Padding(20)
+	return ui.View().
+		Group("card").
+		Padding(20).
+		Child(
+			ui.Text("Changes when the card is hovered").
+				TextColor("#64748b").
+				GroupHoverNamed("card", func(s ui.StyleBuilder) ui.StyleBuilder {
+					return s.TextColor("#2563eb")
+				}),
+		)
 }
 ```
 
-`.GroupActive(...)` と `.GroupActiveNamed(...)` は押されたグループに従います。`.FocusWithin(...)` はノード自身や子孫のフォーカスに従います。これらは描画プロパティを受け取り、カーソルは設定できません。グループの余白や子孫へのホバーも、コンポーネントを再実行せずにルールを有効にします。
+`.GroupActive(...)` と `.GroupActiveNamed(...)` は押されたグループに従います。`.FocusWithin(...)` はノード自身または子孫のフォーカスに従います。これらの状態は描画プロパティを受け取り、カーソルは設定できません。
