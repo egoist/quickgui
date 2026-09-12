@@ -1,8 +1,14 @@
-`github.com/egoist/quickgui/go/updater` をインポートすると、自動更新の拡張機能が有効になります。macOS は Sparkle、Windows と Linux は互換 appcast と Ed25519 署名を使用します。インポートしないアプリには更新ライブラリや Sparkle は含まれず、通常の Go ビルドは事前ビルド済み成果物を再利用します。
+自動更新を含めるには `github.com/egoist/quickgui/go/updater` をインポートします。インポートしないアプリにはアップデーターは同梱されません。
 
 ## 設定
 
-`quickgui keygen --sparkle --out-dir /secure/update-keys` で鍵を生成し、`.pub` の内容を設定します。秘密鍵はバージョン管理に含めないでください。
+署名用のキーペアを生成します：
+
+```sh
+quickgui keygen --sparkle --out-dir /secure/my-app-update-keys
+```
+
+秘密鍵の `.key` はバージョン管理に入れないでください。`.pub` の内容を設定にコピーします：
 
 ```toml
 [updates]
@@ -10,72 +16,81 @@ baseUrl = "https://downloads.example.com/my-app"
 publicKey = "BASE64_PUBLIC_KEY_FROM_THE_PUB_FILE"
 automaticChecks = true
 feedUrl = "https://downloads.example.com/my-app/appcast-{target}.xml"
+notesFile = "RELEASE_NOTES.md"
 ```
 
-`feedUrl` の既定値は `baseUrl/appcast-{target}.xml` です。`{target}` は `darwin-arm64`、`windows-x64` などに展開されます。CLI は公開設定を Go 実行ファイルに埋め込み、macOS では Sparkle の Info.plist 設定、フレームワークの同梱、補助プログラムの署名も行います。秘密鍵はアプリに埋め込みません。
+`{target}` は `darwin-arm64` のような値に展開されます。リリースノートは任意のプレーンテキストで、最大 16 KiB です。
+
+CLI はバージョン、identifier、feed URL、公開鍵を埋め込みます。秘密鍵は埋め込まれません。App Store およびサンドボックスのビルドでは、Go のビルドタグで updater のインポートを除外してください。
 
 ## アプリでの使用
 
-`native.Run` の開始コールバックで一度だけ初期化し、ウィンドウ、メニュー、設定で共有します。
+`native.Run` の準備ができたあと、コンポーネントの外で開始します。アプリ全体で 1 つのアップデーターを共有します。
 
 ```go
-updates := updater.Start(updater.Options{}, func(event updater.Event) {
-	if event.Error != "" {
-		log.Print(event.Error)
-	}
-	if event.QuitRequired {
-		native.App.Quit(false, nil)
-	}
-	// 状態、バージョン、進捗を UI の signal に反映します。
-}, func(err error) {
-	if err != nil {
-		log.Print(err)
-	}
-})
+import (
+	"log"
+
+	"github.com/egoist/quickgui/go/native"
+	"github.com/egoist/quickgui/go/updater"
+)
+
+var updates *updater.Updater
+
+func startUpdater() {
+	updates = updater.Start(updater.Options{}, func(event updater.Event) {
+		if event.Error != "" {
+			log.Print(event.Error)
+		}
+		if event.QuitRequired {
+			native.App.Quit(false, nil)
+		}
+	}, func(err error) {
+		if err != nil {
+			log.Print(err)
+		}
+	})
+}
 ```
 
-メニューから `updates.Check(done)`、更新通知から `updates.Install(done)`、設定から `updates.SetAutomaticChecks(enabled, done)` を呼びます。コールバックは Go の UI ゴルーチンで実行されます。`State()` はキャッシュされた状態を返し、ネイティブ呼び出しやポーリングは行いません。
+「更新を確認」の項目から `updates.Check(done)`、利用可能な更新のバナーから `updates.Install(done)`、設定から `updates.SetAutomaticChecks(enabled, done)` を呼び出します。コールバックは UI ゴルーチンで実行されます。`State()` は最新のイベントを返します。
+
+`Options` で feed URL と公開鍵を上書きできます。開発ビルドは既定で無効です。`AllowDevelopment: true` はテスト用 feed と破棄可能なアプリバンドルでのみ使ってください。
 
 ## ライフサイクル
 
-状態は `idle`、`checking`、`available`、`downloading`、`installing`、`disabled` です。イベントにはバージョン、プレーンテキストの説明、ダウンロード量、自動確認の設定、エラーが含まれます。
+`Event.Status` は `idle`、`checking`、`available`、`downloading`、`installing`、または `disabled` です。イベントにはバージョン、説明、進捗、自動確認の設定、任意のエラーが含まれます。
 
-macOS の自動確認結果はアプリ内通知のため保持され、手動確認は Sparkle の標準ウィンドウに引き継がれます。Windows/Linux は自動確認が有効な起動時と、その設定を有効にした時に確認します。待機中のポーリングは行いません。手動確認は実行中の自動確認を引き継ぎます。保存済みのユーザー設定がビルド時の既定値より優先されます。
+macOS では Sparkle がダウンロード、検証、インストール、再起動を担当します。手動確認では Sparkle の標準 UI を表示でき、定期確認の結果はアプリ内バナーに渡せます。
 
-`QuitRequired` は補助プログラムが入力を検証し、アプリの通常終了を待っていることを示します。終了フックで保存や終了キャンセルを行えます。2 分以内に終了しなければインストールは中止され、現在のアプリは変更されません。`Close()` は確認と引き継ぎ前のダウンロードを中止します。受け付け済みの引き継ぎは補助プログラムが所有します。
-
-開発ビルドでは既定で無効です。テスト専用の feed と破棄可能なアプリを用意した場合のみ `updater.Options{AllowDevelopment: true}` を使ってください。ウィンドウを閉じるだけでアプリ全体の更新器を閉じる必要はありません。
+Windows と Linux では、自動確認が有効なとき起動時に 1 回確認します。`QuitRequired` はヘルパーがアプリの終了を待っていることを意味します。作業を保存したあと `native.App.Quit(false, nil)` を呼び出してください。終了がキャンセルされると、ヘルパーはタイムアウトし、現在のアプリはそのまま残ります。
 
 ## 対応プラットフォーム
 
-| プラットフォーム | 配布形式 | インストール |
+| プラットフォーム | 更新のペイロード | インストール |
 | --- | --- | --- |
-| macOS | 署名済み `.app` を含む ZIP | 同梱 Sparkle 2.9.4 による検証、更新、再起動 |
-| Windows | QuickGUI NSIS `.exe` | 旧プロセス終了後、現在のディレクトリにサイレントインストールして再起動 |
-| Linux | Type-2 `.AppImage` | ユーザー所有の AppImage を置換し、置換や起動の失敗時に旧版を復元 |
+| macOS | 署名済み `.app` を含む ZIP | Sparkle。アップデーターと一緒のときだけ含まれます |
+| Windows | NSIS `.exe` インストーラー | ヘルパーが終了を待ち、検証済みインストーラーをサイレント実行してから再起動します |
+| Linux | Type-2 `.AppImage` | ヘルパーが終了を待ち、ユーザー所有の AppImage を置換します |
 
-Linux の `.deb`、システムバイナリ、展開済み AppDir、root 所有のインストールは `disabled` になります。パッケージマネージャーを利用してください。新しい AppImage も updater をインポートし、起動成功を補助プログラムへ通知する必要があります。Windows のロールバックはインストーラーが担当します。
+Linux の `.deb` パッケージ、システムバイナリ、root 所有のインストールは `disabled` を報告します。そこではプラットフォームのパッケージマネージャーを使ってください。
 
-移植バックエンドは HTTPS appcast、raw Ed25519 署名、セマンティックバージョン、Windows の最低システム要件に対応します。差分更新や未対応のチャネル・段階的配布の条件はスキップします。feed は 1 MiB、更新ファイルは 512 MiB、説明は 16 KiB までです。インストール前に補助プログラムがサイズと署名を再検証します。macOS では非サンドボックスアプリが対象です。App Store とサンドボックスのビルドではビルドタグなどで updater のインポートを除外します。
+feed は Ed25519 署名付きの HTTPS Sparkle RSS appcast です。署名なしのフォールバックはありません。
 
 ## 更新の公開
 
-CI の `QUICKGUI_UPDATER_PRIVATE_KEY` または `SPARKLE_PRIVATE_KEY` に秘密鍵を保存します。`updates.ed25519SecretKey` でローカルの秘密鍵ファイルを指定することもできます。
+秘密鍵は `QUICKGUI_UPDATER_PRIVATE_KEY`（または `SPARKLE_PRIVATE_KEY`）に置きます。代わりに `updates.ed25519SecretKey` でローカルの鍵ファイルを指すこともできます。
 
 ```sh
 quickgui build --update-manifest
 ```
 
-CLI は最終成果物に署名し、`appcast-<target>.xml` を生成します。バージョン付き成果物を先にアップロードし、その後 HTTPS feed を更新します。アーキテクチャごとに feed を分けます。`updates.manifest = true` なら各プロダクションビルドで生成します。macOS は Developer ID 署名と公証、Windows は `makensis`、Linux は `appimagetool` が必要です。鍵の不一致や成果物の不足はビルドエラーになります。
+CLI は成果物に署名し、`appcast-<target>.xml` を書き出します。先にバージョン付き成果物をアップロードし、そのあと feed を置き換えてください。アーキテクチャごとに feed があります。`updates.manifest = true` にすると、本番ビルドのたびに feed が生成されます。
 
-従来の Rust Minisign `UpdateClient` は明示的な Cargo feature で利用できますが、既定のコアには含まれません。Go では `updater.Start` を使い、旧 `native.Updater` は廃止されています。
+macOS のアーカイブには Developer ID で署名し、公証したアプリを含めてください。Windows には `makensis` が必要です。Linux には `appimagetool` が必要です。
 
 ## ネイティブ成果物
 
-```sh
-bun packages/native/build.ts --extension updater
-```
+このリポジトリでは、`bun packages/native/build.ts --extension updater` でアップデーターを一度ビルドします。パッケージ済みアプリは、Go のインポートがあるときアップデーターを自動的に含めます。
 
-CLI は Go の依存関係から同じバージョンの拡張パッケージを解決し、Sparkle またはインストール補助プログラムを同梱します。利用者に必要なのはパッケージ済みアプリだけです。現在の npm リリース対象は macOS です。Windows/Linux は対象ホストでソースからビルドできます。
-
-詳しい説明は[英語ガイド](/docs/go/updater)、実行例は [examples/updater](https://github.com/egoist/quickgui/tree/main/examples/updater) を参照してください。
+[アップデーターの例](https://github.com/egoist/quickgui/tree/main/examples/updater)を参照してください。Sparkle 自身のドキュメントが appcast の詳細を扱っています。[Sparkle](https://sparkle-project.org/documentation/)。

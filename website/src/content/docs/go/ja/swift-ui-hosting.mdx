@@ -1,8 +1,8 @@
-SwiftUI モディファイアでネイティブコントロールをスタイルできます。リバースホスティングは通常の QuickGUI サブツリーを SwiftUI 内に配置します。
+モディファイアはネイティブの SwiftUI コントロールにスタイルを付けます。リバースホスティングは QuickGUI の内容を SwiftUI の中に置きます。
 
 ## モディファイア
 
-`Modifiers` を通して `ui.SwiftUI` のモディファイアを順番に適用します。ButtonStyle、ButtonBorderShape、ControlSize、LabelStyle、Tint、Disabled などが使えます。
+モディファイアのファクトリは `Modifiers` で渡します。使えるファクトリには ButtonStyle、ButtonBorderShape、ControlSize、LabelStyle、Tint、Disabled があります。
 
 ```go
 return ui.SwiftUI.Button(ui.SwiftUIButtonProps{
@@ -17,23 +17,22 @@ return ui.SwiftUI.Button(ui.SwiftUIButtonProps{
 
 ## Liquid Glass
 
-対応システムでは `ui.SwiftUI.ButtonStyle("glass")` でネイティブのガラスボタンスタイルを指定できます。最終的な外観は macOS が決定します。
+対応するシステムでは、`ui.SwiftUI.ButtonStyle("glass")` がシステムのガラスボタンを要求します。最終的な見た目は macOS が決めます。
 
 ## リバースホスティング
 
-`ui.SwiftUI.QuickGUIHostView` はネイティブ階層内に QuickGUI サブツリーを持ちます。サイズを指定し、コールバック内で子を宣言すると、埋め込みウィンドウのライフサイクルでマウントされます。
+`ui.SwiftUI.QuickGUIHostView` は QuickGUI の部分木をホストします。サイズを与え、コールバックで子を宣言します。
 
 ```go
-func SwiftUiQuickguiHostViewExample() *native.Node {
+func SwiftUiQuickguiHostViewExample() *ui.Element {
 	return ui.SwiftUI.Host(
 		ui.SwiftUIHostProps{MatchContents: true},
-		func() *native.Node {
+		func() *ui.Element {
 			return ui.SwiftUI.QuickGUIHostView(
 				ui.SwiftUIQuickGUIHostViewProps{Width: 320, Height: 180},
 				func() *ui.Element {
-					return ui.View().Child(
-						"QuickGUI inside SwiftUI",
-					).Width("100%").Height("100%").Padding(16)
+					return ui.View().Child("QuickGUI inside SwiftUI").
+						Width("100%").Height("100%").Padding(16)
 				},
 			)
 		},
@@ -43,30 +42,36 @@ func SwiftUiQuickguiHostViewExample() *native.Node {
 
 ## SwiftUI ポップオーバー
 
-SwiftUI ポップオーバーは `Render` でネイティブトリガーを構成します。内容にはインタラクティブな QuickGUI コンポーネントをリバースホストできます。
+SwiftUI のポップオーバーはネイティブのトリガーを使います。内容には QuickGUI の子をホストできます。
 
 ```go
-func SwiftUiPopoverExample() *native.Node {
+func SwiftUiPopoverExample() *ui.Element {
 	open, setOpen := ui.CreateSignal(false)
 	return ui.SwiftUI.Host(
 		ui.SwiftUIHostProps{MatchContents: true},
-		func() *native.Node {
+		func() *ui.Element {
 			return ui.SwiftUI.Popover.Root(
 				ui.SwiftUIPopoverProps{
 					IsPresented:         open,
 					OnIsPresentedChange: setOpen,
 				},
-				func() *native.Node {
-					return ui.Fragment([]*native.Node{ui.SwiftUI.Popover.Trigger(ui.SwiftUIPopoverTriggerProps{Render: func() *native.Node { return ui.SwiftUI.Button(ui.SwiftUIButtonProps{Label: "Account"}) }}),
+				func() *ui.Element {
+					return ui.Fragment(
+						ui.SwiftUI.Popover.Trigger(ui.SwiftUIPopoverTriggerProps{
+							Render: func() *ui.Element {
+								return ui.SwiftUI.Button(ui.SwiftUIButtonProps{Label: "Account"})
+							},
+						}),
 						ui.SwiftUI.Popover.Content(
 							ui.SwiftUIPopoverContentProps{},
-							func() *native.Node {
+							func() *ui.Element {
 								return ui.SwiftUI.QuickGUIHostView(
 									ui.SwiftUIQuickGUIHostViewProps{Width: 240, Height: 120},
 									"Account settings",
 								)
 							},
-						)})
+						),
+					)
 				},
 			)
 		},
@@ -76,4 +81,4 @@ func SwiftUiPopoverExample() *native.Node {
 
 ## ライフサイクル
 
-ホストは所有ウィンドウのマウント後に埋め込みサーフェスを作成し、削除時に閉じます。子要素は渡されたコールバック内で宣言し、バインディングとリソースを埋め込みウィンドウに所有させます。保持ノードをウィンドウ間で移動しないでください。
+Host は親ウィンドウが表示されたあとに現れ、取り除かれると閉じます。リバースホストする子はコールバック内で宣言し、その埋め込み面に属するようにします。

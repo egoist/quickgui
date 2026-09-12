@@ -1,14 +1,14 @@
-`ui.SwiftUI` は Go アプリに本物の macOS コントロールを埋め込みます。通常の QuickGUI コンポーネントはこれを使わずに動作します。
+`ui.SwiftUI` は、Go アプリに本物の macOS コントロールを埋め込みます。通常の QuickGUI コンポーネントには必要ありません。
 
 ## Host
 
-コントロールは `ui.SwiftUI.Host` の中で作成します。Host はネイティブビューの境界を定義し、内容に応じてサイズを決められます。
+コントロールは `ui.SwiftUI.Host` の中で作ります。Host はネイティブビューの境界であり、内容から自身のサイズを決められます。
 
 ```go
-func SwiftUiHostExample() *native.Node {
+func SwiftUiHostExample() *ui.Element {
 	return ui.SwiftUI.Host(
 		ui.SwiftUIHostProps{MatchContents: true},
-		func() *native.Node {
+		func() *ui.Element {
 			return ui.SwiftUI.Button(ui.SwiftUIButtonProps{Label: "Continue"})
 		},
 	)
@@ -17,18 +17,18 @@ func SwiftUiHostExample() *native.Node {
 
 ## ネイティブコントロール
 
-Button、Slider、Toggle、ProgressView、Stepper、TextField、SecureField、Picker、SegmentedControl、DatePicker、ColorPicker、Gauge が使えます。プラットフォームの外観は macOS が提供します。
+Button、Slider、Toggle、ProgressView、Stepper、TextField、SecureField、Picker、SegmentedControl、DatePicker、ColorPicker、Gauge。見た目と動作はシステムのコントロールと同じです。
 
 ## 制御値
 
-アクセサーをバインドし、ネイティブコールバックが返した値を保存します。SwiftUI コントロールと QuickGUI ノードは同じシグナルを共有できます。DatePicker はミリ秒単位の Unix タイムスタンプを使います。
+シグナルをバインドし、ネイティブコールバックから値を保存します。SwiftUI コントロールと QuickGUI ビューは同じシグナルを共有できます。DatePicker はミリ秒の Unix タイムスタンプを使います。
 
 ```go
-func SwiftUiToggleExample() *native.Node {
+func SwiftUiToggleExample() *ui.Element {
 	on, setOn := ui.CreateSignal(true)
 	return ui.SwiftUI.Host(
 		ui.SwiftUIHostProps{MatchContents: true},
-		func() *native.Node {
+		func() *ui.Element {
 			return ui.SwiftUI.Toggle(ui.SwiftUIToggleProps{
 				IsOn:         on,
 				Label:        "Notifications",
@@ -41,7 +41,7 @@ func SwiftUiToggleExample() *native.Node {
 
 ## サイズ
 
-`MatchContents: true` は両軸を固有サイズにします。固有の高さとアプリ指定の幅を組み合わせる場合は `ui.SwiftUIMatchContents{Vertical: true}` を使い、`PartProps.Style` で幅を設定します。
+`MatchContents: true` は両軸をコントロールから決めます。固有の高さだけ欲しいときは `ui.SwiftUIMatchContents{Vertical: true}` を使い、幅は自分で設定します。
 
 ```go
 ui.SwiftUIHostProps{
@@ -52,4 +52,4 @@ ui.SwiftUIHostProps{
 
 ## 対応プラットフォーム
 
-SwiftUI ホスティングには macOS が必要です。ビルド済みのネイティブホストにブリッジが含まれ、Go アプリは引き続き CGO なしでビルドできます。ネイティブスタイルは OS バージョンにより異なる場合があります。
+SwiftUI のホスティングには macOS が必要です。見た目は OS のバージョンによって変わることがあります。

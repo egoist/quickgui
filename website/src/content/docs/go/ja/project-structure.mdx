@@ -1,8 +1,6 @@
-QuickGUI プロジェクトではアプリコードを Go モジュールに置き、小さな Bun パッケージで開発コマンドを提供します。
+Go プロジェクトは、アプリケーションコードを Go モジュールに置き、開発コマンドは小さな Bun パッケージにまとめます。
 
 ## 生成されるファイル
-
-CLI は次のファイルを生成します。依存関係を解決したら `go.sum` もコミットします。
 
 ```text
 my-app/
@@ -14,23 +12,24 @@ my-app/
 └── README.md
 ```
 
+依存関係を解決したら `go.sum` をコミットしてください。大きなアプリは通常の Go パッケージに分割します。
+
 ## アプリケーションのエントリ
 
-`main.go` で `native.Run` を開始し、ウィンドウを作成します。コンポーネントと遅延構築コールバックは `*ui.Element` または `*native.Node` を返します。構築したノードは返す、変数に保存する、親へ渡す必要があります。暗黙の宣言ブロックは使えません。
+`main.go` は `native.Run` を開始し、ウィンドウを開きます。コンポーネントは `*ui.Element` を返す関数です。構築した UI を返してください。ビューを作って無視してはいけません。
 
 ```go
-func ViewExample() *ui.Element {
-	return ui.View().Children(
-
+func Hello() *ui.Element {
+	return ui.View().Padding(20).Gap(12).Children(
 		ui.Text("Hello from Go"),
 		ui.Button().Child("Continue").OnClick(func() {}),
-	).Padding(20).Gap(12)
+	)
 }
 ```
 
 ## 設定
 
-`entry` はビルドする Go パッケージです。設定ファイルは Bun CLI が評価し、実行中のアプリには含まれません。
+`entry` はビルドする Go パッケージです。設定ファイルは CLI 用であり、実行中のアプリは読み込みません。
 
 ```ts
 import { defineConfig } from "@quickgui/cli";
@@ -42,25 +41,43 @@ export default defineConfig({
 });
 ```
 
-同じ設定を `quickgui.toml` に書くこともできます。
+代わりに `quickgui.toml` も使えます：
 
 ```toml
 name = "My App"
 identifier = "com.example.my-app"
 entry = "."
-
-[native]
-tags = ["production"]
 ```
 
-CLI は `quickgui.toml`、`quickgui.config.ts` の順に探します。`quickgui dev --config configs/dev.toml` や `quickgui build --config configs/release.toml` でファイルを明示できます。相対パスはプロジェクトディレクトリが基準となり、`dev` は設定の変更も再読み込みします。バージョンは `version = "0.1.0"` のように文字列で指定し、アプリ全体の設定は `[native]` テーブルより前に置きます。
+CLI は `quickgui.config.ts` より先に `quickgui.toml` を読みます。ファイルを指定するには `--config configs/dev.toml` を渡します。バージョン値は引用符で囲んでください。例: `version = "0.1.0"`。
+
+追加ファイルは `resources`、カスタムフォントは `fonts` で同梱します：
+
+```ts
+export default defineConfig({
+  name: "My App",
+  identifier: "com.example.my-app",
+  entry: ".",
+  fonts: ["assets/MyFont.ttf"],
+  resources: ["assets"],
+});
+```
 
 ## パッケージ
 
-ウィンドウとプラットフォームサービスには `github.com/egoist/quickgui/go/native`、UI には `github.com/egoist/quickgui/go/ui`、所有者とコンテキストには `github.com/egoist/quickgui/go/reactive` を使います。`@quickgui/cli` は開発依存です。Go SDK と CLI は互換性のあるリリースに固定してください。
+- `github.com/egoist/quickgui/go/native` — ウィンドウとプラットフォーム API
+- `github.com/egoist/quickgui/go/ui` — コンポーネントとスタイル
+- `github.com/egoist/quickgui/go/reactive` — 高度なコードで使う owner と context
 
-コンポーネントの共有やオプションのネイティブバックエンドの作成については、[拡張の作成](/docs/go/extensions)を参照してください。
+`@quickgui/cli` は開発依存です。独自のコンポーネントを共有するには、[拡張の作成](/docs/go/extensions)を参照してください。
 
 ## ローカル開発
 
-SDK をローカルで開発する場合は、`go.mod` の `replace` で `github.com/egoist/quickgui/go` をチェックアウトの `go` ディレクトリーへ向けます。`bun packages/cli/src/cli.ts dev --project path/to/app` でローカル CLI を実行します。通常の Go 編集ではネイティブ共有ライブラリーを再利用します。
+```bash
+quickgui dev
+quickgui fmt
+quickgui check
+quickgui build
+```
+
+`dev` は Go のソースまたは設定ファイルを変更すると再読み込みします。

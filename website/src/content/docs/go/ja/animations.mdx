@@ -1,8 +1,8 @@
-`ui.Style().Transition(...)` で保持されたノードの変化をアニメーションできます。フレームはネイティブランタイムが進めるため、コンポーネントを毎フレーム実行し直しません。`github.com/egoist/quickgui/go/ui` から `ui` をインポートします。
+スタイルの変化は `.Transition(...)` でアニメーションします。コンポーネントはフレームごとに再実行されません。
 
 ## ホバーのトランジション
 
-ポインターが入るときも離れるときも適用されるよう、トランジションは基本スタイルに指定します。`Active`、`Focus`、`Expanded`、`DragOver` などの描画状態にも使えます。
+トランジションはベーススタイルに置き、ポインターが入ったときと出たときの両方に効くようにします。
 
 ```go
 func HoverAction() *ui.Element {
@@ -17,37 +17,34 @@ func HoverAction() *ui.Element {
 }
 ```
 
+同じ宣言は `Active`、`Focus`、`Expanded`、`DragOver` でも使えます。
+
 ## 状態によるアニメーション
 
-シグナルや `ui.When` で目標値を変更します。次のカードは色と不透明度が変化しても、同じノードと子要素を保持します。
+目標値はシグナルまたは `.When` で変えます。アニメーション中はノードをマウントしたままにします。
 
 ```go
 func AnimatedSelection() *ui.Element {
 	selected, setSelected := ui.CreateSignal(false)
-	return ui.View().Children(
-
+	return ui.View().FlexCol().Gap(12).Children(
 		ui.Button().Child("Toggle emphasis").OnClick(func() { setSelected(!selected()) }),
-		ui.View().Child(
-			"Your selection",
-		).
+		ui.View().Child("Your selection").
 			Padding(20).
 			BorderRadius(12).
 			BackgroundColor("#334155").
 			TextColor("white").
 			Opacity(0.6).
 			Transition("background-color 180ms ease-out, opacity 180ms ease-out").
-			When(selected, ui.Style().
-				BackgroundColor("#2563eb"), ui.Style().
-				Opacity(1)),
-	).Display("flex").FlexDirection("column").Gap(12)
+			When(selected, ui.Style().BackgroundColor("#2563eb"), ui.Style().Opacity(1)),
+	)
 }
 ```
 
-途中で目標を変えると、現在表示されている値から次のトランジションを開始します。反対方向への変更でも同様です。
+トランジションの途中で逆方向にすると、いま見えている値から続きます。
 
 ## 時間とフレームレート
 
-複数のプロパティで時間設定を共有する場合は `ui.TransitionDeclaration` を使います。この例の時間指定には `time` のインポートが必要です。
+複数のプロパティが同じタイミングを共有するときは `ui.TransitionDeclaration` を使います。
 
 ```go
 func CappedTransition() *ui.Element {
@@ -62,50 +59,43 @@ func CappedTransition() *ui.Element {
 }
 ```
 
-個別のトランジションオプションをプリミティブへ直接渡します。
-
 | フィールド | 使い方 |
 | --- | --- |
-| `ui.Style().TransitionProperty(...)` | 対応するプロパティ名をカンマ区切りの文字列または `[]string` で指定します。 |
-| `ui.Style().TransitionDuration(...)` | ミリ秒数、`time.Duration`、または `"180ms"`、`"0.18s"` などの文字列。ホストは時間を 0〜10 秒に制限します。 |
-| `ui.Style().TransitionEasing(...)` | `"linear"`、`"ease"`、`"ease-in"`、`"ease-out"`、`"ease-in-out"`。`"ease"` は既定の `"ease-in-out"` の別名で、QuickGUI の曲線を選びます。 |
-| `ui.Style().TransitionTimingFunction(...)` | `ui.Style().TransitionEasing(...)` の別名です。 |
-| `ui.Style().TransitionMaxFps(...)` | 任意のフレームレート上限。省略すると画面の描画周期に従います。上限を指定しても終了時刻に完了します。 |
+| `.TransitionProperty(...)` | プロパティ名。カンマ区切りの文字列または `[]string`。 |
+| `.TransitionDuration(...)` | ミリ秒数、`time.Duration`、または `"180ms"` / `"0.18s"`。時間は 0–10 秒に制限されます。 |
+| `.TransitionEasing(...)` | `"linear"`、`"ease"`、`"ease-in"`、`"ease-out"`、または `"ease-in-out"`。 |
+| `.TransitionMaxFps(...)` | 任意のフレームレート上限。省略するとディスプレイに従います。 |
 
-ひとつのノードでは、対象プロパティすべてが時間、イージング、フレームレート上限を共有します。カンマ区切りの短縮記法はプロパティ名をまとめ、最後の時間とイージングを全体に適用します。遅延、`cubic-bezier()`、プロパティごとの独立した時間指定には対応していません。個別フィールドは短縮記法の設定を上書きします。
+ノードは、選んだすべてのプロパティに対して 1 つの時間、イージング、フレームレート上限を持ちます。遅延、`cubic-bezier()`、プロパティごとのタイミングはサポートされていません。
 
-`ui.Style().Transition(180 * time.Millisecond)` のように時間だけを指定すると、背景、境界線、文字の色が対象になります。対応する描画プロパティをすべて含めるには `"all"` を明示します。`ui.Style().Transition("none")` は短縮記法の宣言を解除します。
+`ui.Style().Transition(180 * time.Millisecond)` は背景、ボーダー、テキストの色をアニメーションします。`"all"` は対応するすべての描画プロパティを含みます。`"none"` はそのショートハンドを外します。
 
 ## 対応するプロパティ
 
-| トランジション名 | Go のスタイルオプション |
+| トランジション名 | スタイルメソッド |
 | --- | --- |
-| `background-color` または `background` | `ui.Style().BackgroundColor(...)` または単色の `ui.Style().Background(...)` |
-| `border-color` | `ui.Style().BorderColor(...)` |
-| `border-width` | `ui.Style().BorderWidth(...)` と各辺の幅 |
-| `border-radius` | `ui.Style().BorderRadius(...)` と各角の半径 |
-| `color` | 継承される `ui.Style().TextColor(...)` |
-| `opacity` | サブツリーの `ui.Style().Opacity(...)` |
-| `box-shadow` | `ui.Style().BoxShadow(...)` |
-| `transform` | 平行移動、拡大縮小、回転を含むサブツリーの `ui.Style().Transform(...)` |
+| `background-color` または `background` | `.BackgroundColor(...)` または単色の `.Background(...)` |
+| `border-color` | `.BorderColor(...)` |
+| `border-width` | `.BorderWidth(...)` |
+| `border-radius` | `.BorderRadius(...)` |
+| `color` | `.TextColor(...)` |
+| `opacity` | `.Opacity(...)` |
+| `transform` | `.Transform(...)` |
+| `box-shadow` | `.BoxShadow(...)` |
 
-`"all"` はこの表のプロパティを指します。グラデーションの色位置、幅、高さ、余白などのレイアウト値は `Transition` では補間しません。未対応のプロパティ名は拒否されます。
-
-スイッチのつまみを滑らかに動かすには、`ui.Style().Transform("translateX(20px)")` と `ui.Style().Transition("transform 160ms ease-out")` を指定し、オフ時の目標を `"translateX(0px)"` にします。隣接要素のレイアウトを変えずに、描画サブツリーとヒット領域が一緒に移動します。変換行列の平行移動、拡大縮小、せん断、最短経路の回転を補間します。`TransformOrigin` 自体は即座に変わります。
-
-Go UI API は描画プロパティのトランジションとアニメーション画像を提供します。CSS キーフレーム、タイムラインのコールバック、スプリング宣言は Go のスタイルプロパティではありません。
+幅、高さ、パディング、グラデーションのストップは補間されません。スライドするスイッチのつまみには、`.Transform("translateX(20px)")` と `.Transition("transform 160ms ease-out")` を使います。
 
 ## マウントと視差効果の抑制
 
-トランジションは既存ノードの変化をアニメーションし、初期スタイルは直接適用されます。目標値を変える間はノードをマウントしたままにしてください。`ui.Show` は false になると子を削除し、フェードアウトを待ちません。不透明度をゼロにするだけではレイアウトと入力動作が残ります。
+トランジションは、既存ノード上の変化をアニメーションします。`ui.Show` は子をすぐに外し、フェードアウトを待ちません。透明度ゼロでもレイアウトと入力は受け取ります。
 
-ダイアログの `ui.DialogRootProps.EnterDuration` と `ExitDuration` は完了時刻と閉じる内容の保持時間を制御し、`OnOpenChangeComplete` が完了を通知します。時間指定だけで見た目の変化が付くわけではありません。[Dialog](/ja/docs/go/components/dialog) を参照してください。
+ダイアログでは、`EnterDuration` と `ExitDuration` が閉じる内容をマウントしたままにする時間を制御します。[Dialog](/docs/go/components/dialog) を参照してください。
 
-トランジションはシステムの「視差効果を減らす」設定に従います。`native.WindowOptions.ReduceMotion` に `*bool` を渡すとウィンドウの方針を明示でき、nil のままならシステムに従います。有効時は目標値を直接適用します。非表示または遮蔽されたウィンドウではローカルなトランジションが一時停止し、完了後はフレームを要求しません。
+トランジションはシステムの Reduce Motion 設定に従います。1 つのウィンドウで上書きするには `native.WindowOptions.ReduceMotion` を設定します。
 
 ## アニメーション画像
 
-アニメーション GIF または WebP のパスを `ui.Image` に渡します。ネイティブデコーダーがフレームとファイルの繰り返し設定を保持するため、Go のタイマーや毎フレームのシグナル更新は不要です。
+GIF または WebP のパスを `ui.Image` に渡します。再生はファイルに従い、タイマーは不要です。
 
 ```go
 func AnimatedImage(path string) *ui.Element {
@@ -114,4 +104,4 @@ func AnimatedImage(path string) *ui.Element {
 }
 ```
 
-パスは利用可能なファイルを指す必要があります。data URL も利用できます。ファイルは CLI の `resources` オプションで同梱します。[Image](/ja/docs/go/components/image) と[プロジェクトの設定](/ja/docs/go/project-structure#設定)を参照してください。
+ファイルは CLI の `resources` オプションでパッケージします。[Image](/docs/go/components/image) を参照してください。

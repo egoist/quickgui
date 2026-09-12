@@ -1,8 +1,8 @@
-QuickGUI はスタイルなしのプリミティブとアクセシブルな複合コントロールを組み合わせます。どちらも通常の Go 関数で構成できます。
+`*ui.Element` を返す関数を書きます。`View`、`Text`、`Button` から始め、残りのコントロールも同じように組み立てます。
 
 ## コンポーネントの定義
 
-Go コンポーネントは `*ui.Element` または `*native.Node` を返します。通常の型の props と子ノードを直接組み合わせます。戻り値の型でコンポーネントを識別するため、`CounterLabel(count())` は注釈や `ui.View().Child(func() *ui.Element { ... })` のラッパーなしで更新されます。ウィンドウには関数を直接渡せます。
+普通の Go の値を渡します。引数がシグナルを読む場合、そのバインディングは関数が返ったあとも生き続けます。追加の注釈は不要です。
 
 ```go
 func CounterLabel(count int) *ui.Element {
@@ -18,7 +18,7 @@ func ComponentExample() *ui.Element {
 }
 ```
 
-構造体の props にも通常の Go の型を使います。`quantity` を更新すると、`LineItem` とそのノードを再構築せずに、バインドされたテキストが変わります。
+構造体も同じです。`quantity` を更新するとテキストが変わり、`LineItem` はマウントされたままです。
 
 ```go
 type Product struct {
@@ -40,27 +40,20 @@ func Cart() *ui.Element {
 }
 ```
 
-コンテナーは以下のように子ノードを直接受け取れます。子のコールバックは任意で、マウント時に一度実行されます。遅延構築や複合コントロールのコンテキストが必要な場合に使います。イベントハンドラーは引き続きコールバックです。
+コンテナは `ui.View()` で始め、`.Child(...)` または `.Children(...)` で内容を追加します。
 
 ```go
 func CardComponent(title string, children ...any) *ui.Element {
-	return ui.View().Children(
+	return ui.View().FlexCol().Padding(20).Gap(12).Children(
 		ui.Text(title).FontWeight(600),
 		children,
-	).Padding(20).Gap(12).FlexCol()
-}
-
-func CardComposition() *ui.Element {
-	return CardComponent("Account",
-		ui.Text("Manage your account settings."),
-		ui.Button().Child("Save").OnClick(func() { log.Print("Saved") }),
 	)
 }
 ```
 
 ## プリミティブ
 
-`ui.View`、`ui.Text`、`ui.Button`、`ui.Input` から始めます。`ui.View()` でコンテナを作り、`.Child(...)` または `.Children(...)` で子要素を追加します。スタイル、プロパティ、イベントは fluent メソッドで設定します。コンポーネントと遅延構築コールバックはノードを返します。
+`View`、`Text`、`Button`、`Input` でほとんどのレイアウトとテキストをカバーします。スタイル、プロパティ、ハンドラーは同じ要素にチェーンします。
 
 ```go
 func ButtonExample(save func()) *ui.Element {
@@ -73,48 +66,49 @@ func ButtonExample(save func()) *ui.Element {
 		BorderRadius(8).
 		Hover(func(s ui.StyleBuilder) ui.StyleBuilder { return s.BackgroundColor("#3b82f6") }).
 		OnClick(save)
-
 }
 ```
 
 ## 複合コンポーネント
 
-`tabs := ui.NewTabs()` でインスタンスを作成し、`tabs.Root()`、`tabs.List()`、`tabs.Panel(...)` でパーツを組み立てます。コアがロール、キーボード操作、フォーカス、状態を処理します。パーツはルートに挿入されるときにコンテキストを受け取ります。
+インスタンスを作り、名前付きパーツを組み立てます。文字列も子として使えます。
 
 ```go
 func TabsExample() *ui.Element {
-    tabs := ui.NewTabs().DefaultValue("account")
-    return tabs.Root().Children(
-        tabs.List().Children(
-            tabs.Tab("account").Child("Account"),
-            tabs.Tab("security").Child("Security"),
-        ),
-        tabs.Panel("account").Child("Account settings"),
-        tabs.Panel("security").Child("Security settings"),
-    )
+	tabs := ui.NewTabs().DefaultValue("account")
+	return tabs.Root().Children(
+		tabs.List().Children(
+			tabs.Tab("account").Child("Account"),
+			tabs.Tab("security").Child("Security"),
+		),
+		tabs.Panel("account").Child("Account settings"),
+		tabs.Panel("security").Child("Security settings"),
+	)
 }
 ```
 
+振る舞いはインスタンスに、スタイルは各パーツに設定します。パーツは他の子と同じように入れ子にします。
+
 ## 制御された状態
 
-制御値にはアクセサーを渡し、コールバックでコントロールが受け入れた値を保存します。デフォルト値を使うとコンポーネントが状態を管理します。省略可能なスカラー値はポインター、複数選択はスライスで表します。
+現在の値を渡し、変更コールバックから次の値を書き込みます。インスタンスは、それを所有するコンポーネントの中で作ってください。
 
 ```go
 func CheckboxExample() *ui.Element {
-    checked, setChecked := ui.CreateSignal(false)
-    checkbox := ui.NewCheckbox().Checked(checked()).OnCheckedChange(
-        func(next bool, _ *native.Event) { setChecked(next) },
-    )
-    return checkbox.Root().FlexRow().Gap(8).Children(
-        checkbox.Indicator().Child("✓"),
-        "Remember me",
-    )
+	checked, setChecked := ui.CreateSignal(false)
+	checkbox := ui.NewCheckbox().Checked(checked()).OnCheckedChange(
+		func(next bool, _ *native.Event) { setChecked(next) },
+	)
+	return checkbox.Root().FlexRow().Gap(8).Children(
+		checkbox.Indicator().Child("✓"),
+		"Remember me",
+	)
 }
 ```
 
 ## コンポーネントの種類
 
-リファレンスにはフォーム、ピッカー、レイアウトとデータ、オーバーレイ、メニュー、ルーティングを収録しています。`examples/components` には5,000行のテーブルと遅延読み込みツリーを含む、元の42デモすべてがあります。`examples/swift-ui` はネイティブ SwiftUI ホスティングの別ギャラリーです。
+[コンポーネントリファレンス](/docs/go/components/button) はフォーム、オーバーレイ、メニュー、テーブル、ツリーなどを扱います。このリポジトリからギャラリーを実行します：
 
 ```bash
 bun packages/cli/src/cli.ts dev --project examples/components
@@ -122,11 +116,11 @@ bun packages/cli/src/cli.ts dev --project examples/components
 
 ## 各パーツのスタイル
 
-各パーツのスタイルには `PartProps.Style` を使います。`ui.Style()` と fluent メソッドでスタイルを作り、`.Merge(...)` で共有ビルダーを合成します。ビルダーのスライスや、それらを返すアクセサーも使えます。選択状態やテーマのシグナルは子要素を作り直さずにパーツを更新します。
+スタイルはパーツ自身に付けるか、`ui.Style()` の値を共有します：
 
 ```go
 triggerStyle := ui.Style().Padding(12).RoundedLg().Bg("#2563eb")
 return popover.Trigger().Style(triggerStyle).TextColor("#ffffff").Child("Account")
 ```
 
-Components サイドバーでは各ネイティブコントロールに専用ページがあります。実際の組み合わせは[フォームと入力](/docs/go/forms-and-input)と[オーバーレイとダイアログ](/docs/go/overlays-and-dialogs)を参照してください。
+`OnClick` を追加しても、パーツの既定の動作は残ります。キャンセルするときは `OnClickEvent` で `PreventDefault()` を呼び出してください。
