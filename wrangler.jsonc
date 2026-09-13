@@ -2,7 +2,9 @@
  * Workers Builds may run `npx wrangler deploy` / `npx wrangler versions upload`
  * from the repository root. Wrangler 4.131+ refuses to autoconfigure a bun
  * workspace, and the website source entry imports Vite's virtual server build.
- * Point at the Vite-generated worker after `bun run build`.
+ * Custom `build.command` compiles the Vite worker when the output is missing.
+ * Workers Builds dashboard Build commands are separate and are not read from
+ * this file.
  */
 {
 	"$schema": "website/node_modules/wrangler/config-schema.json",
@@ -22,5 +24,8 @@
 	},
 	"observability": {
 		"enabled": true
+	},
+	"build": {
+		"command": "bun ./website/scripts/ensure-worker-build.ts"
 	}
 }

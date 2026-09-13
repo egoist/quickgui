@@ -11,7 +11,10 @@ import { componentGuidePlugin } from './scripts/component-guide-plugin.ts'
 export default defineConfig({
   resolve: { tsconfigPaths: true },
   plugins: [
-    cloudflare({ viteEnvironment: { name: 'ssr' } }),
+    cloudflare({
+      configPath: './wrangler.dev.jsonc',
+      viteEnvironment: { name: 'ssr' },
+    }),
     tailwindcss(),
     mdx({
       remarkPlugins: [remarkGfm, componentGuidePlugin],

@@ -22,15 +22,14 @@ bun run build
 bun run deploy   # wrangler deploy
 ```
 
-From the repo root, `bun run build` and `bun run deploy` forward here. Cloudflare
-Workers Builds should use those scripts (or run wrangler from `website/` after
-`bun run build`). Do not run `npx wrangler deploy` against `website/wrangler.jsonc`
-from the workspace root: Wrangler will either autoconfigure the bun workspace or
-bundle `workers/app.ts`, which imports Vite's `virtual:react-router/server-build`.
-`bun run deploy` points wrangler at `build/server/wrangler.json` after the
-production build. A root `wrangler.jsonc` targets that same generated worker so
-`npx wrangler deploy` / `npx wrangler versions upload` from the repository root
-still work.
+From the repo root, `bun run build` and `bun run deploy` forward here. Vite and
+`wrangler types` read `wrangler.dev.jsonc` (`main` is `workers/app.ts`). The
+default `wrangler.jsonc` points at the generated worker in `build/server` and
+runs `scripts/ensure-worker-build.ts` when that output is missing, so Workers
+Builds preview deploys (`npx wrangler versions upload`) do not try to bundle
+Vite's `virtual:react-router/server-build`. `bun run deploy` still passes
+`-c build/server/wrangler.json` after the production build. A root
+`wrangler.jsonc` does the same when Wrangler runs from the bun workspace root.
 
 `bun run preview` serves the production build locally via the Cloudflare Vite
 plugin (workerd).
