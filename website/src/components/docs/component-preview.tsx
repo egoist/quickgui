@@ -12,7 +12,7 @@ const labels = {
     open: "Open demo",
     loading: "Loading interactive demo…",
     retry: "Try again",
-    failed: "The demo could not start. Use a browser with WebGPU enabled, then try again.",
+    failed: "The demo could not start. Use a browser with WebGPU or WebGL2 enabled, then try again.",
   },
   zh: {
     preview: "预览",
@@ -21,7 +21,7 @@ const labels = {
     open: "打开演示",
     loading: "正在加载交互演示…",
     retry: "重试",
-    failed: "演示无法启动。请使用启用 WebGPU 的浏览器后重试。",
+    failed: "演示无法启动。请使用启用 WebGPU 或 WebGL2 的浏览器后重试。",
   },
   ja: {
     preview: "プレビュー",
@@ -30,7 +30,7 @@ const labels = {
     open: "デモを開く",
     loading: "デモを読み込み中…",
     retry: "再試行",
-    failed: "デモを開始できませんでした。WebGPU が有効なブラウザで再試行してください。",
+    failed: "デモを開始できませんでした。WebGPU または WebGL2 が有効なブラウザで再試行してください。",
   },
 };
 export function ComponentPreview({
@@ -154,7 +154,7 @@ export function ComponentPreview({
               src={url}
               loading="lazy"
               sandbox="allow-scripts allow-same-origin allow-pointer-lock"
-              allow="webgpu"
+              allow="gpu; webgpu"
               tabIndex={status === "ready" ? 0 : -1}
             />
             {status !== "ready" && (

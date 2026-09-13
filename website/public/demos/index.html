@@ -18,13 +18,12 @@
     let state = 'loading';
     const report = status => { state = status; document.documentElement.dataset.demoState = state; parent.postMessage({type:'quickgui-demo', status}, location.origin); };
     window.addEventListener('message', event => { if (event.source === parent && event.origin === location.origin && event.data?.type === 'quickgui-demo-status-request') report(state); });
-    function fail(error) { console.error(error); const node=document.querySelector('#error'); node.textContent='This demo needs a browser with WebGPU. Enable WebGPU and reload to try again.'; node.hidden=false; report('error'); }
+    function fail(error) { console.error(error); const node=document.querySelector('#error'); node.textContent='This demo needs a browser with WebGPU or WebGL2. Enable one of those APIs and reload to try again.'; node.hidden=false; report('error'); }
     window.addEventListener('error', event => fail(event.error));
     window.addEventListener('quickgui:error', () => fail(new Error('QuickGUI rendering failed')));
     window.addEventListener('quickgui:ready', () => report('ready')); 
     window.addEventListener('unhandledrejection', event => fail(event.reason));
     try {
-      if (!navigator.gpu) throw new Error('WebGPU is unavailable');
       const {default:init, start} = await import('./a5ad635b18eb/quickgui.js');
       await init();
       const canvas=document.querySelector('#demo');

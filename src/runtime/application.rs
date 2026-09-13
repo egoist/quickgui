@@ -1079,7 +1079,7 @@ impl Application {
     ) -> Result<(), AppError> {
         use winit::platform::web::EventLoopExtWebSys;
         let profile = PerformanceProfile::Balanced;
-        let gpu = GpuContext::for_canvas(canvas.clone(), profile)
+        let (gpu, canvas) = GpuContext::for_canvas(canvas, profile)
             .await
             .map_err(|error| AppError::GraphicsInitialization(error.to_string()))?;
         self.application_callbacks.finish_launching = Some(Box::new(on_finish_launching));

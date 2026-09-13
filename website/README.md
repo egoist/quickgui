@@ -60,7 +60,7 @@ and caches it under the repository's `target/tools` directory.
 - `bun run docs:check` checks catalog drift, source links, language-specific types,
   and search indexes. The API is indexed at the rendered `#api-reference` anchor.
 
-The browser host currently requires WebGPU and uses embedded font data. Each
+The browser host prefers WebGPU and falls back to WebGL2. It uses embedded font data. Each
 preview owns an iframe; reset/navigation tears down its runtime and resources.
 Readiness follows the first presented frame and survives hydration timing.
 Desktop-only controls (including SwiftUI, terminal, system popovers, and native

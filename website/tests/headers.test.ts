@@ -8,3 +8,8 @@ test('hashed Vite assets are cached permanently', async () => {
     /\/assets\/\*\n[ \t]+Cache-Control: public, max-age=31536000, immutable/,
   )
 })
+
+test('demo pages advertise WebGPU permission policy', async () => {
+  const headers = await readFile(resolve(import.meta.dir, '../public/_headers'), 'utf8')
+  expect(headers).toMatch(/\/demos\/\*\n[ \t]+Permissions-Policy: gpu=\(self\)/)
+})

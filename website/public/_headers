@@ -2,3 +2,8 @@
 # content-addressed, so browsers can keep them without revalidation.
 /assets/*
   Cache-Control: public, max-age=31536000, immutable
+
+# Chrome's Permissions-Policy token for WebGPU is `gpu`. Same-origin demo
+# iframes still need the matching `allow` attribute on the embed.
+/demos/*
+  Permissions-Policy: gpu=(self)

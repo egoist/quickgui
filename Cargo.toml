@@ -123,9 +123,10 @@ zbus = "5.19.0"
 wgpu = { version = "30.0.1", default-features = false, features = ["gles", "vulkan"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-wgpu = { version = "30.0.1", default-features = false, features = ["webgpu", "naga-ir", "fragile-send-sync-non-atomic-wasm"] }
+wgpu = { version = "30.0.1", default-features = false, features = ["webgpu", "webgl", "naga-ir", "fragile-send-sync-non-atomic-wasm"] }
+wasm-bindgen = "0.2"
 wasm-bindgen-futures = "0.4"
-web-sys = { version = "0.3", features = ["HtmlCanvasElement", "console", "CustomEvent", "Window"] }
+web-sys = { version = "0.3", features = ["CssStyleDeclaration", "Document", "Element", "HtmlCanvasElement", "HtmlElement", "Node", "console", "CustomEvent", "Window"] }
 
 [dev-dependencies]
 criterion = { version = "0.8", features = ["html_reports"] }
