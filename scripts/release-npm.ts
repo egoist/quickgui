@@ -74,7 +74,7 @@ for (const part of ["native", "extension-terminal", "extension-updater", "solid"
         : `${name}@${version} is already public with different bytes; skipping immutable registry version`,
     );
     if (publish) console.log(run(npmDistTagAddArgs(name, version)));
-    else console.log(`${name}@${version} will keep tag ${npmPublishTag}`);
+    else console.log(`${name}@${version} will point ${npmPublishTag} at this version`);
     continue;
   }
   if (!publish) {
