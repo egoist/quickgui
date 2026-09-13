@@ -266,10 +266,9 @@ impl TextSystem {
         if measured_height == 0.0 {
             measured_height = style.line_height * scale;
         }
-        // Cosmic Text's unbounded `line_w` can land exactly on its later wrapping threshold.
-        // Reserve one physical pixel so an intrinsically sized single line does not reflow only
-        // after Taffy feeds that measured width back into the paint layout.
-        let measured_width = (measured_width.ceil() + 1.0) / scale;
+        // Intrinsic layout uses logical pixels. Round after converting from device pixels
+        // so Retina labels do not gain an extra physical guard pixel.
+        let measured_width = (measured_width / scale).ceil();
         let measured_width = match width {
             Some(width) => measured_width.min(width),
             None => measured_width,
