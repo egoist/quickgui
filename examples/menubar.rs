@@ -156,7 +156,11 @@ impl View for MenubarGallery {
             .px(8.0)
             .bg(palette.bar)
             .border(1.0, palette.border);
-        for (index, title) in MENU_TITLES.iter().enumerate().take(self.menubar.menu_count()) {
+        for (index, title) in MENU_TITLES
+            .iter()
+            .enumerate()
+            .take(self.menubar.menu_count())
+        {
             let item = bar.item(self.menubar, index).expect("a declared menu");
             let open = item.is_open();
             let element = item.item_with(
