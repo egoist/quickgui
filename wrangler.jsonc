@@ -1,0 +1,26 @@
+/**
+ * Workers Builds may run `npx wrangler deploy` / `npx wrangler versions upload`
+ * from the repository root. Wrangler 4.131+ refuses to autoconfigure a bun
+ * workspace, and the website source entry imports Vite's virtual server build.
+ * Point at the Vite-generated worker after `bun run build`.
+ */
+{
+	"$schema": "website/node_modules/wrangler/config-schema.json",
+	"name": "quickgui",
+	"compatibility_date": "2026-08-25",
+	"compatibility_flags": ["nodejs_compat"],
+	"main": "website/build/server/index.js",
+	"no_bundle": true,
+	"rules": [
+		{
+			"type": "ESModule",
+			"globs": ["**/*.js", "**/*.mjs"]
+		}
+	],
+	"assets": {
+		"directory": "website/build/client"
+	},
+	"observability": {
+		"enabled": true
+	}
+}
