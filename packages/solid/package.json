@@ -9,7 +9,9 @@
     "!**/*.test.ts"
   ],
   "os": [
-    "darwin"
+    "darwin",
+    "linux",
+    "win32"
   ],
   "type": "module",
   "exports": {

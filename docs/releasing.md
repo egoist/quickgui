@@ -49,15 +49,16 @@ invocation uploads one immutable `quickgui-<version>-crates-<commit>` artifact c
 verified `.crate` archives, `SHA256SUMS`, this release guide, and the changelog. Pull requests verify
 the same packages but do not retain release artifacts. The CI workflow never publishes.
 
-A pushed `v*` tag starts the separate `Release` workflow, which invokes the reusable CI workflow
-and waits for its macOS, Windows, and Linux gates before publishing. The publish job rejects a tag
-that is not exactly `v<root-package-version>` or lacks a dated changelog section. The root
-`package.json` version is the source of truth; the release gate requires all six published crates,
-the native host, terminal, and updater backend crates, and all five npm packages to match it. The job builds both macOS
-native architectures for the core, terminal extension, and updater extension including pinned Sparkle resources, runs the CLI tests and TypeScript 7 checks, verifies the npm
-tarballs, and publishes in dependency order. The reusable CI also checks the Go SDK
-and every Go example with CGO disabled. Fresh Rust and Go consumers verify public
-installs before the workflow creates the GitHub Release.
+A pushed `v*` tag starts the separate `Release` workflow. Quality gates run in parallel
+(Go/TypeScript CLI, macOS tests, standalone backends, the crate package gate, Linux MSRV, and
+Windows compile). Native host, terminal, and updater images build at the same time on macOS
+(arm64 and x64, including Sparkle), Linux x64, Linux arm64, and Windows x64. The publish job
+waits for those gates and images, rejects a tag that is not exactly `v<root-package-version>`
+or lacks a dated changelog section, packs the five npm archives from the downloaded libraries,
+and publishes crates.io, the Go module tag, and npm in dependency order. The root
+`package.json` version is the source of truth; every published crate, backend, and npm package
+must match it. Fresh Rust and Go consumers verify public installs before the workflow creates
+the GitHub Release.
 
 ## macOS acceptance evidence
 

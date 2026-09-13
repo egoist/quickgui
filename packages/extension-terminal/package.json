@@ -14,7 +14,9 @@
     "quickgui.extension.json"
   ],
   "os": [
-    "darwin"
+    "darwin",
+    "linux",
+    "win32"
   ],
   "type": "module",
   "exports": {

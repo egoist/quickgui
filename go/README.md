@@ -208,7 +208,7 @@ documented in [clipboard](../docs/clipboard.md#go), [document windows](../docs/d
 
 ## Build
 
-Go 1.23 or newer and Bun are required for development. On macOS, packaging also uses Xcode Command Line Tools. Published native assets currently target macOS arm64 and x64; Linux and Windows need a matching host shared library and native runtime validation.
+Go 1.23 or newer and Bun are required for development. On macOS, packaging also uses Xcode Command Line Tools. Published native assets cover macOS arm64/x64, Linux arm64/x64, and Windows x64.
 
 Optional terminal support is imported from `github.com/egoist/quickgui/go/terminal` and rendered with `terminal.View(terminal.Props{…})`. The CLI bundles its separate prebuilt native extension only when the app imports that package. See the [extension guide](https://github.com/egoist/quickgui/blob/main/docs/architecture/extensions.md) for offline builds and source development.
 

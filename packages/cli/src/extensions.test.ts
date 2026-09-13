@@ -1,6 +1,14 @@
 import { afterEach, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
-import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { resolveConfig } from "./config.ts";
@@ -157,6 +165,43 @@ test("installed third-party packages resolve without core checkout integration",
   await expect(resolveExtension(extension, "darwin-arm64", root)).rejects.toThrow(
     "requires @acme/extension-echo@7.2.1",
   );
+});
+
+test("a stale resolved package does not hide a later matching checkout artifact", async () => {
+  const root = temporary();
+  delete process.env.QUICKGUI_EXTENSION_DIR;
+  const requested = {
+    ...terminal,
+    version: JSON.parse(
+      readFileSync(new URL("../../extension-terminal/package.json", import.meta.url), "utf8"),
+    ).version as string,
+  };
+  const stale = join(root, "node_modules/@quickgui/extension-terminal");
+  const staleStage = join(stale, "lib/darwin-arm64");
+  mkdirSync(staleStage, { recursive: true });
+  writeFileSync(
+    join(stale, "package.json"),
+    JSON.stringify({
+      name: requested.package,
+      version: "0.0.1",
+      exports: { "./package.json": "./package.json" },
+    }),
+  );
+  writeFileSync(join(staleStage, extensionLibraryName(requested, "darwin-arm64")), "stale");
+  const checkout = join(import.meta.dir, "..", "..", "extension-terminal");
+  const checkoutStage = join(checkout, "lib/darwin-arm64");
+  const checkoutLibrary = join(checkoutStage, extensionLibraryName(requested, "darwin-arm64"));
+  const previous = existsSync(checkoutLibrary) ? readFileSync(checkoutLibrary) : undefined;
+  mkdirSync(checkoutStage, { recursive: true });
+  writeFileSync(checkoutLibrary, "checkout");
+  try {
+    expect(readFileSync(await resolveExtension(requested, "darwin-arm64", root), "utf8")).toBe(
+      "checkout",
+    );
+  } finally {
+    if (previous === undefined) rmSync(checkoutLibrary, { force: true });
+    else writeFileSync(checkoutLibrary, previous);
+  }
 });
 
 test("a third-party namespace never falls back to a built-in extension with the same name", async () => {

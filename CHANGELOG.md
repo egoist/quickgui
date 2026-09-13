@@ -13,6 +13,9 @@ All notable user-facing changes to QuickGUI are recorded here.
 - Native resource bundles now size the gzip envelope separately from decoded content. A
   framework at the 128 MiB content limit packs and unpacks, and an oversized envelope is
   rejected before any output is written.
+- Published npm packages now ship Linux and Windows host libraries beside the macOS
+  images, so `quickgui` installs on those platforms instead of being rejected as
+  darwin-only.
 
 ### JavaScript
 

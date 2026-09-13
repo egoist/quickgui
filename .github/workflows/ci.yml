@@ -49,12 +49,92 @@ jobs:
         run: |
           CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go -C go build ./...
           CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go -C go build ./...
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go -C go build ./...
+          CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go -C go build ./...
           CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go -C go build ./...
 
-  macos-quality:
-    name: macOS quality gate
+  macos-test:
+    name: macOS tests
     runs-on: macos-latest
-    timeout-minutes: 45
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.0
+      - name: Synchronize package versions
+        run: bun scripts/sync-release-version.ts
+      - uses: mlugg/setup-zig@v2
+        with:
+          version: 0.15.2
+      - name: Install Rust
+        run: rustup toolchain install stable --profile minimal --component clippy,rustfmt && rustup default stable
+      - name: Cache Cargo
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: cargo-${{ runner.os }}-stable-test-${{ hashFiles('Cargo.lock') }}
+          restore-keys: |
+            cargo-${{ runner.os }}-stable-test-
+            cargo-${{ runner.os }}-stable-
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+      - name: Check release-gate scripts
+        run: bash -n scripts/*.sh
+      - name: Run all tests
+        run: scripts/with-macos-ghostty-zig.sh cargo test --all-targets --all-features --locked
+      - name: Test native font rasterization and cache reuse
+        run: cargo test --manifest-path vendor/cosmic_text/Cargo.toml --lib
+      - name: Run Clippy
+        run: scripts/with-macos-ghostty-zig.sh cargo clippy --all-targets --all-features --locked -- -D warnings
+      - name: Build documentation
+        env:
+          RUSTDOCFLAGS: -D warnings
+        run: scripts/with-macos-ghostty-zig.sh cargo doc --no-deps --all-features --locked
+
+  macos-backends:
+    name: macOS extension backends
+    runs-on: macos-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.0
+      - name: Synchronize package versions
+        run: bun scripts/sync-release-version.ts
+      - uses: mlugg/setup-zig@v2
+        with:
+          version: 0.15.2
+      - name: Install Rust
+        run: rustup toolchain install stable --profile minimal && rustup default stable
+      - name: Cache Cargo
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: cargo-${{ runner.os }}-stable-backends-${{ hashFiles('Cargo.lock') }}
+          restore-keys: |
+            cargo-${{ runner.os }}-stable-backends-
+            cargo-${{ runner.os }}-stable-
+      - name: Test dynamic host and standalone extension backends
+        run: |
+          scripts/with-macos-ghostty-zig.sh cargo test -p quickgui-host -p quickgui-terminal -p quickgui-updater --lib --locked
+          cargo test --lib --features terminal-extension --locked
+
+  macos-package:
+    name: macOS package gate
+    runs-on: macos-latest
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v7
         with:
@@ -68,18 +148,12 @@ jobs:
           bun-version: 1.4.0
       - name: Synchronize package versions
         run: bun scripts/sync-release-version.ts
-      - uses: mlugg/setup-zig@v2
-        with:
-          version: 0.15.2
       - name: Verify release metadata
         id: release
         shell: bash
         run: bun scripts/release-metadata.ts "$GITHUB_OUTPUT"
       - name: Install Rust
-        run: |
-          rustup toolchain install stable --profile minimal --component clippy,rustfmt
-          rustup toolchain install 1.90.0 --profile minimal
-          rustup default stable
+        run: rustup toolchain install 1.90.0 --profile minimal && rustup default 1.90.0
       - name: Cache Cargo
         uses: actions/cache@v6
         with:
@@ -87,30 +161,8 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             target
-          key: cargo-${{ runner.os }}-stable-${{ hashFiles('Cargo.lock') }}
-          restore-keys: cargo-${{ runner.os }}-stable-
-      - name: Check formatting
-        run: cargo fmt --all -- --check
-      - name: Check release-gate scripts
-        run: bash -n scripts/*.sh
-      - name: Run all tests
-        run: scripts/with-macos-ghostty-zig.sh cargo test --all-targets --all-features --locked
-      - name: Test native font rasterization and cache reuse
-        run: cargo test --manifest-path vendor/cosmic_text/Cargo.toml --lib
-      - name: Test dynamic host and standalone extension backends
-        run: |
-          scripts/with-macos-ghostty-zig.sh cargo test -p quickgui-host -p quickgui-terminal -p quickgui-updater --lib --locked
-          cargo test --lib --features terminal-extension --locked
-      - name: Check every target and feature
-        run: scripts/with-macos-ghostty-zig.sh cargo check --all-targets --all-features --locked
-      - name: Check minimum supported Rust version
-        run: scripts/with-macos-ghostty-zig.sh cargo +1.90.0 check --all-targets --all-features --locked
-      - name: Run Clippy
-        run: scripts/with-macos-ghostty-zig.sh cargo clippy --all-targets --all-features --locked -- -D warnings
-      - name: Build documentation
-        env:
-          RUSTDOCFLAGS: -D warnings
-        run: scripts/with-macos-ghostty-zig.sh cargo doc --no-deps --all-features --locked
+          key: cargo-${{ runner.os }}-1.90.0-package-${{ hashFiles('Cargo.lock') }}
+          restore-keys: cargo-${{ runner.os }}-1.90.0-package-
       - name: Verify publish archives and downstream installation
         env:
           QUICKGUI_PACKAGE_ALLOW_DIRTY: 1

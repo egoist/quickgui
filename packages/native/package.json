@@ -27,7 +27,9 @@
     "build": "bun ./build.ts"
   },
   "os": [
-    "darwin"
+    "darwin",
+    "linux",
+    "win32"
   ],
   "publishConfig": {
     "access": "public"
