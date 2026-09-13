@@ -259,9 +259,9 @@ for (const packageName of ["native", "solid", "cli"]) {
     ),
   );
 }
-edit("packages/cli/templates/native/go.mod", (contents) =>
+edit("packages/cli/templates/native/go.mod.tmpl", (contents) =>
   replaceMatches(
-    "packages/cli/templates/native/go.mod",
+    "packages/cli/templates/native/go.mod.tmpl",
     contents,
     /(github\.com\/egoist\/quickgui\/go v)[^\s]+/,
     (_match, prefix) => `${prefix}${version}`,

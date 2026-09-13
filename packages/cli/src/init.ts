@@ -13,13 +13,15 @@ export interface InitProjectOptions {
   identifier?: string;
 }
 
+// .tmpl keeps Go sources out of package discovery after bun install places the
+// CLI under node_modules/@quickgui/cli. `@` is not a valid import-path character.
 const goFiles = [
   ["package.json", "package.json"],
   ["quickgui.config.ts", "quickgui.config.ts"],
-  ["go.mod", "go.mod"],
+  ["go.mod.tmpl", "go.mod"],
   ["gitignore", ".gitignore"],
   ["README.md", "README.md"],
-  ["main.go", "main.go"],
+  ["main.go.tmpl", "main.go"],
 ] as const;
 const typescriptFiles = [
   ["package.json", "package.json"],
