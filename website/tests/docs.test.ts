@@ -3,9 +3,14 @@ import { readFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import GithubSlugger from 'github-slugger'
 import { SUPPORTED_LOCALES } from '../src/i18n'
-import { ALL_COMPONENT_DOCS, UI_COMPONENTS, componentDocsPath } from '../src/lib/component-docs'
+import {
+  ALL_COMPONENT_DOCS,
+  SWIFT_UI_COMPONENTS,
+  UI_COMPONENTS,
+  componentDocsPath,
+} from '../src/lib/component-docs'
 import { DOCS_FRONTENDS, docsPages, docsPath, switchDocsFrontend } from '../src/lib/docs'
-import { docsNavGroups } from '../src/lib/docs-navigation'
+import { docsNavGroups, docsPageArea } from '../src/lib/docs-navigation'
 import { DOCS_GUIDE_ORDER } from '../src/lib/docs-structure'
 import { localizedDocsPage } from '../src/lib/docs-locales'
 import { resolveDocsRoute } from '../src/lib/docs-routing'
@@ -75,6 +80,16 @@ describe('frontend documentation routes', () => {
   })
 })
 
+test('guide pages map to the Guide, Components, or SwiftUI docs area', () => {
+  expect(docsPageArea('getting-started')).toBe('guide')
+  expect(docsPageArea('forms-and-input')).toBe('guide')
+  expect(docsPageArea('overlays-and-dialogs')).toBe('guide')
+  expect(docsPageArea('extensions')).toBe('guide')
+  expect(docsPageArea('components')).toBe('components')
+  expect(docsPageArea('swift-ui')).toBe('swift-ui')
+  expect(docsPageArea('swift-ui-hosting')).toBe('swift-ui')
+})
+
 test('Go, TypeScript, and Rust share guide order, localized sections, and sidebar structure', () => {
   const pages = Object.fromEntries(DOCS_FRONTENDS.map((frontend) => [frontend, docsPages(frontend)]))
   for (const frontend of DOCS_FRONTENDS) {
@@ -94,27 +109,36 @@ test('Go, TypeScript, and Rust share guide order, localized sections, and sideba
         )
       }
     }
-    const structure = (frontend: (typeof DOCS_FRONTENDS)[number]) =>
-      docsNavGroups(locale, frontend).map((group) => ({
+    const structure = (
+      frontend: (typeof DOCS_FRONTENDS)[number],
+      area: 'guide' | 'components' | 'swift-ui',
+    ) =>
+      docsNavGroups(locale, frontend, area).map((group) => ({
         id: group.id,
         title: group.title,
         titles: group.items.map((item) => item.title),
         paths: group.items.map((item) => item.path.replace(`/docs/${frontend}`, '')),
       }))
     for (const frontend of DOCS_FRONTENDS) {
-      expect(structure('go')).toEqual(structure(frontend))
+      for (const area of ['guide', 'components', 'swift-ui'] as const) {
+        expect(structure('go', area)).toEqual(structure(frontend, area))
+      }
     }
   }
 })
 
-test('the sidebar separates guides from one complete component reference', async () => {
+test('guide, components, and SwiftUI each have a dedicated sidebar', async () => {
   for (const frontend of DOCS_FRONTENDS) {
     for (const locale of SUPPORTED_LOCALES) {
-      const groups = docsNavGroups(locale, frontend)
-      const guides = groups.find((group) => group.id === 'guides')!
-      expect(guides.items.map((item) => item.path)).toEqual(
+      const guides = docsNavGroups(locale, frontend, 'guide')
+      const components = docsNavGroups(locale, frontend, 'components')
+      const swiftUi = docsNavGroups(locale, frontend, 'swift-ui')
+      const guidePaths = guides.flatMap((group) => group.items.map((item) => item.path))
+      const componentPaths = components.flatMap((group) => group.items.map((item) => item.path))
+      const swiftUiPaths = swiftUi.flatMap((group) => group.items.map((item) => item.path))
+
+      expect(guides.find((group) => group.id === 'guides')!.items.map((item) => item.path)).toEqual(
         [
-          'components',
           'reactivity',
           'rendering',
           'styling',
@@ -125,20 +149,43 @@ test('the sidebar separates guides from one complete component reference', async
           'native-services',
         ].map((slug) => `/docs/${frontend}/${slug}`),
       )
-      const components = groups.filter((group) => group.id === 'components')
-      expect(components).toHaveLength(1)
-      expect(components[0].items.map((item) => item.path).sort()).toEqual(
+      expect(guidePaths).not.toContain(`/docs/${frontend}/components`)
+      expect(guidePaths).not.toContain(`/docs/${frontend}/swift-ui`)
+      expect(guidePaths).not.toContain(`/docs/${frontend}/swift-ui-hosting`)
+      expect(guidePaths.every((path) => !path.includes('/components/') && !path.includes('/swift-ui/'))).toBe(
+        true,
+      )
+
+      expect(components.find((group) => group.id === 'overview')!.items.map((item) => item.path)).toEqual([
+        `/docs/${frontend}/components`,
+      ])
+      const componentReference = components.filter((group) => group.id === 'components')
+      expect(componentReference).toHaveLength(1)
+      expect(componentReference[0].items.map((item) => item.path).sort()).toEqual(
         UI_COMPONENTS.map((component) => componentDocsPath(component, frontend)).sort(),
       )
-      const names = components[0].items.map((item) => item.title)
+      const names = componentReference[0].items.map((item) => item.title)
       expect(names).toEqual([...names].sort((a, b) => a.localeCompare(b, 'en')))
-      const paths = groups.flatMap((group) => group.items.map((item) => item.path))
-      expect(new Set(paths).size).toBe(paths.length)
+      expect(componentPaths.every((path) => path.includes('/components'))).toBe(true)
+      expect(componentPaths.some((path) => path.includes('/swift-ui'))).toBe(false)
+
+      expect(swiftUi.find((group) => group.id === 'swift-ui')!.items.map((item) => item.path)).toEqual([
+        `/docs/${frontend}/swift-ui`,
+        `/docs/${frontend}/swift-ui-hosting`,
+      ])
+      expect(swiftUi.find((group) => group.id === 'swift-ui-components')!.items.map((item) => item.path)).toEqual(
+        SWIFT_UI_COMPONENTS.map((component) => componentDocsPath(component, frontend)),
+      )
+      expect(swiftUiPaths.every((path) => path.includes('/swift-ui'))).toBe(true)
+      expect(swiftUiPaths.some((path) => path.includes('/components'))).toBe(false)
+
+      for (const paths of [guidePaths, componentPaths, swiftUiPaths]) {
+        expect(new Set(paths).size).toBe(paths.length)
+      }
       if (locale === 'en') {
-        expect(guides.title).toBe('Guides')
-        expect(groups.map((group) => group.title)).not.toContain('Primitives')
-        expect(groups.map((group) => group.title)).not.toContain('QuickGUI UI')
-        expect(groups.map((group) => group.title)).not.toContain('Concepts')
+        expect(guides.map((group) => group.title)).toEqual(['Introduction', 'Guides', 'Advanced'])
+        expect(components.map((group) => group.title)).toEqual(['Overview', 'Components'])
+        expect(swiftUi.map((group) => group.title)).toEqual(['SwiftUI', 'SwiftUI Components'])
       }
       for (const component of UI_COMPONENTS) {
         const content = await readFile(

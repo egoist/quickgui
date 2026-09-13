@@ -105,6 +105,62 @@ test("the docs picker includes and selects every frontend in all locales", () =>
         expect(html).toContain(`<option value="${option}"`);
       }
       expect(html).toContain(`<option value="${frontend}" selected=""`);
+      const docsPrefix = locale === "en" ? "" : `/${locale}`;
+      expect(html).toContain(`href="${docsPrefix}${docsPath(frontend, "reactivity")}"`);
+      expect(html).not.toContain(`href="${docsPrefix}${docsPath(frontend, "swift-ui-hosting")}"`);
+      expect(html).not.toContain(`/docs/${frontend}/components/`);
+      expect(html).not.toContain(`/docs/${frontend}/swift-ui/`);
     }
+  }
+});
+
+test("components and SwiftUI docs pages render their own sidebars", () => {
+  for (const frontend of DOCS_FRONTENDS) {
+    const prefix = `/docs/${frontend}`;
+    const components = renderToString(
+      <MemoryRouter>
+        <DocsShell
+          frontend={frontend}
+          locale="en"
+          page={{
+            title: "Components",
+            description: "",
+            outline: [],
+            path: docsPath(frontend, "components"),
+            area: "components",
+          }}
+        >
+          <p>Components content</p>
+        </DocsShell>
+      </MemoryRouter>,
+    );
+    expect(components).toContain(`href="${prefix}/components"`);
+    expect(components).toContain(`href="${prefix}/components/button"`);
+    expect(components).not.toContain(`href="${prefix}/reactivity"`);
+    expect(components).not.toContain(`href="${prefix}/swift-ui-hosting"`);
+    expect(components).not.toContain(`href="${prefix}/swift-ui/button"`);
+
+    const swiftUi = renderToString(
+      <MemoryRouter>
+        <DocsShell
+          frontend={frontend}
+          locale="en"
+          page={{
+            title: "SwiftUI",
+            description: "",
+            outline: [],
+            path: docsPath(frontend, "swift-ui"),
+            area: "swift-ui",
+          }}
+        >
+          <p>SwiftUI content</p>
+        </DocsShell>
+      </MemoryRouter>,
+    );
+    expect(swiftUi).toContain(`href="${prefix}/swift-ui"`);
+    expect(swiftUi).toContain(`href="${prefix}/swift-ui-hosting"`);
+    expect(swiftUi).toContain(`href="${prefix}/swift-ui/button"`);
+    expect(swiftUi).not.toContain(`href="${prefix}/reactivity"`);
+    expect(swiftUi).not.toContain(`href="${prefix}/components/button"`);
   }
 });
