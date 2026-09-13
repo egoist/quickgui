@@ -21,7 +21,7 @@
     "test:go": "bash scripts/check-go.sh",
     "fmt:go": "go -C go run ./cmd/quickguifmt -w ../go ../examples",
     "fmt:go:check": "go -C go run ./cmd/quickguifmt -check ../go ../examples",
-    "test:gpuix": "bun test --tsconfig-override ./examples/fx-ui/tsconfig.json --preload ./packages/gpuix/test/preload.ts ./packages/gpuix/test ./examples/fx-ui/test"
+    "test:gpuix": "bun test --tsconfig-override ./packages/gpuix/tsconfig.json --preload ./packages/gpuix/test/preload.ts ./packages/gpuix/test"
   },
   "devDependencies": {
     "@types/bun": "latest",
@@ -30,7 +30,7 @@
     "typescript": "7.0.2"
   },
   "patchedDependencies": {
-    "@gpuix/react@0.7.0": "examples/fx-ui/patches/@gpuix%2Freact@0.7.0.patch",
-    "libfx@0.0.9": "examples/fx-ui/patches/libfx@0.0.9.patch"
+    "@gpuix/react@0.7.0": "patches/@gpuix%2Freact@0.7.0.patch",
+    "libfx@0.0.9": "patches/libfx@0.0.9.patch"
   }
 }

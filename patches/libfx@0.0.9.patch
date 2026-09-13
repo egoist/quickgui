@@ -1,0 +1,23 @@
+diff --git a/mcp.js b/mcp.js
+index fea6efb751b90991b8b7934ea3acc88b4b16ec18..8a3cf4d4d32313d4f4258684dc626fa193752a3b 100644
+--- a/mcp.js
++++ b/mcp.js
+@@ -31,4 +31,8 @@ function appendInstruction(parts, label, text) {
+ export async function createMcpAdapter(client, options = {}) {
++  const toolLimit = options.maxTools ?? maxTools;
++  if (!Number.isInteger(toolLimit) || toolLimit < 1 || toolLimit > 1024) {
++    throw new RangeError("MCP maxTools must be an integer between 1 and 1024");
++  }
+   if (!client || typeof client.listTools !== "function" || typeof client.callTool !== "function") {
+     throw new TypeError("MCP client must provide listTools() and callTool()");
+   }
+@@ -43,7 +47,8 @@ export async function createMcpAdapter(client, options = {}) {
+     if (page >= maxTools) throw new RangeError("MCP tool pagination exceeded its page limit");
+     const listed = await client.listTools(cursor === undefined ? undefined : { cursor });
+     const tools = Array.isArray(listed) ? listed : listed?.tools;
+-    if (!Array.isArray(tools) || tools.length > maxTools - catalog.length) throw new TypeError("MCP listTools() returned an invalid tool catalog");
++    if (!Array.isArray(tools)) throw new TypeError("MCP listTools() returned an invalid tool catalog");
++    if (tools.length > toolLimit - catalog.length) throw new RangeError(`MCP tool catalog exceeds the ${toolLimit} tool limit`);
+     catalog.push(...tools);
+     cursor = Array.isArray(listed) ? undefined : listed.nextCursor;
+     if (cursor === undefined || cursor === null) break;
