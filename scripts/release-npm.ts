@@ -110,14 +110,5 @@ for (const part of ["native", "extension-terminal", "extension-updater", "solid"
   }
   if (published.stdout) console.log(published.stdout);
   if (published.stderr) console.error(published.stderr);
-  let available = false;
-  for (let attempt = 0; attempt < 60; attempt++) {
-    if ((await publishedIntegrity(name)) === integrity) {
-      available = true;
-      break;
-    }
-    await Bun.sleep(5000);
-  }
-  if (!available) throw new Error(`Timed out waiting for ${name}@${version}`);
   console.log(`Published ${name}@${version}`);
 }
