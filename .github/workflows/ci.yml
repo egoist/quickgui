@@ -27,7 +27,7 @@ env:
 jobs:
   go-and-cli:
     name: Go and TypeScript CLI
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v7
         with:
@@ -66,9 +66,6 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.4.0
-      - run: bun install --frozen-lockfile
-      - name: Run SwiftUI TypeScript tests
-        run: bun run test:swift-ui
       - name: Synchronize package versions
         run: bun scripts/sync-release-version.ts
       - uses: mlugg/setup-zig@v2

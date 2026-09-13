@@ -1,5 +1,3 @@
-// macOS-only SwiftUI host tests. The Linux `test:typescript` suite ignores this file;
-// CI runs it on the macOS quality gate via `bun run test:swift-ui`.
 import { describe, expect, test } from "bun:test";
 import {
   app,
