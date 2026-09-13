@@ -247,14 +247,7 @@ export async function packageLinux(input: LinuxPackagingInput): Promise<Packagin
       installedSizeKilobytes:
         data.reduce((total, member) => total + (member.data?.byteLength ?? 0), 0) / 1024,
     });
-    const md5sums = debianMd5Sums(
-      data.map((member) => ({
-        path: member.path,
-        md5: new Bun.CryptoHasher("md5")
-          .update(Buffer.from(member.data ?? new Uint8Array()))
-          .digest("hex"),
-      })),
-    );
+    const md5sums = payloadMd5Sums(data);
     const debian = createDebianPackage({
       control,
       md5sums,
@@ -270,6 +263,20 @@ export async function packageLinux(input: LinuxPackagingInput): Promise<Packagin
   }
 
   return { artifacts, notes };
+}
+
+/** Hash file members for `md5sums`. Directory entries stay in `data.tar.gz` only. */
+export function payloadMd5Sums(data: readonly TarEntry[]): string {
+  return debianMd5Sums(
+    data
+      .filter((member) => member.type !== "directory")
+      .map((member) => ({
+        path: member.path,
+        md5: new Bun.CryptoHasher("md5")
+          .update(Buffer.from(member.data ?? new Uint8Array()))
+          .digest("hex"),
+      })),
+  );
 }
 
 export function debianPackageName(executableName: string): string {

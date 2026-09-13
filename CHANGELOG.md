@@ -10,6 +10,10 @@ All notable user-facing changes to QuickGUI are recorded here.
   (AppDir, `.deb`, NSIS, and development builds), matching macOS `Contents/Resources`. Directory
   payloads are copied recursively instead of being treated as a single file.
 - `linux.icon` is used as the Linux desktop PNG source when the top-level `icon` is omitted.
+  It must be a file, matching the top-level `icon` check.
+- Generated packaging names (`*.AppDir`, `*-setup.exe`, `quickgui.json`, and similar) are reserved
+  so a `resources` entry cannot overwrite them. Update manifests select AppImage and NSIS artifacts
+  from packaging outputs only. Debian `md5sums` omit directory members.
 
 ### Website
 

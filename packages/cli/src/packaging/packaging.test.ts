@@ -4,7 +4,13 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
 import { resolveConfig } from "../config.ts";
-import { macInfoPlist } from "../build.ts";
+import {
+  macInfoPlist,
+  reservedSidecarNames,
+  stageExecutableSidecars,
+  updateSource,
+  validateBuildInputs,
+} from "../build.ts";
 import { createAr, createTar, normalizeArchivePath, splitUstarPath } from "./archive.ts";
 import {
   linuxMimeTypes,
@@ -40,7 +46,7 @@ import {
   productBuildArguments,
   validateMasConfig,
 } from "./mas.ts";
-import { debianPackageName, packageLinux } from "./pipeline.ts";
+import { debianPackageName, packageLinux, payloadMd5Sums } from "./pipeline.ts";
 import { copyResources, extraPayloadEntries } from "./resources.ts";
 import {
   buildUpdateManifest,
@@ -270,6 +276,91 @@ describe("application resources", () => {
       const deb = result.artifacts.find((path) => path.endsWith(".deb"));
       expect(deb).toBeDefined();
       expect(readFileSync(deb!).byteLength).toBeGreaterThan(0);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("Debian md5sums omit directory members", () => {
+    const root = mkdtempSync(join(tmpdir(), "quickgui-md5-"));
+    try {
+      const assets = join(root, "assets");
+      mkdirSync(assets);
+      writeFileSync(join(assets, "note.txt"), "bundled");
+      const sums = payloadMd5Sums(extraPayloadEntries([assets], "usr/bin"));
+      expect(sums).toContain("usr/bin/assets/note.txt");
+      expect(sums).not.toContain("  usr/bin/assets\n");
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("reserves generated packaging names before copying resources", () => {
+    const root = mkdtempSync(join(tmpdir(), "quickgui-reserved-"));
+    try {
+      writeFileSync(join(root, "main.go"), "package main\n");
+      const config = resolveConfig(
+        {
+          name: "Demo",
+          identifier: "com.example.demo",
+          language: "go",
+          entry: ".",
+          version: "1.2.3",
+        },
+        root,
+      );
+      expect(reservedSidecarNames(config, "windows")).toEqual(
+        expect.arrayContaining(["Demo.ico", "Demo.nsi", "Demo-1.2.3-setup.exe", "quickgui.json"]),
+      );
+      expect(reservedSidecarNames(config, "linux")).toEqual(
+        expect.arrayContaining(["Demo.AppDir", "Demo-1.2.3-x86_64.AppImage", "demo_1.2.3_amd64.deb"]),
+      );
+      writeFileSync(join(root, "Demo.ico"), "icon");
+      writeFileSync(join(root, "quickgui.json"), "{}");
+      const colliding = resolveConfig(
+        {
+          name: "Demo",
+          identifier: "com.example.demo",
+          language: "go",
+          entry: ".",
+          resources: ["Demo.ico", "quickgui.json"],
+        },
+        root,
+      );
+      expect(() => stageExecutableSidecars(colliding, root, [], "windows")).toThrow(
+        "reserved or duplicated",
+      );
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("update artifacts come from packaged paths, not executable sidecars", () => {
+    expect(updateSource({ target: "linux-x64" }, "/out/Demo", [])).toBe("/out/Demo");
+    expect(
+      updateSource({ target: "linux-x64" }, "/out/Demo", ["/out/Demo-1.0.0-x86_64.AppImage"]),
+    ).toBe("/out/Demo-1.0.0-x86_64.AppImage");
+    expect(
+      updateSource({ target: "windows-x64" }, "/out/Demo.exe", ["/out/Demo-1.0.0-setup.exe"]),
+    ).toBe("/out/Demo-1.0.0-setup.exe");
+  });
+
+  test("linux.icon must be a file", () => {
+    const root = mkdtempSync(join(tmpdir(), "quickgui-linux-icon-"));
+    try {
+      writeFileSync(join(root, "main.go"), "package main\n");
+      mkdirSync(join(root, "icon-dir"));
+      const config = resolveConfig(
+        {
+          name: "Demo",
+          identifier: "com.example.demo",
+          language: "go",
+          entry: ".",
+          linux: { icon: "icon-dir" },
+        },
+        root,
+      );
+      expect(() => validateBuildInputs(config, "linux")).toThrow("Linux icon not found");
     } finally {
       rmSync(root, { recursive: true, force: true });
     }

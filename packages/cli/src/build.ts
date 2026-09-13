@@ -35,6 +35,7 @@ import {
 } from "./packaging/mas.ts";
 import {
   buildIcons,
+  debianPackageName,
   packageLinux,
   packageWindows,
   writeUpdateManifest,
@@ -79,6 +80,8 @@ export interface BuildResult {
 interface StagedBuild extends BuildResult {
   /** Staged files moved into the target output directory alongside the main artifact. */
   extraArtifacts?: string[];
+  /** Installers, packages, desktop entries, and scripts. Never application sidecars. */
+  packagedArtifacts?: string[];
 }
 
 export async function buildProject(
@@ -86,7 +89,7 @@ export async function buildProject(
   options: BuildProjectOptions,
 ): Promise<BuildResult> {
   const info = targetInfo(options.target);
-  validateInputs(config, info.platform);
+  validateBuildInputs(config, info.platform);
   if (info.platform === "darwin" && options.mode === "production") {
     validateMacPackaging(config, options);
   }
@@ -123,7 +126,9 @@ export async function buildProject(
       stagingRoot,
     );
     const executablePath = resolve(finalPath, relative(staged.artifactPath, staged.executablePath));
-    const packagePaths = extras.map((extra) => extra.finalPath);
+    const packagePaths = (staged.packagedArtifacts ?? []).map((stagedPath) =>
+      resolve(targetOutDir, basename(stagedPath)),
+    );
     let updates: { artifactPath: string; manifestPath: string } | undefined;
     if (options.updateManifest && options.mode === "production") {
       updates = await writeUpdateManifest({
@@ -240,6 +245,7 @@ async function buildMacApp(
       target: options.target,
       mode: options.mode,
       extraArtifacts: [packagePath],
+      packagedArtifacts: [packagePath],
     };
   }
 
@@ -449,7 +455,7 @@ async function buildExecutable(
   const fonts = stageFonts(config, resolve(stagingRoot, "fonts"));
   const libraries = await compileExecutable(config, options, executablePath, fonts);
   if (info.platform !== "windows") chmodSync(executablePath, 0o755);
-  const payload = stageExecutableSidecars(config, stagingRoot, libraries);
+  const payload = stageExecutableSidecars(config, stagingRoot, libraries, info.platform);
   const result: StagedBuild = {
     artifactPath: executablePath,
     extraArtifacts: payload,
@@ -481,7 +487,8 @@ async function buildExecutable(
         });
   return {
     ...result,
-    extraArtifacts: [...(result.extraArtifacts ?? []), ...packaged.artifacts],
+    extraArtifacts: [...payload, ...packaged.artifacts],
+    packagedArtifacts: packaged.artifacts,
     ...(packaged.notes.length > 0 ? { notes: packaged.notes } : {}),
   };
 }
@@ -562,8 +569,8 @@ function updateBaseUrl(config: ResolvedQuickGuiConfig, options: BuildProjectOpti
 }
 
 /** The artifact the Rust updater installs for this target, chosen from what the build produced. */
-function updateSource(
-  options: BuildProjectOptions,
+export function updateSource(
+  options: Pick<BuildProjectOptions, "target">,
   artifactPath: string,
   packagePaths: readonly string[],
 ): string {
@@ -609,15 +616,50 @@ function resolveIcons(
   });
 }
 
+/**
+ * Names written into the Linux/Windows staging root after resources are copied.
+ *
+ * A configured resource whose basename matches one of these would be overwritten by icon
+ * generation, the NSIS script, AppDir, or an installer, or would collide with `quickgui.json`.
+ */
+export function reservedSidecarNames(
+  config: ResolvedQuickGuiConfig,
+  platform: "darwin" | "linux" | "windows",
+): string[] {
+  const names = ["fonts", "quickgui.json", ".quickgui-icons"];
+  if (platform === "linux") {
+    const packageName = debianPackageName(config.executableName);
+    names.push(
+      `${config.executableName}.desktop`,
+      `${config.executableName}.mime.xml`,
+      `${config.executableName}.AppDir`,
+      `${config.executableName}-${config.version}-x86_64.AppImage`,
+      `${config.executableName}-${config.version}-aarch64.AppImage`,
+      `${packageName}_${config.version}_amd64.deb`,
+      `${packageName}_${config.version}_arm64.deb`,
+    );
+  }
+  if (platform === "windows") {
+    names.push(
+      `${config.executableName}.ico`,
+      `${config.executableName}.nsi`,
+      `${config.executableName}-${config.version}-setup.exe`,
+    );
+  }
+  return names;
+}
+
 /** Files and directories that must travel with the executable on Linux and Windows. */
-function stageExecutableSidecars(
+export function stageExecutableSidecars(
   config: ResolvedQuickGuiConfig,
   stagingRoot: string,
   alreadyStaged: readonly string[],
+  platform: "linux" | "windows",
 ): string[] {
   const reserved = new Set([
     config.executableName,
     `${config.executableName}.exe`,
+    ...reservedSidecarNames(config, platform),
     ...alreadyStaged.map((path) => basename(path)),
   ]);
   const staged = [...alreadyStaged];
@@ -626,7 +668,6 @@ function stageExecutableSidecars(
   if (existsSync(fontsDir) && !names.has("fonts")) {
     staged.push(fontsDir);
     names.add("fonts");
-    reserved.add("fonts");
   }
   staged.push(...copyResources(config.resources, stagingRoot, reserved));
   return staged;
@@ -649,7 +690,13 @@ function validateMacPackaging(config: ResolvedQuickGuiConfig, options: BuildProj
   }
 }
 
-function validateInputs(
+function requireExistingFile(path: string, label: string): void {
+  if (!existsSync(path) || !statSync(path).isFile()) {
+    throw new CliError(`${label} not found: ${path}`);
+  }
+}
+
+export function validateBuildInputs(
   config: ResolvedQuickGuiConfig,
   platform: "darwin" | "linux" | "windows",
 ): void {
@@ -668,22 +715,18 @@ function validateInputs(
     }
   }
   if (platform === "darwin") {
-    if (config.macos.icon && !existsSync(config.macos.icon)) {
-      throw new CliError(`macOS icon not found: ${config.macos.icon}`);
-    }
+    if (config.macos.icon) requireExistingFile(config.macos.icon, "macOS icon");
     if (config.macos.entitlements && !existsSync(config.macos.entitlements)) {
       throw new CliError(`macOS entitlements not found: ${config.macos.entitlements}`);
     }
   }
-  if (platform === "windows" && config.windows.icon && !existsSync(config.windows.icon)) {
-    throw new CliError(`Windows icon not found: ${config.windows.icon}`);
+  if (platform === "windows" && config.windows.icon) {
+    requireExistingFile(config.windows.icon, "Windows icon");
   }
-  if (platform === "linux" && config.linux.icon && !existsSync(config.linux.icon)) {
-    throw new CliError(`Linux icon not found: ${config.linux.icon}`);
+  if (platform === "linux" && config.linux.icon) {
+    requireExistingFile(config.linux.icon, "Linux icon");
   }
-  if (config.icon && (!existsSync(config.icon) || !statSync(config.icon).isFile())) {
-    throw new CliError(`Icon not found: ${config.icon}`);
-  }
+  if (config.icon) requireExistingFile(config.icon, "Icon");
   if (config.updates?.notesFile && !existsSync(config.updates.notesFile)) {
     throw new CliError(`Release notes not found: ${config.updates.notesFile}`);
   }
