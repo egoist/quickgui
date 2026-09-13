@@ -152,8 +152,8 @@ It then publishes npm packages in the order `@quickgui/native`, `@quickgui/exten
 npm 11 refuses a prerelease without `--tag`, so every version is published with `--tag latest`.
 A rerun that finds the version already on the registry points `latest` at that version.
 The terminal and updater packages are optional; the CLI resolves its exact version only when a Go import requires it.
-The CLI waits until the native package is anonymously resolvable from
-its public registry. A rerun skips an existing, non-yanked crate version and skips an npm version that is already
+Packages are published back-to-back; npm does not need a prior package to
+finish indexing before the next `npm publish`. A rerun skips an existing, non-yanked crate version and skips an npm version that is already
 on the registry. Native images are not bit-identical across rebuilds, so a later recovery of the
 same version leaves the published tarball in place instead of failing on a checksum mismatch. This
 permits safe recovery from a partial registry release without attempting to overwrite immutable versions.
@@ -178,7 +178,7 @@ cargo publish --locked
 Pack npm packages with `bun pm pack`, which resolves `workspace:*` dependencies to their exact
 workspace versions, and publish the resulting tarballs with npm 11.5.1 or newer. Pass
 `--tag latest` (required for prereleases on npm 11). Do not publish the
-workspace directories with npm directly. Wait for each package to propagate before its dependent.
+workspace directories with npm directly.
 Never rerun a successful manual publish; first inspect the public registry and continue after the
 last completed package.
 
