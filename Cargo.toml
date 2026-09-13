@@ -13,8 +13,6 @@ categories = ["gui", "graphics"]
 include = [
   "/build.rs",
   "/src/**",
-  "/tests/macos_native_images.rs",
-  "/tests/macos_traffic_lights.rs",
   "/Cargo.lock",
   "/CHANGELOG.md",
   "/LICENSE-APACHE",
