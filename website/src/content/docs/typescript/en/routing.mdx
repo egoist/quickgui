@@ -48,8 +48,8 @@ The router supports push, replace, back, and forward. Navigation stays inside th
 ```tsx
 function Project() {
   const params = useParams();
-  return <Text>Project {params().id}</Text>;
+  return <Text>Project {params.id}</Text>;
 }
 ```
 
-`useLocation()` and `useSearchParams()` return the current path and query. Read them in JSX so the text stays current.
+`useLocation()` and `useSearchParams()` also return reactive objects. Read `location.pathname` and `searchParams.tab` in JSX so the text stays current.

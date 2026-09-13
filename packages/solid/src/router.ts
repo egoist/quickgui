@@ -10,7 +10,9 @@ import {
   createMemo,
   createSignal,
   flush as flushSolid,
+  getOwner,
   omit,
+  runWithOwner,
   untrack,
   useContext,
   onCleanup,
@@ -21,15 +23,15 @@ import { Button, createComponent, mergeProps, type JSX } from "./index.ts";
 
 const routeDefinition = Symbol("QuickGUI route definition");
 
-export type RouteParams = Readonly<Record<string, string>>;
-export type RouteSearchParams = Readonly<Record<string, string | readonly string[]>>;
+export type RouteParams = Readonly<Record<string, string | undefined>>;
+export type RouteSearchParams = Readonly<Record<string, string | readonly string[] | undefined>>;
 
 export interface RouteSectionProps {
-  /** Reactive getter backed by the core's decoded pattern parameters. */
+  /** Reactive object of decoded pattern parameters. Read a property in JSX to track it. */
   readonly params: RouteParams;
-  /** Reactive getter backed by the core's normalized current location. */
+  /** Reactive object for the normalized current location. */
   readonly location: RouteLocation;
-  /** Reactive getter preserving repeated decoded query names as arrays. */
+  /** Reactive object of decoded query values. Repeated names are arrays. */
   readonly searchParams: RouteSearchParams;
   /** The next matched child route. A layout may render this or use `<Outlet />`. */
   readonly children: JSX.Element;
@@ -101,8 +103,9 @@ export interface RouterController {
 interface RouterContextValue {
   controller: RouterController;
   state: Accessor<RouterState>;
-  params: Accessor<RouteParams>;
-  searchParams: Accessor<RouteSearchParams>;
+  params: RouteParams;
+  location: RouteLocation;
+  searchParams: RouteSearchParams;
 }
 
 const RouterContext = createContext<RouterContextValue | undefined>();
@@ -162,12 +165,18 @@ export function Router(props: RouterProps): JSX.Element {
       return native.isActive(destination, end);
     },
   };
-  const params = createMemo<RouteParams>(() => valuesRecord(state().matched?.params ?? []));
-  const searchParams = createMemo<RouteSearchParams>(() => queryRecord(state().location.query));
+  const params = createMemoObject<RouteParams>(() =>
+    valuesRecord(state().matched?.params ?? []),
+  );
+  const location = createReactiveLocation(() => state().location);
+  const searchParams = createMemoObject<RouteSearchParams>(() =>
+    queryRecord(state().location.query),
+  );
   const context: RouterContextValue = {
     controller,
     state,
     params,
+    location,
     searchParams,
   };
 
@@ -194,20 +203,19 @@ export function useRouter(): RouterController {
   return requireRouter("useRouter").controller;
 }
 
-/** Reactive accessor for the normalized current location. */
-export function useLocation(): Accessor<RouteLocation> {
-  const context = requireRouter("useLocation");
-  return () => context.state().location;
+/** Reactive location object. Read `location.pathname` in JSX to stay current. */
+export function useLocation(): RouteLocation {
+  return requireRouter("useLocation").location;
 }
 
-/** Reactive accessor for decoded parameters from the winning route. */
-export function useParams(): Accessor<RouteParams> {
-  return requireRouter("useParams").params;
+/** Reactive parameter object, like Solid Router. Read `params.id` in JSX to stay current. */
+export function useParams<T extends RouteParams = RouteParams>(): T {
+  return requireRouter("useParams").params as T;
 }
 
-/** Reactive accessor for decoded query values. Repeated names are arrays. */
-export function useSearchParams(): Accessor<RouteSearchParams> {
-  return requireRouter("useSearchParams").searchParams;
+/** Reactive query object. Repeated names are arrays. Read `searchParams.tab` in JSX to stay current. */
+export function useSearchParams<T extends RouteSearchParams = RouteSearchParams>(): T {
+  return requireRouter("useSearchParams").searchParams as T;
 }
 
 /** Stable imperative navigation function for the current router. */
@@ -266,7 +274,7 @@ function requireRouter(component: string): RouterContextValue {
 function MatchedRoutes(props: { table: RouteTable; fallback?: JSX.Element }): JSX.Element {
   const context = requireRouter("Router");
   // Equality on this scalar keeps a page mounted while only its params, query, or fragment
-  // changes. Those values still update through the reactive getters passed to the component.
+  // changes. Those values still update through the reactive objects passed to the component.
   const leafRoute = createMemo(() => context.state().matched?.routeIds.at(-1));
   return createMemo<JSX.Element>(() => {
     const leaf = leafRoute();
@@ -295,15 +303,9 @@ function renderRouteChain(
     get children() {
       if (!route.component) return outlet();
       const routeProps: RouteSectionProps = {
-        get params() {
-          return context.params();
-        },
-        get location() {
-          return context.state().location;
-        },
-        get searchParams() {
-          return context.searchParams();
-        },
+        params: context.params,
+        location: context.location,
+        searchParams: context.searchParams,
         get children() {
           return outlet();
         },
@@ -387,4 +389,58 @@ function queryRecord(values: readonly { name: string; value: string }[]): RouteS
     result[name] = entries.length === 1 ? entries[0]! : Object.freeze(entries.slice());
   }
   return Object.freeze(result);
+}
+
+/** Store-like object whose property reads track the latest source snapshot, matching Solid Router. */
+function createMemoObject<T extends object>(source: Accessor<T>): T {
+  const map = new Map<PropertyKey, Accessor<unknown>>();
+  const owner = getOwner();
+  if (!owner) {
+    throw new TypeError("router hooks must be used in a reactive scope");
+  }
+  return new Proxy({} as T, {
+    get(_, property) {
+      if (!map.has(property)) {
+        runWithOwner(owner, () => {
+          map.set(
+            property,
+            createMemo(() => Reflect.get(source(), property)),
+          );
+        });
+      }
+      return map.get(property)!();
+    },
+    getOwnPropertyDescriptor() {
+      return {
+        enumerable: true,
+        configurable: true,
+      };
+    },
+    ownKeys() {
+      return Reflect.ownKeys(source());
+    },
+    has(_, property) {
+      return property in (source() as object);
+    },
+  });
+}
+
+function createReactiveLocation(source: Accessor<RouteLocation>): RouteLocation {
+  return {
+    get href() {
+      return source().href;
+    },
+    get pathname() {
+      return source().pathname;
+    },
+    get search() {
+      return source().search;
+    },
+    get hash() {
+      return source().hash;
+    },
+    get query() {
+      return source().query;
+    },
+  };
 }

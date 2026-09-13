@@ -1,4 +1,10 @@
 import { PROTOCOL_VERSION } from "../src/protocol.ts";
+import type {
+  NativeRouteDefinition,
+  NativeRouteLocation,
+  NativeRouterState,
+  NativeRouteValue,
+} from "../src/binding-types.ts";
 
 /**
  * One shared fake native binding for the JavaScript host tests.
@@ -198,3 +204,258 @@ fakeBinding.closeHostedWindow = (app: number, id: number) => {
   close(id);
   queueMicrotask(() => dispatchEvents());
 };
+
+type PatternSegment =
+  | { kind: "static"; value: string }
+  | { kind: "param"; name: string; optional: boolean }
+  | { kind: "wildcard"; name: string };
+
+interface CompiledRoute {
+  id: string;
+  routeIds: string[];
+  segments: PatternSegment[];
+  participates: boolean;
+  staticCount: number;
+}
+
+function normalizePathname(path: string): string {
+  const segments: string[] = [];
+  for (const segment of path.split("/")) {
+    if (segment === "" || segment === ".") continue;
+    if (segment === "..") segments.pop();
+    else segments.push(segment);
+  }
+  return `/${segments.join("/")}`;
+}
+
+function parseQuery(search: string): NativeRouteValue[] {
+  if (!search) return [];
+  return search.split("&").map((pair) => {
+    const [name, value = ""] = pair.split("=");
+    return {
+      name: decodeURIComponent(name.replaceAll("+", " ")),
+      value: decodeURIComponent(value.replaceAll("+", " ")),
+    };
+  });
+}
+
+function parseLocation(destination: string, current?: NativeRouteLocation): NativeRouteLocation {
+  const fallback: NativeRouteLocation = current ?? {
+    href: "/",
+    pathname: "/",
+    search: "",
+    hash: "",
+    query: [],
+  };
+  if (!destination) return fallback;
+  const hashIndex = destination.indexOf("#");
+  const beforeHash = hashIndex === -1 ? destination : destination.slice(0, hashIndex);
+  const rawHash = hashIndex === -1 ? undefined : destination.slice(hashIndex + 1);
+  const queryIndex = beforeHash.indexOf("?");
+  const rawPath = queryIndex === -1 ? beforeHash : beforeHash.slice(0, queryIndex);
+  const rawQuery = queryIndex === -1 ? undefined : beforeHash.slice(queryIndex + 1);
+  const fragmentOnly = beforeHash === "" && rawHash !== undefined;
+  const pathname =
+    rawPath === ""
+      ? fallback.pathname
+      : rawPath.startsWith("/")
+        ? normalizePathname(rawPath)
+        : normalizePathname(`${fallback.pathname}/${rawPath}`);
+  const search = fragmentOnly
+    ? fallback.search
+    : rawQuery
+      ? `?${rawQuery}`
+      : "";
+  const hash = rawHash ? `#${rawHash}` : "";
+  return {
+    href: `${pathname}${search}${hash}`,
+    pathname,
+    search,
+    hash,
+    query: parseQuery(search.startsWith("?") ? search.slice(1) : ""),
+  };
+}
+
+function resolveRoutePattern(
+  definition: NativeRouteDefinition,
+  byId: Map<string, NativeRouteDefinition>,
+  cache: Map<string, { pattern: string; routeIds: string[] }>,
+): { pattern: string; routeIds: string[] } {
+  const cached = cache.get(definition.id);
+  if (cached) return cached;
+  const parent = definition.parentId
+    ? resolveRoutePattern(byId.get(definition.parentId)!, byId, cache)
+    : { pattern: "/", routeIds: [] };
+  let pattern = parent.pattern;
+  if (definition.path !== undefined) {
+    if (definition.path.startsWith("/")) pattern = normalizePathname(definition.path);
+    else if (definition.path !== "") {
+      pattern = normalizePathname(`${parent.pattern.replace(/\/$/, "")}/${definition.path}`);
+    }
+  }
+  const resolved = { pattern, routeIds: [...parent.routeIds, definition.id] };
+  cache.set(definition.id, resolved);
+  return resolved;
+}
+
+function compileSegments(pattern: string): PatternSegment[] {
+  return pattern
+    .split("/")
+    .filter(Boolean)
+    .map((segment): PatternSegment => {
+      if (segment.startsWith("*")) {
+        return { kind: "wildcard", name: segment.slice(1) || "*" };
+      }
+      if (segment.startsWith(":")) {
+        const optional = segment.endsWith("?");
+        return {
+          kind: "param",
+          name: optional ? segment.slice(1, -1) : segment.slice(1),
+          optional,
+        };
+      }
+      return { kind: "static", value: segment };
+    });
+}
+
+function matchSegments(
+  segments: PatternSegment[],
+  parts: string[],
+): NativeRouteValue[] | undefined {
+  const params: NativeRouteValue[] = [];
+  let index = 0;
+  for (const segment of segments) {
+    if (segment.kind === "static") {
+      if (parts[index] !== segment.value) return undefined;
+      index += 1;
+      continue;
+    }
+    if (segment.kind === "param") {
+      const value = parts[index];
+      if (value === undefined) {
+        if (!segment.optional) return undefined;
+        continue;
+      }
+      params.push({ name: segment.name, value });
+      index += 1;
+      continue;
+    }
+    params.push({ name: segment.name, value: parts.slice(index).join("/") });
+    index = parts.length;
+  }
+  if (index !== parts.length) return undefined;
+  return params;
+}
+
+function compileRoutes(definitions: NativeRouteDefinition[]): CompiledRoute[] {
+  const byId = new Map(definitions.map((definition) => [definition.id, definition]));
+  const cache = new Map<string, { pattern: string; routeIds: string[] }>();
+  return definitions.map((definition) => {
+    const { pattern, routeIds } = resolveRoutePattern(definition, byId, cache);
+    const segments = compileSegments(pattern);
+    return {
+      id: definition.id,
+      routeIds,
+      segments,
+      participates: definition.path !== undefined,
+      staticCount: segments.filter((segment) => segment.kind === "static").length,
+    };
+  });
+}
+
+function matchRoutes(routes: CompiledRoute[], pathname: string): NativeRouterState["matched"] {
+  const parts = pathname.split("/").filter(Boolean);
+  let best: { route: CompiledRoute; params: NativeRouteValue[]; score: number } | undefined;
+  for (const route of routes) {
+    if (!route.participates) continue;
+    const params = matchSegments(route.segments, parts);
+    if (!params) continue;
+    const wildcard = route.segments.some((segment) => segment.kind === "wildcard");
+    const score = route.staticCount * 10 + (wildcard ? 0 : 1);
+    if (!best || score > best.score) best = { route, params, score };
+  }
+  return best ? { routeIds: best.route.routeIds, params: best.params } : undefined;
+}
+
+/** In-memory core router used by Solid tests that mock the native binding. */
+export class NativeRouter {
+  private routes: CompiledRoute[];
+  private entries: NativeRouterState[] = [];
+  private index = 0;
+
+  constructor(routes: NativeRouteDefinition[], initialDestination?: string | null) {
+    this.routes = compileRoutes(routes);
+    this.entries = [this.snapshot(parseLocation(initialDestination ?? "/"))];
+  }
+
+  private snapshot(location: NativeRouteLocation): NativeRouterState {
+    return {
+      location,
+      matched: matchRoutes(this.routes, location.pathname),
+      historyIndex: this.index,
+      historyLength: this.entries.length,
+      canGoBack: this.index > 0,
+      canGoForward: this.index + 1 < this.entries.length,
+    };
+  }
+
+  private commit(location: NativeRouteLocation, replace: boolean): NativeRouterState {
+    const next = this.snapshot(location);
+    if (replace) this.entries[this.index] = next;
+    else {
+      this.entries = this.entries.slice(0, this.index + 1);
+      this.entries.push(next);
+      this.index = this.entries.length - 1;
+    }
+    return this.state();
+  }
+
+  state(): NativeRouterState {
+    const current = this.entries[this.index]!;
+    return {
+      ...current,
+      historyIndex: this.index,
+      historyLength: this.entries.length,
+      canGoBack: this.index > 0,
+      canGoForward: this.index + 1 < this.entries.length,
+    };
+  }
+
+  resolve(destination: string): NativeRouteLocation {
+    return parseLocation(destination, this.entries[this.index]?.location);
+  }
+
+  isActive(destination: string, end = false): boolean {
+    const current = this.entries[this.index]!.location.pathname;
+    const target = this.resolve(destination).pathname;
+    if (current === target) return true;
+    if (end) return false;
+    if (target === "/") return current.startsWith("/");
+    return current.startsWith(`${target}/`);
+  }
+
+  push(destination: string): NativeRouterState {
+    return this.commit(this.resolve(destination), false);
+  }
+
+  replace(destination: string): NativeRouterState {
+    return this.commit(this.resolve(destination), true);
+  }
+
+  go(delta: number): NativeRouterState {
+    this.index = Math.max(0, Math.min(this.entries.length - 1, this.index + delta));
+    return this.state();
+  }
+
+  back(): NativeRouterState {
+    return this.go(-1);
+  }
+
+  forward(): NativeRouterState {
+    return this.go(1);
+  }
+
+  dispose(): void {}
+}
+
+fakeBinding.NativeRouter = NativeRouter;

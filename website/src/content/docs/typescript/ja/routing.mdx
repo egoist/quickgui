@@ -48,8 +48,8 @@ const navigate = useNavigate();
 ```tsx
 function Project() {
   const params = useParams();
-  return <Text>Project {params().id}</Text>;
+  return <Text>Project {params.id}</Text>;
 }
 ```
 
-`useLocation()` と `useSearchParams()` は、現在のパスとクエリを返します。テキストが最新のままになるよう、JSX 内で読みます。
+`useLocation()` と `useSearchParams()` もリアクティブなオブジェクトを返します。テキストが最新のままになるよう、JSX 内で `location.pathname` と `searchParams.tab` を読みます。
