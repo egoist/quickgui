@@ -24,7 +24,7 @@ function run(argv: string[]): string {
 }
 run(["bun", join(import.meta.dir, "release-metadata.ts")]);
 
-async function isPublished(name: string, integrity: string): Promise<boolean> {
+async function publishedIntegrity(name: string): Promise<string | undefined> {
   let response: Response | undefined;
   for (let attempt = 0; attempt < 6; attempt++) {
     try {
@@ -39,12 +39,10 @@ async function isPublished(name: string, integrity: string): Promise<boolean> {
     }
     if (attempt < 5) await Bun.sleep(1000 * (attempt + 1));
   }
-  if (response?.status === 404) return false;
+  if (response?.status === 404) return undefined;
   if (!response?.ok) throw new Error(`Registry request failed for ${name}`);
   const metadata = (await response.json()) as { dist?: { integrity?: string } };
-  if (metadata.dist?.integrity !== integrity)
-    throw new Error(`${name}@${version} is public with different bytes`);
-  return true;
+  return metadata.dist?.integrity;
 }
 
 if (publish) {
@@ -68,8 +66,13 @@ for (const part of ["native", "extension-terminal", "extension-updater", "solid"
   const archive = join(directory, `quickgui-${part}-${version}.tgz`);
   if (!existsSync(archive)) throw new Error(`Missing archive: ${archive}`);
   const integrity = `sha512-${createHash("sha512").update(readFileSync(archive)).digest("base64")}`;
-  if (await isPublished(name, integrity)) {
-    console.log(`${name}@${version} is already public with matching bytes; skipping`);
+  const publicIntegrity = await publishedIntegrity(name);
+  if (publicIntegrity) {
+    console.log(
+      publicIntegrity === integrity
+        ? `${name}@${version} is already public with matching bytes; skipping`
+        : `${name}@${version} is already public with different bytes; skipping immutable registry version`,
+    );
     continue;
   }
   if (!publish) {
@@ -79,10 +82,17 @@ for (const part of ["native", "extension-terminal", "extension-updater", "solid"
     );
     continue;
   }
-  console.log(run(npmPublishArgs(archive, version)));
+  try {
+    console.log(run(npmPublishArgs(archive, version)));
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    throw new Error(
+      `${name}@${version} publish failed. A 404 on an existing package usually means npm has no Trusted Publisher for GitHub owner egoist, repository quickgui, workflow release.yml, and no environment. ${detail}`,
+    );
+  }
   let available = false;
   for (let attempt = 0; attempt < 60; attempt++) {
-    if (await isPublished(name, integrity)) {
+    if ((await publishedIntegrity(name)) === integrity) {
       available = true;
       break;
     }

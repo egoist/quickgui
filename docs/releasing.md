@@ -96,7 +96,17 @@ npm requires Node 22.14 or newer and npm 11.5.1 or newer for OIDC; the workflow 
 verifies the npm CLI before publication. No `NPM_TOKEN` secret is required.
 
 Creating the workflow does not create the npm registry-side trust records. A missing or misspelled
-record makes npm authentication fail before publication.
+record makes npm authentication fail with a 404 on `PUT` even when the package already exists.
+`@quickgui/native` is configured and publishes as GitHub Actions; the other four packages still
+need the same Trusted Publisher record before OIDC can publish them. From an npm login with 2FA:
+
+```console
+for name in extension-terminal extension-updater solid cli; do
+  npm trust github "@quickgui/$name" --file release.yml --repo egoist/quickgui
+done
+```
+
+Or add the same record in each package's Trusted publishing settings on npmjs.com.
 
 ## Version-driven publication
 
@@ -142,9 +152,10 @@ npm 11 refuses a prerelease without `--tag`, so `0.1.4-next.3` publishes to the 
 (the first prerelease identifier) instead of `latest`. Stable versions keep npm's default `latest` tag.
 The terminal and updater packages are optional; the CLI resolves its exact version only when a Go import requires it.
 The CLI waits until the native package is anonymously resolvable from
-its public registry. A rerun skips an existing, non-yanked crate version and skips an existing npm
-version only when its registry integrity matches the locally verified tarball. This permits safe
-recovery from a partial registry release without attempting to overwrite immutable versions.
+its public registry. A rerun skips an existing, non-yanked crate version and skips an npm version that is already
+on the registry. Native images are not bit-identical across rebuilds, so a later recovery of the
+same version leaves the published tarball in place instead of failing on a checksum mismatch. This
+permits safe recovery from a partial registry release without attempting to overwrite immutable versions.
 
 The npm tarballs and their SHA-256 checksums are retained as a workflow artifact and attached to the
 GitHub Release. npm trusted publishing works for the private repository, but does not generate
