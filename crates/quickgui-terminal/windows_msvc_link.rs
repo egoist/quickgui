@@ -3,8 +3,10 @@
 //! `libghostty-vt-sys` 0.2.1 emits `static=ghostty-vt`. On MSVC rustc resolves that
 //! to `ghostty-vt.lib`, which is Zig's DLL import library, not `ghostty-vt-static.lib`.
 //! Linking the import library into this cdylib pulls `msvcrt.lib` startup objects
-//! without `libvcruntime` / `libucrt`, so `link.exe` reports unresolved `memcpy`,
-//! `__CxxFrameHandler3`, and `__vcrt_initialize`.
+//! without the rest of the CRT, so `link.exe` reports unresolved `memcpy` and
+//! `__CxxFrameHandler3`. Staging the static archive keeps rustc on its usual
+//! `/defaultlib:msvcrt` line. Do not also link `libucrt` / `libvcruntime`; those
+//! collide with `ucrt.lib` (`LNK2005` on `_initialize_narrow_environment`).
 use std::env;
 use std::fs;
 use std::io;
@@ -15,10 +17,6 @@ pub const IMPORT_LIBRARY: &str = "ghostty-vt.lib";
 
 pub fn needs_msvc_ghostty_link(target: &str) -> bool {
     target.contains("windows-msvc")
-}
-
-pub fn crt_static_libs() -> &'static [&'static str] {
-    &["libvcruntime", "libucrt"]
 }
 
 pub fn lib_dir_from_include(include: &str) -> Option<PathBuf> {
@@ -72,11 +70,6 @@ mod tests {
         assert!(!needs_msvc_ghostty_link("x86_64-pc-windows-gnu"));
         assert!(!needs_msvc_ghostty_link("x86_64-unknown-linux-gnu"));
         assert!(!needs_msvc_ghostty_link("aarch64-apple-darwin"));
-    }
-
-    #[test]
-    fn crt_companions_are_the_static_msvc_archives() {
-        assert_eq!(crt_static_libs(), ["libvcruntime", "libucrt"]);
     }
 
     #[test]

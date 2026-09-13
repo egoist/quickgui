@@ -45,8 +45,4 @@ fn configure_windows_msvc_ghostty() {
             lib_dir.display()
         );
     }
-
-    for lib in windows_msvc_link::crt_static_libs() {
-        println!("cargo:rustc-link-lib=static={lib}");
-    }
 }

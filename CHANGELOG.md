@@ -15,8 +15,8 @@ All notable user-facing changes to QuickGUI are recorded here.
   rejected before any output is written.
 - Published npm packages now ship Linux and Windows host libraries beside the macOS
   images, so `quickgui` installs on those platforms instead of being rejected as
-  darwin-only. The Windows terminal image links Ghostty's static archive and the
-  MSVC CRT companions, so `quickgui_terminal.dll` no longer fails at link time.
+  darwin-only. The Windows terminal image links Ghostty's static archive instead of
+  the DLL import library, so `quickgui_terminal.dll` can link on MSVC.
 
 ### JavaScript
 
