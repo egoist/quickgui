@@ -21,7 +21,7 @@ export function stageNativeLibArtifacts(root: string, destination: string) {
     if (!isDirectory(source)) throw new Error(`missing ${source}`);
     const dest = join(destRoot, "packages", name, "lib");
     mkdirSync(dest, { recursive: true });
-    cpSync(source, dest, { recursive: true });
+    cpSync(source, dest, { recursive: true, verbatimSymlinks: true });
   }
   return destRoot;
 }

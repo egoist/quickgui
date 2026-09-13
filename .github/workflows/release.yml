@@ -4,8 +4,6 @@ on:
   push:
     tags:
       - "v*"
-    branches:
-      - "cursor/release-0-1-4-next-3-1439"
   workflow_dispatch:
     inputs:
       publish_only:
@@ -23,10 +21,7 @@ concurrency:
 jobs:
   native:
     name: Native ${{ matrix.name }}
-    if: >
-      github.repository == 'egoist/quickgui' &&
-      github.event.inputs.publish_only != 'true' &&
-      github.ref_type != 'branch'
+    if: github.repository == 'egoist/quickgui' && github.event.inputs.publish_only != 'true'
     runs-on: ${{ matrix.os }}
     timeout-minutes: 45
     strategy:
@@ -144,11 +139,8 @@ jobs:
           printf 'sha=%s\n' "$release_sha" >> "$GITHUB_OUTPUT"
           printf 'tag=%s\n' "$release_tag" >> "$GITHUB_OUTPUT"
           printf 'QUICKGUI_RELEASE_TAG=%s\n' "$release_tag" >> "$GITHUB_ENV"
-          if [[ '${{ github.event.inputs.publish_only }}' == 'true' || '${{ github.ref_type }}' == 'branch' ]]; then
+          if [[ '${{ github.event.inputs.publish_only }}' == 'true' ]]; then
             run_id='${{ github.event.inputs.reuse_run_id }}'
-            if [[ -z $run_id && -f .github/reuse-npm-run ]]; then
-              run_id=$(tr -d '[:space:]' < .github/reuse-npm-run)
-            fi
             test -n "$run_id"
             printf 'QUICKGUI_PUBLISH_ONLY=1\n' >> "$GITHUB_ENV"
             printf 'QUICKGUI_REUSE_RUN_ID=%s\n' "$run_id" >> "$GITHUB_ENV"

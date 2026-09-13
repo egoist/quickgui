@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { lstatSync, mkdirSync, mkdtempSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
@@ -54,4 +54,30 @@ test("restore is a no-op when packages already hold the libraries", async () => 
   expect(
     await Bun.file(join(packageLibDir(root, "native"), "darwin-arm64", "libquickgui_host.dylib")).text(),
   ).toBe("native");
+});
+
+test("stages Sparkle-style framework bundles without following internal symlinks", () => {
+  const root = scratch();
+  writeLib(root, "native", "darwin-arm64", "libquickgui_host.dylib");
+  writeLib(root, "extension-terminal", "darwin-arm64", "libquickgui_terminal.dylib");
+  const framework = join(
+    root,
+    "packages/extension-updater/lib/darwin-arm64/Sparkle.framework",
+  );
+  const versionB = join(framework, "Versions/B");
+  mkdirSync(join(versionB, "Resources"), { recursive: true });
+  writeFileSync(join(versionB, "Sparkle"), "binary");
+  writeFileSync(join(versionB, "Resources/Info.plist"), "plist");
+  symlinkSync("B", join(framework, "Versions/Current"));
+  symlinkSync("Versions/Current/Sparkle", join(framework, "Sparkle"));
+  symlinkSync("Versions/Current/Resources", join(framework, "Resources"));
+
+  const staged = join(root, "target", "native-libs");
+  stageNativeLibArtifacts(root, staged);
+  const dest = join(staged, "packages/extension-updater/lib/darwin-arm64/Sparkle.framework");
+  expect(lstatSync(join(dest, "Sparkle")).isSymbolicLink()).toBe(true);
+  expect(lstatSync(join(dest, "Resources")).isSymbolicLink()).toBe(true);
+  expect(lstatSync(join(dest, "Versions/Current")).isSymbolicLink()).toBe(true);
+  expect(readFileSync(join(dest, "Versions/B/Sparkle"), "utf8")).toBe("binary");
+  expect(readFileSync(join(dest, "Versions/Current/Sparkle"), "utf8")).toBe("binary");
 });

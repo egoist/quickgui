@@ -50,17 +50,20 @@ verified `.crate` archives, `SHA256SUMS`, this release guide, and the changelog.
 the same packages but do not retain release artifacts. The CI workflow never publishes.
 
 A pushed `v*` tag starts the separate `Release` workflow. It does not rerun the CI quality
-gates. Manual dispatch can set `publish_only` and a prior run id to publish already-packed
-npm tarballs without rebuilding natives. Native host, terminal, and updater images build in parallel on macOS (arm64 and x64,
-including Sparkle), Linux x64, Linux arm64, and Windows x64. Each native job copies those
-images under `target/native-libs/packages` before upload so `actions/upload-artifact` cannot
-strip the `packages/` prefix. The publish job merges the four artifacts, restores
-`packages/*/lib` if a flattened layout is present, rejects a tag that is not exactly
+gates. Ordinary manual dispatch rebuilds natives the same way. `publish_only` plus a prior
+run id reuses that run's native artifacts instead of compiling them again. Native host,
+terminal, and updater images build in parallel on macOS (arm64 and x64, including Sparkle),
+Linux x64, Linux arm64, and Windows x64. Each native job copies those images under
+`target/native-libs/packages` with framework symlinks left intact, so
+`actions/upload-artifact` cannot strip the `packages/` prefix and Sparkle's `Current` /
+`Resources` links do not copy into themselves. The publish job merges the four artifacts,
+restores `packages/*/lib` if a flattened layout is present, rejects a tag that is not exactly
 `v<root-package-version>` or lacks a dated changelog section, packs the five npm archives from
 the downloaded libraries, and publishes crates.io,
 the Go module tag, and npm in dependency order. The root `package.json` version is the source
 of truth; every published crate, backend, and npm package must match it. Fresh Rust and Go
-consumers verify public installs before the workflow creates the GitHub Release.
+consumers verify public installs (`quickgui init --language go`) before the workflow creates
+the GitHub Release.
 
 ## macOS acceptance evidence
 
@@ -98,16 +101,17 @@ verifies the npm CLI before publication. No `NPM_TOKEN` secret is required.
 
 Creating the workflow does not create the npm registry-side trust records. A missing or misspelled
 record makes npm authentication fail with a 404 on `PUT` even when the package already exists.
-`@quickgui/native` is configured and publishes as GitHub Actions; the other four packages still
-need the same Trusted Publisher record before OIDC can publish them. From an npm login with 2FA:
+Each of the five packages needs that Trusted Publisher record before OIDC can publish it. From
+an npm login with 2FA:
 
 ```console
-for name in extension-terminal extension-updater solid cli; do
+for name in native extension-terminal extension-updater solid cli; do
   npm trust github "@quickgui/$name" --file release.yml --repo egoist/quickgui
 done
 ```
 
-Or add the same record in each package's Trusted publishing settings on npmjs.com.
+Or add the same record in each package's Trusted publishing settings on npmjs.com. This
+repository already has those records.
 
 ## Version-driven publication
 
@@ -150,7 +154,8 @@ The repository must be readable by Go consumers; a tag alone does not grant acce
 
 It then publishes npm packages in the order `@quickgui/native`, `@quickgui/extension-terminal`, `@quickgui/extension-updater`, `@quickgui/solid`, and `@quickgui/cli`.
 npm 11 refuses a prerelease without `--tag`, so every version is published with `--tag latest`.
-A rerun that finds the version already on the registry points `latest` at that version.
+A rerun skips a version that is already on the registry instead of republishing or moving
+dist-tags; OIDC cannot run `npm dist-tag`.
 The terminal and updater packages are optional; the CLI resolves its exact version only when a Go import requires it.
 Packages are published back-to-back; npm does not need a prior package to
 finish indexing before the next `npm publish`. A rerun skips an existing, non-yanked crate version and skips an npm version that is already

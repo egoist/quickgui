@@ -41,7 +41,10 @@ try {
   writeFileSync(join(npm, "package.json"), '{"name":"quickgui-registry-smoke","private":true}');
   await run(["bun", "add", `@quickgui/native@${version}`, `@quickgui/cli@${version}`], npm);
   const cli = join(npm, "node_modules/@quickgui/cli/src/cli.ts");
-  await run(["bun", cli, "init", "compiled-consumer", "--no-install"], npm);
+  await run(
+    ["bun", cli, "init", "compiled-consumer", "--language", "go", "--no-install"],
+    npm,
+  );
   const app = join(npm, "compiled-consumer");
   await run(["bun", "install"], app);
   await run(["go", "mod", "tidy"], app);
