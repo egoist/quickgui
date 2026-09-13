@@ -113,11 +113,7 @@ jobs:
 
   publish:
     name: Publish release
-    if: >
-      github.repository == 'egoist/quickgui' &&
-      (needs.native.result == 'success' ||
-        (needs.native.result == 'skipped' &&
-          (github.event.inputs.publish_only == 'true' || github.ref_type == 'branch')))
+    if: ${{ always() && !cancelled() && github.repository == 'egoist/quickgui' && (needs.native.result == 'success' || needs.native.result == 'skipped') }}
     needs: [native]
     runs-on: macos-latest
     timeout-minutes: 45
