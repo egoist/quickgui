@@ -73,6 +73,8 @@ struct NativeMenuIcon {
     data_base64: Option<String>,
     width: Option<u32>,
     height: Option<u32>,
+    #[serde(default)]
+    template: Option<bool>,
 }
 
 fn default_true() -> bool {
@@ -293,7 +295,9 @@ fn decorate_item(
 }
 
 fn native_menu_icon(icon: NativeMenuIcon) -> Result<MenuIcon, String> {
-    match (icon.path, icon.data_base64) {
+    let template = icon.template;
+    let path = icon.path.clone();
+    let image = match (icon.path, icon.data_base64) {
         (Some(path), None) if icon.width.is_none() && icon.height.is_none() => {
             MenuIcon::open(path).map_err(|error| error.to_string())
         }
@@ -313,7 +317,12 @@ fn native_menu_icon(icon: NativeMenuIcon) -> Result<MenuIcon, String> {
             .map_err(|error| error.to_string())
         }
         _ => Err("a native menu icon requires exactly one path or data source".to_owned()),
-    }
+    }?;
+    let template = template.unwrap_or_else(|| {
+        path.as_deref()
+            .is_some_and(quickgui::is_template_image_path)
+    });
+    Ok(image.template(template))
 }
 
 #[cfg(test)]

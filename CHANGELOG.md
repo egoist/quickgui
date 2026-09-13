@@ -20,9 +20,17 @@ All notable user-facing changes to QuickGUI are recorded here.
   so a resource cannot overwrite them. Update manifests select AppImage and NSIS artifacts
   from packaging outputs only. Debian `md5sums` omit directory members.
 
+### Framework
+
+- `Image::open`, `MenuIcon::open`, and `TrayIconImage::from_path` treat a stem ending in
+  `Template` (optionally `@2x`) as a macOS template image. Go and TypeScript `ImageSource`
+  values accept an explicit `template` flag; omitted path flags still infer that convention.
+- Rust `EventContext` can create, replace, remove, and (on macOS and Windows) pop a native
+  tray menu, so `Application::run` apps no longer need `AppRunner` for tray icons.
+
 ### Website
 
-- Added App Icon and Bundled Resources guides for Go, TypeScript, and Rust.
+- Added App Icon, Tray Icon, and Bundled Resources guides for Go, TypeScript, and Rust.
 
 ## 0.1.4-next.4 - 2026-09-13
 

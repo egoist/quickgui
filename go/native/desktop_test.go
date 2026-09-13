@@ -250,3 +250,36 @@ func TestTrayUpdatesSerializeAndKeepTheLastSuccessfulMenu(t *testing.T) {
 		t.Fatal("removed tray retained callbacks")
 	}
 }
+
+func TestImageSourceEncodesTemplateFlag(t *testing.T) {
+	payload, err := json.Marshal(TemplateImage("/icons/statusTemplate.png"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Contains(payload, []byte(`"path":"/icons/statusTemplate.png"`)) || !bytes.Contains(payload, []byte(`"template":true`)) {
+		t.Fatalf("template image: %s", payload)
+	}
+	disabled := false
+	payload, err = json.Marshal(ImageSource{Path: "/icons/statusTemplate.png", Template: &disabled})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Contains(payload, []byte(`"template":false`)) {
+		t.Fatalf("explicit false template: %s", payload)
+	}
+}
+
+func TestTrayOmitsInferredTemplateFlag(t *testing.T) {
+	fake := installCommandHost(t)
+	defer func() { trayIcons = map[uint32]*TrayIcon{} }()
+	Tray.Create(TrayIconOptions{Icon: ImageSource{Path: "/icons/statusTemplate.png"}}, nil)
+	if bytes.Contains([]byte(fake.payload), []byte("iconIsTemplate")) {
+		t.Fatalf("inferred template paths should omit iconIsTemplate: %s", fake.payload)
+	}
+	replyCommand(fake, "tray-operation", "", "")
+	Tray.Create(TrayIconOptions{Icon: TemplateImage("/icons/status.png")}, nil)
+	if !bytes.Contains([]byte(fake.payload), []byte(`"iconIsTemplate":true`)) {
+		t.Fatalf("explicit template: %s", fake.payload)
+	}
+	replyCommand(fake, "tray-operation", "", "")
+}

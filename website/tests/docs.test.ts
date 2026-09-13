@@ -150,7 +150,7 @@ test('guide, components, and SwiftUI each have a dedicated sidebar', async () =>
         ].map((slug) => `/docs/${frontend}/${slug}`),
       )
       expect(guides.find((group) => group.id === 'advanced')!.items.map((item) => item.path)).toEqual(
-        ['app-icon', 'bundled-resources', 'updater', 'extensions'].map(
+        ['app-icon', 'tray-icon', 'bundled-resources', 'updater', 'extensions'].map(
           (slug) => `/docs/${frontend}/${slug}`,
         ),
       )

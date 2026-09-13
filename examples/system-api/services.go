@@ -331,8 +331,9 @@ func (s *systemState) toggleTray(done completion) {
 	}
 	native.Tray.Create(
 		native.TrayIconOptions{
-			Icon:    makeTrayIcon(),
-			Tooltip: appName,
+			Icon:           makeTrayIcon(),
+			IconIsTemplate: true,
+			Tooltip:        appName,
 			Menu: []native.TrayMenuItem{
 				{Label: "Show window", Click: s.showWindow},
 				{Type: "separator"},

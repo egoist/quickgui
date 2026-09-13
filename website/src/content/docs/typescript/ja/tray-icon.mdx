@@ -1,0 +1,64 @@
+トレイアイコンは、macOS のメニューバー、Windows の通知領域、または Linux の StatusNotifierItem ホストに表示されます。画像を `resources/` に置き、`app.whenReady()` のあとにアイコンを作ります。パッケージの[アプリアイコン](/docs/typescript/app-icon)とは別の画像です。
+
+## トレイアイコンを作る
+
+小さな PNG をアプリに同梱し、インストール後のパスからアイコンを作ります。
+
+```tsx
+import { join } from "node:path";
+import { app, Tray } from "@quickgui/native";
+
+await app.whenReady();
+const paths = await app.getPaths();
+const icon = join(paths!.resourceDir, "trayTemplate.png");
+
+const tray = await Tray.create({
+  icon,
+  tooltip: "My App",
+  menu: [
+    { label: "Show window", click: showWindow },
+    { type: "separator" },
+    { label: "Quit", click: () => void app.quit() },
+  ],
+});
+tray.on("click", showWindow);
+```
+
+`Tray.create` は id を割り当てます。そのハンドルで `tray.update`、`tray.showMenu`、`tray.destroy` を呼びます。`Tray` は macOS、Windows、Linux で使えます。
+
+1× の元画像には 22×22 の PNG が適しています。Retina のメニューバー用には 44×44 の `trayTemplate@2x.png` を用意します。
+
+## テンプレート画像
+
+macOS では、テンプレート画像は単色のマスクです。AppKit はアルファチャンネルだけを使い、メニューバーのライト、ダーク、ハイライトの外観に合わせて再着色します。
+
+ファイル名のステムが `Template` で終わり、そのあとに `@2x` や `@3x` が付いてもよい場合、テンプレートとして扱われます。
+
+```text
+resources/trayTemplate.png
+resources/trayTemplate@2x.png
+```
+
+`trayTemplate.png` と `statusTemplate@2x.png` は一致します。`emailTemplateIcon.png` は一致しません。
+
+名前がこの規則に従わないときは `{ path, template: true }` または `iconIsTemplate: true` を渡します。`{ path, template: false }` でフラグをオフにできます。同じ `template` フィールドは、ウィンドウアイコン、Dock アイコン、About パネルのアイコン、メニュー項目のアイコンにも使います。他のプラットフォームはフラグを保持し、無視します。
+
+```tsx
+app.dock.setIcon({ path: iconPath, template: false });
+```
+
+## メニューとイベント
+
+トレイメニューはネイティブのコンテキストメニューです。アクション項目は `click` を呼びます。`tray.on` で `click`、`double-click`、`enter`、`move`、`leave`、`menu-item`、`scroll` を監視します。
+
+`showMenu` は macOS と Windows で、カーソル位置にメニューを開きます。Linux ホストはメニュー表示を自分で行い、この呼び出しを拒否します。
+
+## プラットフォーム
+
+| プラットフォーム | ホスト | テンプレート画像 | showMenu |
+| --- | --- | --- | --- |
+| macOS | メニューバーの extra | AppKit が再着色 | 対応 |
+| Windows | 通知領域 | 無視 | 対応 |
+| Linux | StatusNotifierItem | 無視 | 非対応 |
+
+`Tray.isSupported()` は macOS、Windows、Linux で true です。トレイアイコンは最大 32 個です。

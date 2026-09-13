@@ -5,10 +5,17 @@ import * as binding from "./binding.ts";
 export type TrayIconSource =
   | string
   | {
+      path: string;
+      /** macOS template-image flag. When omitted, `*Template.png` paths are inferred. */
+      template?: boolean;
+    }
+  | {
       /** Encoded image bytes, or RGBA8 when width and height are supplied. */
       data: Uint8Array;
       width?: number;
       height?: number;
+      /** macOS template-image flag. Omitted values stay inferred or false. */
+      template?: boolean;
     };
 
 export interface TrayMenuActionItem {
@@ -167,6 +174,9 @@ function nativeOptions(
   };
   if (typeof options.icon === "string") {
     native.iconPath = resolvePath(options.icon);
+  } else if ("path" in options.icon) {
+    native.iconPath = resolvePath(options.icon.path);
+    if (options.icon.template !== undefined) native.iconIsTemplate = options.icon.template;
   } else {
     native.iconData = Buffer.from(
       options.icon.data.buffer,
@@ -175,10 +185,11 @@ function nativeOptions(
     );
     if (options.icon.width !== undefined) native.width = options.icon.width;
     if (options.icon.height !== undefined) native.height = options.icon.height;
+    if (options.icon.template !== undefined) native.iconIsTemplate = options.icon.template;
   }
   if (options.tooltip !== undefined) native.tooltip = options.tooltip;
   if (options.title !== undefined) native.title = options.title;
-  native.iconIsTemplate = options.iconIsTemplate ?? false;
+  if (options.iconIsTemplate !== undefined) native.iconIsTemplate = options.iconIsTemplate;
   native.menuOnLeftClick = options.menuOnLeftClick ?? true;
   native.visible = options.visible ?? true;
   return native;

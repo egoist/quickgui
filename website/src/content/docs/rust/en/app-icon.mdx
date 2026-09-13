@@ -62,6 +62,8 @@ cx.open_window(WindowOptions::new("My App").icon(icon), App);
 
 After the window exists, `cx.set_window_icon(icon)` and `cx.clear_window_icon()` update that image. On macOS, windows do not have their own icon. Use `cx.set_dock_icon(icon)` to replace the Dock image for this process.
 
+Menu-bar and notification-area icons are a different image. See [Tray Icon](/docs/rust/tray-icon).
+
 ## Generated sizes
 
 | Target | Sizes |

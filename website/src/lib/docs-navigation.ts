@@ -140,6 +140,7 @@ export function docsNavGroups(
       title: text.advanced,
       items: [
         guide('app-icon'),
+        guide('tray-icon'),
         guide('bundled-resources'),
         guide('updater'),
         guide('extensions'),

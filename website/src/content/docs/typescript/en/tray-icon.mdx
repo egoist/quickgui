@@ -1,0 +1,64 @@
+A tray icon lives in the macOS menu bar, the Windows notification area, or a Linux StatusNotifierItem host. Put the artwork in `resources/` and create the icon after `app.whenReady()`. This is separate from the packaged [App Icon](/docs/typescript/app-icon).
+
+## Create a tray icon
+
+Ship a small PNG with the app, then create the icon from its packaged path:
+
+```tsx
+import { join } from "node:path";
+import { app, Tray } from "@quickgui/native";
+
+await app.whenReady();
+const paths = await app.getPaths();
+const icon = join(paths!.resourceDir, "trayTemplate.png");
+
+const tray = await Tray.create({
+  icon,
+  tooltip: "My App",
+  menu: [
+    { label: "Show window", click: showWindow },
+    { type: "separator" },
+    { label: "Quit", click: () => void app.quit() },
+  ],
+});
+tray.on("click", showWindow);
+```
+
+`Tray.create` assigns an id. Call `tray.update`, `tray.showMenu`, or `tray.destroy` on that handle. `Tray` is supported on macOS, Windows, and Linux.
+
+A 22×22 PNG is a good 1× source. Draw a 44×44 companion as `trayTemplate@2x.png` when you want a retina menu-bar image.
+
+## Template images
+
+On macOS, a template image is a monochrome mask. AppKit recolors it for the menu bar's light, dark, and highlighted appearances using only the alpha channel.
+
+A filename whose stem ends in `Template`, optionally followed by `@2x` or `@3x`, is treated as a template:
+
+```text
+resources/trayTemplate.png
+resources/trayTemplate@2x.png
+```
+
+`trayTemplate.png` and `statusTemplate@2x.png` match. `emailTemplateIcon.png` does not.
+
+Pass `{ path, template: true }` or `iconIsTemplate: true` when the name does not follow that convention, or `{ path, template: false }` to force the flag off. The same `template` field applies to window icons, Dock icons, about-panel icons, and menu item icons. Other platforms keep the flag and ignore it.
+
+```tsx
+app.dock.setIcon({ path: iconPath, template: false });
+```
+
+## Menus and events
+
+The tray menu is a native context menu. Action items call `click`. Listen for `click`, `double-click`, `enter`, `move`, `leave`, `menu-item`, and `scroll` on `tray.on`.
+
+`showMenu` opens the menu at the cursor on macOS and Windows. Linux hosts own menu presentation and reject that call.
+
+## Platform notes
+
+| Platform | Host | Template images | showMenu |
+| --- | --- | --- | --- |
+| macOS | Menu bar extra | Recolored by AppKit | Supported |
+| Windows | Notification area | Ignored | Supported |
+| Linux | StatusNotifierItem | Ignored | Unsupported |
+
+`Tray.isSupported()` is true on macOS, Windows, and Linux. Keep at most 32 tray icons.

@@ -151,10 +151,17 @@ export type MacOSVisualEffectState = "followWindow" | "active" | "inactive";
 export type ImageSource =
   | string
   | {
+      path: string;
+      /** macOS template-image flag. When omitted, `*Template.png` paths are inferred. */
+      template?: boolean;
+    }
+  | {
       /** Encoded image bytes, or tightly packed RGBA8 when both dimensions are supplied. */
       data: Uint8Array;
       width?: number;
       height?: number;
+      /** macOS template-image flag. Omitted values stay false for byte sources. */
+      template?: boolean;
     };
 
 export interface WindowState {
@@ -649,11 +656,17 @@ export function performNativeWindowImageAction(
 
 export function nativeImageSource(source: ImageSource): binding.NativeImageSource {
   if (typeof source === "string") return { path: resolvePath(source) };
+  if ("path" in source) {
+    const native: binding.NativeImageSource = { path: resolvePath(source.path) };
+    if (source.template !== undefined) native.template = source.template;
+    return native;
+  }
   const native: binding.NativeImageSource = {
     data: Buffer.from(source.data.buffer, source.data.byteOffset, source.data.byteLength),
   };
   if (source.width !== undefined) native.width = source.width;
   if (source.height !== undefined) native.height = source.height;
+  if (source.template !== undefined) native.template = source.template;
   return native;
 }
 
@@ -1144,6 +1157,12 @@ function nativeMenuItems(
 
 function jsonImageSource(source: ImageSource): unknown {
   if (typeof source === "string") return { path: resolvePath(source) };
+  if ("path" in source) {
+    return {
+      path: resolvePath(source.path),
+      ...(source.template !== undefined ? { template: source.template } : {}),
+    };
+  }
   return {
     dataBase64: Buffer.from(
       source.data.buffer,
@@ -1152,6 +1171,7 @@ function jsonImageSource(source: ImageSource): unknown {
     ).toString("base64"),
     ...(source.width !== undefined ? { width: source.width } : {}),
     ...(source.height !== undefined ? { height: source.height } : {}),
+    ...(source.template !== undefined ? { template: source.template } : {}),
   };
 }
 

@@ -1,0 +1,64 @@
+托盘图标显示在 macOS 菜单栏、Windows 通知区或 Linux 的 StatusNotifierItem 宿主中。把图像放进 `resources/`，并在 `app.whenReady()` 之后创建图标。它与打包的[应用图标](/docs/typescript/app-icon)不是同一张图。
+
+## 创建托盘图标
+
+把一张小 PNG 随应用一起打包，再从安装后的路径创建图标：
+
+```tsx
+import { join } from "node:path";
+import { app, Tray } from "@quickgui/native";
+
+await app.whenReady();
+const paths = await app.getPaths();
+const icon = join(paths!.resourceDir, "trayTemplate.png");
+
+const tray = await Tray.create({
+  icon,
+  tooltip: "My App",
+  menu: [
+    { label: "Show window", click: showWindow },
+    { type: "separator" },
+    { label: "Quit", click: () => void app.quit() },
+  ],
+});
+tray.on("click", showWindow);
+```
+
+`Tray.create` 会分配 id。在该句柄上调用 `tray.update`、`tray.showMenu` 或 `tray.destroy`。`Tray` 支持 macOS、Windows 和 Linux。
+
+22×22 的 PNG 适合作为 1× 源图。需要视网膜菜单栏图像时，再画一张 44×44 的 `trayTemplate@2x.png`。
+
+## 模板图像
+
+在 macOS 上，模板图像是单色蒙版。AppKit 只使用 alpha 通道，按菜单栏的浅色、深色和高亮外观重新着色。
+
+文件名的主干以 `Template` 结尾（后面可以跟 `@2x` 或 `@3x`）时，会被当作模板图像：
+
+```text
+resources/trayTemplate.png
+resources/trayTemplate@2x.png
+```
+
+`trayTemplate.png` 和 `statusTemplate@2x.png` 会匹配。`emailTemplateIcon.png` 不会。
+
+文件名不符合约定时，传入 `{ path, template: true }` 或 `iconIsTemplate: true`；用 `{ path, template: false }` 可强制关闭。同一个 `template` 字段也用于窗口图标、程序坞图标、关于面板图标和菜单项图标。其他平台会保留该标志并忽略它。
+
+```tsx
+app.dock.setIcon({ path: iconPath, template: false });
+```
+
+## 菜单与事件
+
+托盘菜单是原生上下文菜单。操作项会调用 `click`。用 `tray.on` 监听 `click`、`double-click`、`enter`、`move`、`leave`、`menu-item` 和 `scroll`。
+
+`showMenu` 在 macOS 和 Windows 上于光标位置打开菜单。Linux 宿主自行呈现菜单，并拒绝该调用。
+
+## 平台说明
+
+| 平台 | 宿主 | 模板图像 | showMenu |
+| --- | --- | --- | --- |
+| macOS | 菜单栏额外图标 | 由 AppKit 重新着色 | 支持 |
+| Windows | 通知区 | 忽略 | 支持 |
+| Linux | StatusNotifierItem | 忽略 | 不支持 |
+
+`Tray.isSupported()` 在 macOS、Windows 和 Linux 上为 true。最多保留 32 个托盘图标。

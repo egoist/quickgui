@@ -501,6 +501,7 @@ pub use single_instance::{
     MAX_SECOND_INSTANCE_ARGUMENTS, MAX_SECOND_INSTANCE_MESSAGE_BYTES,
     MAX_SINGLE_INSTANCE_IDENTIFIER_BYTES, SecondInstanceEvent, SingleInstanceError,
 };
+pub(crate) use tray::validate_tray_options;
 pub use tray::{
     MAX_TRAY_ENCODED_ICON_BYTES, MAX_TRAY_ICON_DIMENSION, MAX_TRAY_ICONS, MAX_TRAY_MENU_DEPTH,
     MAX_TRAY_MENU_ITEMS, MAX_TRAY_TEXT_BYTES, TrayEvent, TrayEventKind, TrayIconImage,

@@ -248,6 +248,8 @@ export interface NativeImageSource {
   path?: string;
   width?: number;
   height?: number;
+  /** macOS template-image flag. When omitted, `*Template.png` paths are inferred. */
+  template?: boolean;
 }
 
 export interface NativeInstalledUpdate {

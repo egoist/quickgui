@@ -474,6 +474,9 @@ impl Runtime {
             if request.response_cancelled() {
                 continue;
             }
+            let Some(request) = self.apply_tray_platform_request(request) else {
+                continue;
+            };
             #[cfg(target_os = "macos")]
             self.process_macos_platform_request(request);
             #[cfg(any(
@@ -608,6 +611,11 @@ impl Runtime {
             PlatformRequest::SetDockMenu(menu) => {
                 let _ = menu;
                 tracing::warn!("macOS Dock integration is not supported by this backend");
+            }
+            PlatformRequest::SetTrayIcon(_)
+            | PlatformRequest::RemoveTrayIcon(_)
+            | PlatformRequest::ShowTrayMenu(_) => {
+                unreachable!("tray requests are applied before platform dispatch")
             }
             PlatformRequest::AddRecentDocument(path) => {
                 #[cfg(target_os = "windows")]
@@ -1145,6 +1153,11 @@ impl Runtime {
                     Err(error) => tracing::warn!(%error, "could not change the Dock icon"),
                 }
             }
+            PlatformRequest::SetTrayIcon(_)
+            | PlatformRequest::RemoveTrayIcon(_)
+            | PlatformRequest::ShowTrayMenu(_) => {
+                unreachable!("tray requests are applied before platform dispatch")
+            }
             PlatformRequest::SetDockMenu(menu) => {
                 let actions = menu
                     .as_ref()
@@ -1430,6 +1443,9 @@ impl Runtime {
                     | PlatformRequest::SetDockBadge(_)
                     | PlatformRequest::SetDockIcon(_)
                     | PlatformRequest::SetDockMenu(_)
+                    | PlatformRequest::SetTrayIcon(_)
+                    | PlatformRequest::RemoveTrayIcon(_)
+                    | PlatformRequest::ShowTrayMenu(_)
                     | PlatformRequest::AddRecentDocument(_)
                     | PlatformRequest::ClearRecentDocuments
                     | PlatformRequest::ShowAboutPanel(_)

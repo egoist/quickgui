@@ -60,6 +60,8 @@ native.NewWindow(native.WindowOptions{
 
 macOS ではウィンドウ固有のアイコンはありません。`native.Desktop.SetDockIcon(&native.ImageSource{Path: iconPath})` でこのプロセスの Dock 画像を置き換えます。`nil` を渡すとバンドルされたアイコンに戻ります。
 
+メニューバーと通知領域のアイコンは別の画像です。[トレイアイコン](/docs/go/tray-icon)を参照してください。
+
 ## 生成されるサイズ
 
 | Target | Sizes |

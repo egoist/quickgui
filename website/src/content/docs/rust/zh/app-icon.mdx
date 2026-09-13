@@ -62,6 +62,8 @@ cx.open_window(WindowOptions::new("My App").icon(icon), App);
 
 窗口存在后，`cx.set_window_icon(icon)` 和 `cx.clear_window_icon()` 会更新该图像。在 macOS 上，窗口没有自己的图标。使用 `cx.set_dock_icon(icon)` 替换此进程的程序坞图像。
 
+菜单栏和通知区图标是另一张图。见[托盘图标](/docs/rust/tray-icon)。
+
 ## 生成的尺寸
 
 | Target | Sizes |

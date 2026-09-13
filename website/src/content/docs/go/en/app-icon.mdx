@@ -60,6 +60,8 @@ native.NewWindow(native.WindowOptions{
 
 On macOS, windows do not have their own icon. Use `native.Desktop.SetDockIcon(&native.ImageSource{Path: iconPath})` to replace the Dock image for this process. Pass `nil` to restore the bundled icon.
 
+Menu-bar and notification-area icons are a different image. See [Tray Icon](/docs/go/tray-icon).
+
 ## Generated sizes
 
 | Target | Sizes |

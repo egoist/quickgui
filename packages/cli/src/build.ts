@@ -639,12 +639,12 @@ export function reservedSidecarNames(
   return names;
 }
 
-/** Files and directories that must travel with the executable on Linux and Windows. */
+/** Files and directories that must travel with the executable on every host. */
 export function stageExecutableSidecars(
   config: ResolvedQuickGuiConfig,
   stagingRoot: string,
   alreadyStaged: readonly string[],
-  platform: "linux" | "windows",
+  platform: "darwin" | "linux" | "windows",
 ): string[] {
   const reserved = new Set([
     config.executableName,

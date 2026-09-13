@@ -24,7 +24,7 @@ cx.prompt_for_paths(PathPromptOptions::new().files(true));
 cx.message_box(MessageBoxOptions::new("Replace this file?"));
 ```
 
-型付き API は、ダイアログ、クリップボード、シェル、外観、メニュー、ディスプレイを扱います。あとからそのウィンドウが必要な作業では、リスナー内で `cx.window_handle()` を控えます。
+型付き API は、ダイアログ、クリップボード、シェル、外観、メニュー、ディスプレイを扱います。あとからそのウィンドウが必要な作業では、リスナー内で `cx.window_handle()` を控えます。トレイアイコンは[トレイアイコン](/docs/rust/tray-icon)を参照してください。
 
 ## イベントとファイル監視
 

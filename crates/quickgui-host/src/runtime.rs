@@ -1821,7 +1821,9 @@ pub(super) fn parse_cursor_grab_mode(mode: &str) -> std::result::Result<CursorGr
 }
 
 pub(crate) fn native_image(source: NativeImageSource) -> std::result::Result<Image, String> {
-    match (source.data, source.path) {
+    let template = source.template;
+    let path = source.path.clone();
+    let image = match (source.data, source.path) {
         (Some(data), None) => match (source.width, source.height) {
             (Some(width), Some(height)) => Image::from_rgba(width, height, Arc::<[u8]>::from(data)),
             (None, None) => Image::decode(&data),
@@ -1840,7 +1842,12 @@ pub(crate) fn native_image(source: NativeImageSource) -> std::result::Result<Ima
         }
         _ => return Err("an image requires data or path".to_owned()),
     }
-    .map_err(|error| error.to_string())
+    .map_err(|error| error.to_string())?;
+    let template = template.unwrap_or_else(|| {
+        path.as_deref()
+            .is_some_and(quickgui::is_template_image_path)
+    });
+    Ok(image.template(template))
 }
 
 pub(super) fn parse_anchor_placement(value: &str) -> Option<AnchorPlacement> {
@@ -1898,4 +1905,55 @@ pub(super) fn system_popover_config(
             .clone()
             .unwrap_or_else(|| "QuickGUI popover".to_owned()),
     ))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::native_image;
+    use crate::NativeImageSource;
+    use quickgui::Image;
+
+    fn write_png(path: &std::path::Path) {
+        let png = Image::from_rgba(1, 1, vec![0, 0, 0, 255])
+            .unwrap()
+            .to_png()
+            .unwrap();
+        std::fs::write(path, png).unwrap();
+    }
+
+    #[test]
+    fn native_image_honors_explicit_and_inferred_template_flags() {
+        let explicit = native_image(NativeImageSource {
+            data: Some(vec![0, 0, 0, 255]),
+            path: None,
+            width: Some(1),
+            height: Some(1),
+            template: Some(true),
+        })
+        .unwrap();
+        assert!(explicit.is_template());
+
+        let path =
+            std::env::temp_dir().join(format!("quickgui-{}-dockTemplate.png", std::process::id()));
+        write_png(&path);
+        let inferred = native_image(NativeImageSource {
+            data: None,
+            path: Some(path.to_string_lossy().into_owned()),
+            width: None,
+            height: None,
+            template: None,
+        })
+        .unwrap();
+        let overridden = native_image(NativeImageSource {
+            data: None,
+            path: Some(path.to_string_lossy().into_owned()),
+            width: None,
+            height: None,
+            template: Some(false),
+        })
+        .unwrap();
+        let _ = std::fs::remove_file(path);
+        assert!(inferred.is_template());
+        assert!(!overridden.is_template());
+    }
 }

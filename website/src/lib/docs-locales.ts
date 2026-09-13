@@ -51,6 +51,10 @@ const GUIDE_TRANSLATIONS: Record<TranslatedLocale, Record<DocsSlug, GuideTransla
       description: '用 resources/icon.png 作为打包后的应用图标，或在运行时更换窗口与程序坞图标。',
       searchTerms: ['图标', 'icns', 'ico', '程序坞', '任务栏', 'png', 'resources'],
     },
+    'tray-icon': {
+      description: '添加菜单栏或通知区图标，并用文件名或标志把图像标为 macOS 模板图像。',
+      searchTerms: ['托盘', '菜单栏', '状态栏', '模板', 'Template.png', '通知区'],
+    },
     'bundled-resources': {
       description: '把文件放进 resources/，并从打包后的资源目录读取它们。',
       searchTerms: ['资源', '资源文件', '打包', '字体', 'resourceDir', 'resources'],
@@ -145,6 +149,10 @@ const GUIDE_TRANSLATIONS: Record<TranslatedLocale, Record<DocsSlug, GuideTransla
     'app-icon': {
       description: 'resources/icon.png をパッケージのアプリアイコンにし、実行時のウィンドウまたは Dock アイコンも変えられます。',
       searchTerms: ['アイコン', 'icns', 'ico', 'Dock', 'タスクバー', 'png', 'resources'],
+    },
+    'tray-icon': {
+      description: 'メニューバーまたは通知領域のアイコンを追加し、ファイル名またはフラグで macOS のテンプレート画像にします。',
+      searchTerms: ['トレイ', 'メニューバー', 'ステータス', 'テンプレート', 'Template.png', '通知領域'],
     },
     'bundled-resources': {
       description: 'resources/ にファイルを置き、パッケージ後のリソースディレクトリから読み込みます。',

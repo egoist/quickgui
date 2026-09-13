@@ -78,11 +78,17 @@ pub(crate) fn tray_options(native: NativeTrayIconOptions) -> Result<TrayIconOpti
         _ => return Err("a tray icon requires iconData or iconPath".to_owned()),
     }
     .map_err(|error| error.to_string())?;
+    let image = match native.icon_is_template {
+        Some(flag) => image.template(flag),
+        None => image,
+    };
     let menu = tray_menu(&native.menu)?;
     let mut options = TrayIconOptions::new(native.id, image);
     options.tooltip = native.tooltip.map(Arc::from);
     options.title = native.title.map(Arc::from);
-    options.icon_is_template = native.icon_is_template.unwrap_or(false);
+    options.icon_is_template = native
+        .icon_is_template
+        .unwrap_or(options.icon.is_template());
     options.menu_on_left_click = native.menu_on_left_click.unwrap_or(true);
     options.visible = native.visible.unwrap_or(true);
     options.menu = menu;
@@ -149,5 +155,56 @@ mod tests {
             menu: "[]".to_owned(),
         };
         assert!(tray_options(options).unwrap_err().contains("both width"));
+    }
+
+    fn write_png(path: &std::path::Path) {
+        let png = quickgui::Image::from_rgba(1, 1, vec![0, 0, 0, 255])
+            .unwrap()
+            .to_png()
+            .unwrap();
+        std::fs::write(path, png).unwrap();
+    }
+
+    #[test]
+    fn path_named_template_is_inferred_and_can_be_overridden() {
+        let path = std::env::temp_dir().join(format!(
+            "quickgui-{}-statusTemplate.png",
+            std::process::id()
+        ));
+        write_png(&path);
+        let inferred = tray_options(NativeTrayIconOptions {
+            id: 1,
+            icon_data: None,
+            icon_path: Some(path.to_string_lossy().into_owned()),
+            width: None,
+            height: None,
+            tooltip: None,
+            title: None,
+            icon_is_template: None,
+            menu_on_left_click: None,
+            visible: None,
+            menu: "[]".to_owned(),
+        })
+        .unwrap();
+        assert!(inferred.icon.is_template());
+        assert!(inferred.icon_is_template);
+
+        let overridden = tray_options(NativeTrayIconOptions {
+            id: 1,
+            icon_data: None,
+            icon_path: Some(path.to_string_lossy().into_owned()),
+            width: None,
+            height: None,
+            tooltip: None,
+            title: None,
+            icon_is_template: Some(false),
+            menu_on_left_click: None,
+            visible: None,
+            menu: "[]".to_owned(),
+        })
+        .unwrap();
+        let _ = std::fs::remove_file(path);
+        assert!(!overridden.icon.is_template());
+        assert!(!overridden.icon_is_template);
     }
 }

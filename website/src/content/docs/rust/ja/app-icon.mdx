@@ -62,6 +62,8 @@ cx.open_window(WindowOptions::new("My App").icon(icon), App);
 
 ウィンドウの作成後は `cx.set_window_icon(icon)` と `cx.clear_window_icon()` がその画像を更新します。macOS ではウィンドウ固有のアイコンはありません。`cx.set_dock_icon(icon)` でこのプロセスの Dock 画像を置き換えます。
 
+メニューバーと通知領域のアイコンは別の画像です。[トレイアイコン](/docs/rust/tray-icon)を参照してください。
+
 ## 生成されるサイズ
 
 | Target | Sizes |

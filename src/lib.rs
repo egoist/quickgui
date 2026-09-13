@@ -268,7 +268,7 @@ pub use image::{
 };
 pub use image::{
     Image, ImageError, ImageResource, ImageSource, MAX_DECODED_IMAGE_BYTES,
-    MAX_ENCODED_IMAGE_BYTES, MAX_IMAGE_DIMENSION, ObjectFit,
+    MAX_ENCODED_IMAGE_BYTES, MAX_IMAGE_DIMENSION, ObjectFit, is_template_image_path,
 };
 pub use image_renderer::{MAX_GPU_IMAGE_CACHE_BYTES, MAX_GPU_IMAGE_CACHE_ENTRIES};
 pub use image_resource::{

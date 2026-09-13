@@ -11,7 +11,7 @@ use objc2_app_kit::{
     NSApplication, NSControlStateValueOff, NSControlStateValueOn, NSEvent, NSEventModifierFlags,
     NSImage, NSMenu, NSMenuDelegate, NSMenuItem, NSView,
 };
-use objc2_foundation::{MainThreadMarker, NSData, NSObject, NSPoint, NSString};
+use objc2_foundation::{MainThreadMarker, NSObject, NSPoint, NSString};
 use winit::event_loop::EventLoopProxy;
 use winit::{
     raw_window_handle::{HasWindowHandle, RawWindowHandle},
@@ -740,19 +740,13 @@ fn recent_documents_menu(mtm: MainThreadMarker, title: &str) -> Retained<NSMenu>
 }
 
 fn native_menu_icon(mtm: MainThreadMarker, icon: &MenuIcon) -> Option<Retained<NSImage>> {
-    use image_codecs::{ExtendedColorType, ImageEncoder, codecs::png::PngEncoder};
-
-    let mut encoded = Vec::new();
-    if let Err(error) = PngEncoder::new(&mut encoded).write_image(
-        icon.rgba(),
-        icon.width(),
-        icon.height(),
-        ExtendedColorType::Rgba8,
-    ) {
-        tracing::warn!(%error, "could not encode a native menu icon");
-        return None;
+    match crate::macos_shell::native_image(mtm, icon.image()) {
+        Ok(image) => Some(image),
+        Err(error) => {
+            tracing::warn!(%error, "could not build a native menu icon");
+            None
+        }
     }
-    NSImage::initWithData(mtm.alloc(), &NSData::with_bytes(&encoded))
 }
 
 fn os_action_selector(action: OsAction) -> Sel {

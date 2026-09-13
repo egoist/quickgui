@@ -19,6 +19,7 @@ export const DOCS_GUIDE_ORDER = [
   'swift-ui',
   'swift-ui-hosting',
   'app-icon',
+  'tray-icon',
   'bundled-resources',
   'updater',
   'extensions',
@@ -44,6 +45,11 @@ const sectionTitles = {
       'ウィンドウと Dock のアイコン',
       '生成されるサイズ',
     ],
+  },
+  'tray-icon': {
+    en: ['Create a tray icon', 'Template images', 'Menus and events', 'Platform notes'],
+    zh: ['创建托盘图标', '模板图像', '菜单与事件', '平台说明'],
+    ja: ['トレイアイコンを作る', 'テンプレート画像', 'メニューとイベント', 'プラットフォーム'],
   },
   'bundled-resources': {
     en: ['The resources directory', 'Additional files', 'Install locations', 'Loading files', 'Fonts'],
@@ -263,6 +269,11 @@ const guideTitles = {
     en: 'App Icon',
     ja: 'アプリアイコン',
     zh: '应用图标',
+  },
+  'tray-icon': {
+    en: 'Tray Icon',
+    ja: 'トレイアイコン',
+    zh: '托盘图标',
   },
   'bundled-resources': {
     en: 'Bundled Resources',

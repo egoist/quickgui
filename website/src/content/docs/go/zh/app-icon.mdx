@@ -60,6 +60,8 @@ native.NewWindow(native.WindowOptions{
 
 在 macOS 上，窗口没有自己的图标。使用 `native.Desktop.SetDockIcon(&native.ImageSource{Path: iconPath})` 替换此进程的程序坞图像。传入 `nil` 可恢复捆绑图标。
 
+菜单栏和通知区图标是另一张图。见[托盘图标](/docs/go/tray-icon)。
+
 ## 生成的尺寸
 
 | Target | Sizes |
