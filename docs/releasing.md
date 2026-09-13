@@ -50,7 +50,8 @@ verified `.crate` archives, `SHA256SUMS`, this release guide, and the changelog.
 the same packages but do not retain release artifacts. The CI workflow never publishes.
 
 A pushed `v*` tag starts the separate `Release` workflow. It does not rerun the CI quality
-gates. Native host, terminal, and updater images build in parallel on macOS (arm64 and x64,
+gates. Manual dispatch can set `publish_only` and a prior run id to publish already-packed
+npm tarballs without rebuilding natives. Native host, terminal, and updater images build in parallel on macOS (arm64 and x64,
 including Sparkle), Linux x64, Linux arm64, and Windows x64. Each native job copies those
 images under `target/native-libs/packages` before upload so `actions/upload-artifact` cannot
 strip the `packages/` prefix. The publish job merges the four artifacts, restores
