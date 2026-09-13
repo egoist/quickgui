@@ -314,6 +314,9 @@ test("project initialization renders a complete native scaffold", async () => {
   expect(applicationSource).not.toContain("CreateRenderer");
   expect(applicationSource).not.toContain("{{");
   expect(readFileSync(join(project, "go.mod"), "utf8")).toContain("module example.com/sample-app");
+  expect(readFileSync(join(project, "node_modules", "go.mod"), "utf8")).toContain(
+    "module quickgui.local/node_modules",
+  );
   expect(readFileSync(join(project, ".gitignore"), "utf8")).toContain(".quickgui");
   expect(readFileSync(join(project, "README.md"), "utf8")).not.toContain("{{");
 });

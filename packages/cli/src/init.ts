@@ -17,6 +17,7 @@ const goFiles = [
   ["package.json", "package.json"],
   ["quickgui.config.ts", "quickgui.config.ts"],
   ["go.mod", "go.mod"],
+  ["node_modules.go.mod", "node_modules/go.mod"],
   ["gitignore", ".gitignore"],
   ["README.md", "README.md"],
   ["main.go", "main.go"],
