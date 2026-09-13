@@ -2,7 +2,7 @@
 
 ## 源图标
 
-在 `resources/icon.png` 添加一张至少 256×256 像素的正方形 PNG。1024×1024 是合适的源图。QuickGUI 不会栅格化原稿：它打包已经存在的 PNG 数据。
+在 `resources/icon.png` 添加一张至少 256×256 像素的正方形 PNG。1024×1024 是合适的源图。`quickgui build` 会把它缩放到 macOS、Windows 和 Linux 需要的每种尺寸。
 
 ```text
 my-app/
@@ -12,22 +12,9 @@ my-app/
 └── quickgui.config.ts
 ```
 
-在 macOS 上，`quickgui build` 可以用 `sips` 缩放这张 PNG。在其他平台，把预缩放文件放在源文件旁边的 `resources/icon.iconset/` 里：
+CLI 会为 macOS 写入 `.icns`，为 Windows 安装程序写入 `.ico`，并为 Linux 写入 Freedesktop `hicolor` 尺寸。开发模式的重载会跳过生成的容器；生产构建以及已配置的 `macos.icon` 仍会安装图标。
 
-```text
-resources/icon.png
-resources/icon.iconset/
-  icon_16x16.png
-  icon_32x32.png
-  icon_48x48.png
-  icon_64x64.png
-  icon_128x128.png
-  icon_256x256.png
-  icon_512x512.png
-  icon_1024x1024.png
-```
-
-CLI 会为 macOS 写入 `.icns`，为 Windows 安装程序写入 `.ico`，并为 Linux 写入 Freedesktop `hicolor` 尺寸。开发模式的重载会跳过生成的容器；生产构建以及已配置的 `macos.icon` 仍会安装图标。`icon.iconset` 只是构建输入，不会复制进打包后的应用。
+可选的 `resources/icon.iconset/icon_<n>x<n>.png` 会用手工绘制的文件替换对应尺寸。该文件夹只是构建输入，不会复制进打包后的应用。
 
 只有当源 PNG 不在 `resources/icon.png` 时，才需要在 CLI 配置里设置 `icon`。
 
@@ -85,4 +72,4 @@ new Window({
 | Windows `.ico` | 16, 24, 32, 48, 64, 128, 256 |
 | Linux `hicolor` | 16, 32, 48, 64, 128, 256, 512 |
 
-只有存在对应像素尺寸的 PNG 时才会包含该尺寸。源 PNG 必须是正方形，至少 256×256，最多 16 MiB。
+表中的每种尺寸都会从源 PNG 生成。源图必须是正方形，至少 256×256，最多 16 MiB。

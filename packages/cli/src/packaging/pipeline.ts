@@ -26,11 +26,9 @@ import {
   collectIconSizes,
   createIcns,
   createIco,
-  ICNS_ENTRIES,
-  ICO_SIZES,
   LINUX_ICON_SIZES,
+  PACKAGED_ICON_SIZES,
   readSourceIcon,
-  sipsResizeArguments,
 } from "./icons.ts";
 import { sharedMimeInfoXml } from "./documents.ts";
 import {
@@ -80,24 +78,6 @@ export function findMinisignTool(): MinisignTool | undefined {
   return undefined;
 }
 
-/** Resize a square PNG with `sips`, which only exists on macOS. */
-function sipsResizer(
-  icon: string,
-  scratchDirectory: string,
-  run: (command: string[]) => void,
-): ((size: number) => Uint8Array | undefined) | undefined {
-  if (process.platform !== "darwin" || !toolPath("sips")) return undefined;
-  return (size: number) => {
-    const destination = join(scratchDirectory, `icon-${size}.png`);
-    try {
-      run(sipsResizeArguments(icon, destination, size));
-    } catch {
-      return undefined;
-    }
-    return existsSync(destination) ? new Uint8Array(readFileSync(destination)) : undefined;
-  };
-}
-
 export interface IconBuildResult {
   icns?: Uint8Array;
   ico?: Uint8Array;
@@ -107,27 +87,13 @@ export interface IconBuildResult {
 /**
  * Turn one configured square PNG into the containers each platform needs.
  *
- * Sizes come from `<icon>.iconset/icon_<n>x<n>.png` first, then the source itself, then `sips`.
- * Nothing is invented: a size with no source is simply absent from the container.
+ * Sizes come from `<icon>.iconset/icon_<n>x<n>.png` first, then the source itself, then
+ * `Bun.Image` on every host.
  */
-export function buildIcons(
-  icon: string,
-  scratchDirectory: string,
-  runSync: (command: string[]) => void,
-): IconBuildResult {
+export async function buildIcons(icon: string): Promise<IconBuildResult> {
   const source = readSourceIcon(icon);
-  mkdirSync(scratchDirectory, { recursive: true });
-  const resize = sipsResizer(icon, scratchDirectory, runSync);
-  const sizes = [
-    ...new Set([...ICNS_ENTRIES.map((entry) => entry.size), ...ICO_SIZES, ...LINUX_ICON_SIZES]),
-  ].sort((left, right) => left - right);
-  const png = collectIconSizes(icon, source, sizes, resize);
-  if (png.size === 0) {
-    throw new CliError(
-      `No usable icon sizes for ${icon}. Provide pre-sized PNGs in ${basename(icon, ".png")}.iconset/ ` +
-        "(icon_16x16.png … icon_1024x1024.png) or build on macOS where `sips` can resize.",
-    );
-  }
+  const png = await collectIconSizes(icon, source, PACKAGED_ICON_SIZES);
+  if (png.size === 0) throw new CliError(`No usable icon sizes for ${icon}`);
   const icns = safeContainer(() => createIcns(png));
   const ico = safeContainer(() => createIco(png));
   return { png, ...(icns ? { icns } : {}), ...(ico ? { ico } : {}) };

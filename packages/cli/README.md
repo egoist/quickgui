@@ -120,7 +120,7 @@ export default defineConfig({
 });
 ```
 
-The project `resources/` directory is packaged automatically. Put the application icon at `resources/icon.png`. The `resources` array only adds extra files or folders.
+The project `resources/` directory is packaged automatically. Put the application icon at `resources/icon.png`. The CLI resizes that PNG to the sizes each platform installer needs. The `resources` array only adds extra files or folders.
 
 `native.libraryPath` or `QUICKGUI_LIBRARY` selects a custom host library for Go and TypeScript. Otherwise the CLI finds the matching asset in `@quickgui/native` or the repository build output. Rust apps ignore that library and link the `quickgui` crate. `native.tags` passes Go build tags. Go application metadata and packaged font paths are injected at link time; Rust metadata is written to `quickgui.json`. There is no runtime TypeScript compiler, JSX lowering, or native-module code generator.
 

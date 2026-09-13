@@ -23,12 +23,16 @@ import {
   type ResolvedDocumentType,
 } from "./documents.ts";
 import {
+  collectIconSizes,
   createIcns,
   createIco,
   ICNS_ENTRIES,
+  ICO_SIZES,
   iconsetEntryPath,
+  LINUX_ICON_SIZES,
+  PACKAGED_ICON_SIZES,
   pngDimensions,
-  sipsResizeArguments,
+  resizePng,
 } from "./icons.ts";
 import {
   appImageArguments,
@@ -46,7 +50,7 @@ import {
   productBuildArguments,
   validateMasConfig,
 } from "./mas.ts";
-import { debianPackageName, packageLinux, payloadMd5Sums } from "./pipeline.ts";
+import { buildIcons, debianPackageName, packageLinux, payloadMd5Sums } from "./pipeline.ts";
 import {
   copyResourceDirectory,
   copyResources,
@@ -93,6 +97,20 @@ const documentTypes: ResolvedDocumentType[] = [
     utTypeIdentifier: "com.example.demo.log",
   },
 ];
+
+/** 1×1 opaque red PNG used as a seed for `Bun.Image`. */
+const PIXEL_PNG = Uint8Array.from([
+  0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44, 0x52,
+  0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x08, 0x06, 0x00, 0x00, 0x00, 0x1f, 0x15, 0xc4,
+  0x89, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x44, 0x41, 0x54, 0x78, 0x9c, 0x63, 0xb8, 0xa3, 0xa1, 0xf1,
+  0x1f, 0x00, 0x05, 0x3c, 0x02, 0x2c, 0x0e, 0xc4, 0x2f, 0xc5, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45,
+  0x4e, 0x44, 0xae, 0x42, 0x60, 0x82,
+]);
+
+/** A decodable square PNG of the requested size. */
+async function realPng(size: number): Promise<Uint8Array> {
+  return await new Bun.Image(PIXEL_PNG).resize(size, size).png().bytes();
+}
 
 /** A one-pixel-per-side PNG is enough: the writers only copy bytes and read `IHDR`. */
 function fakePng(size: number): Uint8Array {
@@ -192,19 +210,58 @@ describe("icon containers", () => {
     expect(view.getUint32(6 + 16 + 8, true)).toBe(sources.get(256)!.byteLength);
   });
 
-  test("names the sips resize and pre-sized iconset paths", () => {
-    expect(sipsResizeArguments("/a/icon.png", "/b/icon-64.png", 64)).toEqual([
-      "sips",
-      "-z",
-      "64",
-      "64",
-      "/a/icon.png",
-      "--out",
-      "/b/icon-64.png",
-    ]);
+  test("names pre-sized iconset paths", () => {
     expect(iconsetEntryPath("/assets/icon.png", 512)).toBe(
       "/assets/icon.iconset/icon_512x512.png",
     );
+  });
+
+  test("resizes a square PNG to every packaged size", async () => {
+    const source = await realPng(256);
+    expect(pngDimensions(source)).toEqual({ width: 256, height: 256 });
+    const down = await resizePng(source, 32);
+    expect(pngDimensions(down)).toEqual({ width: 32, height: 32 });
+    const up = await resizePng(source, 512);
+    expect(pngDimensions(up)).toEqual({ width: 512, height: 512 });
+    await expect(resizePng(source, 0)).rejects.toThrow("Invalid icon size");
+  });
+
+  test("generates icns, ico, and hicolor sizes from one source PNG", async () => {
+    const root = mkdtempSync(join(tmpdir(), "quickgui-icon-gen-"));
+    try {
+      const icon = join(root, "icon.png");
+      writeFileSync(icon, await realPng(256));
+      const built = await buildIcons(icon);
+      expect([...built.png.keys()]).toEqual([...PACKAGED_ICON_SIZES]);
+      for (const size of PACKAGED_ICON_SIZES) {
+        expect(pngDimensions(built.png.get(size)!)).toEqual({ width: size, height: size });
+      }
+      expect(built.icns).toBeDefined();
+      expect(new TextDecoder().decode(built.icns!.subarray(0, 4))).toBe("icns");
+      expect(built.ico).toBeDefined();
+      const ico = new DataView(built.ico!.buffer, built.ico!.byteOffset, built.ico!.byteLength);
+      expect(ico.getUint16(4, true)).toBe(ICO_SIZES.length);
+      for (const size of LINUX_ICON_SIZES) expect(built.png.has(size)).toBe(true);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("uses a matching iconset entry instead of resizing", async () => {
+    const root = mkdtempSync(join(tmpdir(), "quickgui-iconset-"));
+    try {
+      const icon = join(root, "icon.png");
+      const source = await realPng(256);
+      writeFileSync(icon, source);
+      mkdirSync(join(root, "icon.iconset"));
+      const override = await realPng(32);
+      writeFileSync(join(root, "icon.iconset", "icon_32x32.png"), override);
+      const collected = await collectIconSizes(icon, source, [32, 256]);
+      expect(collected.get(32)).toEqual(override);
+      expect(collected.get(256)).toBe(source);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 });
 

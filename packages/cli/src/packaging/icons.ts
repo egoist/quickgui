@@ -1,15 +1,15 @@
 /**
- * Pure-TypeScript icon container writers.
+ * Icon container writers and PNG resizing.
  *
- * QuickGUI never rasterizes: it packages PNG data that already exists. On macOS the CLI can resize
- * a single square source PNG with `sips`; everywhere else it reads pre-sized PNGs from an
- * `<icon>.iconset` directory beside the configured icon.
+ * `.icns` and `.ico` copy PNG bytes. Missing sizes are generated with `Bun.Image` from one
+ * square source PNG on every host. An optional `<icon>.iconset` folder can replace individual
+ * sizes with hand-drawn files.
  */
 
 import { existsSync, readFileSync } from "node:fs";
 import { basename, dirname, extname, join } from "node:path";
 
-import { CliError } from "../error.ts";
+import { CliError, errorMessage } from "../error.ts";
 import { concat } from "./archive.ts";
 
 /** Largest source icon QuickGUI reads. */
@@ -28,6 +28,10 @@ export const ICNS_ENTRIES: ReadonlyArray<{ type: string; size: number }> = [
 export const ICO_SIZES: readonly number[] = [16, 24, 32, 48, 64, 128, 256];
 /** Sizes installed into the Linux `hicolor` icon theme. */
 export const LINUX_ICON_SIZES: readonly number[] = [16, 32, 48, 64, 128, 256, 512];
+/** Union of sizes written into `.icns`, `.ico`, and Linux `hicolor`. */
+export const PACKAGED_ICON_SIZES: readonly number[] = [
+  ...new Set([...ICNS_ENTRIES.map((entry) => entry.size), ...ICO_SIZES, ...LINUX_ICON_SIZES]),
+].sort((left, right) => left - right);
 
 const PNG_SIGNATURE = Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 
@@ -93,17 +97,9 @@ export function createIco(sources: ReadonlyMap<number, Uint8Array>): Uint8Array 
   return concat([directory, ...images.map(([, png]) => png)]);
 }
 
-/** `sips` arguments that resize one square PNG. */
-export function sipsResizeArguments(source: string, destination: string, size: number): string[] {
-  return ["sips", "-z", String(size), String(size), source, "--out", destination];
-}
-
-/** Path of the pre-sized PNG QuickGUI looks for when it cannot resize. */
+/** Path of the optional hand-drawn PNG that replaces a generated size. */
 export function iconsetEntryPath(icon: string, size: number): string {
-  const directory = join(
-    dirname(icon),
-    `${basename(icon, extname(icon))}.iconset`,
-  );
+  const directory = join(dirname(icon), `${basename(icon, extname(icon))}.iconset`);
   return join(directory, `icon_${size}x${size}.png`);
 }
 
@@ -122,33 +118,71 @@ export function readSourceIcon(icon: string): Uint8Array {
   return data;
 }
 
+/** Resize a square PNG to `size`×`size` with Bun's built-in image pipeline. */
+export async function resizePng(source: Uint8Array, size: number): Promise<Uint8Array> {
+  if (!Number.isInteger(size) || size < 1) {
+    throw new CliError(`Invalid icon size ${size}`);
+  }
+  try {
+    const bytes = await new Bun.Image(source).resize(size, size).png().bytes();
+    const { width, height } = pngDimensions(bytes);
+    if (width !== size || height !== size) {
+      throw new CliError(`Resized icon is ${width}x${height}, expected ${size}x${size}`);
+    }
+    return bytes;
+  } catch (error) {
+    if (error instanceof CliError) throw error;
+    throw new CliError(`Failed to resize icon to ${size}x${size}: ${errorMessage(error)}`);
+  }
+}
+
 /**
  * Collect square PNGs for `sizes`.
  *
- * Sizes are taken from `<icon>.iconset/icon_<n>x<n>.png` when present, then from the source icon
- * itself when it already matches, and finally from `resize` (only wired up on macOS, where `sips`
- * is available). Sizes with no source are skipped rather than guessed.
+ * Matching `<icon>.iconset/icon_<n>x<n>.png` files win, then the source icon when it already
+ * matches, then `Bun.Image` on every host.
  */
-export function collectIconSizes(
+export async function collectIconSizes(
   icon: string,
   source: Uint8Array,
   sizes: readonly number[],
-  resize?: (size: number) => Uint8Array | undefined,
-): Map<number, Uint8Array> {
+): Promise<Map<number, Uint8Array>> {
   const collected = new Map<number, Uint8Array>();
   const sourceSize = pngDimensions(source).width;
+  const missing: number[] = [];
   for (const size of sizes) {
     const preSized = iconsetEntryPath(icon, size);
     if (existsSync(preSized)) {
-      collected.set(size, new Uint8Array(readFileSync(preSized)));
-      continue;
+      const data = new Uint8Array(readFileSync(preSized));
+      try {
+        const { width, height } = pngDimensions(data);
+        if (width === size && height === size) {
+          collected.set(size, data);
+          continue;
+        }
+      } catch {
+        // Fall through and generate from the source icon.
+      }
     }
     if (size === sourceSize) {
       collected.set(size, source);
       continue;
     }
-    const resized = resize?.(size);
-    if (resized) collected.set(size, resized);
+    missing.push(size);
   }
-  return collected;
+  if (missing.length > 0) {
+    try {
+      const generated = await Promise.all(missing.map((size) => resizePng(source, size)));
+      for (const [index, size] of missing.entries()) collected.set(size, generated[index]!);
+    } catch (error) {
+      if (error instanceof CliError) throw error;
+      throw new CliError(`Could not generate icon sizes from ${icon}: ${errorMessage(error)}`);
+    }
+  }
+  const ordered = new Map<number, Uint8Array>();
+  for (const size of sizes) {
+    const png = collected.get(size);
+    if (png) ordered.set(size, png);
+  }
+  return ordered;
 }

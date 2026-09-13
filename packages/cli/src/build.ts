@@ -202,8 +202,8 @@ async function buildMacApp(
     }
     iconFile = "AppIcon.icns";
   } else if (config.icon && options.mode === "production") {
-    // Icon containers are regenerated per build, so development reloads skip the `sips` passes.
-    generatedIcns = resolveIcons(config, stagingRoot)?.icns;
+    // Icon containers are regenerated per build, so development reloads skip the resize pass.
+    generatedIcns = (await resolveIcons(config))?.icns;
     if (generatedIcns) iconFile = "AppIcon.icns";
   }
   const reservedResources = new Set<string>([
@@ -465,7 +465,7 @@ async function buildExecutable(
   };
   if (options.mode !== "production") return result;
 
-  const icons = resolveIcons(config, stagingRoot, iconSource(config, info.platform));
+  const icons = await resolveIcons(config, iconSource(config, info.platform));
   const packaged =
     info.platform === "linux"
       ? await packageLinux({
@@ -598,22 +598,12 @@ function iconSource(
   return platform === "linux" ? config.linux.icon : undefined;
 }
 
-function resolveIcons(
+async function resolveIcons(
   config: ResolvedQuickGuiConfig,
-  stagingRoot: string,
   source = config.icon,
-): IconBuildResult | undefined {
+): Promise<IconBuildResult | undefined> {
   if (!source) return undefined;
-  return buildIcons(source, resolve(stagingRoot, ".quickgui-icons"), (command) => {
-    const result = Bun.spawnSync(command, {
-      cwd: config.projectRoot,
-      stdout: "pipe",
-      stderr: "pipe",
-    });
-    if (result.exitCode !== 0) {
-      throw new CliError(`Command failed: ${command.join(" ")}`);
-    }
-  });
+  return await buildIcons(source);
 }
 
 /**

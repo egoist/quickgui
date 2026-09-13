@@ -9,6 +9,8 @@ All notable user-facing changes to QuickGUI are recorded here.
 - A project `resources/` directory is packaged automatically. `resources/icon.png` is the
   application icon; `resources/icon.icns` and `resources/icon.ico` override platform containers
   when present. The `resources` config option only adds extra files or folders.
+- `quickgui build` resizes `resources/icon.png` to every `.icns`, `.ico`, and Linux `hicolor`
+  size on all hosts, using Bun's image pipeline. A pre-sized `icon.iconset/` is optional.
 - `resources` and staged `fonts` are now copied beside the executable on Linux and Windows
   (AppDir, `.deb`, NSIS, and development builds), matching macOS `Contents/Resources`. Directory
   payloads are copied recursively instead of being treated as a single file.

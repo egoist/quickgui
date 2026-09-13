@@ -2,7 +2,7 @@ The packaged application icon is the image Finder, the Dock, the Windows taskbar
 
 ## Source icon
 
-Add a square PNG that is at least 256×256 pixels at `resources/icon.png`. 1024×1024 is a good source. QuickGUI does not rasterize artwork: it packages PNG data that already exists.
+Add a square PNG that is at least 256×256 pixels at `resources/icon.png`. 1024×1024 is a good source. `quickgui build` resizes it to every size macOS, Windows, and Linux need.
 
 ```text
 my-app/
@@ -12,22 +12,9 @@ my-app/
 └── quickgui.config.ts
 ```
 
-On macOS, `quickgui build` can resize that PNG with `sips`. Everywhere else, put pre-sized files in `resources/icon.iconset/` next to the source:
+The CLI writes `.icns` for macOS, `.ico` for the Windows installer, and the Freedesktop `hicolor` sizes for Linux. Development reloads skip generated containers; production builds and a configured `macos.icon` still install an icon.
 
-```text
-resources/icon.png
-resources/icon.iconset/
-  icon_16x16.png
-  icon_32x32.png
-  icon_48x48.png
-  icon_64x64.png
-  icon_128x128.png
-  icon_256x256.png
-  icon_512x512.png
-  icon_1024x1024.png
-```
-
-The CLI writes `.icns` for macOS, `.ico` for the Windows installer, and the Freedesktop `hicolor` sizes for Linux. Development reloads skip generated containers; production builds and a configured `macos.icon` still install an icon. The `icon.iconset` folder is a build input and is not copied into the packaged app.
+Optional `resources/icon.iconset/icon_<n>x<n>.png` files replace a generated size with a hand-drawn one. That folder is a build input and is not copied into the packaged app.
 
 Set `icon` in the CLI config only when the source PNG lives somewhere other than `resources/icon.png`.
 
@@ -81,4 +68,4 @@ On macOS, windows do not have their own icon. Use `native.Desktop.SetDockIcon(&n
 | Windows `.ico` | 16, 24, 32, 48, 64, 128, 256 |
 | Linux `hicolor` | 16, 32, 48, 64, 128, 256, 512 |
 
-A size is included only when a PNG of that pixel size is available. The source PNG must be square, at least 256×256, and at most 16 MiB.
+Every listed size is generated from the source PNG. The source must be square, at least 256×256, and at most 16 MiB.

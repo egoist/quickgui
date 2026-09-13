@@ -2,7 +2,7 @@
 
 ## 元になるアイコン
 
-`resources/icon.png` に、少なくとも 256×256 ピクセルの正方形 PNG を置きます。1024×1024 がよい元画像です。QuickGUI は原稿をラスタライズしません。既にある PNG データをパッケージします。
+`resources/icon.png` に、少なくとも 256×256 ピクセルの正方形 PNG を置きます。1024×1024 がよい元画像です。`quickgui build` は、macOS・Windows・Linux が必要とする各サイズへリサイズします。
 
 ```text
 my-app/
@@ -12,22 +12,9 @@ my-app/
 └── quickgui.config.ts
 ```
 
-macOS では `quickgui build` が `sips` でその PNG をリサイズできます。他のプラットフォームでは、元ファイルの隣の `resources/icon.iconset/` に事前サイズのファイルを置きます。
+CLI は macOS 用に `.icns`、Windows インストーラー用に `.ico`、Linux 用に Freedesktop の `hicolor` サイズを書き出します。開発リロードは生成コンテナをスキップします。本番ビルドと設定済みの `macos.icon` はアイコンをインストールします。
 
-```text
-resources/icon.png
-resources/icon.iconset/
-  icon_16x16.png
-  icon_32x32.png
-  icon_48x48.png
-  icon_64x64.png
-  icon_128x128.png
-  icon_256x256.png
-  icon_512x512.png
-  icon_1024x1024.png
-```
-
-CLI は macOS 用に `.icns`、Windows インストーラー用に `.ico`、Linux 用に Freedesktop の `hicolor` サイズを書き出します。開発リロードは生成コンテナをスキップします。本番ビルドと設定済みの `macos.icon` はアイコンをインストールします。`icon.iconset` はビルド入力であり、パッケージにはコピーされません。
+任意の `resources/icon.iconset/icon_<n>x<n>.png` は、生成サイズを手描きのファイルで置き換えます。このフォルダはビルド入力であり、パッケージにはコピーされません。
 
 ソース PNG が `resources/icon.png` 以外にあるときだけ、CLI 設定の `icon` を使います。
 
@@ -81,4 +68,4 @@ macOS ではウィンドウ固有のアイコンはありません。`native.Des
 | Windows `.ico` | 16, 24, 32, 48, 64, 128, 256 |
 | Linux `hicolor` | 16, 32, 48, 64, 128, 256, 512 |
 
-そのピクセルサイズの PNG があるときだけ含まれます。ソース PNG は正方形で、少なくとも 256×256、最大 16 MiB です。
+表の各サイズはソース PNG から生成されます。ソースは正方形で、少なくとも 256×256、最大 16 MiB です。
