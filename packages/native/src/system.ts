@@ -1627,6 +1627,10 @@ export function rejectPendingSystemRequests(error: Error): void {
     pendingGlobalShortcutRequests.delete(request);
     pending.reject(error);
   }
+  for (const [request, pending] of pendingAppServiceRequests) {
+    pendingAppServiceRequests.delete(request);
+    pending.reject(error);
+  }
   globalShortcutRegistrations.clear();
   globalShortcutIds.clear();
   rejectPendingTrayRequests(error);
