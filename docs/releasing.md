@@ -132,10 +132,14 @@ The workflow publishes crates.io packages in this dependency order:
 6. `quickgui`
 
 The Go SDK is published from the same source commit with a `go/v<version>` tag, as required for
-the nested `github.com/egoist/quickgui/go` module. The workflow refuses to move an existing SDK tag.
+the nested `github.com/egoist/quickgui/go` module. The workflow refuses to move an existing SDK tag
+and continues when that tag already exists, so a later npm-only recovery can keep the published
+Go module bytes unchanged.
 The repository must be readable by Go consumers; a tag alone does not grant access to a private repository.
 
 It then publishes npm packages in the order `@quickgui/native`, `@quickgui/extension-terminal`, `@quickgui/extension-updater`, `@quickgui/solid`, and `@quickgui/cli`.
+npm 11 refuses a prerelease without `--tag`, so `0.1.4-next.3` publishes to the `next` dist-tag
+(the first prerelease identifier) instead of `latest`. Stable versions keep npm's default `latest` tag.
 The terminal and updater packages are optional; the CLI resolves its exact version only when a Go import requires it.
 The CLI waits until the native package is anonymously resolvable from
 its public registry. A rerun skips an existing, non-yanked crate version and skips an existing npm
@@ -160,7 +164,8 @@ cargo publish --locked
 ```
 
 Pack npm packages with `bun pm pack`, which resolves `workspace:*` dependencies to their exact
-workspace versions, and publish the resulting tarballs with npm 11.5.1 or newer. Do not publish the
+workspace versions, and publish the resulting tarballs with npm 11.5.1 or newer. For a prerelease,
+pass `--tag` with the first identifier (`--tag next` for `0.1.4-next.3`). Do not publish the
 workspace directories with npm directly. Wait for each package to propagate before its dependent.
 Never rerun a successful manual publish; first inspect the public registry and continue after the
 last completed package.

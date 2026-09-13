@@ -222,7 +222,12 @@ jobs:
           go_tag="go/v$RELEASE_VERSION"
           if git ls-remote --exit-code --tags origin "refs/tags/$go_tag" >/dev/null 2>&1; then
             git fetch origin "refs/tags/$go_tag:refs/tags/$go_tag"
-            test "$(git rev-list -n 1 "$go_tag")" = "$RELEASE_SHA"
+            existing=$(git rev-list -n 1 "$go_tag")
+            if [[ $existing == "$RELEASE_SHA" ]]; then
+              echo "Go module tag $go_tag already points at $RELEASE_SHA"
+            else
+              echo "Go module tag $go_tag already published at $existing; leaving it in place"
+            fi
           else
             git tag "$go_tag" "$RELEASE_SHA"
             git push origin "refs/tags/$go_tag"

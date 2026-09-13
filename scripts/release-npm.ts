@@ -2,6 +2,7 @@
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
+import { npmPublishArgs, npmPublishTag } from "./npm-publish-tag.ts";
 
 const mode = process.argv[2];
 if (mode !== "--check" && mode !== "--publish")
@@ -72,10 +73,13 @@ for (const part of ["native", "extension-terminal", "extension-updater", "solid"
     continue;
   }
   if (!publish) {
-    console.log(`${name}@${version} is ready to publish`);
+    const tag = npmPublishTag(version);
+    console.log(
+      tag ? `${name}@${version} is ready to publish with tag ${tag}` : `${name}@${version} is ready to publish`,
+    );
     continue;
   }
-  console.log(run(["npm", "publish", archive, "--access", "public"]));
+  console.log(run(npmPublishArgs(archive, version)));
   let available = false;
   for (let attempt = 0; attempt < 60; attempt++) {
     if (await isPublished(name, integrity)) {
