@@ -88,14 +88,13 @@ jobs:
       - name: Verify extension project templates from the packed CLI
         if: runner.os == 'macOS'
         run: bun scripts/check-extension-templates.ts
+      - name: Stage native libraries
+        run: bun scripts/stage-native-lib-artifacts.ts target/native-libs
       - name: Upload native libraries
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: native-libs-${{ matrix.id }}
-          path: |
-            packages/native/lib/**
-            packages/extension-terminal/lib/**
-            packages/extension-updater/lib/**
+          path: target/native-libs
           if-no-files-found: error
           retention-days: 14
 
@@ -167,6 +166,8 @@ jobs:
           pattern: native-libs-*
           path: .
           merge-multiple: true
+      - name: Restore downloaded native libraries
+        run: bun scripts/restore-native-lib-artifacts.ts
       - name: Verify downloaded native libraries
         shell: bash
         run: |
@@ -188,7 +189,9 @@ jobs:
           done
           if (( missing )); then
             echo "downloaded native tree:" >&2
-            find packages/native/lib packages/extension-terminal/lib packages/extension-updater/lib -type f 2>/dev/null | sort >&2 || true
+            find native extension-terminal extension-updater packages -type f \( \
+              -name 'libquickgui_*' -o -name 'quickgui_*.dll' -o -name 'quickgui-updater-helper*' \
+            \) 2>/dev/null | sort >&2 || true
             exit 1
           fi
       - name: Build and verify npm tarballs

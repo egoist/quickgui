@@ -51,9 +51,10 @@ the same packages but do not retain release artifacts. The CI workflow never pub
 
 A pushed `v*` tag starts the separate `Release` workflow. It does not rerun the CI quality
 gates. Native host, terminal, and updater images build in parallel on macOS (arm64 and x64,
-including Sparkle), Linux x64, Linux arm64, and Windows x64. Each native job uploads
-workspace-relative `packages/*/lib/**` paths so the publish job can merge them back onto the
-same tree. The publish job waits for those images, rejects a tag that is not exactly
+including Sparkle), Linux x64, Linux arm64, and Windows x64. Each native job copies those
+images under `target/native-libs/packages` before upload so `actions/upload-artifact` cannot
+strip the `packages/` prefix. The publish job merges the four artifacts, restores
+`packages/*/lib` if a flattened layout is present, rejects a tag that is not exactly
 `v<root-package-version>` or lacks a dated changelog section, packs the five npm archives from
 the downloaded libraries, and publishes crates.io,
 the Go module tag, and npm in dependency order. The root `package.json` version is the source
