@@ -4,6 +4,8 @@ on:
   push:
     tags:
       - "v*"
+    branches:
+      - "cursor/release-0-1-4-next-3-1439"
   workflow_dispatch:
     inputs:
       publish_only:
@@ -21,7 +23,10 @@ concurrency:
 jobs:
   native:
     name: Native ${{ matrix.name }}
-    if: github.repository == 'egoist/quickgui' && github.event.inputs.publish_only != 'true'
+    if: >
+      github.repository == 'egoist/quickgui' &&
+      github.event.inputs.publish_only != 'true' &&
+      github.ref_type != 'branch'
     runs-on: ${{ matrix.os }}
     timeout-minutes: 45
     strategy:
@@ -111,7 +116,8 @@ jobs:
     if: >
       github.repository == 'egoist/quickgui' &&
       (needs.native.result == 'success' ||
-        (github.event.inputs.publish_only == 'true' && needs.native.result == 'skipped'))
+        (needs.native.result == 'skipped' &&
+          (github.event.inputs.publish_only == 'true' || github.ref_type == 'branch')))
     needs: [native]
     runs-on: macos-latest
     timeout-minutes: 45
@@ -142,8 +148,17 @@ jobs:
           printf 'sha=%s\n' "$release_sha" >> "$GITHUB_OUTPUT"
           printf 'tag=%s\n' "$release_tag" >> "$GITHUB_OUTPUT"
           printf 'QUICKGUI_RELEASE_TAG=%s\n' "$release_tag" >> "$GITHUB_ENV"
+          if [[ '${{ github.event.inputs.publish_only }}' == 'true' || '${{ github.ref_type }}' == 'branch' ]]; then
+            run_id='${{ github.event.inputs.reuse_run_id }}'
+            if [[ -z $run_id && -f .github/reuse-npm-run ]]; then
+              run_id=$(tr -d '[:space:]' < .github/reuse-npm-run)
+            fi
+            test -n "$run_id"
+            printf 'QUICKGUI_PUBLISH_ONLY=1\n' >> "$GITHUB_ENV"
+            printf 'QUICKGUI_REUSE_RUN_ID=%s\n' "$run_id" >> "$GITHUB_ENV"
+          fi
       - name: Install Rust
-        if: github.event.inputs.publish_only != 'true'
+        if: env.QUICKGUI_PUBLISH_ONLY != '1'
         run: |
           rustup toolchain install stable --profile minimal
           rustup toolchain install 1.90.0 --profile minimal
@@ -154,7 +169,7 @@ jobs:
           registry-url: https://registry.npmjs.org
           package-manager-cache: false
       - uses: actions/setup-go@v6
-        if: github.event.inputs.publish_only != 'true'
+        if: env.QUICKGUI_PUBLISH_ONLY != '1'
         with:
           go-version: '1.23.x'
           cache-dependency-path: '**/go.sum'
@@ -162,7 +177,7 @@ jobs:
         id: release
         run: bun scripts/release-metadata.ts "$GITHUB_OUTPUT"
       - name: Verify release tag target
-        if: github.event.inputs.publish_only != 'true'
+        if: env.QUICKGUI_PUBLISH_ONLY != '1'
         shell: bash
         run: |
           if git ls-remote --exit-code --tags origin "refs/tags/$QUICKGUI_RELEASE_TAG" >/dev/null 2>&1; then
@@ -176,26 +191,26 @@ jobs:
       - name: Install JavaScript dependencies
         run: bun install --frozen-lockfile
       - name: Download previously packed npm tarballs
-        if: github.event.inputs.publish_only == 'true'
+        if: env.QUICKGUI_PUBLISH_ONLY == '1'
         uses: actions/download-artifact@v5
         with:
-          run-id: ${{ github.event.inputs.reuse_run_id }}
+          run-id: ${{ env.QUICKGUI_REUSE_RUN_ID }}
           github-token: ${{ github.token }}
           pattern: quickgui-*-npm-*
           path: target/npm-release
           merge-multiple: true
       - name: Download native libraries
-        if: github.event.inputs.publish_only != 'true'
+        if: env.QUICKGUI_PUBLISH_ONLY != '1'
         uses: actions/download-artifact@v5
         with:
           pattern: native-libs-*
           path: .
           merge-multiple: true
       - name: Restore downloaded native libraries
-        if: github.event.inputs.publish_only != 'true'
+        if: env.QUICKGUI_PUBLISH_ONLY != '1'
         run: bun scripts/restore-native-lib-artifacts.ts
       - name: Verify downloaded native libraries
-        if: github.event.inputs.publish_only != 'true'
+        if: env.QUICKGUI_PUBLISH_ONLY != '1'
         shell: bash
         run: |
           missing=0
@@ -222,17 +237,17 @@ jobs:
             exit 1
           fi
       - name: Build and verify npm tarballs
-        if: github.event.inputs.publish_only != 'true'
+        if: env.QUICKGUI_PUBLISH_ONLY != '1'
         run: bun scripts/package-npm-release.ts target/npm-release
       - name: Verify registry publication plan
         run: |
-          if [[ '${{ github.event.inputs.publish_only }}' != 'true' ]]; then
+          if [[ '${{ env.QUICKGUI_PUBLISH_ONLY }}' != '1' ]]; then
             scripts/release-crates.sh --check
           fi
           test -n "$(ls target/npm-release/quickgui-*.tgz 2>/dev/null)"
           bun scripts/release-npm.ts --check target/npm-release
       - name: Upload npm release candidates
-        if: github.event.inputs.publish_only != 'true'
+        if: env.QUICKGUI_PUBLISH_ONLY != '1'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: quickgui-${{ steps.release.outputs.version }}-npm-${{ steps.source.outputs.sha }}
@@ -242,13 +257,13 @@ jobs:
           if-no-files-found: error
           retention-days: 30
       - name: Publish Rust crates
-        if: github.event.inputs.publish_only != 'true'
+        if: env.QUICKGUI_PUBLISH_ONLY != '1'
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
           QUICKGUI_RELEASE_ALLOW_DIRTY: 1
         run: scripts/release-crates.sh --publish
       - name: Publish Go module tag
-        if: github.event.inputs.publish_only != 'true'
+        if: env.QUICKGUI_PUBLISH_ONLY != '1'
         env:
           RELEASE_SHA: ${{ steps.source.outputs.sha }}
           RELEASE_VERSION: ${{ steps.release.outputs.version }}
@@ -269,7 +284,7 @@ jobs:
       - name: Publish npm packages
         run: bun scripts/release-npm.ts --publish target/npm-release
       - name: Verify public registry installs
-        if: github.event.inputs.publish_only != 'true'
+        if: env.QUICKGUI_PUBLISH_ONLY != '1'
         run: bun scripts/release-registry-smoke.ts '${{ steps.release.outputs.version }}'
       - name: Create GitHub Release
         env:
