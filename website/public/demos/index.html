@@ -24,7 +24,7 @@
     window.addEventListener('quickgui:ready', () => report('ready')); 
     window.addEventListener('unhandledrejection', event => fail(event.reason));
     try {
-      const {default:init, start} = await import('./a5ad635b18eb/quickgui.js');
+      const {default:init, start} = await import('./795ae86a8315/quickgui.js');
       await init();
       const canvas=document.querySelector('#demo');
       const component=new URLSearchParams(location.search).get('component') || 'button';
