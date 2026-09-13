@@ -1,6 +1,13 @@
 use super::*;
 
 impl Element {
+    /// Controls logical-pixel rounding for the entire tree when set on its root.
+    /// Disable to retain fractional layout coordinates through painting and hit testing.
+    pub fn layout_rounding(mut self, enabled: bool) -> Self {
+        self.layout_rounding = enabled;
+        self
+    }
+
     pub fn hover(mut self, style: impl FnOnce(ElementStateStyle) -> ElementStateStyle) -> Self {
         self.hover = style(ElementStateStyle::default());
         self

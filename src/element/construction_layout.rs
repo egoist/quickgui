@@ -144,6 +144,7 @@ impl Element {
             app_region: None,
             virtual_scroll: None,
             scroll_to_end_revision: None,
+            layout_rounding: true,
             list_item_measurement: None,
             animation: None,
             spring: None,

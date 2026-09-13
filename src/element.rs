@@ -2109,6 +2109,7 @@ pub struct Element {
     pub(crate) app_region: Option<AppRegion>,
     pub(crate) virtual_scroll: Option<VirtualScrollStyle>,
     pub(crate) scroll_to_end_revision: Option<u64>,
+    pub(crate) layout_rounding: bool,
     pub(crate) list_item_measurement: Option<ListItemMeasurement>,
     pub(crate) animation: Option<ElementAnimation>,
     pub(crate) spring: Option<ElementSpring>,

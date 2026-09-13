@@ -208,6 +208,20 @@ impl UiTree {
         now: Instant,
         retain_motion_registry: bool,
     ) -> Result<(), UiError> {
+        if self
+            .root
+            .as_ref()
+            .is_none_or(|old| old.layout_rounding != root.layout_rounding)
+        {
+            if root.layout_rounding {
+                self.taffy.enable_rounding();
+            } else {
+                self.taffy.disable_rounding();
+            }
+            if let Some(node) = self.root_node {
+                self.taffy.mark_dirty(node)?;
+            }
+        }
         self.declarative_animation_ids.clear();
         self.declarative_time_animation_ids.clear();
         self.declarative_spring_ids.clear();
