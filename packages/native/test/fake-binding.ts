@@ -438,9 +438,10 @@ export class NativeRouter {
   }
 
   private snapshot(location: NativeRouteLocation): NativeRouterState {
+    const matched = matchRoutes(this.routes, location.pathname);
     return {
       location,
-      matched: matchRoutes(this.routes, location.pathname),
+      ...(matched === undefined ? {} : { matched }),
       historyIndex: this.index,
       historyLength: this.entries.length,
       canGoBack: this.index > 0,

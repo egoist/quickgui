@@ -1022,7 +1022,12 @@ mod tests {
         let decoded = Image::decode(&jpeg).unwrap();
         assert_eq!(decoded.size(), source.size());
         assert!(
-            decoded.rgba().as_chunks::<4>().0.iter().all(|pixel| pixel[3] == 255),
+            decoded
+                .rgba()
+                .as_chunks::<4>()
+                .0
+                .iter()
+                .all(|pixel| pixel[3] == 255),
             "JPEG has no alpha channel"
         );
         assert!(matches!(
