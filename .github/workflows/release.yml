@@ -154,7 +154,6 @@ jobs:
             printf 'QUICKGUI_REUSE_RUN_ID=%s\n' "$run_id" >> "$GITHUB_ENV"
           fi
       - name: Install Rust
-        if: env.QUICKGUI_PUBLISH_ONLY != '1'
         run: |
           rustup toolchain install stable --profile minimal
           rustup toolchain install 1.90.0 --profile minimal
@@ -165,7 +164,6 @@ jobs:
           registry-url: https://registry.npmjs.org
           package-manager-cache: false
       - uses: actions/setup-go@v6
-        if: env.QUICKGUI_PUBLISH_ONLY != '1'
         with:
           go-version: '1.23.x'
           cache-dependency-path: '**/go.sum'
@@ -234,9 +232,7 @@ jobs:
         run: bun scripts/package-npm-release.ts target/npm-release
       - name: Verify registry publication plan
         run: |
-          if [[ '${{ env.QUICKGUI_PUBLISH_ONLY }}' != '1' ]]; then
-            scripts/release-crates.sh --check
-          fi
+          scripts/release-crates.sh --check
           test -n "$(ls target/npm-release/quickgui-*.tgz 2>/dev/null)"
           bun scripts/release-npm.ts --check target/npm-release
       - name: Upload npm release candidates
@@ -249,13 +245,11 @@ jobs:
           if-no-files-found: error
           retention-days: 30
       - name: Publish Rust crates
-        if: env.QUICKGUI_PUBLISH_ONLY != '1'
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
           QUICKGUI_RELEASE_ALLOW_DIRTY: 1
         run: scripts/release-crates.sh --publish
       - name: Publish Go module tag
-        if: env.QUICKGUI_PUBLISH_ONLY != '1'
         env:
           RELEASE_SHA: ${{ steps.source.outputs.sha }}
           RELEASE_VERSION: ${{ steps.release.outputs.version }}
@@ -276,7 +270,6 @@ jobs:
       - name: Publish npm packages
         run: bun scripts/release-npm.ts --publish target/npm-release
       - name: Verify public registry installs
-        if: env.QUICKGUI_PUBLISH_ONLY != '1'
         run: bun scripts/release-registry-smoke.ts '${{ steps.release.outputs.version }}'
       - name: Create GitHub Release
         env:
