@@ -15,7 +15,7 @@ beta is not part of the 0.1 release boundary.
 
 The main crate's minimum supported Rust version is 1.90, matching `libghostty-vt` 0.2.1 as selected
 by the optional terminal feature. CI compiles every target and feature with that exact toolchain on
-Linux in addition to the stable macOS quality job.
+Linux in addition to the stable macOS test, backend, and package jobs.
 
 ## Automated release gate
 
