@@ -261,11 +261,7 @@ function parseLocation(destination: string, current?: NativeRouteLocation): Nati
       : rawPath.startsWith("/")
         ? normalizePathname(rawPath)
         : normalizePathname(`${fallback.pathname}/${rawPath}`);
-  const search = fragmentOnly
-    ? fallback.search
-    : rawQuery
-      ? `?${rawQuery}`
-      : "";
+  const search = fragmentOnly ? fallback.search : rawQuery ? `?${rawQuery}` : "";
   const hash = rawHash ? `#${rawHash}` : "";
   return {
     href: `${pathname}${search}${hash}`,
@@ -371,7 +367,7 @@ function matchRoutes(routes: CompiledRoute[], pathname: string): NativeRouterSta
     const params = matchSegments(route.segments, parts);
     if (!params) continue;
     const wildcard = route.segments.some((segment) => segment.kind === "wildcard");
-    const score = route.staticCount * 10 + (wildcard ? 0 : 1);
+    const score = route.staticCount * 100 + (wildcard ? 0 : 10) + route.routeIds.length;
     if (!best || score > best.score) best = { route, params, score };
   }
   return best ? { routeIds: best.route.routeIds, params: best.params } : undefined;

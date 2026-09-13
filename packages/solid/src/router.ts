@@ -165,9 +165,7 @@ export function Router(props: RouterProps): JSX.Element {
       return native.isActive(destination, end);
     },
   };
-  const params = createMemoObject<RouteParams>(() =>
-    valuesRecord(state().matched?.params ?? []),
-  );
+  const params = createMemoObject<RouteParams>(() => valuesRecord(state().matched?.params ?? []));
   const location = createReactiveLocation(() => state().location);
   const searchParams = createMemoObject<RouteSearchParams>(() =>
     queryRecord(state().location.query),
