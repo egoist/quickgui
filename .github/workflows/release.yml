@@ -93,9 +93,9 @@ jobs:
         with:
           name: native-libs-${{ matrix.id }}
           path: |
-            packages/native/lib
-            packages/extension-terminal/lib
-            packages/extension-updater/lib
+            packages/native/lib/**
+            packages/extension-terminal/lib/**
+            packages/extension-updater/lib/**
           if-no-files-found: error
           retention-days: 14
 
@@ -167,6 +167,30 @@ jobs:
           pattern: native-libs-*
           path: .
           merge-multiple: true
+      - name: Verify downloaded native libraries
+        shell: bash
+        run: |
+          missing=0
+          for path in \
+            packages/native/lib/darwin-arm64/libquickgui_host.dylib \
+            packages/native/lib/darwin-x64/libquickgui_host.dylib \
+            packages/native/lib/linux-arm64/libquickgui_host.so \
+            packages/native/lib/linux-x64/libquickgui_host.so \
+            packages/native/lib/windows-x64/quickgui_host.dll \
+            packages/extension-terminal/lib/darwin-arm64/libquickgui_terminal.dylib \
+            packages/extension-terminal/lib/windows-x64/quickgui_terminal.dll \
+            packages/extension-updater/lib/windows-x64/quickgui_updater.dll
+          do
+            if [[ ! -f $path ]]; then
+              echo "missing $path" >&2
+              missing=1
+            fi
+          done
+          if (( missing )); then
+            echo "downloaded native tree:" >&2
+            find packages/native/lib packages/extension-terminal/lib packages/extension-updater/lib -type f 2>/dev/null | sort >&2 || true
+            exit 1
+          fi
       - name: Build and verify npm tarballs
         run: bun scripts/package-npm-release.ts target/npm-release
       - name: Verify registry publication plan

@@ -3823,6 +3823,7 @@ dependencies = [
  "bitflags 2.13.2",
  "libc",
  "libghostty-vt",
+ "libghostty-vt-sys",
  "portable-pty",
  "serde",
  "serde_json",
