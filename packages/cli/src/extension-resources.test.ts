@@ -1,5 +1,6 @@
 import { expect, test } from "bun:test";
 import {
+  existsSync,
   lstatSync,
   mkdirSync,
   mkdtempSync,
@@ -28,6 +29,64 @@ test("resource bundles preserve framework links and executable permissions", () 
     expect(lstatSync(join(out, "Sparkle")).isSymbolicLink()).toBe(true);
     expect(lstatSync(join(out, "Versions/B/Sparkle")).mode & 0o111).toBe(0o111);
     expect(() => unpackResources(archive, join(dir, "output"))).toThrow("collision");
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("resource bundles round-trip at the decoded content limit", () => {
+  const dir = mkdtempSync(join(tmpdir(), "quickgui-resources-"));
+  try {
+    const framework = join(dir, "Test.framework");
+    mkdirSync(framework);
+    const payload = Buffer.alloc(128 * 1024 * 1024, 0x61);
+    writeFileSync(join(framework, "payload"), payload);
+    const archive = join(dir, "resource.qgr");
+    writeFileSync(archive, packResources(framework));
+    const out = unpackResources(archive, join(dir, "output"));
+    expect(readFileSync(join(out, "payload")).equals(payload)).toBe(true);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("oversized resource envelopes are rejected before creating output", () => {
+  const dir = mkdtempSync(join(tmpdir(), "quickgui-resources-"));
+  try {
+    const archive = join(dir, "resource.qgr");
+    writeFileSync(archive, gzipSync(" ".repeat(176 * 1024 * 1024)));
+    expect(() => unpackResources(archive, join(dir, "output"))).toThrow(
+      "Cannot create a Buffer larger than",
+    );
+    expect(existsSync(join(dir, "output"))).toBe(false);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("decoded resource content remains bounded independently of the envelope", () => {
+  const dir = mkdtempSync(join(tmpdir(), "quickgui-resources-"));
+  try {
+    const framework = join(dir, "Test.framework");
+    mkdirSync(framework);
+    const payload = Buffer.alloc(128 * 1024 * 1024 + 1);
+    writeFileSync(join(framework, "payload"), payload);
+    expect(() => packResources(framework)).toThrow("Native resources exceed their size limit");
+    const archive = join(dir, "resource.qgr");
+    writeFileSync(
+      archive,
+      gzipSync(
+        JSON.stringify({
+          schema: 1,
+          root: "Test.framework",
+          entries: [{ path: "payload", data: payload.toString("base64") }],
+        }),
+      ),
+    );
+    expect(() => unpackResources(archive, join(dir, "output"))).toThrow(
+      "Native resources exceed their size limit",
+    );
+    expect(existsSync(join(dir, "output"))).toBe(false);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

@@ -17,6 +17,12 @@ import { gzipSync, gunzipSync } from "node:zlib";
 import { CliError } from "./error.ts";
 
 const maximumBytes = 128 * 1024 * 1024;
+const maximumEntries = 4096;
+const maximumPathLength = 512;
+// Base64 expands content by 4/3, with padding per entry. Reserve two bounded ASCII
+// paths plus JSON fields per entry, and space for the root and envelope fields.
+const maximumEnvelopeBytes =
+  Math.ceil(maximumBytes / 3) * 4 + maximumEntries * (2 * maximumPathLength + 128) + 1024;
 interface Entry {
   path: string;
   data?: string;
@@ -29,7 +35,7 @@ interface Resources {
   entries: Entry[];
 }
 const safePath = (path: string): boolean =>
-  path.length <= 512 &&
+  path.length <= maximumPathLength &&
   path
     .split("/")
     .every((part) => /^[A-Za-z0-9_. +@-]+$/.test(part) && part !== "." && part !== "..");
@@ -55,7 +61,10 @@ export function packResources(root: string): Buffer {
   visit(root, "");
   const value: Resources = { schema: 1, root: basename(root), entries };
   validate(value);
-  return gzipSync(JSON.stringify(value));
+  const envelope = JSON.stringify(value);
+  if (Buffer.byteLength(envelope) > maximumEnvelopeBytes)
+    throw new CliError("Native resource envelope exceeds its size limit");
+  return gzipSync(envelope);
 }
 function validate(value: Resources): void {
   if (
@@ -63,7 +72,7 @@ function validate(value: Resources): void {
     !safePath(value.root) ||
     value.root.includes("/") ||
     !Array.isArray(value.entries) ||
-    value.entries.length > 4096
+    value.entries.length > maximumEntries
   )
     throw new CliError("Invalid native resource bundle");
   const paths = new Set<string>();
@@ -95,7 +104,7 @@ function validate(value: Resources): void {
 }
 export function unpackResources(archive: string, destination: string): string {
   const value = JSON.parse(
-    gunzipSync(readFileSync(archive), { maxOutputLength: maximumBytes }).toString("utf8"),
+    gunzipSync(readFileSync(archive), { maxOutputLength: maximumEnvelopeBytes }).toString("utf8"),
   ) as Resources;
   validate(value);
   const root = join(destination, value.root);
