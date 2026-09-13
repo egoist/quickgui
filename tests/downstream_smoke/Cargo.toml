@@ -6,4 +6,4 @@ rust-version = "1.90"
 publish = false
 
 [dependencies]
-quickgui = { version = "=0.1.4-next.1", features = ["inspector"] }
+quickgui = { version = "=0.1.4-next.3", features = ["inspector"] }

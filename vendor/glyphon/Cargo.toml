@@ -1,7 +1,7 @@
 [package]
 name = "quickgui-glyphon"
 description = "QuickGUI's Glyphon fork with paint-only text-area opacity"
-version = "0.1.4-next.1"
+version = "0.1.4-next.3"
 edition = "2021"
 homepage = "https://github.com/grovesNL/glyphon.git"
 repository = "https://github.com/egoist/quickgui"
@@ -21,6 +21,6 @@ path = "src/lib.rs"
 [dependencies]
 wgpu = { version = "30.0.0", default-features = false, features = ["wgsl"] }
 etagere = "0.3.0"
-cosmic-text = { package = "quickgui-cosmic-text", path = "../cosmic_text", version = "=0.1.4-next.1" }
+cosmic-text = { package = "quickgui-cosmic-text", path = "../cosmic_text", version = "=0.1.4-next.3" }
 lru = { version = "0.16.2", default-features = false }
 rustc-hash = "2.1.1"

@@ -15,7 +15,7 @@ import { generateUpdaterKeys } from "./packaging/appcast.ts";
 import { minisignKeygenArguments } from "./packaging/updates.ts";
 import { hostTarget } from "./targets.ts";
 
-export const CLI_VERSION = "0.1.4-next.2";
+export const CLI_VERSION = "0.1.4-next.3";
 
 export async function runCli(argv: string[]): Promise<number> {
   const command = parseCliArgs(argv);

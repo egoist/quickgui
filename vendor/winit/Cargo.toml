@@ -13,7 +13,7 @@
 edition = "2021"
 rust-version = "1.70.0"
 name = "quickgui-winit"
-version = "0.1.4-next.1"
+version = "0.1.4-next.3"
 authors = [
     "The winit contributors",
     "Pierre Krieger <pierre.krieger1708@gmail.com>",

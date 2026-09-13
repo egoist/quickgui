@@ -1,6 +1,6 @@
 [package]
 name = "quickgui-system"
-version = "0.1.4-next.1"
+version = "0.1.4-next.3"
 edition = "2024"
 rust-version = "1.89"
 description = "Cross-platform operating-system services for QuickGUI"

@@ -1,6 +1,6 @@
 {
   "name": "@quickgui/solid",
-  "version": "0.1.4-next.1",
+  "version": "0.1.4-next.3",
   "description": "Solid 2 renderer for QuickGUI native desktop applications",
   "license": "MIT OR Apache-2.0",
   "files": [

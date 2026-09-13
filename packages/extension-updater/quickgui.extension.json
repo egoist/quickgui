@@ -3,7 +3,7 @@
   "name": "updater",
   "abi": 1,
   "package": "@quickgui/extension-updater",
-  "version": "0.1.4-next.1",
+  "version": "0.1.4-next.3",
   "library": "quickgui_updater",
   "resources": {
     "darwin": [

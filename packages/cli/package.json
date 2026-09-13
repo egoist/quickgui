@@ -1,6 +1,6 @@
 {
   "name": "@quickgui/cli",
-  "version": "0.1.4-next.2",
+  "version": "0.1.4-next.3",
   "description": "Project, development, and packaging CLI for natively compiled QuickGUI applications",
   "repository": {
     "type": "git",
