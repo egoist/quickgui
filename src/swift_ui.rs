@@ -1510,6 +1510,7 @@ impl<'a> From<&'a SwiftUiModifier> for BridgeModifier<'a> {
     }
 }
 
+#[allow(clippy::type_complexity)]
 struct ActionContext {
     callback: Box<dyn Fn(u64)>,
     presentation_callback: Box<dyn Fn(u64, bool)>,

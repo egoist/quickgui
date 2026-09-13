@@ -96,7 +96,7 @@ jobs:
       - name: Run all tests
         run: scripts/with-macos-ghostty-zig.sh cargo test --all-targets --all-features --locked
       - name: Test native font rasterization and cache reuse
-        run: cargo test -p quickgui-cosmic-text --lib --locked
+        run: cargo test --manifest-path vendor/cosmic_text/Cargo.toml --lib
       - name: Test dynamic host and standalone extension backends
         run: |
           scripts/with-macos-ghostty-zig.sh cargo test -p quickgui-host -p quickgui-terminal -p quickgui-updater --lib --locked
@@ -171,4 +171,6 @@ jobs:
         run: cargo check --all-targets --all-features --locked
 
       - name: Test optional updater and installer helper
-        run: cargo test -p quickgui-updater -p quickgui-cosmic-text --locked
+        run: |
+          cargo test -p quickgui-updater --locked
+          cargo test --manifest-path vendor/cosmic_text/Cargo.toml --lib

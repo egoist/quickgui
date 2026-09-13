@@ -496,6 +496,30 @@ fn create_instance_buffer(device: &Device, capacity: usize) -> wgpu::Buffer {
     })
 }
 
+fn encoded_shader_source(source: &str) -> String {
+    let mut source = source.replace(
+        "@fragment\nfn fs_main(input: QuickGuiFragmentInput) -> @location(0) vec4<f32>",
+        "fn quickgui_shade_linear(input: QuickGuiFragmentInput) -> vec4<f32>",
+    );
+    source.push_str(r#"
+// Public paint colors stay linear; UI targets blend encoded sRGB, as native UI toolkits do.
+fn quickgui_encode_component(v: f32) -> f32 {
+    if v <= 0.0031308 { return 12.92 * v; }
+    return 1.055 * pow(max(v, 0.0), 1.0 / 2.4) - 0.055;
+}
+fn quickgui_encode_output(color: vec4<f32>) -> vec4<f32> {
+    if color.a <= 0.0 { return vec4<f32>(0.0); }
+    let straight = color.rgb / color.a;
+    return vec4<f32>(vec3<f32>(quickgui_encode_component(straight.r), quickgui_encode_component(straight.g), quickgui_encode_component(straight.b)) * color.a, color.a);
+}
+@fragment
+fn fs_main(input: QuickGuiFragmentInput) -> @location(0) vec4<f32> {
+    return quickgui_encode_output(quickgui_shade_linear(input));
+}
+"#);
+    source
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -541,28 +565,4 @@ fn quickgui_fragment(input: QuickGuiShaderInput) -> vec4<f32> {
             viewport
         ));
     }
-}
-
-fn encoded_shader_source(source: &str) -> String {
-    let mut source = source.replace(
-        "@fragment\nfn fs_main(input: QuickGuiFragmentInput) -> @location(0) vec4<f32>",
-        "fn quickgui_shade_linear(input: QuickGuiFragmentInput) -> vec4<f32>",
-    );
-    source.push_str(r#"
-// Public paint colors stay linear; UI targets blend encoded sRGB, as native UI toolkits do.
-fn quickgui_encode_component(v: f32) -> f32 {
-    if v <= 0.0031308 { return 12.92 * v; }
-    return 1.055 * pow(max(v, 0.0), 1.0 / 2.4) - 0.055;
-}
-fn quickgui_encode_output(color: vec4<f32>) -> vec4<f32> {
-    if color.a <= 0.0 { return vec4<f32>(0.0); }
-    let straight = color.rgb / color.a;
-    return vec4<f32>(vec3<f32>(quickgui_encode_component(straight.r), quickgui_encode_component(straight.g), quickgui_encode_component(straight.b)) * color.a, color.a);
-}
-@fragment
-fn fs_main(input: QuickGuiFragmentInput) -> @location(0) vec4<f32> {
-    return quickgui_encode_output(quickgui_shade_linear(input));
-}
-"#);
-    source
 }

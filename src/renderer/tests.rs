@@ -1776,7 +1776,7 @@ fn translated_text_settles_without_a_final_pixel_step() {
                 .unwrap()
         };
         let settled = render(&mut renderer, 20.0);
-        assert!(settled.rgba().chunks_exact(4).any(|pixel| pixel[0] > 0));
+        assert!(settled.rgba().as_chunks::<4>().0.iter().any(|pixel| pixel[0] > 0));
         // An eased translation approaches its endpoint from either direction. A tiny
         // remaining fraction must not leave downward-moving glyphs one pixel behind.
         for offset in [-0.1, 0.1] {

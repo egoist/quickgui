@@ -1,3 +1,5 @@
+// macOS-only SwiftUI host tests. `bun run test:typescript` ignores this file because
+// the CLI suite runs on Linux, where embedded SwiftUI views cannot be constructed.
 import { describe, expect, test } from "bun:test";
 import {
   app,

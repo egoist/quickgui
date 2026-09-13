@@ -72,13 +72,11 @@ impl UiTree {
                 id,
                 element: replacement,
             } = update
-            {
-                if replacement.explicit_id != Some(*id)
+                && (replacement.explicit_id != Some(*id)
                     || callback_owned(element)
-                    || callback_owned(replacement)
-                {
-                    return Ok(None);
-                }
+                    || callback_owned(replacement))
+            {
+                return Ok(None);
             }
             paths.push(path);
         }
