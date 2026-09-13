@@ -12,8 +12,3 @@ This is unreleased project, no migration or backward compatibility need at the m
 ## Performance
 
 Read and follow the [performance guide](docs/architecture/performance.md) before changing runtime scheduling, reactivity, native-host mutations, layout, rendering, or cache/resource reuse.
-
-## Agent skills
-
-- [QuickGUI application development](.agents/skills/quickgui-app-development/SKILL.md): language-specific component, reactivity, native-service and application build workflows.
-- [QuickGUI core changes and review](.agents/skills/quickgui-core-change/SKILL.md): framework ownership, ABI and generated binding changes, packaging review, and focused validation.
