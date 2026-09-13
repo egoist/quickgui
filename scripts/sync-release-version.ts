@@ -230,17 +230,17 @@ edit("packages/cli/src/cli.ts", (contents) =>
 );
 
 for (const packageName of ["cli"]) {
-  edit("packages/cli/templates/native/package.json", (contents) =>
+  edit("packages/cli/templates/native/package.json.tmpl", (contents) =>
     replaceMatches(
-      "packages/cli/templates/native/package.json",
+      "packages/cli/templates/native/package.json.tmpl",
       contents,
       new RegExp(`("@quickgui/${packageName}": "\\^)[^"]+(")`),
       (_match, prefix, suffix) => `${prefix}${version}${suffix}`,
     ),
   );
-  edit("packages/cli/templates/rust/package.json", (contents) =>
+  edit("packages/cli/templates/rust/package.json.tmpl", (contents) =>
     replaceMatches(
-      "packages/cli/templates/rust/package.json",
+      "packages/cli/templates/rust/package.json.tmpl",
       contents,
       new RegExp(`("@quickgui/${packageName}": "\\^)[^"]+(")`),
       (_match, prefix, suffix) => `${prefix}${version}${suffix}`,
@@ -249,7 +249,7 @@ for (const packageName of ["cli"]) {
 }
 
 for (const packageName of ["native", "solid", "cli"]) {
-  const path = "packages/cli/templates/typescript/package.json";
+  const path = "packages/cli/templates/typescript/package.json.tmpl";
   edit(path, (contents) =>
     replaceMatches(
       path,
@@ -267,9 +267,9 @@ edit("packages/cli/templates/native/go.mod.tmpl", (contents) =>
     (_match, prefix) => `${prefix}${version}`,
   ),
 );
-edit("packages/cli/templates/rust/Cargo.toml", (contents) =>
+edit("packages/cli/templates/rust/Cargo.toml.tmpl", (contents) =>
   replaceMatches(
-    "packages/cli/templates/rust/Cargo.toml",
+    "packages/cli/templates/rust/Cargo.toml.tmpl",
     contents,
     /^(quickgui = ")[^"]+(")/m,
     (_match, prefix, suffix) => `${prefix}${version}${suffix}`,

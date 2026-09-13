@@ -86,7 +86,7 @@ for (const pkg of packages) {
       "src/rust-build.ts",
       "templates/typescript/app.tsx",
       "templates/rust/src/main.rs",
-      "templates/rust/Cargo.toml",
+      "templates/rust/Cargo.toml.tmpl",
       "src/extension-resources.ts",
       "src/init-extension.ts",
       "templates/extension/common/go.mod.tmpl",

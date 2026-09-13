@@ -134,7 +134,7 @@ export async function initExtension(options: InitExtensionOptions): Promise<stri
   return destination;
 }
 
-/** Map scaffold names onto generated paths. `.tmpl` hides Go files from `go list`. */
+/** Map scaffold names onto generated paths. `.tmpl` hides tool manifests from discovery. */
 function templateOutputName(relative: string): string {
   if (relative === "gitignore") return ".gitignore";
   return relative.endsWith(".tmpl") ? relative.slice(0, -".tmpl".length) : relative;

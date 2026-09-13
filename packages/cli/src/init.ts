@@ -13,10 +13,10 @@ export interface InitProjectOptions {
   identifier?: string;
 }
 
-// .tmpl keeps Go sources out of package discovery after bun install places the
-// CLI under node_modules/@quickgui/cli. `@` is not a valid import-path character.
+// .tmpl keeps manifests and Go sources out of package discovery after bun
+// install places the CLI under node_modules/@quickgui/cli.
 const goFiles = [
-  ["package.json", "package.json"],
+  ["package.json.tmpl", "package.json"],
   ["quickgui.config.ts", "quickgui.config.ts"],
   ["go.mod.tmpl", "go.mod"],
   ["gitignore", ".gitignore"],
@@ -24,7 +24,7 @@ const goFiles = [
   ["main.go.tmpl", "main.go"],
 ] as const;
 const typescriptFiles = [
-  ["package.json", "package.json"],
+  ["package.json.tmpl", "package.json"],
   ["quickgui.config.ts", "quickgui.config.ts"],
   ["tsconfig.json", "tsconfig.json"],
   ["app.tsx", "app.tsx"],
@@ -32,9 +32,9 @@ const typescriptFiles = [
   ["README.md", "README.md"],
 ] as const;
 const rustFiles = [
-  ["package.json", "package.json"],
+  ["package.json.tmpl", "package.json"],
   ["quickgui.config.ts", "quickgui.config.ts"],
-  ["Cargo.toml", "Cargo.toml"],
+  ["Cargo.toml.tmpl", "Cargo.toml"],
   ["src/main.rs", "src/main.rs"],
   ["gitignore", ".gitignore"],
   ["README.md", "README.md"],

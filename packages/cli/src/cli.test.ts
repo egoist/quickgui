@@ -330,7 +330,12 @@ test("CLI templates keep Go sources unreadable as packages under a scoped npm pa
     }
   };
   walk(templates);
-  expect(shipped.filter((name) => name.endsWith(".go") || name === "go.mod")).toEqual([]);
+  expect(
+    shipped.filter(
+      (name) =>
+        name.endsWith(".go") || name === "go.mod" || name === "package.json" || name === "Cargo.toml",
+    ),
+  ).toEqual([]);
 
   const root = temporaryRoot();
   const project = join(root, "sample-app");
