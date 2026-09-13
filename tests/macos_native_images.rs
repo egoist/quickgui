@@ -76,6 +76,13 @@ fn main() {
     // Native vector symbols select a representation at the requested size and retain their ratio.
     let symbol = Image::named_system_sized("arrow.triangle.2.circlepath", 20.0, 2.0).unwrap();
     assert_eq!(symbol.width().max(symbol.height()), 40);
-    assert!(symbol.rgba().chunks_exact(4).any(|pixel| pixel[3] != 0));
+    assert!(
+        symbol
+            .rgba()
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .any(|pixel| pixel[3] != 0)
+    );
     println!("native images: RGBA8, RGBA16F, alpha, orientation, and symbol sizing passed");
 }
