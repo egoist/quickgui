@@ -2,7 +2,7 @@
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { npmPublishArgs, npmPublishTag } from "./npm-publish-tag.ts";
+import { alreadyPublished, npmPublishArgs, npmPublishTag } from "./npm-publish-tag.ts";
 
 const mode = process.argv[2];
 if (mode !== "--check" && mode !== "--publish")
@@ -34,10 +34,6 @@ function mustRun(argv: string[]): string {
   }
   if (result.stderr) console.error(result.stderr);
   return result.stdout;
-}
-
-function alreadyPublished(stderr: string): boolean {
-  return /EEXIST|EPUBLISHCONFLICT|previously published|cannot publish over|403 Forbidden/.test(stderr);
 }
 
 mustRun(["bun", join(import.meta.dir, "release-metadata.ts")]);
