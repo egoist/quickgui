@@ -638,10 +638,13 @@ describe("Solid universal host", () => {
     expect(owner.nodes.has(trigger.id)).toBe(true);
     expect(owner.root.children).toEqual([trigger]);
 
+    const beforeOpen = new Set(app.windows.keys());
     owner._dispatchEvent("click", trigger.id);
     await Promise.resolve();
 
-    const systemWindow = [...app.windows.values()].find((window) => window !== owner);
+    const systemWindow = [...app.windows.values()].find(
+      (window) => window !== owner && !beforeOpen.has(window.nativeId),
+    );
     expect(open()).toBe(true);
     expect(systemWindow).toBeDefined();
     expect(systemWindow!.root.children).toHaveLength(1);
@@ -663,9 +666,12 @@ describe("Solid universal host", () => {
       { open: false, reason: "dismiss" },
     ]);
 
+    const beforeReopen = new Set(app.windows.keys());
     owner._dispatchEvent("click", trigger.id);
     await Promise.resolve();
-    const reopened = [...app.windows.values()].find((window) => window !== owner);
+    const reopened = [...app.windows.values()].find(
+      (window) => window !== owner && !beforeReopen.has(window.nativeId),
+    );
     expect(open()).toBe(true);
     expect(reopened).toBeDefined();
 
@@ -678,9 +684,12 @@ describe("Solid universal host", () => {
     expect(changes.at(-1)).toEqual({ open: false, reason: "dismiss" });
     expect([...app.windows.values()]).toEqual([owner]);
 
+    const beforeOwned = new Set(app.windows.keys());
     owner._dispatchEvent("click", trigger.id);
     await Promise.resolve();
-    const ownedPopover = [...app.windows.values()].find((window) => window !== owner);
+    const ownedPopover = [...app.windows.values()].find(
+      (window) => window !== owner && !beforeOwned.has(window.nativeId),
+    );
     expect(ownedPopover).toBeDefined();
     owner.close();
     await Promise.resolve();

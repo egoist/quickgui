@@ -4,7 +4,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 export CGO_ENABLED=0
 
-unformatted=$(rg --files -0 go examples -g '*.go' | xargs -0 gofmt -l)
+unformatted=$(gofmt -l go examples)
 if [[ -n "$unformatted" ]]; then
   printf 'Run gofmt on:\n%s\n' "$unformatted" >&2
   exit 1

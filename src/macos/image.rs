@@ -116,30 +116,16 @@ pub(crate) fn rasterize_native_image(
 }
 
 fn unpremultiply_rgba(pixels: &mut [u8]) {
-    for pixel in pixels.chunks_exact_mut(4) {
+    for pixel in pixels.as_chunks_mut::<4>().0 {
         let alpha = u32::from(pixel[3]);
         for channel in &mut pixel[..3] {
-            *channel = if alpha == 0 {
-                0
-            } else {
-                ((u32::from(*channel) * 255 + alpha / 2) / alpha).min(255) as u8
-            };
+            *channel = u32::from(*channel)
+                .saturating_mul(255)
+                .saturating_add(alpha / 2)
+                .checked_div(alpha)
+                .unwrap_or(0)
+                .min(255) as u8;
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn native_pixels_preserve_color_at_translucent_edges() {
-        let mut pixels = [12, 34, 56, 255, 128, 64, 0, 128, 1, 0, 0, 1, 99, 42, 17, 0];
-        unpremultiply_rgba(&mut pixels);
-        assert_eq!(
-            pixels,
-            [12, 34, 56, 255, 255, 128, 0, 128, 255, 0, 0, 1, 0, 0, 0, 0]
-        );
     }
 }
 
@@ -206,4 +192,19 @@ pub(crate) fn native_image_with_metadata(
     }
     unsafe { native.setTemplate(image.is_template()) };
     Ok(native)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn native_pixels_preserve_color_at_translucent_edges() {
+        let mut pixels = [12, 34, 56, 255, 128, 64, 0, 128, 1, 0, 0, 1, 99, 42, 17, 0];
+        unpremultiply_rgba(&mut pixels);
+        assert_eq!(
+            pixels,
+            [12, 34, 56, 255, 255, 128, 0, 128, 255, 0, 0, 1, 0, 0, 0, 0]
+        );
+    }
 }

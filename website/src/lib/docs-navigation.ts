@@ -8,6 +8,8 @@ import {
 import { docsPath, findDocsPage, type DocsFrontend, type DocsSlug } from './docs'
 import { localizedComponentDescription, localizedDocsPage } from './docs-locales'
 
+export type DocsArea = 'guide' | 'components' | 'swift-ui'
+
 interface DocsNavItem {
   title: string
   description: string
@@ -16,7 +18,7 @@ interface DocsNavItem {
 }
 
 export interface DocsNavGroup {
-  id: 'introduction' | 'guides' | 'components' | 'swift-ui' | 'swift-ui-components' | 'advanced'
+  id: 'introduction' | 'overview' | 'guides' | 'components' | 'swift-ui' | 'swift-ui-components' | 'advanced'
   title: string
   items: readonly DocsNavItem[]
 }
@@ -24,6 +26,7 @@ export interface DocsNavGroup {
 const labels = {
   en: {
     introduction: 'Introduction',
+    overview: 'Overview',
     guides: 'Guides',
     components: 'Components',
     swiftUi: 'SwiftUI',
@@ -32,6 +35,7 @@ const labels = {
   },
   zh: {
     introduction: '简介',
+    overview: '概览',
     guides: '指南',
     components: '组件',
     swiftUi: 'SwiftUI',
@@ -40,6 +44,7 @@ const labels = {
   },
   ja: {
     introduction: 'はじめに',
+    overview: '概要',
     guides: 'ガイド',
     components: 'コンポーネント',
     swiftUi: 'SwiftUI',
@@ -48,7 +53,17 @@ const labels = {
   },
 } as const
 
-export function docsNavGroups(locale: Locale, frontend: DocsFrontend): readonly DocsNavGroup[] {
+export function docsPageArea(slug: DocsSlug): DocsArea {
+  if (slug === 'components') return 'components'
+  if (slug === 'swift-ui' || slug === 'swift-ui-hosting') return 'swift-ui'
+  return 'guide'
+}
+
+export function docsNavGroups(
+  locale: Locale,
+  frontend: DocsFrontend,
+  area: DocsArea,
+): readonly DocsNavGroup[] {
   const text = labels[locale]
   function guide(slug: DocsSlug): DocsNavItem {
     const source = findDocsPage(frontend, slug)
@@ -70,6 +85,36 @@ export function docsNavGroups(locale: Locale, frontend: DocsFrontend): readonly 
     }
   }
 
+  if (area === 'components') {
+    return [
+      {
+        id: 'overview',
+        title: text.overview,
+        items: [guide('components')],
+      },
+      ...COMPONENT_NAV_GROUPS.map((group): DocsNavGroup => ({
+        id: 'components',
+        title: text.components,
+        items: group.items.map(component),
+      })),
+    ]
+  }
+
+  if (area === 'swift-ui') {
+    return [
+      {
+        id: 'swift-ui',
+        title: text.swiftUi,
+        items: [guide('swift-ui'), guide('swift-ui-hosting')],
+      },
+      {
+        id: 'swift-ui-components',
+        title: text.swiftComponents,
+        items: SWIFT_UI_NAV_GROUP.items.map(component),
+      },
+    ]
+  }
+
   return [
     {
       id: 'introduction',
@@ -80,7 +125,6 @@ export function docsNavGroups(locale: Locale, frontend: DocsFrontend): readonly 
       id: 'guides',
       title: text.guides,
       items: [
-        guide('components'),
         guide('reactivity'),
         guide('rendering'),
         guide('styling'),
@@ -90,21 +134,6 @@ export function docsNavGroups(locale: Locale, frontend: DocsFrontend): readonly 
         guide('animations'),
         guide('native-services'),
       ],
-    },
-    ...COMPONENT_NAV_GROUPS.map((group): DocsNavGroup => ({
-      id: 'components',
-      title: text.components,
-      items: group.items.map(component),
-    })),
-    {
-      id: 'swift-ui',
-      title: text.swiftUi,
-      items: [guide('swift-ui'), guide('swift-ui-hosting')],
-    },
-    {
-      id: 'swift-ui-components',
-      title: text.swiftComponents,
-      items: SWIFT_UI_NAV_GROUP.items.map(component),
     },
     {
       id: 'advanced',

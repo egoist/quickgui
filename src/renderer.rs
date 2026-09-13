@@ -1,4 +1,5 @@
 use std::{
+    borrow::Cow,
     cell::RefCell,
     collections::{HashMap, HashSet},
     hash::{Hash, Hasher},
@@ -167,6 +168,12 @@ use winit::raw_window_handle::{HasWindowHandle, RawWindowHandle};
 
 const INITIAL_SHAPE_CAPACITY: usize = 256;
 const BUFFERED_FRAMES: usize = 3;
+/// WebGL2 has no storage buffers. Gradient and path-paint tables then live in a
+/// fixed uniform array that must fit the 16 KiB WebGL2 UBO minimum.
+pub(crate) const UNIFORM_TABLE_LEN: usize = 64;
+pub(crate) const QUAD_WGSL: &str = include_str!("quad.wgsl");
+pub(crate) const QUAD_STORAGE_BINDING: &str =
+    "@group(1) @binding(0)\nvar<storage, read> gradients: array<GradientRecord>;";
 const MAX_RETAINED_TEXT_AREAS: usize = 256;
 const MAX_RETAINED_TEXT_LAYOUTS: usize = 256;
 // Text separated by intersecting paint primitives needs independent glyph vertex buffers to
@@ -179,6 +186,58 @@ const MAX_RETAINED_TEXT_COLORS: usize = 64;
 // ability to reuse shaped Markdown after it has been offscreen for a few seconds.
 const TEXT_RETENTION_FRAMES: u64 = 600;
 const BASIC_FRAGMENT_MIN_BYTES: usize = 24;
+
+pub(crate) fn uses_read_only_storage_buffers(device: &Device) -> bool {
+    device.limits().max_storage_buffers_per_shader_stage > 0
+}
+
+pub(crate) fn read_only_table_binding(storage: bool) -> wgpu::BufferBindingType {
+    if storage {
+        wgpu::BufferBindingType::Storage { read_only: true }
+    } else {
+        wgpu::BufferBindingType::Uniform
+    }
+}
+
+pub(crate) fn table_buffer_usages(storage: bool) -> wgpu::BufferUsages {
+    let kind = if storage {
+        wgpu::BufferUsages::STORAGE
+    } else {
+        wgpu::BufferUsages::UNIFORM
+    };
+    kind | wgpu::BufferUsages::COPY_DST
+}
+
+pub(crate) fn rewrite_storage_array_as_uniform(
+    source: &str,
+    storage_binding: &str,
+    array_name: &str,
+    table_name: &str,
+    record_type: &str,
+) -> String {
+    assert!(
+        source.contains(storage_binding),
+        "shader storage binding drifted; update rewrite_storage_array_as_uniform"
+    );
+    source.replace(
+        storage_binding,
+        &format!(
+            "struct {record_type}Table {{\n    records: array<{record_type}, {UNIFORM_TABLE_LEN}>,\n}}\n@group(1) @binding(0)\nvar<uniform> {table_name}: {record_type}Table;"
+        ),
+    )
+    .replace(&format!("{array_name}["), &format!("{table_name}.records["))
+}
+
+pub(crate) fn shader_module_from_wgsl(
+    device: &Device,
+    label: &str,
+    source: Cow<'static, str>,
+) -> wgpu::ShaderModule {
+    device.create_shader_module(wgpu::ShaderModuleDescriptor {
+        label: Some(label),
+        source: wgpu::ShaderSource::Wgsl(source),
+    })
+}
 
 #[derive(Debug, Error)]
 pub(crate) enum RendererInitError {
@@ -195,6 +254,9 @@ pub(crate) enum RendererInitError {
     #[cfg_attr(not(target_os = "macos"), allow(dead_code))]
     #[error("could not create the macOS Metal surface: {0}")]
     PlatformSurface(String),
+    #[cfg_attr(not(target_arch = "wasm32"), allow(dead_code))]
+    #[error("could not initialize browser graphics: {0}")]
+    WebCanvas(String),
 }
 
 #[derive(Debug, Error)]
@@ -542,6 +604,8 @@ impl From<GradientData> for GpuGradient {
     }
 }
 
+const _: () = assert!(UNIFORM_TABLE_LEN * mem::size_of::<GpuGradient>() <= 16 * 1024);
+
 /// Largest number of resolved gradients uploaded for one window frame.
 ///
 /// Admission follows scene order. A shape whose gradient does not fit falls back to its solid
@@ -564,6 +628,7 @@ pub(crate) struct ShapePipeline {
     bind_group_layout: Arc<wgpu::BindGroupLayout>,
     gradient_bind_group_layout: Arc<wgpu::BindGroupLayout>,
     format: TextureFormat,
+    uses_storage: bool,
 }
 
 pub(crate) struct ShapeRenderer {
@@ -597,6 +662,7 @@ struct ShapeBatch {
 
 impl ShapePipeline {
     fn new(device: &Device, format: TextureFormat) -> Self {
+        let uses_storage = uses_read_only_storage_buffers(device);
         let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("quickgui view bind group layout"),
             entries: &[wgpu::BindGroupLayoutEntry {
@@ -617,7 +683,7 @@ impl ShapePipeline {
                     binding: 0,
                     visibility: ShaderStages::FRAGMENT,
                     ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        ty: read_only_table_binding(uses_storage),
                         has_dynamic_offset: false,
                         min_binding_size: None,
                     },
@@ -629,7 +695,22 @@ impl ShapePipeline {
             bind_group_layouts: &[Some(&bind_group_layout), Some(&gradient_bind_group_layout)],
             immediate_size: 0,
         });
-        let shader = device.create_shader_module(wgpu::include_wgsl!("quad.wgsl"));
+        let shader = if uses_storage {
+            shader_module_from_wgsl(device, "quickgui shape pipeline", Cow::Borrowed(QUAD_WGSL))
+        } else {
+            shader_module_from_wgsl(
+                device,
+                "quickgui shape pipeline",
+                Cow::Owned(rewrite_storage_array_as_uniform(
+                    QUAD_WGSL,
+                    QUAD_STORAGE_BINDING,
+                    "gradients",
+                    "gradient_table",
+                    "GradientRecord",
+                )),
+            )
+        };
+
         #[cfg(target_os = "macos")]
         // SAFETY: Naga validates and translates the repository-owned WGSL at build time.
         // The fragment has exactly the two buffer bindings declared above, at Metal slots 0/1.
@@ -727,6 +808,7 @@ impl ShapePipeline {
             bind_group_layout: Arc::new(bind_group_layout),
             gradient_bind_group_layout: Arc::new(gradient_bind_group_layout),
             format,
+            uses_storage,
         }
     }
 }
@@ -754,8 +836,13 @@ impl ShapeRenderer {
         let instance_buffers = (0..BUFFERED_FRAMES)
             .map(|_| create_shape_instance_buffer(device, INITIAL_SHAPE_CAPACITY))
             .collect();
+        let gradient_capacity = if pipeline.uses_storage {
+            INITIAL_GRADIENT_CAPACITY
+        } else {
+            UNIFORM_TABLE_LEN
+        };
         let gradient_buffers: Vec<_> = (0..BUFFERED_FRAMES)
-            .map(|_| create_gradient_buffer(device, INITIAL_GRADIENT_CAPACITY))
+            .map(|_| create_gradient_buffer(device, gradient_capacity, pipeline.uses_storage))
             .collect();
         let gradient_bind_groups = gradient_buffers
             .iter()
@@ -770,7 +857,7 @@ impl ShapeRenderer {
             instance_buffers,
             instance_capacities: vec![INITIAL_SHAPE_CAPACITY; BUFFERED_FRAMES],
             gradient_buffers,
-            gradient_capacities: vec![INITIAL_GRADIENT_CAPACITY; BUFFERED_FRAMES],
+            gradient_capacities: vec![gradient_capacity; BUFFERED_FRAMES],
             gradient_bind_groups,
             active_buffer: 0,
             uploads: crate::renderer::upload::BufferUploads::default(),
@@ -799,6 +886,7 @@ impl ShapeRenderer {
         self.layer_batches.clear();
         self.pending.clear();
         self.gradients.clear();
+        let gradient_limit = self.gradient_limit();
         let mut quads = 0;
         let mut shadows = 0;
         for layer in scene.paint_layers() {
@@ -823,6 +911,7 @@ impl ShapeRenderer {
                             &mut self.gradients,
                             quad.background.as_ref(),
                             quad.rect,
+                            gradient_limit,
                         );
                         quad_instance(quad, clip, gradient, scale)
                     }
@@ -840,6 +929,7 @@ impl ShapeRenderer {
                             &mut self.gradients,
                             quad.background.as_ref(),
                             quad.rect,
+                            gradient_limit,
                         );
                         edge_quad_instance(quad, clip, gradient, scale)
                     }
@@ -939,9 +1029,14 @@ impl ShapeRenderer {
             );
         }
         let required_gradients = self.gradients.len().max(1);
-        if required_gradients > self.gradient_capacities[self.active_buffer] {
-            let capacity = required_gradients.next_power_of_two();
-            self.gradient_buffers[self.active_buffer] = create_gradient_buffer(device, capacity);
+        if self.pipeline.uses_storage
+            && required_gradients > self.gradient_capacities[self.active_buffer]
+        {
+            let capacity = required_gradients
+                .next_power_of_two()
+                .min(MAX_GRADIENTS_PER_FRAME);
+            self.gradient_buffers[self.active_buffer] =
+                create_gradient_buffer(device, capacity, true);
             self.gradient_bind_groups[self.active_buffer] = create_gradient_bind_group(
                 device,
                 &self.pipeline.gradient_bind_group_layout,
@@ -982,6 +1077,14 @@ impl ShapeRenderer {
         pass.set_vertex_buffer(0, self.instance_buffers[self.active_buffer].slice(..));
         pass.draw(0..6, batch.instances.clone());
     }
+
+    fn gradient_limit(&self) -> usize {
+        if self.pipeline.uses_storage {
+            MAX_GRADIENTS_PER_FRAME
+        } else {
+            UNIFORM_TABLE_LEN
+        }
+    }
 }
 
 /// Upload one resolved gradient and return its instance index, or [`NO_GRADIENT`].
@@ -989,11 +1092,12 @@ fn admit_gradient(
     gradients: &mut Vec<GpuGradient>,
     gradient: Option<&Gradient>,
     bounds: Rect,
+    max: usize,
 ) -> f32 {
     let Some(gradient) = gradient else {
         return NO_GRADIENT;
     };
-    if gradients.len() >= MAX_GRADIENTS_PER_FRAME {
+    if gradients.len() >= max {
         return NO_GRADIENT;
     }
     let index = gradients.len() as f32;
@@ -1154,11 +1258,11 @@ fn create_shape_instance_buffer(device: &Device, capacity: usize) -> wgpu::Buffe
     })
 }
 
-fn create_gradient_buffer(device: &Device, capacity: usize) -> wgpu::Buffer {
+fn create_gradient_buffer(device: &Device, capacity: usize, storage: bool) -> wgpu::Buffer {
     device.create_buffer(&wgpu::BufferDescriptor {
         label: Some("quickgui shape gradient buffer"),
         size: (capacity * mem::size_of::<GpuGradient>()) as u64,
-        usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+        usage: table_buffer_usages(storage),
         mapped_at_creation: false,
     })
 }

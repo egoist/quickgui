@@ -3,20 +3,65 @@ use super::*;
 #[cfg(target_arch = "wasm32")]
 impl GpuContext {
     pub(crate) async fn for_canvas(
-        canvas: web_sys::HtmlCanvasElement,
+        mut canvas: web_sys::HtmlCanvasElement,
         profile: PerformanceProfile,
+    ) -> Result<(Self, web_sys::HtmlCanvasElement), RendererInitError> {
+        // Prefer WebGPU, then WebGL2 on a fresh canvas. A canvas can only bind one of
+        // `webgpu` or `webgl2`, and wgpu will not use GL while `BROWSER_WEBGPU` is set
+        // and `navigator.gpu` exists — including browsers that expose that object without
+        // a usable adapter.
+        let mut webgpu_error = None;
+        if wgpu::util::is_browser_webgpu_supported().await {
+            match Self::for_canvas_with_backends(&canvas, profile, wgpu::Backends::BROWSER_WEBGPU)
+                .await
+            {
+                Ok(gpu) => return Ok((gpu, canvas)),
+                Err(error) => {
+                    tracing::warn!(
+                        error = %error,
+                        "WebGPU initialization failed; falling back to WebGL2"
+                    );
+                    webgpu_error = Some(error);
+                    canvas = replace_canvas(&canvas)?;
+                }
+            }
+        } else {
+            tracing::warn!("browser WebGPU is unavailable; using WebGL2");
+        }
+        match Self::for_canvas_with_backends(&canvas, profile, wgpu::Backends::GL).await {
+            Ok(gpu) => Ok((gpu, canvas)),
+            Err(webgl_error) => Err(RendererInitError::WebCanvas(match webgpu_error {
+                Some(webgpu_error) => format!(
+                    "no browser graphics backend could be initialized. \
+                     WebGPU failed: {webgpu_error}. WebGL2 failed: {webgl_error}"
+                ),
+                None => format!("WebGL2 initialization failed: {webgl_error}"),
+            })),
+        }
+    }
+
+    async fn for_canvas_with_backends(
+        canvas: &web_sys::HtmlCanvasElement,
+        profile: PerformanceProfile,
+        backends: wgpu::Backends,
     ) -> Result<Self, RendererInitError> {
-        let instance = Instance::new(InstanceDescriptor::new_without_display_handle());
-        let surface = instance.create_surface(wgpu::SurfaceTarget::Canvas(canvas))?;
+        let mut descriptor = InstanceDescriptor::new_without_display_handle();
+        descriptor.backends = backends;
+        let instance = Instance::new(descriptor);
+        let surface = instance.create_surface(wgpu::SurfaceTarget::Canvas(canvas.clone()))?;
         let adapter = instance
             .request_adapter(&RequestAdapterOptions {
                 power_preference: profile.into(),
                 compatible_surface: Some(&surface),
+                force_fallback_adapter: false,
                 ..Default::default()
             })
             .await?;
         let (device, queue) = adapter
-            .request_device(&renderer_device_descriptor())
+            .request_device(&DeviceDescriptor {
+                required_limits: adapter.limits(),
+                ..renderer_device_descriptor()
+            })
             .await?;
         device.on_uncaptured_error(Arc::new(|error| {
             web_sys::console::error_1(&error.to_string().into());
@@ -39,6 +84,54 @@ impl GpuContext {
             text_cache,
         })
     }
+}
+
+#[cfg(target_arch = "wasm32")]
+fn replace_canvas(
+    old: &web_sys::HtmlCanvasElement,
+) -> Result<web_sys::HtmlCanvasElement, RendererInitError> {
+    use wasm_bindgen::JsCast;
+
+    let document = web_sys::window()
+        .and_then(|window| window.document())
+        .ok_or_else(|| RendererInitError::WebCanvas("no document".to_owned()))?;
+    let new: web_sys::HtmlCanvasElement = document
+        .create_element("canvas")
+        .map_err(web_canvas_error)?
+        .dyn_into()
+        .map_err(|_| RendererInitError::WebCanvas("created element is not a canvas".to_owned()))?;
+    if !old.id().is_empty() {
+        new.set_id(&old.id());
+    }
+    if !old.class_name().is_empty() {
+        new.set_class_name(&old.class_name());
+    }
+    new.set_width(old.width());
+    new.set_height(old.height());
+    new.set_tab_index(old.tab_index());
+    if let Some(label) = old.get_attribute("aria-label") {
+        new.set_attribute("aria-label", &label)
+            .map_err(web_canvas_error)?;
+    }
+    new.style().set_css_text(&old.style().css_text());
+    let parent = old
+        .parent_node()
+        .ok_or_else(|| RendererInitError::WebCanvas("canvas has no parent".to_owned()))?;
+    parent
+        .insert_before(new.as_ref(), Some(old.as_ref()))
+        .map_err(web_canvas_error)?;
+    old.remove();
+    Ok(new)
+}
+
+#[cfg(target_arch = "wasm32")]
+fn web_canvas_error(error: wasm_bindgen::JsValue) -> RendererInitError {
+    RendererInitError::WebCanvas(
+        error
+            .as_string()
+            .filter(|text| !text.is_empty())
+            .unwrap_or_else(|| format!("{error:?}")),
+    )
 }
 
 impl GpuRenderer {

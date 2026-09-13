@@ -6,7 +6,7 @@ const MAX_COMPONENT_SCOPES: usize = 262_144;
 type ScopeCallback = Rc<RefCell<dyn FnMut(&mut ViewContext<'_, ()>) -> ScopeOutput>>;
 
 pub(super) enum ScopeOutput {
-    Element(Element),
+    Element(Box<Element>),
     Update(ElementUpdate),
 }
 
@@ -241,7 +241,9 @@ impl<V: 'static> ViewContext<'_, V> {
     ) -> Element {
         let id = id.into();
         let callback: ScopeCallback = Rc::new(RefCell::new(move |cx: &mut ViewContext<'_, ()>| {
-            ScopeOutput::Element(cx.with_type::<V, _>(|cx| render(cx).into_element()))
+            ScopeOutput::Element(Box::new(
+                cx.with_type::<V, _>(|cx| render(cx).into_element()),
+            ))
         }));
         self.declare_component(id, Some(callback.clone()));
         let parent = self.listeners.current_scope.replace(id);
@@ -358,7 +360,7 @@ impl<V: 'static> ViewContext<'_, V> {
             self.with_type::<(), _>(|cx| callback.borrow_mut()(cx))
         } else {
             // The embedding renderer calls with_scope again while rebuilding this root.
-            ScopeOutput::Element(render_external(self)?)
+            ScopeOutput::Element(Box::new(render_external(self)?))
         };
         self.listeners.current_scope = None;
         Some(match output {

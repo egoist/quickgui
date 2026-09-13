@@ -1,7 +1,7 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { Logo } from '../logo'
-import { docsNavGroups } from '../../lib/docs-navigation'
+import { docsNavGroups, type DocsArea } from '../../lib/docs-navigation'
 import {
   DOCS_FRONTENDS,
   docsPath,
@@ -11,13 +11,13 @@ import {
   type DocsFrontend,
   type DocsOutlineItem,
 } from '../../lib/docs'
+
+export type { DocsArea }
 import { localePath, type Locale } from '../../i18n'
 import { site } from '../../lib/site'
 import { LanguageMenu } from '../language-menu'
 import { prefetchDocsSearch, searchDocs, type DocsSearchHit } from '../../lib/docs-search'
 import { rememberFrontend } from '../../lib/frontend-preference'
-
-export type DocsArea = 'guide' | 'components' | 'swift-ui'
 
 export interface DocsShellPage {
   title: string
@@ -28,7 +28,7 @@ export interface DocsShellPage {
 }
 
 const sidebarScrollTop = new Map<string, number>()
-const collapsedSidebarGroups = new Map<DocsFrontend, Set<string>>()
+const collapsedSidebarGroups = new Map<string, Set<string>>()
 
 const ui = {
   en: {
@@ -110,12 +110,14 @@ function localize(locale: Locale, path: string): string {
 }
 
 function DocsSidebar({
+  area,
   currentPath,
   locale,
   frontend,
   mobile = false,
   onNavigate,
 }: {
+  area: DocsArea
   currentPath: string
   locale: Locale
   frontend: DocsFrontend
@@ -125,16 +127,17 @@ function DocsSidebar({
   const sidebarRef = useRef<HTMLElement>(null)
   const navigate = useNavigate()
   const pickerId = useId()
-  const scrollKey = `${frontend}:${mobile ? 'mobile' : 'desktop'}`
+  const collapseKey = `${frontend}:${area}`
+  const scrollKey = `${frontend}:${area}:${mobile ? 'mobile' : 'desktop'}`
 
   useLayoutEffect(() => {
-    const collapsed = collapsedSidebarGroups.get(frontend)
+    const collapsed = collapsedSidebarGroups.get(collapseKey)
     const groups = sidebarRef.current?.querySelectorAll<HTMLDetailsElement>('.docs-nav-group')
     for (const group of groups ?? []) {
       group.open =
         Boolean(group.querySelector('[aria-current="page"]')) || !collapsed?.has(group.dataset.group!)
     }
-  }, [currentPath, frontend, mobile])
+  }, [collapseKey, currentPath, frontend, mobile])
 
   useLayoutEffect(() => {
     if (sidebarRef.current) {
@@ -178,17 +181,17 @@ function DocsSidebar({
         </div>
       </div>
       <nav aria-label={ui[locale].menu}>
-        {docsNavGroups(locale, frontend).map((group) => (
+        {docsNavGroups(locale, frontend, area).map((group) => (
           <details
             className="docs-nav-group"
             data-group={group.id}
             key={group.id}
             open
             onToggle={(event) => {
-              const collapsed = collapsedSidebarGroups.get(frontend) ?? new Set<string>()
+              const collapsed = collapsedSidebarGroups.get(collapseKey) ?? new Set<string>()
               if (event.currentTarget.open) collapsed.delete(group.id)
               else collapsed.add(group.id)
-              collapsedSidebarGroups.set(frontend, collapsed)
+              collapsedSidebarGroups.set(collapseKey, collapsed)
               rememberScrollPosition()
             }}
           >
@@ -631,7 +634,7 @@ function DocsPager({
   locale: Locale
   frontend: DocsFrontend
 }) {
-  const pages = docsNavGroups(locale, frontend).flatMap((group) => group.items)
+  const pages = docsNavGroups(locale, frontend, page.area).flatMap((group) => group.items)
   const index = pages.findIndex((candidate) => candidate.path === page.path)
   const previous = index > 0 ? pages[index - 1] : undefined
   const next = index >= 0 && index < pages.length - 1 ? pages[index + 1] : undefined
@@ -727,7 +730,7 @@ export function DocsShell({
       </div>
 
       <div className="docs-frame docs-layout">
-        <DocsSidebar currentPath={page.path} locale={locale} frontend={frontend} />
+        <DocsSidebar area={page.area} currentPath={page.path} locale={locale} frontend={frontend} />
         <div className="docs-content-column">
           <main id="docs-content" className="docs-article">
             <h1>{page.title}</h1>
@@ -743,6 +746,7 @@ export function DocsShell({
           <div onMouseDown={(event) => event.stopPropagation()}>
             {mobilePanel === 'menu' ? (
               <DocsSidebar
+                area={page.area}
                 currentPath={page.path}
                 locale={locale}
                 frontend={frontend}

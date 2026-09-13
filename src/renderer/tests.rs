@@ -1,6 +1,6 @@
 use super::*;
 use crate::{
-    BoxShadow, Color, FontFeatureTag, HighlightStyle, Hyphens, MAX_TEXT_SHADOW_SAMPLES,
+    BoxShadow, Color, FontFeatureTag, Gradient, HighlightStyle, Hyphens, MAX_TEXT_SHADOW_SAMPLES,
     OverflowWrap, StyledText, TextDirection, TextRun, TextShadow, TextTransform, WordBreak,
 };
 #[cfg(target_os = "macos")]
@@ -1776,7 +1776,14 @@ fn translated_text_settles_without_a_final_pixel_step() {
                 .unwrap()
         };
         let settled = render(&mut renderer, 20.0);
-        assert!(settled.rgba().chunks_exact(4).any(|pixel| pixel[0] > 0));
+        assert!(
+            settled
+                .rgba()
+                .as_chunks::<4>()
+                .0
+                .iter()
+                .any(|pixel| pixel[0] > 0)
+        );
         // An eased translation approaches its endpoint from either direction. A tiny
         // remaining fraction must not leave downward-moving glyphs one pixel behind.
         for offset in [-0.1, 0.1] {
@@ -3208,4 +3215,43 @@ fn equal_underlines_do_not_bridge_undecorated_text() {
         collect_styled_text_geometry(&buffer, &highlights, &style, 1.0, 0.0..100.0, None);
     assert_eq!(geometry.decorations.len(), 2);
     assert!(geometry.decorations[0].rect.right() < geometry.decorations[1].rect.x);
+}
+
+#[test]
+fn rewritten_uniform_quad_shader_parses_and_validates() {
+    let source = rewrite_storage_array_as_uniform(
+        QUAD_WGSL,
+        QUAD_STORAGE_BINDING,
+        "gradients",
+        "gradient_table",
+        "GradientRecord",
+    );
+    assert!(source.contains("gradient_table.records["));
+    assert!(!source.contains("gradients["));
+    let module =
+        wgpu::naga::front::wgsl::parse_str(&source).expect("the WebGL shape shader must parse");
+    wgpu::naga::valid::Validator::new(
+        wgpu::naga::valid::ValidationFlags::all(),
+        wgpu::naga::valid::Capabilities::empty(),
+    )
+    .validate(&module)
+    .expect("the WebGL shape shader must validate");
+}
+
+#[test]
+fn uniform_gradient_admission_stops_at_the_table_cap() {
+    let gradient = Gradient::linear(90.0, [Color::BLACK, Color::WHITE]);
+    let mut gradients = Vec::new();
+    let bounds = Rect::new(0.0, 0.0, 10.0, 10.0);
+    for _ in 0..UNIFORM_TABLE_LEN {
+        assert_ne!(
+            admit_gradient(&mut gradients, Some(&gradient), bounds, UNIFORM_TABLE_LEN),
+            NO_GRADIENT
+        );
+    }
+    assert_eq!(
+        admit_gradient(&mut gradients, Some(&gradient), bounds, UNIFORM_TABLE_LEN),
+        NO_GRADIENT
+    );
+    assert_eq!(gradients.len(), UNIFORM_TABLE_LEN);
 }

@@ -48,8 +48,8 @@ const navigate = useNavigate();
 ```tsx
 function Project() {
   const params = useParams();
-  return <Text>Project {params().id}</Text>;
+  return <Text>Project {params.id}</Text>;
 }
 ```
 
-`useLocation()` 和 `useSearchParams()` 返回当前路径和查询。在 JSX 中读取它们，文本才会保持最新。
+`useLocation()` 和 `useSearchParams()` 同样返回响应式对象。在 JSX 中读取 `location.pathname` 和 `searchParams.tab`，文本才会保持最新。

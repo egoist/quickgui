@@ -16,10 +16,11 @@ use windows::{
 };
 
 use windows_sys::Win32::Foundation::HWND;
+use windows_sys::Win32::UI::Input::KeyboardAndMouse::EnableWindow;
 use windows_sys::Win32::UI::WindowsAndMessaging::{
-    EnableWindow, GWL_EXSTYLE, GetCursorPos, LWA_ALPHA, SWP_FRAMECHANGED, SWP_NOMOVE,
-    SWP_NOOWNERZORDER, SWP_NOSIZE, SWP_NOZORDER, SetLayeredWindowAttributes, SetWindowPos,
-    WS_EX_LAYERED, WS_EX_NOACTIVATE,
+    GWL_EXSTYLE, GetCursorPos, LWA_ALPHA, SWP_FRAMECHANGED, SWP_NOMOVE, SWP_NOOWNERZORDER,
+    SWP_NOSIZE, SWP_NOZORDER, SetLayeredWindowAttributes, SetWindowPos, WS_EX_LAYERED,
+    WS_EX_NOACTIVATE,
 };
 use winit::{
     raw_window_handle::{HasWindowHandle, RawWindowHandle},

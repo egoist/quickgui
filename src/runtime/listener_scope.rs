@@ -176,7 +176,7 @@ mod tests {
         let mut listeners = ListenerRegistry::default();
         let first = ElementId::new(1);
         let second = ElementId::new(2);
-        let retained = Rc::new(());
+        let retained = Arc::new(());
         listeners.current_scope = Some(first);
         let capture = retained.clone();
         let key = listeners.push_mouse_listener(Arc::new(move |_, _, _| {
@@ -194,7 +194,7 @@ mod tests {
         listeners.clear_scope_listeners(first);
         assert!(listeners.mouse_listener(key).is_none());
         assert!(listeners.mouse_listener(sibling).is_some());
-        assert_eq!(Rc::strong_count(&retained), 1);
+        assert_eq!(Arc::strong_count(&retained), 1);
         assert_eq!(listeners.entity_subscription_count, 0);
         drop(subscription);
     }

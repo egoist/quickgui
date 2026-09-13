@@ -13,9 +13,9 @@
 		"dev": "bun run docs:api && bun run docs:wasm && bun run docs:index && react-router dev --port 3000",
 		"build": "bun run docs:api && bun run docs:index && react-router build",
 		"preview": "bun run build && vite preview",
-		"deploy": "bun run build && wrangler deploy",
-		"cf-typegen": "wrangler types",
-		"typecheck": "wrangler types && react-router typegen && tsc -b",
+		"deploy": "bun run build && wrangler deploy -c build/server/wrangler.json",
+		"cf-typegen": "wrangler types -c wrangler.dev.jsonc",
+		"typecheck": "wrangler types -c wrangler.dev.jsonc && react-router typegen && tsc -b",
 		"docs:api": "bun ./scripts/build-component-api.ts",
 		"docs:wasm": "bun ./scripts/build-demos.ts"
 	},

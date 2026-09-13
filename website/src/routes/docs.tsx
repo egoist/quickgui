@@ -3,7 +3,7 @@ import { redirect } from 'react-router'
 import { resolveDocsRoute } from '../lib/docs-routing'
 import type { Route } from './+types/docs'
 import docsCss from '../docs.css?url'
-import { DocsShell, type DocsArea } from '../components/docs/docs-shell'
+import { DocsShell } from '../components/docs/docs-shell'
 import { getDocsMdxComponents } from '../components/docs/mdx-components'
 import {
   OG_LOCALES,
@@ -11,7 +11,8 @@ import {
   resolveLocale,
   type Locale,
 } from '../i18n'
-import { findDocsPage, docsPath, type DocsSlug } from '../lib/docs'
+import { findDocsPage, docsPath } from '../lib/docs'
+import { docsPageArea } from '../lib/docs-navigation'
 import { localizedDocsPage } from '../lib/docs-locales'
 import { guideMdx } from '../lib/docs-mdx'
 import { siteMeta } from '../lib/meta'
@@ -19,14 +20,6 @@ import { readFrontendPreference } from '../lib/frontend-preference'
 
 function localizedPath(locale: Locale, path: string): string {
   return locale === 'en' ? path : `/${locale}${path}`
-}
-
-function docsArea(slug: DocsSlug): DocsArea {
-  if (slug === 'components' || slug === 'forms-and-input' || slug === 'overlays-and-dialogs') {
-    return 'components'
-  }
-  if (slug === 'swift-ui' || slug === 'swift-ui-hosting') return 'swift-ui'
-  return 'guide'
 }
 
 export function loader({ params, request }: Route.LoaderArgs) {
@@ -111,7 +104,7 @@ export default function DocsRoute({ loaderData }: Route.ComponentProps) {
         description: page.description,
         outline: page.outline,
         path: docsPath(page.frontend, page.slug),
-        area: docsArea(page.slug),
+        area: docsPageArea(page.slug),
       }}
     >
       <Content components={getDocsMdxComponents(loaderData.locale)} />

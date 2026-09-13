@@ -400,7 +400,7 @@ impl Image {
             return Err(ImageError::InvalidJpegQuality { quality });
         }
         let mut rgb = Vec::with_capacity((self.0.rgba.len() / 4) * 3);
-        for pixel in self.0.rgba.chunks_exact(4) {
+        for pixel in self.0.rgba.as_chunks::<4>().0 {
             let alpha = f32::from(pixel[3]) / 255.0;
             for channel in &pixel[..3] {
                 let value = f32::from(*channel) * alpha + 255.0 * (1.0 - alpha);
@@ -1022,7 +1022,12 @@ mod tests {
         let decoded = Image::decode(&jpeg).unwrap();
         assert_eq!(decoded.size(), source.size());
         assert!(
-            decoded.rgba().chunks_exact(4).all(|pixel| pixel[3] == 255),
+            decoded
+                .rgba()
+                .as_chunks::<4>()
+                .0
+                .iter()
+                .all(|pixel| pixel[3] == 255),
             "JPEG has no alpha channel"
         );
         assert!(matches!(

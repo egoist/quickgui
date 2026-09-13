@@ -1,4 +1,4 @@
-use std::{mem, ops::Range};
+use std::{borrow::Cow, mem, ops::Range};
 
 use bytemuck::{Pod, Zeroable};
 use wgpu::{
@@ -11,8 +11,16 @@ use wgpu::{
 use crate::{
     MAX_GRADIENT_STOPS, Rect, Scene,
     path::GradientData,
+    renderer::{
+        UNIFORM_TABLE_LEN, read_only_table_binding, rewrite_storage_array_as_uniform,
+        shader_module_from_wgsl, table_buffer_usages, uses_read_only_storage_buffers,
+    },
     scene::{PathPrimitive, PrimitiveRef},
 };
+
+const PATH_WGSL: &str = include_str!("path.wgsl");
+const PATH_STORAGE_BINDING: &str =
+    "@group(1) @binding(0) var<storage, read> paints: array<PathPaint>;";
 
 /// Maximum tessellated path vertices uploaded in one frame.
 ///
@@ -69,6 +77,8 @@ struct GpuPathPaint {
     colors: [[f32; 4]; MAX_GRADIENT_STOPS],
 }
 
+const _: () = assert!(UNIFORM_TABLE_LEN * mem::size_of::<GpuPathPaint>() <= 16 * 1024);
+
 #[derive(Clone, Copy)]
 struct PendingPath {
     order: u32,
@@ -90,6 +100,7 @@ pub(crate) struct PathRenderer {
     paint_buffers: Vec<wgpu::Buffer>,
     paint_capacities: Vec<usize>,
     paint_bind_groups: Vec<BindGroup>,
+    uses_storage: bool,
     active_buffer: usize,
     pub(crate) uploads: crate::renderer::upload::BufferUploads,
     vertices: Vec<GpuPathVertex>,
@@ -101,6 +112,7 @@ pub(crate) struct PathRenderer {
 
 impl PathRenderer {
     pub(crate) fn new(device: &Device, format: TextureFormat) -> Self {
+        let uses_storage = uses_read_only_storage_buffers(device);
         let uniform_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("quickgui path view uniform"),
             contents: bytemuck::bytes_of(&ViewUniform::zeroed()),
@@ -135,7 +147,7 @@ impl PathRenderer {
                     binding: 0,
                     visibility: ShaderStages::VERTEX | ShaderStages::FRAGMENT,
                     ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        ty: read_only_table_binding(uses_storage),
                         has_dynamic_offset: false,
                         min_binding_size: None,
                     },
@@ -150,7 +162,21 @@ impl PathRenderer {
             ],
             immediate_size: 0,
         });
-        let shader = device.create_shader_module(wgpu::include_wgsl!("path.wgsl"));
+        let shader = if uses_storage {
+            shader_module_from_wgsl(device, "quickgui path pipeline", Cow::Borrowed(PATH_WGSL))
+        } else {
+            shader_module_from_wgsl(
+                device,
+                "quickgui path pipeline",
+                Cow::Owned(rewrite_storage_array_as_uniform(
+                    PATH_WGSL,
+                    PATH_STORAGE_BINDING,
+                    "paints",
+                    "paint_table",
+                    "PathPaint",
+                )),
+            )
+        };
         let attributes = [
             VertexAttribute {
                 format: VertexFormat::Float32x2,
@@ -209,8 +235,13 @@ impl PathRenderer {
         let vertex_buffers = (0..BUFFERED_FRAMES)
             .map(|_| create_vertex_buffer(device, INITIAL_VERTEX_CAPACITY))
             .collect();
+        let paint_capacity = if uses_storage {
+            INITIAL_PAINT_CAPACITY
+        } else {
+            UNIFORM_TABLE_LEN
+        };
         let paint_buffers: Vec<_> = (0..BUFFERED_FRAMES)
-            .map(|_| create_paint_buffer(device, INITIAL_PAINT_CAPACITY))
+            .map(|_| create_paint_buffer(device, paint_capacity, uses_storage))
             .collect();
         let paint_bind_groups = paint_buffers
             .iter()
@@ -224,8 +255,9 @@ impl PathRenderer {
             vertex_buffers,
             vertex_capacities: vec![INITIAL_VERTEX_CAPACITY; BUFFERED_FRAMES],
             paint_buffers,
-            paint_capacities: vec![INITIAL_PAINT_CAPACITY; BUFFERED_FRAMES],
+            paint_capacities: vec![paint_capacity; BUFFERED_FRAMES],
             paint_bind_groups,
+            uses_storage,
             active_buffer: 0,
             uploads: crate::renderer::upload::BufferUploads::default(),
             vertices: Vec::with_capacity(INITIAL_VERTEX_CAPACITY),
@@ -256,6 +288,7 @@ impl PathRenderer {
         let mut skipped_paths = 0;
         let mut admitted_paths = 0_usize;
         let mut admitted_vertices = 0_usize;
+        let max_paths = self.max_paths();
 
         for layer in scene.paint_layers() {
             let batch_start = self.batches.len();
@@ -269,7 +302,12 @@ impl PathRenderer {
                     continue;
                 }
                 let vertex_count = primitive.path.vertex_count();
-                if !admit_path(&mut admitted_paths, &mut admitted_vertices, vertex_count) {
+                if !admit_path(
+                    &mut admitted_paths,
+                    &mut admitted_vertices,
+                    vertex_count,
+                    max_paths,
+                ) {
                     skipped_paths += 1;
                     continue;
                 }
@@ -339,7 +377,7 @@ impl PathRenderer {
             );
         }
         debug_assert!(self.vertices.len() <= MAX_GPU_PATH_VERTICES);
-        debug_assert!(self.paints.len() <= MAX_GPU_PATHS_PER_FRAME);
+        debug_assert!(self.paints.len() <= max_paths);
         PathPrepareStats {
             paths: self.paints.len(),
             vertices: self.vertices.len(),
@@ -370,6 +408,14 @@ impl PathRenderer {
         pass.draw(batch.vertices.clone(), 0..1);
     }
 
+    fn max_paths(&self) -> usize {
+        if self.uses_storage {
+            MAX_GPU_PATHS_PER_FRAME
+        } else {
+            UNIFORM_TABLE_LEN
+        }
+    }
+
     fn ensure_active_capacity(&mut self, device: &Device) {
         let vertex_required = self.vertices.len().max(1);
         if vertex_required > self.vertex_capacities[self.active_buffer] {
@@ -382,11 +428,11 @@ impl PathRenderer {
         }
 
         let paint_required = self.paints.len().max(1);
-        if paint_required > self.paint_capacities[self.active_buffer] {
+        if self.uses_storage && paint_required > self.paint_capacities[self.active_buffer] {
             let capacity = paint_required
                 .next_power_of_two()
                 .min(MAX_GPU_PATHS_PER_FRAME);
-            self.paint_buffers[self.active_buffer] = create_paint_buffer(device, capacity);
+            self.paint_buffers[self.active_buffer] = create_paint_buffer(device, capacity, true);
             self.paint_bind_groups[self.active_buffer] = create_paint_bind_group(
                 device,
                 &self.paint_bind_group_layout,
@@ -398,10 +444,13 @@ impl PathRenderer {
     }
 }
 
-fn admit_path(paths: &mut usize, vertices: &mut usize, vertex_count: usize) -> bool {
-    if *paths == MAX_GPU_PATHS_PER_FRAME
-        || vertices.saturating_add(vertex_count) > MAX_GPU_PATH_VERTICES
-    {
+fn admit_path(
+    paths: &mut usize,
+    vertices: &mut usize,
+    vertex_count: usize,
+    max_paths: usize,
+) -> bool {
+    if *paths == max_paths || vertices.saturating_add(vertex_count) > MAX_GPU_PATH_VERTICES {
         return false;
     }
     *paths += 1;
@@ -486,11 +535,11 @@ fn create_vertex_buffer(device: &Device, capacity: usize) -> wgpu::Buffer {
     })
 }
 
-fn create_paint_buffer(device: &Device, capacity: usize) -> wgpu::Buffer {
+fn create_paint_buffer(device: &Device, capacity: usize, storage: bool) -> wgpu::Buffer {
     device.create_buffer(&wgpu::BufferDescriptor {
         label: Some("quickgui path paint buffer"),
         size: (capacity * mem::size_of::<GpuPathPaint>()) as u64,
-        usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+        usage: table_buffer_usages(storage),
         mapped_at_creation: false,
     })
 }
@@ -574,21 +623,44 @@ mod tests {
     fn frame_admission_accumulates_every_path_and_never_exceeds_the_caps() {
         let mut paths = 0;
         let mut vertices = 0;
-        assert!(admit_path(&mut paths, &mut vertices, 100_000));
-        assert!(admit_path(&mut paths, &mut vertices, 100_000));
-        assert!(!admit_path(&mut paths, &mut vertices, 100_000));
+        assert!(admit_path(
+            &mut paths,
+            &mut vertices,
+            100_000,
+            MAX_GPU_PATHS_PER_FRAME
+        ));
+        assert!(admit_path(
+            &mut paths,
+            &mut vertices,
+            100_000,
+            MAX_GPU_PATHS_PER_FRAME
+        ));
+        assert!(!admit_path(
+            &mut paths,
+            &mut vertices,
+            100_000,
+            MAX_GPU_PATHS_PER_FRAME
+        ));
         assert_eq!(paths, 2);
         assert_eq!(vertices, 200_000);
 
         paths = MAX_GPU_PATHS_PER_FRAME;
         vertices = 0;
-        assert!(!admit_path(&mut paths, &mut vertices, 3));
+        assert!(!admit_path(
+            &mut paths,
+            &mut vertices,
+            3,
+            MAX_GPU_PATHS_PER_FRAME
+        ));
         assert_eq!(vertices, 0);
+
+        paths = UNIFORM_TABLE_LEN;
+        assert!(!admit_path(&mut paths, &mut vertices, 3, UNIFORM_TABLE_LEN));
     }
 
     #[test]
     fn path_shader_parses_and_validates() {
-        let module = wgpu::naga::front::wgsl::parse_str(include_str!("path.wgsl"))
+        let module = wgpu::naga::front::wgsl::parse_str(PATH_WGSL)
             .expect("the retained path shader must parse");
         wgpu::naga::valid::Validator::new(
             wgpu::naga::valid::ValidationFlags::all(),
@@ -596,5 +668,26 @@ mod tests {
         )
         .validate(&module)
         .expect("the retained path shader must validate");
+    }
+
+    #[test]
+    fn rewritten_uniform_path_shader_parses_and_validates() {
+        let source = rewrite_storage_array_as_uniform(
+            PATH_WGSL,
+            PATH_STORAGE_BINDING,
+            "paints",
+            "paint_table",
+            "PathPaint",
+        );
+        assert!(source.contains("paint_table.records["));
+        assert!(!source.contains("paints["));
+        let module =
+            wgpu::naga::front::wgsl::parse_str(&source).expect("the WebGL path shader must parse");
+        wgpu::naga::valid::Validator::new(
+            wgpu::naga::valid::ValidationFlags::all(),
+            wgpu::naga::valid::Capabilities::empty(),
+        )
+        .validate(&module)
+        .expect("the WebGL path shader must validate");
     }
 }

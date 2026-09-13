@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
+import { fileURLToPath } from "node:url";
 
 import { parseCliArgs } from "./args.ts";
 import {
@@ -316,6 +317,51 @@ test("project initialization renders a complete native scaffold", async () => {
   expect(readFileSync(join(project, "go.mod"), "utf8")).toContain("module example.com/sample-app");
   expect(readFileSync(join(project, ".gitignore"), "utf8")).toContain(".quickgui");
   expect(readFileSync(join(project, "README.md"), "utf8")).not.toContain("{{");
+});
+
+test("CLI templates keep Go sources unreadable as packages under a scoped npm path", async () => {
+  const templates = fileURLToPath(new URL("../templates", import.meta.url));
+  const shipped: string[] = [];
+  const walk = (directory: string) => {
+    for (const entry of readdirSync(directory, { withFileTypes: true })) {
+      const path = join(directory, entry.name);
+      if (entry.isDirectory()) walk(path);
+      else shipped.push(entry.name);
+    }
+  };
+  walk(templates);
+  expect(
+    shipped.filter(
+      (name) =>
+        name.endsWith(".go") || name === "go.mod" || name === "package.json" || name === "Cargo.toml",
+    ),
+  ).toEqual([]);
+
+  const root = temporaryRoot();
+  const project = join(root, "sample-app");
+  await initProject({
+    directory: project,
+    install: false,
+    name: "Sample App",
+    identifier: "com.example.sample-app",
+  });
+  mkdirSync(join(project, "node_modules/@quickgui/cli"), { recursive: true });
+  cpSync(templates, join(project, "node_modules/@quickgui/cli/templates"), { recursive: true });
+  const child = Bun.spawn(["go", "list", "./..."], {
+    cwd: project,
+    stdin: "ignore",
+    stdout: "pipe",
+    stderr: "pipe",
+    env: { ...process.env, CGO_ENABLED: "0", GOWORK: "off" },
+  });
+  const [status, stdout, stderr] = await Promise.all([
+    child.exited,
+    new Response(child.stdout).text(),
+    new Response(child.stderr).text(),
+  ]);
+  expect(stderr).toBe("");
+  expect(status).toBe(0);
+  expect(stdout.trim()).toBe("example.com/sample-app");
 });
 
 test("project initialization never overwrites a non-empty destination", async () => {

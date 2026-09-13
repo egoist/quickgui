@@ -41,6 +41,7 @@ test("memo-derived lists mount synchronously and custom component prop spreads p
   ).toHaveLength(100);
   expect(text(host.root)).toStartWith("012345");
   dispose();
+  host.close();
 });
 
 test("compiled Solid 2 JSX updates retained nodes and disposes effects without reconstructing components", () => {
@@ -86,6 +87,7 @@ test("compiled Solid 2 JSX updates retained nodes and disposes effects without r
   setCount(4);
   flush();
   expect(host.nodes.size).toBe(1);
+  host.close();
 });
 
 test("keyed lists preserve native identities and independent windows own their own reactive roots", () => {
@@ -118,6 +120,8 @@ test("keyed lists preserve native identities and independent windows own their o
   expect(text(second.root)).toBe("b");
   expect(first.nodes.size).toBe(1);
   disposeSecond();
+  first.close();
+  second.close();
 });
 
 test("View and intrinsic div render direct text and update reactive text in place", async () => {

@@ -104,7 +104,7 @@ export async function initExtension(options: InitExtensionOptions): Promise<stri
     collectTemplates(join(templateRoot, group), "", files, replacements);
   }
   for (const [relative, contents] of files) {
-    const target = join(destination, relative === "gitignore" ? ".gitignore" : relative);
+    const target = join(destination, templateOutputName(relative));
     mkdirSync(dirname(target), { recursive: true });
     writeFileSync(target, contents);
   }
@@ -132,6 +132,12 @@ export async function initExtension(options: InitExtensionOptions): Promise<stri
     }
   }
   return destination;
+}
+
+/** Map scaffold names onto generated paths. `.tmpl` hides tool manifests from discovery. */
+function templateOutputName(relative: string): string {
+  if (relative === "gitignore") return ".gitignore";
+  return relative.endsWith(".tmpl") ? relative.slice(0, -".tmpl".length) : relative;
 }
 
 function defaultName(directory: string): string {
