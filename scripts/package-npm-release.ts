@@ -68,7 +68,8 @@ for (const pkg of packages) {
     manifest.name !== `@quickgui/${pkg.name}` ||
     manifest.version !== version ||
     JSON.stringify(manifest.os) !== JSON.stringify(releasedOs) ||
-    manifest.publishConfig?.access !== "public"
+    manifest.publishConfig?.access !== "public" ||
+    manifest.repository?.url !== "https://github.com/egoist/quickgui.git"
   ) {
     throw new Error(`Incorrect release metadata in ${filename}`);
   }

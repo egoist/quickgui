@@ -186,14 +186,14 @@ jobs:
           fi
       - name: Install JavaScript dependencies
         run: bun install --frozen-lockfile
-      - name: Download previously packed npm tarballs
+      - name: Download native libraries from a previous run
         if: env.QUICKGUI_PUBLISH_ONLY == '1'
         uses: actions/download-artifact@v5
         with:
           run-id: ${{ env.QUICKGUI_REUSE_RUN_ID }}
           github-token: ${{ github.token }}
-          pattern: quickgui-*-npm-*
-          path: target/npm-release
+          pattern: native-libs-*
+          path: .
           merge-multiple: true
       - name: Download native libraries
         if: env.QUICKGUI_PUBLISH_ONLY != '1'
@@ -203,10 +203,8 @@ jobs:
           path: .
           merge-multiple: true
       - name: Restore downloaded native libraries
-        if: env.QUICKGUI_PUBLISH_ONLY != '1'
         run: bun scripts/restore-native-lib-artifacts.ts
       - name: Verify downloaded native libraries
-        if: env.QUICKGUI_PUBLISH_ONLY != '1'
         shell: bash
         run: |
           missing=0
@@ -233,7 +231,6 @@ jobs:
             exit 1
           fi
       - name: Build and verify npm tarballs
-        if: env.QUICKGUI_PUBLISH_ONLY != '1'
         run: bun scripts/package-npm-release.ts target/npm-release
       - name: Verify registry publication plan
         run: |
@@ -243,7 +240,6 @@ jobs:
           test -n "$(ls target/npm-release/quickgui-*.tgz 2>/dev/null)"
           bun scripts/release-npm.ts --check target/npm-release
       - name: Upload npm release candidates
-        if: env.QUICKGUI_PUBLISH_ONLY != '1'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: quickgui-${{ steps.release.outputs.version }}-npm-${{ steps.source.outputs.sha }}

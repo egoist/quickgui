@@ -4,6 +4,12 @@ All notable user-facing changes to QuickGUI are recorded here.
 
 ## Unreleased
 
+## 0.1.4-next.4 - 2026-09-13
+
+Same user-facing cut as 0.1.4-next.3. This version is the complete `latest` npm
+set; `0.1.4-next.3` could not move `@quickgui/native` onto `latest` after that
+package was already published.
+
 ## 0.1.4-next.3 - 2026-09-13
 
 ### CLI
