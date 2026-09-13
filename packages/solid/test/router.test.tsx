@@ -25,14 +25,14 @@ test("useParams, useLocation, and useSearchParams return reactive objects", () =
   let constructions = 0;
   let params: ReturnType<typeof useParams<{ id: string }>> | undefined;
   let location: ReturnType<typeof useLocation> | undefined;
-  let searchParams: ReturnType<typeof useSearchParams<{ tab: string }>> | undefined;
+  let searchParams: ReturnType<typeof useSearchParams<{ tab: string; token: string }>> | undefined;
   let navigate: ReturnType<typeof useNavigate> | undefined;
 
   function Project() {
     constructions += 1;
     params = useParams<{ id: string }>();
     location = useLocation();
-    searchParams = useSearchParams<{ tab: string }>();
+    searchParams = useSearchParams<{ tab: string; token: string }>();
     navigate = useNavigate();
     return (
       <Text>
@@ -66,6 +66,20 @@ test("useParams, useLocation, and useSearchParams return reactive objects", () =
   expect(location?.search).toBe("?tab=activity");
   expect(searchParams?.tab).toBe("activity");
   expect(text(host.root)).toContain("Project 13 at /projects/13 tab activity");
+
+  navigate!("#details");
+  flush();
+  expect(constructions).toBe(1);
+  expect(location?.pathname).toBe("/projects/13");
+  expect(location?.search).toBe("?tab=activity");
+  expect(location?.hash).toBe("#details");
+
+  navigate!("/projects/Quick%20GUI?token=a=b");
+  flush();
+  expect(constructions).toBe(1);
+  expect(params?.id).toBe("Quick GUI");
+  expect(searchParams?.token).toBe("a=b");
+  expect(location?.pathname).toBe("/projects/Quick%20GUI");
 
   dispose();
   host.close();

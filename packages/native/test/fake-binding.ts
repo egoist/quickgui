@@ -210,12 +210,20 @@ type PatternSegment =
   | { kind: "param"; name: string; optional: boolean }
   | { kind: "wildcard"; name: string };
 
+interface RouteSpecificity {
+  staticSegments: number;
+  requiredSegments: number;
+  optionalSegments: number;
+  wildcard: boolean;
+  ancestryDepth: number;
+}
+
 interface CompiledRoute {
   id: string;
   routeIds: string[];
   segments: PatternSegment[];
   participates: boolean;
-  staticCount: number;
+  specificity: RouteSpecificity;
 }
 
 function normalizePathname(path: string): string {
@@ -228,13 +236,24 @@ function normalizePathname(path: string): string {
   return `/${segments.join("/")}`;
 }
 
+function decodeComponent(component: string, plusAsSpace: boolean): string {
+  const source = plusAsSpace ? component.replaceAll("+", " ") : component;
+  try {
+    return decodeURIComponent(source);
+  } catch {
+    return component;
+  }
+}
+
 function parseQuery(search: string): NativeRouteValue[] {
   if (!search) return [];
   return search.split("&").map((pair) => {
-    const [name, value = ""] = pair.split("=");
+    const separator = pair.indexOf("=");
+    const name = separator === -1 ? pair : pair.slice(0, separator);
+    const value = separator === -1 ? "" : pair.slice(separator + 1);
     return {
-      name: decodeURIComponent(name.replaceAll("+", " ")),
-      value: decodeURIComponent(value.replaceAll("+", " ")),
+      name: decodeComponent(name, true),
+      value: decodeComponent(value, true),
     };
   });
 }
@@ -310,37 +329,68 @@ function compileSegments(pattern: string): PatternSegment[] {
           optional,
         };
       }
-      return { kind: "static", value: segment };
+      return { kind: "static", value: decodeComponent(segment, false) };
     });
 }
 
 function matchSegments(
   segments: PatternSegment[],
   parts: string[],
+  segmentIndex = 0,
+  partIndex = 0,
+  params: NativeRouteValue[] = [],
 ): NativeRouteValue[] | undefined {
-  const params: NativeRouteValue[] = [];
-  let index = 0;
+  const segment = segments[segmentIndex];
+  if (!segment) return partIndex === parts.length ? params : undefined;
+  if (segment.kind === "static") {
+    if (parts[partIndex] !== segment.value) return undefined;
+    return matchSegments(segments, parts, segmentIndex + 1, partIndex + 1, params);
+  }
+  if (segment.kind === "param") {
+    const value = parts[partIndex];
+    if (value !== undefined) {
+      params.push({ name: segment.name, value });
+      const matched = matchSegments(segments, parts, segmentIndex + 1, partIndex + 1, params);
+      if (matched) return matched;
+      params.pop();
+    }
+    if (segment.optional) {
+      return matchSegments(segments, parts, segmentIndex + 1, partIndex, params);
+    }
+    return undefined;
+  }
+  params.push({ name: segment.name, value: parts.slice(partIndex).join("/") });
+  return params;
+}
+
+function specificityOf(segments: PatternSegment[], ancestryDepth: number): RouteSpecificity {
+  let staticSegments = 0;
+  let requiredSegments = 0;
+  let optionalSegments = 0;
+  let wildcard = false;
   for (const segment of segments) {
     if (segment.kind === "static") {
-      if (parts[index] !== segment.value) return undefined;
-      index += 1;
-      continue;
-    }
-    if (segment.kind === "param") {
-      const value = parts[index];
-      if (value === undefined) {
-        if (!segment.optional) return undefined;
-        continue;
-      }
-      params.push({ name: segment.name, value });
-      index += 1;
-      continue;
-    }
-    params.push({ name: segment.name, value: parts.slice(index).join("/") });
-    index = parts.length;
+      staticSegments += 1;
+      requiredSegments += 1;
+    } else if (segment.kind === "param") {
+      if (segment.optional) optionalSegments += 1;
+      else requiredSegments += 1;
+    } else wildcard = true;
   }
-  if (index !== parts.length) return undefined;
-  return params;
+  return { staticSegments, requiredSegments, optionalSegments, wildcard, ancestryDepth };
+}
+
+function isMoreSpecific(left: RouteSpecificity, right: RouteSpecificity): boolean {
+  if (left.staticSegments !== right.staticSegments)
+    return left.staticSegments > right.staticSegments;
+  if (left.requiredSegments !== right.requiredSegments) {
+    return left.requiredSegments > right.requiredSegments;
+  }
+  if (left.wildcard !== right.wildcard) return !left.wildcard;
+  if (left.optionalSegments !== right.optionalSegments) {
+    return left.optionalSegments < right.optionalSegments;
+  }
+  return left.ancestryDepth > right.ancestryDepth;
 }
 
 function compileRoutes(definitions: NativeRouteDefinition[]): CompiledRoute[] {
@@ -354,21 +404,24 @@ function compileRoutes(definitions: NativeRouteDefinition[]): CompiledRoute[] {
       routeIds,
       segments,
       participates: definition.path !== undefined,
-      staticCount: segments.filter((segment) => segment.kind === "static").length,
+      specificity: specificityOf(segments, routeIds.length),
     };
   });
 }
 
 function matchRoutes(routes: CompiledRoute[], pathname: string): NativeRouterState["matched"] {
-  const parts = pathname.split("/").filter(Boolean);
-  let best: { route: CompiledRoute; params: NativeRouteValue[]; score: number } | undefined;
+  const parts = pathname
+    .split("/")
+    .filter(Boolean)
+    .map((segment) => decodeComponent(segment, false));
+  let best: { route: CompiledRoute; params: NativeRouteValue[] } | undefined;
   for (const route of routes) {
     if (!route.participates) continue;
     const params = matchSegments(route.segments, parts);
     if (!params) continue;
-    const wildcard = route.segments.some((segment) => segment.kind === "wildcard");
-    const score = route.staticCount * 100 + (wildcard ? 0 : 10) + route.routeIds.length;
-    if (!best || score > best.score) best = { route, params, score };
+    if (!best || isMoreSpecific(route.specificity, best.route.specificity)) {
+      best = { route, params };
+    }
   }
   return best ? { routeIds: best.route.routeIds, params: best.params } : undefined;
 }
