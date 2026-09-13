@@ -2,7 +2,7 @@
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { npmPublishArgs, npmPublishTag } from "./npm-publish-tag.ts";
+import { npmDistTagAddArgs, npmPublishArgs, npmPublishTag } from "./npm-publish-tag.ts";
 
 const mode = process.argv[2];
 if (mode !== "--check" && mode !== "--publish")
@@ -73,17 +73,16 @@ for (const part of ["native", "extension-terminal", "extension-updater", "solid"
         ? `${name}@${version} is already public with matching bytes; skipping`
         : `${name}@${version} is already public with different bytes; skipping immutable registry version`,
     );
+    if (publish) console.log(run(npmDistTagAddArgs(name, version)));
+    else console.log(`${name}@${version} will keep tag ${npmPublishTag}`);
     continue;
   }
   if (!publish) {
-    const tag = npmPublishTag(version);
-    console.log(
-      tag ? `${name}@${version} is ready to publish with tag ${tag}` : `${name}@${version} is ready to publish`,
-    );
+    console.log(`${name}@${version} is ready to publish with tag ${npmPublishTag}`);
     continue;
   }
   try {
-    console.log(run(npmPublishArgs(archive, version)));
+    console.log(run(npmPublishArgs(archive)));
   } catch (error) {
     const detail = error instanceof Error ? error.message : String(error);
     throw new Error(
