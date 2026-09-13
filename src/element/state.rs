@@ -1,6 +1,13 @@
 use super::*;
 
 impl Element {
+    /// Controls logical-pixel rounding for the entire tree when set on its root.
+    /// Disable to retain fractional layout coordinates through painting and hit testing.
+    pub fn layout_rounding(mut self, enabled: bool) -> Self {
+        self.layout_rounding = enabled;
+        self
+    }
+
     pub fn hover(mut self, style: impl FnOnce(ElementStateStyle) -> ElementStateStyle) -> Self {
         self.hover = style(ElementStateStyle::default());
         self
@@ -162,6 +169,31 @@ impl Element {
 
     pub fn accessibility_value(mut self, value: impl Into<Arc<str>>) -> Self {
         self.accessibility.value = Some(value.into());
+        self
+    }
+
+    /// Submit on Enter while Shift+Enter remains a newline in multiline editors.
+    pub fn submit_on_enter(mut self, submit: bool) -> Self {
+        if let ElementKind::TextInput(input) = &mut self.kind {
+            input.submit_on_enter = submit;
+        }
+        self
+    }
+
+    /// Keep selection and copying enabled while preventing edits to this input.
+    pub fn input_read_only(mut self, read_only: bool) -> Self {
+        if let ElementKind::TextInput(input) = &mut self.kind {
+            input.constraints.read_only = read_only;
+        }
+        self.accessibility.read_only = read_only;
+        self
+    }
+
+    /// Override editor content insets and caret/placeholder paint without replacing edit state.
+    pub fn input_presentation(mut self, presentation: InputPresentation) -> Self {
+        if let ElementKind::TextInput(input) = &mut self.kind {
+            input.presentation = presentation;
+        }
         self
     }
 

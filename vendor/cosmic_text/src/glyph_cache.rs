@@ -50,6 +50,14 @@ impl CacheKey {
         weight: fontdb::Weight,
         flags: CacheKeyFlags,
     ) -> (Self, i32, i32) {
+        #[cfg(target_os = "macos")]
+        let pos = if flags.contains(CacheKeyFlags::NATIVE_RASTERIZATION) {
+            // Native UI text resolves exact half-bin ties toward zero.
+            let x = ((pos.0.abs() * 4.0 - 0.5).ceil() / 4.0).copysign(pos.0);
+            (x, pos.1)
+        } else {
+            pos
+        };
         let (x, x_bin) = SubpixelBin::new(pos.0);
         let (y, y_bin) = SubpixelBin::new(pos.1);
         (

@@ -453,6 +453,7 @@ fn immutable_text_copy_limit_keeps_utf8_boundaries() {
 fn immutable_text_drag_uses_visible_bounds_in_shared_clips() {
     let clip = Rect::new(0.0, 0.0, 400.0, 400.0);
     let region = |document_index, bounds, source| SelectableTextRegion {
+        links: Vec::new(),
         document_index,
         bounds,
         clip,

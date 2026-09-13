@@ -364,6 +364,16 @@ export enum PropertyCode {
   Selected = 358,
   ScrollSnapX = 359,
   ScrollSnapY = 360,
+  Motion = 361,
+  AnchoredLayer = 362,
+  InputPresentation = 363,
+  OverscanPixels = 364,
+  BlockPointer = 365,
+  InputSubmitOnEnter = 366,
+  ScrollRequest = 367,
+  RichDocument = 368,
+  DocumentTheme = 369,
+  LayoutRounding = 370,
 }
 export enum NativeNodeTag {
   View = 1,
@@ -753,6 +763,16 @@ export const properties = {
   selected: 358,
   scrollSnapX: 359,
   scrollSnapY: 360,
+  motion: 361,
+  anchoredLayer: 362,
+  inputPresentation: 363,
+  overscanPixels: 364,
+  blockPointer: 365,
+  inputSubmitOnEnter: 366,
+  scrollRequest: 367,
+  richDocument: 368,
+  documentTheme: 369,
+  layoutRounding: 370,
 } as const;
 export const tags = {
   view: 1,

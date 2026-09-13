@@ -856,6 +856,10 @@ impl UiTree {
         now: Instant,
         renderer: &mut impl TextLayoutEngine,
     ) -> PointerResult {
+        let link = point.and_then(|point| self.text_link_at(point));
+        if pressed {
+            self.pressed_link = (!extend_selection).then(|| link.clone()).flatten();
+        }
         let tooltip_repaint = pressed && self.clear_tooltip();
         if pressed
             && let Some(dismiss) = self.dismiss_regions.last().copied()
@@ -865,7 +869,9 @@ impl UiTree {
             self.selecting_input = None;
             self.static_text_gesture = None;
             let repaint = self.pressed.take().is_some() | tooltip_repaint;
+            self.pressed_link = None;
             return PointerResult {
+                open_url: None,
                 repaint,
                 clicked: None,
                 dismissed: Some(DismissRequest {
@@ -979,6 +985,7 @@ impl UiTree {
                 self.pressed != target || focus_changed || selection_changed || tooltip_repaint;
             self.pressed = target;
             PointerResult {
+                open_url: None,
                 repaint,
                 clicked: None,
                 dismissed: None,
@@ -995,7 +1002,13 @@ impl UiTree {
                 .pressed
                 .filter(|pressed_id| !suppress_click && Some(*pressed_id) == target);
             let repaint = self.pressed.take().is_some();
+            let open_url = self
+                .pressed_link
+                .take()
+                .filter(|pressed| !suppress_click && link.as_ref() == Some(pressed))
+                .map(|(_, url)| url);
             PointerResult {
+                open_url,
                 repaint,
                 clicked,
                 dismissed: None,
@@ -1068,6 +1081,9 @@ impl UiTree {
     /// An explicit arrow is retained as `Some(Arrow)`, allowing a foreground element to reset a
     /// cursor inherited from a lower hit region without becoming a pointer blocker.
     pub(crate) fn cursor_style_at(&self, point: Point) -> Option<CursorStyle> {
+        if self.text_link_at(point).is_some() {
+            return Some(CursorStyle::PointingHand);
+        }
         let inert_background_below = self
             .dismiss_regions
             .last()
@@ -1113,6 +1129,35 @@ impl UiTree {
             }
         }
         inert_background_below.map(|_| CursorStyle::Arrow)
+    }
+
+    fn text_link_at(&self, point: Point) -> Option<(ElementId, Arc<str>)> {
+        let blocker = self
+            .hit_regions
+            .iter()
+            .rev()
+            .find(|region| {
+                (region.blocks_pointer || region.pointer_listener) && region.contains(point)
+            })
+            .map(|region| region.order);
+        let overlay = self
+            .dismiss_regions
+            .last()
+            .filter(|region| region.order.layer.plane == crate::ScenePlane::Overlay)
+            .map(|region| region.order);
+        let region = self
+            .selectable_text_regions
+            .iter()
+            .filter(|region| {
+                region.clip.contains(point)
+                    && region.bounds.contains(point)
+                    && blocker.is_none_or(|blocker| blocker < region.order)
+                    && overlay.is_none_or(|overlay| overlay <= region.order)
+            })
+            .max_by_key(|region| region.order)?;
+        let local = Point::new(point.x - region.bounds.x, point.y - region.bounds.y);
+        let (_, url) = region.links.iter().find(|(rect, _)| rect.contains(local))?;
+        Some((self.selectable_texts[region.document_index].id, url.clone()))
     }
 
     pub(super) fn selectable_text_position_at(

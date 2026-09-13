@@ -17,6 +17,11 @@ impl UiTree {
             .is_some_and(TextInputState::is_multiline)
     }
 
+    pub(crate) fn focused_text_input_submits_on_enter(&self) -> bool {
+        self.focused_text_input().and_then(|id| self.root.as_ref().and_then(|root| find_element(root, id)))
+            .is_some_and(|element| matches!(&element.kind, ElementKind::TextInput(input) if input.submit_on_enter && !input.constraints.read_only))
+    }
+
     pub(crate) fn focused_text_input_is_invalid(&self) -> bool {
         self.focused_text_input()
             .is_some_and(|id| self.invalid_ids.contains(&id))

@@ -8868,8 +8868,16 @@ export namespace JSX {
     fontFamily?: string;
     fontWeight?: number | string;
     lineHeight?: number | string;
-    textAlign?: "left" | "center" | "right" | "justify" | "start" | "end";
-    whiteSpace?: "normal" | "nowrap";
+    textAlign?:
+      | "left"
+      | "center"
+      | "right"
+      | "justify"
+      | "start"
+      | "end"
+      | "center-including-whitespace"
+      | "right-including-whitespace";
+    whiteSpace?: "normal" | "nowrap" | "normal-with-trailing-space";
     textOverflow?: "clip" | "ellipsis";
     lineClamp?: number;
     overflow?: "visible" | "hidden" | "auto" | "scroll";
@@ -9131,6 +9139,10 @@ export namespace JSX {
    * At most eight stops are retained by the core; extra stops are dropped in source order.
    */
   export interface GradientDeclaration {
+    /** Add deterministic noise to reduce gradient banding. */
+    dither?: boolean;
+    /** Project linear angles through the box aspect ratio, matching GPUI. */
+    boxProjection?: boolean;
     type: "linear" | "radial" | "conic";
     /** Linear gradient angle in CSS degrees; `0` points to the top. */
     angle?: number;

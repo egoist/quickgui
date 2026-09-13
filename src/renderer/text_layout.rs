@@ -671,7 +671,12 @@ pub(super) fn canonical_text_width(
 ) -> Option<f32> {
     match (wrap, align, has_text_overflow) {
         (TextWrap::None, TextAlign::Left | TextAlign::Start, false) => None,
-        (TextWrap::None | TextWrap::Word | TextWrap::Glyph, _, _) => width,
+        (TextWrap::None, _, true) => width.map(f32::ceil),
+        (
+            TextWrap::None | TextWrap::Word | TextWrap::WordWithTrailingSpace | TextWrap::Glyph,
+            _,
+            _,
+        ) => width,
     }
 }
 
@@ -686,7 +691,7 @@ pub(super) fn collect_styled_text_geometry(
     const MAX_TEXT_GEOMETRY_RECTS: usize = MAX_TEXT_HIGHLIGHTS * 4;
 
     let scale = scale.max(f32::EPSILON);
-    let mut backgrounds = Vec::with_capacity(highlights.len().min(32));
+    let mut backgrounds: Vec<TextPaintRect> = Vec::with_capacity(highlights.len().min(32));
     let mut decorations = Vec::with_capacity(highlights.len().min(32));
     for run in buffer.layout_runs().take(line_clamp.unwrap_or(usize::MAX)) {
         let line_top = run.line_top / scale;
@@ -702,11 +707,15 @@ pub(super) fn collect_styled_text_geometry(
             while end < run.glyphs.len() && run.glyphs[end].metadata == metadata {
                 end += 1;
             }
-            if let Some(background) = metadata
+            if let Some(highlight) = metadata
                 .checked_sub(1)
                 .and_then(|index| highlights.get(index))
-                .and_then(|highlight| highlight.style.background)
-                .filter(|color| color.a > 0.0)
+                .filter(|highlight| {
+                    highlight
+                        .style
+                        .background
+                        .is_some_and(|color| color.a > 0.0)
+                })
             {
                 let mut left = f32::INFINITY;
                 let mut right = f32::NEG_INFINITY;
@@ -715,16 +724,35 @@ pub(super) fn collect_styled_text_geometry(
                     right = right.max(glyph.x + glyph.w);
                 }
                 if right > left && backgrounds.len() < MAX_TEXT_GEOMETRY_RECTS {
-                    backgrounds.push(TextPaintRect {
+                    let h = &highlight.style;
+                    let inset = h.background_inset_y.min(run.line_height / scale * 0.5);
+                    let next = TextPaintRect {
                         rect: Rect::new(
-                            left / scale,
-                            line_top,
-                            (right - left) / scale,
-                            run.line_height / scale,
+                            left / scale - h.background_padding_x,
+                            line_top + inset,
+                            (right - left) / scale + 2.0 * h.background_padding_x,
+                            run.line_height / scale - 2.0 * inset,
                         ),
-                        color: background,
-                        kind: TextPaintKind::Solid,
-                    });
+                        color: h.background.unwrap(),
+                        kind: if h.background_radius > 0.0 {
+                            TextPaintKind::Rounded(h.background_radius)
+                        } else {
+                            TextPaintKind::Solid
+                        },
+                    };
+                    if let Some(previous) = backgrounds.last_mut().filter(|p| {
+                        p.color == next.color
+                            && p.kind == next.kind
+                            && p.rect.y == next.rect.y
+                            && p.rect.height == next.rect.height
+                            && next.rect.x <= p.rect.right() + 0.001
+                            && next.rect.x >= p.rect.x
+                    }) {
+                        previous.rect.width =
+                            previous.rect.right().max(next.rect.right()) - previous.rect.x;
+                    } else {
+                        backgrounds.push(next);
+                    }
                 }
             }
             start = end;
@@ -843,18 +871,38 @@ pub(super) fn collect_decoration_group(
                     .underline_color_opt
                     .unwrap_or(fallback_color),
             );
-            let y = run.line_y - data.underline_metrics.offset * font_size;
-            push_underline_geometry(
-                decorations,
-                limit,
-                x,
-                y,
-                width,
-                thickness,
-                color,
-                underline.wavy,
-                scale,
-            );
+            let descent_fraction = metadata
+                .checked_sub(1)
+                .and_then(|index| highlights.get(index))
+                .and_then(|highlight| highlight.style.underline_descent_fraction);
+            let y = run.line_y
+                + descent_fraction.map_or(-data.underline_metrics.offset, |fraction| {
+                    data.descent * fraction
+                }) * font_size;
+            if descent_fraction.is_some() && !underline.wavy {
+                decorations.push(TextPaintRect {
+                    rect: Rect::new(
+                        x / scale,
+                        y / scale,
+                        width.round() / scale,
+                        thickness.round() / scale,
+                    ),
+                    color,
+                    kind: TextPaintKind::SolidUnderlay,
+                });
+            } else {
+                push_underline_geometry(
+                    decorations,
+                    limit,
+                    x,
+                    y,
+                    width,
+                    thickness,
+                    color,
+                    underline.wavy,
+                    scale,
+                );
+            }
             if matches!(text_decoration.underline, GlyphUnderlineStyle::Double) {
                 push_underline_geometry(
                     decorations,
@@ -1124,6 +1172,8 @@ pub(super) fn configure_text_buffer(
         buffer.set_text(content, &attrs, shaping, Some(glyph_alignment(style.align)));
     }
     buffer.shape_until_scroll(font_system, false);
+    #[cfg(target_os = "macos")]
+    buffer.refine_native_wrapped_positions(font_system, scale);
 }
 
 /// Map QuickGUI's wrapping, word-break, and overflow-wrap declarations onto one Cosmic Text mode.
@@ -1135,6 +1185,7 @@ pub(super) fn cosmic_wrap(style: &TextStyle) -> Wrap {
     let base = match style.wrap {
         TextWrap::None => return Wrap::None,
         TextWrap::Word => Wrap::Word,
+        TextWrap::WordWithTrailingSpace => return Wrap::WordWithTrailingSpace,
         TextWrap::Glyph => Wrap::Glyph,
     };
     match (style.word_break, style.overflow_wrap) {
@@ -1182,6 +1233,8 @@ pub(super) fn reflow_text_buffer(
 ) {
     buffer.set_size(width.map(|value| value * scale), None);
     buffer.shape_until_scroll(font_system, false);
+    #[cfg(target_os = "macos")]
+    buffer.refine_native_wrapped_positions(font_system, scale);
 }
 
 pub(super) fn glyph_alignment(align: TextAlign) -> GlyphAlign {
@@ -1191,6 +1244,8 @@ pub(super) fn glyph_alignment(align: TextAlign) -> GlyphAlign {
         // to their LTR resolution keeps a directly constructed `TextStyle` sane.
         TextAlign::Left | TextAlign::Start => GlyphAlign::Left,
         TextAlign::Center => GlyphAlign::Center,
+        TextAlign::CenterIncludingWhitespace => GlyphAlign::CenterIncludingWhitespace,
+        TextAlign::RightIncludingWhitespace => GlyphAlign::RightIncludingWhitespace,
         TextAlign::Right | TextAlign::End => GlyphAlign::Right,
         TextAlign::Justify => GlyphAlign::Justified,
     }

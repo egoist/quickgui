@@ -2,11 +2,13 @@ use super::*;
 use serde::Deserialize;
 
 pub(super) struct NativeView {
+    pub(super) motions: HashMap<u32, super::motion::MotionState>,
     pub(super) window: u32,
     pub(super) handles: Option<Rc<RefCell<HashMap<WindowHandle, u32>>>>,
     pub(super) tree: Rc<RefCell<NativeTree>>,
     pub(super) events: EventQueue,
     pub(super) markdown: Rc<RefCell<HashMap<u32, Markdown>>>,
+    pub(super) documents: Rc<RefCell<HashMap<u32, super::document::NativeDocument>>>,
     pub(super) svgs: Rc<RefCell<HashMap<u32, NativeSvgState>>>,
     pub(super) lists: Rc<RefCell<HashMap<u32, NativeListState>>>,
     pub(super) terminals: Rc<RefCell<HashMap<u32, NativeTerminalState>>>,
@@ -288,7 +290,9 @@ impl NativeView {
 }
 
 pub(super) struct NativeElementStates<'a> {
+    pub(super) motions: &'a mut HashMap<u32, super::motion::MotionState>,
     pub(super) markdown: &'a mut HashMap<u32, Markdown>,
+    pub(super) documents: &'a mut HashMap<u32, super::document::NativeDocument>,
     pub(super) svgs: &'a mut HashMap<u32, NativeSvgState>,
     pub(super) lists: &'a mut HashMap<u32, NativeListState>,
     pub(super) terminals: &'a mut HashMap<u32, NativeTerminalState>,
@@ -1065,7 +1069,18 @@ impl NativeView {
         if scope.is_none() {
             self.components.sync(&tree, window, &self.events);
         }
+        self.motions.retain(|id, _| {
+            tree.nodes
+                .get(id)
+                .is_some_and(|node| node.string(property::MOTION).is_some())
+        });
         let components = &mut self.components;
+        let mut documents = self.documents.borrow_mut();
+        documents.retain(|id, _| {
+            tree.nodes
+                .get(id)
+                .is_some_and(|n| n.string(property::RICH_DOCUMENT).is_some())
+        });
         let mut markdown = self.markdown.borrow_mut();
         markdown.retain(|id, _| {
             tree.nodes
@@ -1131,9 +1146,12 @@ impl NativeView {
             .min_w(0.0)
             .min_h(0.0);
         if let Some(node) = tree.nodes.get(&ROOT_NODE) {
+            root = root.layout_rounding(node.boolean(property::LAYOUT_ROUNDING).unwrap_or(true));
             let mut part_ids = HashSet::new();
             let mut states = NativeElementStates {
+                motions: &mut self.motions,
                 markdown: &mut markdown,
+                documents: &mut documents,
                 svgs: &mut svgs,
                 lists: &mut lists,
                 terminals: &mut terminals,
@@ -1163,14 +1181,29 @@ impl NativeView {
                 }
                 let element =
                     build_element(id, window, &tree, &self.events, &mut states, cx, depth)?;
-                if !states.portals.is_empty() || element.is_viewport_portal() {
+                if !states.portals.is_empty()
+                    || element.is_viewport_portal()
+                    || tree
+                        .nodes
+                        .get(&id)
+                        .is_some_and(|node| node.string(property::ANCHORED_LAYER).is_some())
+                {
                     return None;
                 }
                 return Some(element);
             }
             root = root.children(node.children.iter().filter_map(|id| {
-                build_element(*id, window, &tree, &self.events, &mut states, cx, 0)
-                    .and_then(|element| hoist_portal(element, &mut states))
+                build_element(*id, window, &tree, &self.events, &mut states, cx, 0).and_then(
+                    |element| {
+                        hoist_portal(
+                            element,
+                            tree.nodes.get(id).is_some_and(|node| {
+                                node.string(property::ANCHORED_LAYER).is_some()
+                            }),
+                            &mut states,
+                        )
+                    },
+                )
             }));
             root = root.children(std::mem::take(&mut states.portals));
         }
@@ -1252,6 +1285,11 @@ fn build_element_inner(
     // registered twice; the result still reaches JavaScript through `componentchange`.
     let declared_part = node.string(property::PART).unwrap_or("");
     let mut element = match node.tag {
+        _ if node.string(property::RICH_DOCUMENT).is_some() => states
+            .documents
+            .entry(id)
+            .or_default()
+            .element(node, element_id, window, id, events, cx),
         NodeTag::Root => return None,
         NodeTag::View => div(),
         NodeTag::Button => button().cursor_default(),
@@ -1293,6 +1331,11 @@ fn build_element_inner(
             .bg(Color::TRANSPARENT)
             .border(0.0, Color::TRANSPARENT)
             .rounded(0.0);
+            input = input.submit_on_enter(
+                node.boolean(property::INPUT_SUBMIT_ON_ENTER)
+                    .unwrap_or(false),
+            );
+            input = input.input_read_only(node.boolean(property::READ_ONLY).unwrap_or(false));
             if let Some(placeholder) = node.string(property::PLACEHOLDER) {
                 input = input.placeholder(placeholder);
             }
@@ -1321,7 +1364,10 @@ fn build_element_inner(
                 input = input.on_input(listener);
             }
             if listeners_enabled
-                && !multiline
+                && (!multiline
+                    || node
+                        .boolean(property::INPUT_SUBMIT_ON_ENTER)
+                        .unwrap_or(false))
                 && node.boolean(property::SUBMIT_LISTENER).unwrap_or(false)
             {
                 let events = Rc::clone(events);
@@ -1362,11 +1408,29 @@ fn build_element_inner(
             markdown_style.code_font_size = node
                 .number(property::MARKDOWN_CODE_FONT_SIZE)
                 .unwrap_or(markdown_style.code_font_size);
+            if let Some(raw) = node.string(property::DOCUMENT_THEME) {
+                let value = serde_json::from_str(raw).ok();
+                let theme = quickgui::document::theme::Theme::from_prop(value.as_ref());
+                markdown_style.text_color = Some(theme.text.into());
+                markdown_style.muted_color = Some(theme.text_muted.into());
+                markdown_style.link_color = Some(theme.text.into());
+                markdown_style.code_text_color = Some(theme.code_text.into());
+                markdown_style.code_background = Some(theme.code_wash.into());
+                markdown_style.border_color = Some(theme.border.into());
+                markdown_style.font_size = theme.metrics.md_text_size;
+                markdown_style.line_height = theme.metrics.md_line_height;
+                markdown_style.block_gap = theme.metrics.md_block_gap;
+                markdown_style.code_font_size = theme.metrics.code_text_size;
+                markdown_style.document_theme = Some(Arc::new(theme));
+            }
             let state = states.markdown.entry(id).or_default();
             state.set_streaming(node.boolean(property::STREAMING).unwrap_or(false));
             state.set_style(markdown_style);
             state.set_text(node.string(property::VALUE).unwrap_or_default());
-            state.element(element_id)
+            let scale = cx.scale_factor();
+            state.element_with_text_measurement(element_id, scale, &mut |text, style| {
+                cx.measure_styled_text(text, style)
+            })
         }
         NodeTag::Image => {
             let source = node.string(property::VALUE).unwrap_or_default();
@@ -1507,6 +1571,7 @@ fn build_element_inner(
     }
 
     element = apply_properties(element, node);
+    element = super::motion::apply(element, id, node, states.motions);
     element = apply_background_image(element, id, node, states.background_images);
     element = apply_tooltip(element, node);
     // The core part descriptor decides identity, semantics, and whether an inactive panel is
@@ -1583,6 +1648,14 @@ fn build_element_inner(
         }
     }
     element = apply_controls(element, node, tree);
+    element = crate::anchored_layer::apply(element, node, cx.scale_factor());
+    element = crate::input_presentation::apply(element, node);
+    if node.tag != NodeTag::VirtualList {
+        element = crate::scroll_request::apply(element, node);
+    }
+    if let Some(block) = node.boolean(property::BLOCK_POINTER) {
+        element = element.pointer_blocking(block);
+    }
 
     let part = node.string(property::PART);
     if part == Some(POPOVER_MENU_POPUP_PART) {
@@ -1785,6 +1858,7 @@ fn build_element_inner(
                 .entry(id)
                 .or_insert_with(|| NativeListState::new(node));
             state.sync(node);
+            crate::scroll_request::apply_list(state, node);
             let list = state.list.clone();
             let children = state.children.clone();
             let visible = list.visible_rows().range;
@@ -1838,8 +1912,17 @@ fn build_element_inner(
         NodeTag::Root | NodeTag::View | NodeTag::Button => {
             if with_children {
                 element = element.children(node.children.iter().filter_map(|child| {
-                    build_element(*child, window, tree, events, states, cx, depth + 1)
-                        .and_then(|element| hoist_portal(element, states))
+                    build_element(*child, window, tree, events, states, cx, depth + 1).and_then(
+                        |element| {
+                            hoist_portal(
+                                element,
+                                tree.nodes.get(child).is_some_and(|node| {
+                                    node.string(property::ANCHORED_LAYER).is_some()
+                                }),
+                                states,
+                            )
+                        },
+                    )
                 }));
             }
         }
@@ -1848,8 +1931,14 @@ fn build_element_inner(
 }
 
 /// Keep an ordinary child in place, or lift a viewport portal out to mount under the window root.
-fn hoist_portal(element: Element, states: &mut NativeElementStates<'_>) -> Option<Element> {
-    if !element.is_viewport_portal() || states.portals.len() >= MAX_HOSTED_PORTALS {
+fn hoist_portal(
+    element: Element,
+    declared_anchor: bool,
+    states: &mut NativeElementStates<'_>,
+) -> Option<Element> {
+    if (!element.is_viewport_portal() && !declared_anchor)
+        || states.portals.len() >= MAX_HOSTED_PORTALS
+    {
         return Some(element);
     }
     states.portals.push(element);
@@ -2938,6 +3027,8 @@ pub(super) fn apply_properties(mut element: Element, node: &NativeNode) -> Eleme
     if let Some(value) = node.string(property::TEXT_ALIGN) {
         element = element.text_align(match value {
             "center" => TextAlign::Center,
+            "center-including-whitespace" => TextAlign::CenterIncludingWhitespace,
+            "right-including-whitespace" => TextAlign::RightIncludingWhitespace,
             "right" => TextAlign::Right,
             "justify" => TextAlign::Justify,
             // `start` and `end` are direction relative in the core; they must not collapse into
@@ -2950,6 +3041,9 @@ pub(super) fn apply_properties(mut element: Element, node: &NativeNode) -> Eleme
     if let Some(value) = node.string(property::WHITE_SPACE) {
         element = match value {
             "nowrap" => element.whitespace_nowrap(),
+            "normal-with-trailing-space" => {
+                element.white_space(quickgui::WhiteSpace::NormalWithTrailingSpace)
+            }
             _ => element.whitespace_normal(),
         };
     }

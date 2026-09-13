@@ -1015,12 +1015,35 @@ impl Element {
         self
     }
 
+    /// Apply one retained scroll request. Reusing the revision preserves subsequent user scrolling.
+    pub fn scroll_to(mut self, offset: crate::Vector, revision: u64) -> Self {
+        self.scroll_request = Some(ScrollRequest {
+            revision,
+            offset,
+            child: None,
+        });
+        self.scroll_to_end_revision = None;
+        self
+    }
+
+    /// Scroll a declared child into the leading edge, with a signed logical offset.
+    pub fn scroll_to_child(mut self, child: usize, offset: crate::Vector, revision: u64) -> Self {
+        self.scroll_request = Some(ScrollRequest {
+            revision,
+            offset,
+            child: Some(child),
+        });
+        self.scroll_to_end_revision = None;
+        self
+    }
+
     /// Follow the end of an ordinary vertical overflow container when `revision` changes.
     ///
     /// The first declaration starts at the end. Later revisions keep following only while the
     /// user was already at the previous end; scrolling away pauses following, and returning to
     /// the end resumes it on the next revision. This performs no scheduling or per-frame work.
     pub fn scroll_to_end(mut self, revision: u64) -> Self {
+        self.scroll_request = None;
         self.scroll_to_end_revision = Some(revision);
         self
     }
@@ -1091,11 +1114,13 @@ impl Element {
     pub fn anchor_to(mut self, target: impl Into<ElementId>, placement: AnchorPlacement) -> Self {
         self = self.overlay();
         self.anchor = Some(AnchorStyle {
+            rounding_scale: None,
             target: AnchorTarget::Element(target.into()),
             placement,
             gap: DEFAULT_ANCHOR_GAP,
             align_offset: 0.0,
             viewport_margin: DEFAULT_VIEWPORT_MARGIN,
+            flip: true,
             sticky: true,
         });
         self
@@ -1112,11 +1137,13 @@ impl Element {
             if point.y.is_finite() { point.y } else { 0.0 },
         );
         self.anchor = Some(AnchorStyle {
+            rounding_scale: None,
             target: AnchorTarget::Point(point),
             placement,
             gap: 0.0,
             align_offset: 0.0,
             viewport_margin: DEFAULT_VIEWPORT_MARGIN,
+            flip: true,
             sticky: true,
         });
         self
@@ -1140,6 +1167,24 @@ impl Element {
     pub fn anchor_align_offset(mut self, offset: f32) -> Self {
         if let Some(anchor) = &mut self.anchor {
             anchor.align_offset = if offset.is_finite() { offset } else { 0.0 };
+        }
+        self
+    }
+
+    /// Snap the anchor to device pixels and its translation to logical pixels.
+    /// This matches native GPUI overlay placement while keeping the surface in the viewport.
+    pub fn anchor_offset_rounding(mut self, scale: f32) -> Self {
+        if let Some(anchor) = &mut self.anchor {
+            anchor.rounding_scale = (scale.is_finite() && scale > 0.).then_some(scale);
+        }
+        self
+    }
+
+    /// Enable side and alignment changes when the preferred placement does not fit.
+    /// Disable this for surfaces that must slide into the viewport without flipping.
+    pub fn anchor_flip(mut self, flip: bool) -> Self {
+        if let Some(anchor) = &mut self.anchor {
+            anchor.flip = flip;
         }
         self
     }

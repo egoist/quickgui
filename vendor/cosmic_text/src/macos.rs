@@ -6,6 +6,8 @@
 use crate::{CacheKey, CacheKeyFlags, Font, FontSystem, HashMap, SwashContent, SwashImage};
 use core_foundation::{
     array::{CFArrayGetCount, CFArrayGetValueAtIndex},
+    attributed_string::CFMutableAttributedString,
+    base::CFRange,
     base::{CFType, CFTypeRef, TCFType},
     data::CFData,
     dictionary::CFDictionary,
@@ -33,6 +35,19 @@ unsafe extern "C" {
 #[link(name = "CoreText", kind = "framework")]
 unsafe extern "C" {
     static kCTFontVariationAttribute: CFStringRef;
+    static kCTFontAttributeName: CFStringRef;
+    fn CTFontCreateCopyWithAttributes(
+        font: CFTypeRef,
+        size: f64,
+        matrix: *const CGAffineTransform,
+        descriptor: CFTypeRef,
+    ) -> CFTypeRef;
+    fn CTLineCreateWithAttributedString(string: CFTypeRef) -> CFTypeRef;
+    fn CTLineGetGlyphRuns(line: CFTypeRef) -> CFTypeRef;
+    fn CTRunGetGlyphCount(run: CFTypeRef) -> isize;
+    fn CTRunGetGlyphs(run: CFTypeRef, range: CFRange, glyphs: *mut u16);
+    fn CTRunGetPositions(run: CFTypeRef, range: CFRange, positions: *mut CGPoint);
+    fn CTRunGetStringIndices(run: CFTypeRef, range: CFRange, indices: *mut isize);
     fn CTFontManagerCreateFontDescriptorsFromData(data: CFTypeRef) -> CFTypeRef;
     fn CTFontDescriptorCreateCopyWithAttributes(
         descriptor: CFTypeRef,
@@ -328,7 +343,11 @@ impl Rasterizer {
         context.translate(-left, -bottom);
         context.scale(scale, scale);
         context.set_text_matrix(&transform);
-        context.set_should_smooth_fonts(key.dilation > 0);
+        // A fresh CoreGraphics UI context enables smoothing even at zero luminance.
+        // Reused contexts must restore that default before drawing dark glyphs too.
+        context.set_should_smooth_fonts(
+            key.flags.contains(CacheKeyFlags::NATIVE_RASTERIZATION) || key.dilation > 0,
+        );
         context.set_gray_fill_color(f64::from(key.dilation.min(4)) * 0.25, 1.0);
         let luminance = f64::from(key.dilation.min(4)) * 0.25;
         context.set_rgb_stroke_color(luminance, luminance, luminance, 1.0);
@@ -365,6 +384,28 @@ impl Rasterizer {
                     } else {
                         ((u32::from(*channel) * 255 + alpha / 2) / alpha).min(255) as u8
                     };
+                }
+            }
+        }
+        // Fill-and-stroke rasterization can reduce a few antialiased edge samples.
+        // Optical thickening must contain the original mask at every pixel.
+        if thicken && !colored {
+            let mut normal_key = key;
+            normal_key.flags.remove(CacheKeyFlags::FONT_THICKEN);
+            if let Some(normal) = self.image(system, normal_key) {
+                let dx = normal.placement.left - left as i32;
+                let dy = top as i32 - normal.placement.top;
+                for y in 0..normal.placement.height as i32 {
+                    for x in 0..normal.placement.width as i32 {
+                        let (tx, ty) = (x + dx, y + dy);
+                        if tx >= 0 && ty >= 0 && tx < width as i32 && ty < height as i32 {
+                            let target = ty as usize * width + tx as usize;
+                            data[target] = data[target].max(
+                                normal.data
+                                    [y as usize * normal.placement.width as usize + x as usize],
+                            );
+                        }
+                    }
                 }
             }
         }
@@ -515,5 +556,218 @@ mod tests {
             .data
             .chunks_exact(4)
             .any(|p| p[3] > 128 && p[0].abs_diff(p[2]) > 20));
+    }
+}
+
+impl Rasterizer {
+    pub(crate) fn refine_wrapped_positions(
+        &mut self,
+        buffer: &mut crate::Buffer,
+        system: &mut FontSystem,
+        scale: f32,
+    ) {
+        for line in &mut buffer.lines {
+            if line.shaping() != crate::Shaping::Advanced || line.text().len() > 32768 {
+                continue;
+            }
+            let Some(layout) = line.layout_opt() else {
+                continue;
+            };
+            if layout.len() < 2 {
+                for row in line.layout_opt_mut().into_iter().flatten() {
+                    for glyph in &mut row.glyphs {
+                        glyph.native_x = None;
+                    }
+                }
+                continue;
+            }
+            let Some(first) = layout.iter().flat_map(|run| &run.glyphs).next() else {
+                continue;
+            };
+            // Rich font runs, bidi, and custom spacing retain their shared shaping geometry.
+            if layout.iter().flat_map(|run| &run.glyphs).any(|glyph| {
+                glyph.font_id != first.font_id
+                    || glyph.font_weight != first.font_weight
+                    || glyph.metadata != first.metadata
+                    || glyph.level.is_rtl()
+            }) {
+                continue;
+            }
+            let logical = f32::from_bits(first.optical_size_bits);
+            if !logical.is_finite() || logical <= 0.0 {
+                continue;
+            }
+            let (mut key, _, _) = CacheKey::new(
+                first.font_id,
+                first.glyph_id,
+                first.font_size,
+                (0.0, 0.0),
+                first.font_weight,
+                first.cache_key_flags,
+            );
+            key.optical_size_bits = first.optical_size_bits;
+            let native = if let Some(native) = line.native_positions.clone() {
+                native
+            } else {
+                let Some(font) = self.font(system, key) else {
+                    continue;
+                };
+                let Some(font) = owned(unsafe {
+                    CTFontCreateCopyWithAttributes(
+                        font.as_CFTypeRef(),
+                        f64::from(logical.next_up()),
+                        ptr::null(),
+                        ptr::null(),
+                    )
+                }) else {
+                    continue;
+                };
+                let text = line.text();
+                let mut attributed = CFMutableAttributedString::new();
+                let length = text.encode_utf16().count();
+                attributed.replace_str(&CFString::new(text), CFRange::init(0, 0));
+                attributed.set_attribute(
+                    CFRange::init(0, length as isize),
+                    unsafe { kCTFontAttributeName },
+                    &font,
+                );
+                let Some(native_line) =
+                    owned(unsafe { CTLineCreateWithAttributedString(attributed.as_CFTypeRef()) })
+                else {
+                    continue;
+                };
+                let runs = unsafe { CTLineGetGlyphRuns(native_line.as_CFTypeRef()) };
+                if runs.is_null() || unsafe { CFArrayGetCount(runs.cast()) } != 1 {
+                    continue;
+                }
+                let run = unsafe { CFArrayGetValueAtIndex(runs.cast(), 0) };
+                let count = unsafe { CTRunGetGlyphCount(run) };
+                if count <= 0 || count > 32768 {
+                    continue;
+                }
+                let mut positions = vec![CGPoint::new(0.0, 0.0); count as usize];
+                let mut indices = vec![0isize; count as usize];
+                let mut glyphs = vec![0u16; count as usize];
+                unsafe {
+                    CTRunGetPositions(run, CFRange::init(0, 0), positions.as_mut_ptr());
+                    CTRunGetStringIndices(run, CFRange::init(0, 0), indices.as_mut_ptr());
+                    CTRunGetGlyphs(run, CFRange::init(0, 0), glyphs.as_mut_ptr());
+                }
+                let mut utf16 = 0isize;
+                let offsets: HashMap<_, _> = text
+                    .char_indices()
+                    .map(|(byte, ch)| {
+                        let pair = (utf16, byte);
+                        utf16 += ch.len_utf16() as isize;
+                        pair
+                    })
+                    .collect();
+                let native: HashMap<_, _> = indices
+                    .into_iter()
+                    .zip(glyphs)
+                    .zip(positions)
+                    .filter_map(|((index, glyph), position)| {
+                        offsets
+                            .get(&index)
+                            .map(|byte| (*byte, (glyph, position.x as f32)))
+                    })
+                    .collect();
+                let native = Arc::new(native);
+                line.native_positions = Some(native.clone());
+                native
+            };
+            let Some(layout) = line.layout_opt_mut() else {
+                continue;
+            };
+            // Only refine an already equivalent native run; never replace fallback, spacing,
+            // or shaping choices with a different font or a materially different advance.
+            let equivalent = layout.iter().all(|row| {
+                let Some(first) = row.glyphs.first() else {
+                    return true;
+                };
+                let Some((_, base)) = native.get(&first.start) else {
+                    return false;
+                };
+                row.glyphs.iter().all(|glyph| {
+                    native.get(&glyph.start).is_some_and(|(id, x)| {
+                        *id == glyph.glyph_id
+                            && ((x - base) * scale - (glyph.x - first.x)).abs() < 0.001
+                    })
+                })
+            });
+            if !equivalent {
+                continue;
+            }
+            for row in layout {
+                let Some(first) = row.glyphs.first() else {
+                    continue;
+                };
+                let base = native[&first.start].1;
+                let origin = first.x;
+                for glyph in &mut row.glyphs {
+                    glyph.native_x = Some(native[&glyph.start].1);
+                    glyph.x = origin + (native[&glyph.start].1 - base) * scale;
+                }
+            }
+        }
+    }
+}
+
+impl crate::Buffer {
+    /// Preserve native font-run precision when a uniform paragraph wraps across lines.
+    /// Layout and line breaks remain owned by the shared shaper.
+    pub fn refine_native_wrapped_positions(&mut self, system: &mut FontSystem, scale: f32) {
+        let mut placement = std::mem::take(&mut system.native_placement);
+        placement.refine_wrapped_positions(self, system, scale);
+        system.native_placement = placement;
+    }
+}
+
+#[cfg(test)]
+mod placement_tests {
+    use super::*;
+    use crate::{Attrs, Buffer, Metrics, Shaping, Wrap};
+
+    #[test]
+    fn wrapped_native_positions_survive_width_changes_and_invalidate_with_content() {
+        let mut system = FontSystem::new();
+        let mut buffer = Buffer::new(&mut system, Metrics::new(24.0, 38.0));
+        let attrs = Attrs::new()
+            .family(crate::Family::Monospace)
+            .optical_size(12.0)
+            .cache_key_flags(CacheKeyFlags::NATIVE_RASTERIZATION | CacheKeyFlags::DISABLE_HINTING);
+        buffer.set_wrap(Wrap::WordOrGlyph);
+        buffer.set_size(Some(300.0), None);
+        buffer.set_text(
+            "The native renderer retains paragraph positions while the window changes width.",
+            &attrs,
+            Shaping::Advanced,
+            None,
+        );
+        buffer.shape_until_scroll(&mut system, false);
+        buffer.refine_native_wrapped_positions(&mut system, 2.0);
+        let positions = buffer.lines[0]
+            .native_positions
+            .clone()
+            .expect("native positions retained");
+        buffer.set_size(Some(400.0), None);
+        buffer.shape_until_scroll(&mut system, false);
+        buffer.refine_native_wrapped_positions(&mut system, 2.0);
+        assert!(Arc::ptr_eq(
+            &positions,
+            buffer.lines[0].native_positions.as_ref().unwrap()
+        ));
+        buffer.set_text(
+            "A replacement paragraph needs its own native positions across wrapped lines.",
+            &attrs,
+            Shaping::Advanced,
+            None,
+        );
+        buffer.shape_until_scroll(&mut system, false);
+        buffer.refine_native_wrapped_positions(&mut system, 2.0);
+        assert!(!Arc::ptr_eq(
+            &positions,
+            buffer.lines[0].native_positions.as_ref().unwrap()
+        ));
     }
 }

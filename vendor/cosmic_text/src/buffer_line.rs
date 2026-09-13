@@ -19,11 +19,17 @@ pub struct BufferLine {
     shape_opt: Cached<ShapeLine>,
     layout_opt: Cached<Vec<LayoutLine>>,
     shaping: Shaping,
+    #[cfg(all(target_os = "macos", feature = "swash", feature = "std"))]
+    pub(crate) native_positions: Option<std::sync::Arc<crate::HashMap<usize, (u16, f32)>>>,
     metadata: Option<usize>,
     base_direction: BaseDirection,
 }
 
 impl BufferLine {
+    #[cfg(all(target_os = "macos", feature = "swash", feature = "std"))]
+    pub(crate) fn shaping(&self) -> Shaping {
+        self.shaping
+    }
     /// Create a new line with the given text and attributes list
     /// Cached shaping and layout can be done using the [`Self::shape`] and
     /// [`Self::layout`] functions
@@ -40,6 +46,8 @@ impl BufferLine {
             align: None,
             shape_opt: Cached::Empty,
             layout_opt: Cached::Empty,
+            #[cfg(all(target_os = "macos", feature = "swash", feature = "std"))]
+            native_positions: None,
             shaping,
             metadata: None,
             base_direction: BaseDirection::default(),
@@ -61,6 +69,10 @@ impl BufferLine {
         self.attrs_list = attrs_list;
         self.align = None;
         self.shape_opt.set_unused();
+        #[cfg(all(target_os = "macos", feature = "swash", feature = "std"))]
+        {
+            self.native_positions = None;
+        }
         self.layout_opt.set_unused();
         self.shaping = shaping;
         self.metadata = None;
@@ -223,6 +235,10 @@ impl BufferLine {
     /// Reset shaping and layout caches
     pub fn reset_shaping(&mut self) {
         self.shape_opt.set_unused();
+        #[cfg(all(target_os = "macos", feature = "swash", feature = "std"))]
+        {
+            self.native_positions = None;
+        }
         self.reset_layout();
     }
 
@@ -303,6 +319,11 @@ impl BufferLine {
         self.layout_opt.get()
     }
 
+    #[cfg(all(target_os = "macos", feature = "swash", feature = "std"))]
+    pub(crate) fn layout_opt_mut(&mut self) -> Option<&mut Vec<LayoutLine>> {
+        self.layout_opt.get_mut()
+    }
+
     /// Get the visible layout runs for rendering and other tasks
     pub fn layout_runs(&self, height_opt: Option<f32>, line_height: f32) -> LayoutRunIter<'_> {
         LayoutRunIter::from_lines(core::slice::from_ref(self), height_opt, line_height, 0.0, 0)
@@ -330,6 +351,8 @@ impl BufferLine {
             align: None,
             shape_opt: Cached::Empty,
             layout_opt: Cached::Empty,
+            #[cfg(all(target_os = "macos", feature = "swash", feature = "std"))]
+            native_positions: None,
             shaping: Shaping::Advanced,
             metadata: None,
             base_direction: BaseDirection::default(),

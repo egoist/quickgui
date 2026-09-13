@@ -692,6 +692,7 @@ mod tests {
             text,
             false,
             InputConstraints {
+                read_only: false,
                 max_length: None,
                 filter: None,
                 text_checking: TextCheckingOverrides::default(),

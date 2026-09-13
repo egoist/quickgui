@@ -47,7 +47,7 @@ impl OffscreenRenderer {
             .await
             .map_err(|error| crate::VisualTestError::Adapter(error.to_string()))?;
         let (device, queue) = adapter
-            .request_device(&DeviceDescriptor::default())
+            .request_device(&renderer_device_descriptor())
             .await
             .map_err(|error| crate::VisualTestError::Device(error.to_string()))?;
         let format = TextureFormat::Rgba8Unorm;

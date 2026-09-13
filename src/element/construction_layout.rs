@@ -144,6 +144,8 @@ impl Element {
             app_region: None,
             virtual_scroll: None,
             scroll_to_end_revision: None,
+            scroll_request: None,
+            layout_rounding: true,
             list_item_measurement: None,
             animation: None,
             spring: None,
@@ -254,6 +256,8 @@ impl Element {
     ) -> Self {
         let mut element = Self::container();
         element.kind = ElementKind::TextInput(TextInputElement {
+            presentation: InputPresentation::default(),
+            submit_on_enter: false,
             value,
             highlights,
             placeholder: Arc::from(""),
@@ -373,8 +377,7 @@ impl Element {
     /// [`Self::overlay`] removes an element from normal flow, but layout still resolves its
     /// insets and percentage sizes against its parent. A host that composes trees from
     /// declarations uses this to mount such an element under the window root instead, which is
-    /// what a portal means; anchored overlays are excluded because their placement already
-    /// resolves against the anchor's window bounds.
+    /// what a portal means. Anchored compound surfaces retain their declaration scope.
     pub fn is_viewport_portal(&self) -> bool {
         self.portal && self.anchor.is_none()
     }

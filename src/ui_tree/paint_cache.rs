@@ -33,6 +33,7 @@ pub(super) struct PaintCache {
     paths: HashSet<ElementId>,
     bytes: usize,
     frame: u64,
+    subject_ordering: bool,
     hovered: HashSet<ElementId>,
     pressed: Option<ElementId>,
     focused: Option<ElementId>,
@@ -50,12 +51,26 @@ impl PaintCache {
         self.groups.clear();
         self.focus_containers.clear();
         self.bytes = 0;
+        self.subject_ordering = false;
         if let Some(root) = root {
             self.classify(root);
+        }
+        // Subject-ordered shadow tails can cross otherwise independent subtree chunks.
+        // Preserve one global overlap ordering in this mode; text/layout/resource caches
+        // remain active, and ordinary windows keep their retained paint fragments.
+        if self.subject_ordering {
+            self.eligible.clear();
         }
     }
 
     fn classify(&mut self, element: &Element) -> (usize, bool) {
+        self.subject_ordering |= element
+            .visual
+            .shadows
+            .as_deref()
+            .unwrap_or_default()
+            .iter()
+            .any(|shadow| shadow.uses_subject_order());
         let mut nodes = 1;
         let mut cacheable = !matches!(
             element.kind,

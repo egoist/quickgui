@@ -296,7 +296,36 @@ pub(super) fn paint_selectable_text(
         return;
     };
     if rebuild_geometry {
+        let mut links = Vec::new();
+        for highlight in highlights.map(|h| h.as_ref()).unwrap_or_default() {
+            let Some(url) = &highlight.style.link else {
+                continue;
+            };
+            let visible_y =
+                (clip.y - bounds.y).max(0.0)..(clip.bottom() - bounds.y).min(bounds.height);
+            for rect in renderer
+                .text_selection_rects_with_highlights(
+                    TextId::new(element.runtime_id.value()),
+                    content,
+                    style,
+                    highlights,
+                    bounds.width,
+                    scale_factor,
+                    visible_y,
+                    highlight.range.start,
+                    highlight.range.end,
+                )
+                .into_iter()
+                .take(4096usize.saturating_sub(links.len()))
+            {
+                links.push((rect, url.clone()));
+            }
+            if links.len() == 4096 {
+                break;
+            }
+        }
         regions.push(SelectableTextRegion {
+            links,
             document_index,
             bounds,
             clip,
@@ -1230,17 +1259,12 @@ fn paint_element_contents(
         element.visual.filters.color_matrix()
     };
     push_element_shadows(scene, layer, bounds, corners, parent_clip, shadows, false);
-    if fill.a > 0.0
-        || target_gradient.is_some()
-        || (border.a > 0.0 && has_visible_border(border_widths))
-    {
+    if fill.a > 0.0 || target_gradient.is_some() {
         scene.push_edge_quad_in(
             layer,
             EdgeQuad::new(bounds, fill)
                 .corner_radii(corners)
                 .background(target_gradient)
-                .border(border_widths, border)
-                .border_style(element.visual.border_style)
                 .clip(parent_clip),
         );
     }
@@ -1401,7 +1425,12 @@ fn paint_element_contents(
                             ),
                             background.color,
                         )
-                        .clip(clip),
+                        .radius(if let TextPaintKind::Rounded(radius) = background.kind {
+                            radius
+                        } else {
+                            0.0
+                        })
+                        .clip(text_clip),
                     );
                 }
                 paint_selectable_text(
@@ -1422,13 +1451,30 @@ fn paint_element_contents(
                     renderer,
                     rebuild_geometry,
                 );
+                for decoration in geometry
+                    .decorations
+                    .iter()
+                    .filter(|decoration| decoration.kind == TextPaintKind::SolidUnderlay)
+                {
+                    push_text_paint_rect(
+                        scene,
+                        layer,
+                        *decoration,
+                        Point::new(text_bounds.x, text_bounds.y),
+                        clip,
+                    );
+                }
                 scene.push_text_in(
                     layer,
                     TextRun::new(text_id, styled.content().clone(), text_bounds, style)
                         .with_highlights(highlights)
                         .clip(text_clip),
                 );
-                for decoration in geometry.decorations {
+                for decoration in geometry
+                    .decorations
+                    .into_iter()
+                    .filter(|decoration| decoration.kind != TextPaintKind::SolidUnderlay)
+                {
                     push_text_paint_rect(
                         scene,
                         layer,
@@ -1549,12 +1595,12 @@ fn paint_element_contents(
             } else {
                 ((bounds.height - style.line_height) * 0.5).max(0.0)
             };
-            let text_viewport = bounds.inset(Insets {
+            let text_viewport = bounds.inset(input.presentation.content_insets.unwrap_or(Insets {
                 top: vertical_inset,
                 right: 12.0,
                 bottom: vertical_inset,
                 left: 12.0,
-            });
+            }));
             if text_viewport.width > 0.0
                 && text_viewport.height > 0.0
                 && let Some(text_clip) = parent_clip.intersection(text_viewport)
@@ -1623,7 +1669,7 @@ fn paint_element_contents(
                 scroll.x = scroll.x.clamp(0.0, max_scroll.x);
                 scroll.y = scroll.y.clamp(0.0, max_scroll.y);
                 let scroll_before_caret = scroll;
-                if is_focused {
+                if is_focused && !content.is_empty() {
                     scroll = scroll_to_reveal_caret(
                         Size::new(text_viewport.width, text_viewport.height),
                         caret,
@@ -1640,11 +1686,16 @@ fn paint_element_contents(
                             paint_time.checked_add(SCROLLBAR_AUTO_HIDE_DELAY);
                     }
                 }
-                let caret_inset = if input.multiline { 1.0 } else { 2.0 };
+                let caret_inset = input
+                    .presentation
+                    .caret_height_em
+                    .map_or(if input.multiline { 1.0 } else { 2.0 }, |em| {
+                        (style.line_height - (style.font_size * em).min(style.line_height)) * 0.5
+                    });
                 let caret_bounds = Rect::new(
                     text_viewport.x + caret.x - scroll.x,
                     text_viewport.y + caret.y - scroll.y + caret_inset,
-                    1.5,
+                    input.presentation.caret_width.unwrap_or(1.5),
                     (style.line_height - caret_inset * 2.0).max(1.0),
                 );
 
@@ -1671,6 +1722,11 @@ fn paint_element_contents(
                                 ),
                                 background.color,
                             )
+                            .radius(if let TextPaintKind::Rounded(radius) = background.kind {
+                                radius
+                            } else {
+                                0.0
+                            })
                             .clip(text_clip),
                         );
                     }
@@ -1711,7 +1767,11 @@ fn paint_element_contents(
                     if input_state.caret_visible_at(paint_time) {
                         scene.push_quad_in(
                             layer,
-                            Quad::new(caret_bounds, style.color).clip(text_clip),
+                            Quad::new(
+                                caret_bounds,
+                                input.presentation.caret_color.unwrap_or(style.color),
+                            )
+                            .clip(text_clip),
                         );
                     }
                 } else {
@@ -1751,7 +1811,10 @@ fn paint_element_contents(
                 let (display_text, display_style) =
                     if content.is_empty() && !input.placeholder.is_empty() {
                         let mut placeholder_style = style.clone();
-                        placeholder_style.color = Color::rgb8(132, 137, 148);
+                        placeholder_style.color = input
+                            .presentation
+                            .placeholder_color
+                            .unwrap_or(Color::rgb8(132, 137, 148));
                         (input.placeholder.clone(), placeholder_style)
                     } else {
                         (content.clone(), style.clone())
@@ -1936,6 +1999,16 @@ fn paint_element_contents(
             dirty_parent,
         )?;
     }
+    if border.a > 0.0 && has_visible_border(border_widths) {
+        scene.push_edge_quad_in(
+            layer,
+            EdgeQuad::new(bounds, border.with_alpha(0.0))
+                .corner_radii(corners)
+                .border(border_widths, border)
+                .border_style(element.visual.border_style)
+                .clip(parent_clip),
+        );
+    }
 
     if let Some((text_bounds, scrollbar_bounds, text_clip, text_scroll, max_offset)) =
         text_input_scroll
@@ -2046,7 +2119,13 @@ pub(super) fn push_text_paint_rect(
         paint.rect.height,
     );
     match paint.kind {
-        TextPaintKind::Solid => {
+        TextPaintKind::Rounded(radius) => {
+            scene.push_quad_in(
+                layer,
+                Quad::new(rect, paint.color).radius(radius).clip(clip),
+            );
+        }
+        TextPaintKind::Solid | TextPaintKind::SolidUnderlay => {
             scene.push_quad_in(layer, Quad::new(rect, paint.color).clip(clip));
         }
         TextPaintKind::WavyUnderline {

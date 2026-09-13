@@ -32,8 +32,12 @@ pub enum TextUnderline {
 /// participate in the retained Cosmic Text buffer key; changing only a background color does not.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct HighlightStyle {
+    pub(crate) link: Option<Arc<str>>,
     pub(crate) color: Option<Color>,
     pub(crate) background: Option<Color>,
+    pub(crate) background_radius: f32,
+    pub(crate) background_padding_x: f32,
+    pub(crate) background_inset_y: f32,
     pub(crate) family: Option<FontFamily>,
     pub(crate) features: Option<FontFeatures>,
     pub(crate) fallbacks: Option<Option<FontFallbacks>>,
@@ -43,11 +47,24 @@ pub struct HighlightStyle {
     pub(crate) underline_color: Option<Color>,
     pub(crate) underline_wavy: Option<bool>,
     pub(crate) underline_thickness: Option<f32>,
+    pub(crate) underline_descent_fraction: Option<f32>,
     pub(crate) strikethrough: bool,
     pub(crate) strikethrough_color: Option<Color>,
 }
 
 impl HighlightStyle {
+    /// Open this URL when the range is clicked without selecting text.
+    pub fn link(mut self, url: impl Into<Arc<str>>) -> Self {
+        self.link = Some(url.into());
+        self
+    }
+
+    /// Position the underline below the baseline as a fraction of the font descent.
+    pub fn underline_descent_fraction(mut self, fraction: f32) -> Self {
+        self.underline_descent_fraction = fraction.is_finite().then(|| fraction.clamp(0.0, 4.0));
+        self
+    }
+
     pub fn color(mut self, color: Color) -> Self {
         self.color = Some(color);
         self
@@ -55,6 +72,21 @@ impl HighlightStyle {
 
     pub fn background(mut self, color: Color) -> Self {
         self.background = Some(color);
+        self
+    }
+
+    /// Shape a paint-only range wash without changing text measurement or selection.
+    pub fn background_shape(mut self, radius: f32, padding_x: f32, inset_y: f32) -> Self {
+        let valid = |v: f32| {
+            if v.is_finite() {
+                v.clamp(0.0, 4096.0)
+            } else {
+                0.0
+            }
+        };
+        self.background_radius = valid(radius);
+        self.background_padding_x = valid(padding_x);
+        self.background_inset_y = valid(inset_y);
         self
     }
 
@@ -207,7 +239,8 @@ impl HighlightStyle {
     }
 
     pub(crate) fn is_empty(&self) -> bool {
-        self.color.is_none()
+        self.link.is_none()
+            && self.color.is_none()
             && self.background.is_none()
             && self.family.is_none()
             && self.features.is_none()
@@ -218,6 +251,7 @@ impl HighlightStyle {
             && self.underline_color.is_none()
             && self.underline_wavy.is_none()
             && self.underline_thickness.is_none()
+            && self.underline_descent_fraction.is_none()
             && !self.strikethrough
             && self.strikethrough_color.is_none()
     }

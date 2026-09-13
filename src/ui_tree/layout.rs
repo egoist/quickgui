@@ -294,7 +294,7 @@ fn compute_layout_measured(
                     // a grid-row border during resize.
                     let max_width = match available.width {
                         AvailableSpace::Definite(width) => Some(width.max(0.0)),
-                        AvailableSpace::MinContent => Some(0.0),
+                        AvailableSpace::MinContent => None,
                         AvailableSpace::MaxContent => None,
                     };
                     let measured = if let Some(highlights) = highlights {
@@ -633,6 +633,7 @@ pub(super) fn sanitize_detached_element(element: &mut Element, preserve_motion: 
     element.app_region = None;
     element.virtual_scroll = None;
     element.scroll_to_end_revision = None;
+    element.scroll_request = None;
     element.list_item_measurement = None;
     if !preserve_motion {
         element.animation = None;
@@ -654,6 +655,7 @@ impl Default for UiTree {
 }
 
 pub(crate) struct PointerResult {
+    pub open_url: Option<Arc<str>>,
     pub repaint: bool,
     pub clicked: Option<ElementId>,
     pub dismissed: Option<DismissRequest>,
@@ -1635,13 +1637,37 @@ pub(super) fn collect_layout_bounds(
             (layout.content_size.height - layout.size.height).max(0.0),
         );
         let offset = scroll_offsets.entry(element.runtime_id).or_default();
-        apply_scroll_end_revision(
-            element.runtime_id,
-            element.scroll_to_end_revision,
-            max_offset.y,
-            offset,
-            scroll_end_states,
-        );
+        if let Some(request) = element.scroll_request {
+            if scroll_end_states
+                .get(&element.runtime_id)
+                .is_none_or(|state| state.revision != request.revision)
+            {
+                let origin = request
+                    .child
+                    .and_then(|index| element.children.get(index))
+                    .and_then(|child| child.taffy_node)
+                    .and_then(|node| taffy.layout(node).ok())
+                    .map_or(Vector::ZERO, |layout| {
+                        Vector::new(layout.location.x, layout.location.y)
+                    });
+                *offset = origin + request.offset;
+                scroll_end_states.insert(
+                    element.runtime_id,
+                    ScrollEndState {
+                        revision: request.revision,
+                        previous_max_y: max_offset.y,
+                    },
+                );
+            }
+        } else {
+            apply_scroll_end_revision(
+                element.runtime_id,
+                element.scroll_to_end_revision,
+                max_offset.y,
+                offset,
+                scroll_end_states,
+            );
+        }
         offset.x = offset.x.clamp(0.0, max_offset.x);
         offset.y = offset.y.clamp(0.0, max_offset.y);
         scroll = *offset;
@@ -1748,10 +1774,12 @@ pub(super) fn place_anchored(
         size,
         viewport,
         AnchorGeometry {
+            rounding_scale: None,
             placement,
             gap,
             align_offset: 0.0,
             margin,
+            flip: true,
             sticky: true,
         },
     )
@@ -1761,20 +1789,24 @@ pub(super) fn place_anchored(
 /// The declared geometry one anchored surface is placed with.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(super) struct AnchorGeometry {
+    pub rounding_scale: Option<f32>,
     pub placement: AnchorPlacement,
     pub gap: f32,
     pub align_offset: f32,
     pub margin: f32,
+    pub flip: bool,
     pub sticky: bool,
 }
 
 impl AnchorGeometry {
     pub(super) fn of(anchor: &AnchorStyle) -> Self {
         Self {
+            rounding_scale: anchor.rounding_scale,
             placement: anchor.placement,
             gap: anchor.gap,
             align_offset: anchor.align_offset,
             margin: anchor.viewport_margin,
+            flip: anchor.flip,
             sticky: anchor.sticky,
         }
     }
@@ -1792,10 +1824,12 @@ pub(super) fn resolve_anchored(
     geometry: AnchorGeometry,
 ) -> ResolvedAnchorPlacement {
     let AnchorGeometry {
+        rounding_scale,
         placement,
         gap,
         align_offset,
         margin,
+        flip,
         sticky,
     } = geometry;
     let align_offset = if align_offset.is_finite() {
@@ -1813,7 +1847,7 @@ pub(super) fn resolve_anchored(
         AnchorSide::Top | AnchorSide::Bottom => size.height,
         AnchorSide::Left | AnchorSide::Right => size.width,
     };
-    let side = if primary_size > preferred_space && opposite_space > preferred_space {
+    let side = if flip && primary_size > preferred_space && opposite_space > preferred_space {
         opposite_side
     } else {
         preferred_side
@@ -1824,15 +1858,19 @@ pub(super) fn resolve_anchored(
         AnchorAlign::Center => [AnchorAlign::Center, AnchorAlign::Start, AnchorAlign::End],
         AnchorAlign::End => [AnchorAlign::End, AnchorAlign::Start, AnchorAlign::Center],
     };
-    let align = alignments
-        .into_iter()
-        .min_by(|left, right| {
-            let left = anchored_origin(anchor, size, side, *left, gap);
-            let right = anchored_origin(anchor, size, side, *right, gap);
-            cross_axis_overflow(left, size, inner, side)
-                .total_cmp(&cross_axis_overflow(right, size, inner, side))
-        })
-        .unwrap_or(preferred_align);
+    let align = if !flip {
+        preferred_align
+    } else {
+        alignments
+            .into_iter()
+            .min_by(|left, right| {
+                let left = anchored_origin(anchor, size, side, *left, gap);
+                let right = anchored_origin(anchor, size, side, *right, gap);
+                cross_axis_overflow(left, size, inner, side)
+                    .total_cmp(&cross_axis_overflow(right, size, inner, side))
+            })
+            .unwrap_or(preferred_align)
+    };
     let mut origin = anchored_origin(anchor, size, side, align, gap);
     // The cross-axis offset is declared relative to the anchor, so it is applied before the
     // surface is clamped: an offset can shift a popup along its trigger but never off screen.
@@ -1844,6 +1882,16 @@ pub(super) fn resolve_anchored(
     if sticky {
         origin.x = clamp_surface_axis(origin.x, size.width, inner.x, inner.right());
         origin.y = clamp_surface_axis(origin.y, size.height, inner.y, inner.bottom());
+    }
+    if let Some(scale) = rounding_scale {
+        let snap = |v: f32| ((v * scale).abs() - 0.5).ceil().copysign(v) / scale;
+        let base = Point::new(snap(anchor.x), snap(anchor.y));
+        origin.x = base.x + (origin.x - base.x).round();
+        origin.y = base.y + (origin.y - base.y).round();
+        if sticky {
+            origin.x = clamp_surface_axis(origin.x, size.width, viewport.x, viewport.right());
+            origin.y = clamp_surface_axis(origin.y, size.height, viewport.y, viewport.bottom());
+        }
     }
     let room = available_anchor_space(anchor, inner, side, gap);
     let available = match side {

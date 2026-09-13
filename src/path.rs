@@ -483,9 +483,22 @@ pub struct Gradient {
     kind: GradientKind,
     stops: ColorStops,
     color_space: GradientColorSpace,
+    dither: bool,
+    box_projection: bool,
 }
 
 impl Gradient {
+    /// Project the angle through the box aspect ratio, matching native GPUI gradients.
+    pub fn box_projection(mut self, enabled: bool) -> Self {
+        self.box_projection = enabled;
+        self
+    }
+
+    /// Add deterministic physical-pixel noise to reduce visible gradient banding.
+    pub fn dither(mut self, enabled: bool) -> Self {
+        self.dither = enabled;
+        self
+    }
     /// A linear gradient at `angle`, where `0` degrees points to the top and increases clockwise.
     pub fn linear(angle: impl Into<GradientAngle>, stops: impl Into<ColorStops>) -> Self {
         Self {
@@ -494,6 +507,8 @@ impl Gradient {
             },
             stops: stops.into(),
             color_space: GradientColorSpace::LinearSrgb,
+            dither: false,
+            box_projection: false,
         }
     }
 
@@ -507,6 +522,8 @@ impl Gradient {
             },
             stops: stops.into(),
             color_space: GradientColorSpace::LinearSrgb,
+            dither: false,
+            box_projection: false,
         }
     }
 
@@ -519,6 +536,8 @@ impl Gradient {
             },
             stops: stops.into(),
             color_space: GradientColorSpace::LinearSrgb,
+            dither: false,
+            box_projection: false,
         }
     }
 
@@ -597,6 +616,8 @@ impl From<LinearGradient> for Gradient {
             },
             stops: ColorStops::new(stops),
             color_space: gradient.interpolation(),
+            dither: false,
+            box_projection: false,
         }
     }
 }
@@ -707,10 +728,11 @@ impl From<Gradient> for Background {
 /// radial, and conic interpolation is defined once on the CPU and once per shader family.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) struct GradientData {
-    /// Kind, interpolation space, stop count, unused.
+    /// Kind, interpolation space, stop count, dithering flag.
     pub(crate) header: [f32; 4],
     /// Linear: start XY and end XY. Radial: center XY and radii XY. Conic: center XY, start angle.
     pub(crate) geometry: [f32; 4],
+    pub(crate) projection: [f32; 4],
     /// Stop positions 0..4 followed by 4..8.
     pub(crate) positions: [[f32; 4]; 2],
     pub(crate) colors: [[f32; 4]; MAX_GRADIENT_STOPS],
@@ -738,6 +760,39 @@ pub(crate) fn gradient_line(bounds: Rect, angle_degrees: f32) -> [f32; 4] {
     ]
 }
 
+fn box_gradient_line(bounds: Rect, angle: f32) -> [f32; 4] {
+    if bounds.width <= 0. || bounds.height <= 0. {
+        return gradient_line(bounds, angle);
+    }
+    let radians = (angle.rem_euclid(360.) - 90.) * (std::f32::consts::PI / 180.);
+    let mut direction = [radians.cos(), radians.sin()];
+    if bounds.width > bounds.height {
+        direction[1] *= bounds.height / bounds.width;
+    } else {
+        direction[0] *= bounds.width / bounds.height;
+    }
+    let length = direction[0].hypot(direction[1]);
+    let extent = if direction[0].abs() > direction[1].abs() {
+        bounds.width
+    } else {
+        bounds.height
+    };
+    let delta = [
+        direction[0] / length * extent * 0.5,
+        direction[1] / length * extent * 0.5,
+    ];
+    let center = [
+        bounds.x + bounds.width * 0.5,
+        bounds.y + bounds.height * 0.5,
+    ];
+    [
+        center[0] - delta[0],
+        center[1] - delta[1],
+        center[0] + delta[0],
+        center[1] + delta[1],
+    ]
+}
+
 pub(crate) fn interpolation_code(color_space: GradientColorSpace) -> f32 {
     match color_space {
         GradientColorSpace::LinearSrgb => 0.0,
@@ -750,9 +805,14 @@ impl GradientData {
     /// Resolve `gradient` against the logical `bounds` it paints.
     pub(crate) fn new(gradient: &Gradient, bounds: Rect) -> Self {
         let (kind, geometry) = match gradient.kind() {
-            GradientKind::Linear { angle } => {
-                (GRADIENT_KIND_LINEAR, gradient_line(bounds, angle.degrees()))
-            }
+            GradientKind::Linear { angle } => (
+                GRADIENT_KIND_LINEAR,
+                if gradient.box_projection {
+                    box_gradient_line(bounds, angle.degrees())
+                } else {
+                    gradient_line(bounds, angle.degrees())
+                },
+            ),
             GradientKind::Radial {
                 shape,
                 extent,
@@ -826,9 +886,15 @@ impl GradientData {
                 kind,
                 interpolation_code(gradient.interpolation()),
                 stops.len() as f32,
-                0.0,
+                if gradient.dither { 1.0 } else { 0.0 },
             ],
             geometry,
+            projection: match gradient.kind() {
+                GradientKind::Linear { angle } if gradient.box_projection => {
+                    [angle.degrees(), 1., 0., 0.]
+                }
+                _ => [0.; 4],
+            },
             positions,
             colors,
         }

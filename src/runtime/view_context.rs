@@ -15,6 +15,7 @@ pub struct ViewContext<'a, V> {
     pub(super) window_state: WindowState,
     pub(super) displays: &'a Displays,
     pub(super) keyboard_layout: &'a KeyboardLayout,
+    pub(super) font_system: &'a SharedFontSystem,
     pub(super) assets: &'a Assets,
     pub(super) app_info: Option<&'a AppInfo>,
     pub(super) app_paths: Option<&'a AppPaths>,
@@ -28,6 +29,17 @@ pub struct ViewContext<'a, V> {
 }
 
 impl<V: 'static> ViewContext<'_, V> {
+    /// Measure unwrapped styled text using the application's loaded fonts, without a GPU draw.
+    /// Retained components should cache the result until their text, style, or scale changes.
+    pub fn measure_styled_text(
+        &mut self,
+        text: &crate::StyledText,
+        style: &crate::TextStyle,
+    ) -> Size {
+        self.listeners.observes_viewport = true;
+        crate::renderer::measure_intrinsic_text(self.font_system, text, style, self.scale_factor)
+    }
+
     /// Read the viewport size and observe future size or scale-factor changes for this view.
     ///
     /// Views that do not read viewport geometry stay mounted during native window resize; the

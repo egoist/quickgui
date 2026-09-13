@@ -283,9 +283,24 @@ impl TextRenderer {
                 .take_while(is_run_visible);
 
             for run in layout_runs {
+                let mut native_cursor: Option<(f32, f32)> = None;
                 for glyph in run.glyphs.iter() {
-                    let physical_glyph =
-                        glyph.physical((text_area.left, text_area.top), text_area.scale);
+                    let native_x = glyph.native_x.map(|position| {
+                        let logical_size = f32::from_bits(glyph.optical_size_bits);
+                        let scale = glyph.font_size * text_area.scale / logical_size;
+                        let (x, previous) = native_cursor.get_or_insert((
+                            (text_area.left + glyph.x * text_area.scale) / scale,
+                            position,
+                        ));
+                        *x += position - *previous;
+                        *previous = position;
+                        *x * scale
+                    });
+                    let physical_glyph = glyph.physical_with_x(
+                        (text_area.left, text_area.top),
+                        text_area.scale,
+                        native_x,
+                    );
 
                     let color = match glyph.color_opt {
                         Some(some) => some,

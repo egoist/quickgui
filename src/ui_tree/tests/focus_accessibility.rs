@@ -1069,10 +1069,12 @@ fn anchored_placement_reports_the_side_alignment_and_room_it_actually_used() {
         Size::new(80.0, 40.0),
         Rect::new(0.0, 0.0, 240.0, 180.0),
         AnchorGeometry {
+            rounding_scale: None,
             placement: AnchorPlacement::BottomStart,
             gap: 8.0,
             align_offset: 0.0,
             margin: 8.0,
+            flip: true,
             sticky: true,
         },
     );
@@ -1089,10 +1091,12 @@ fn anchored_placement_reports_the_side_alignment_and_room_it_actually_used() {
         Size::new(80.0, 48.0),
         Rect::new(0.0, 0.0, 240.0, 180.0),
         AnchorGeometry {
+            rounding_scale: None,
             placement: AnchorPlacement::BottomStart,
             gap: 8.0,
             align_offset: 0.0,
             margin: 8.0,
+            flip: true,
             sticky: true,
         },
     );
@@ -1106,10 +1110,12 @@ fn anchored_placement_reports_the_side_alignment_and_room_it_actually_used() {
         Size::new(96.0, 40.0),
         Rect::new(0.0, 0.0, 240.0, 180.0),
         AnchorGeometry {
+            rounding_scale: None,
             placement: AnchorPlacement::BottomStart,
             gap: 8.0,
             align_offset: 0.0,
             margin: 8.0,
+            flip: true,
             sticky: true,
         },
     );
@@ -1121,10 +1127,12 @@ fn anchored_placement_reports_the_side_alignment_and_room_it_actually_used() {
         Size::new(80.0, 40.0),
         Rect::new(0.0, 0.0, 240.0, 180.0),
         AnchorGeometry {
+            rounding_scale: None,
             placement: AnchorPlacement::BottomStart,
             gap: 8.0,
             align_offset: 0.0,
             margin: 8.0,
+            flip: true,
             sticky: true,
         },
     );
@@ -1134,10 +1142,12 @@ fn anchored_placement_reports_the_side_alignment_and_room_it_actually_used() {
 #[test]
 fn cross_axis_offsets_shift_before_clamping_and_sticky_placement_can_be_disabled() {
     let geometry = |align_offset: f32, sticky: bool| AnchorGeometry {
+        rounding_scale: None,
         placement: AnchorPlacement::BottomStart,
         gap: 8.0,
         align_offset,
         margin: 8.0,
+        flip: true,
         sticky,
     };
     let shifted = resolve_anchored(
@@ -1603,5 +1613,125 @@ fn a_text_input_paints_its_focus_styles_however_it_was_focused() {
             .edge_quads()
             .iter()
             .any(|quad| quad.fill == focus_color)
+    );
+}
+
+#[test]
+fn native_anchor_translation_snaps_relative_to_the_device_aligned_trigger() {
+    let geometry = AnchorGeometry {
+        rounding_scale: Some(2.),
+        placement: AnchorPlacement::TopStart,
+        gap: 8.,
+        align_offset: 0.,
+        margin: 8.,
+        flip: false,
+        sticky: true,
+    };
+    let result = resolve_anchored(
+        Rect::new(1033.3491, 373., 95.65091, 24.),
+        Size::new(340., 74.),
+        Rect::new(0., 0., 1180., 780.),
+        geometry,
+    );
+    assert_eq!(result.bounds, Rect::new(831.5, 291., 340., 74.));
+    let edge = resolve_anchored(
+        Rect::new(0.3, 5., 20., 10.),
+        Size::new(40., 20.),
+        Rect::new(0., 0., 100., 100.),
+        AnchorGeometry {
+            margin: 0.,
+            ..geometry
+        },
+    );
+    assert!(edge.bounds.x >= 0. && edge.bounds.y >= 0.);
+    assert!(edge.bounds.right() <= 100. && edge.bounds.bottom() <= 100.);
+}
+
+#[test]
+fn styled_links_activate_only_for_an_unmodified_click_inside_the_range() {
+    use crate::{
+        Assets, HighlightStyle, IntoElement, PerformanceProfile, StyledText,
+        renderer::{OffscreenRenderer, create_shared_font_system},
+    };
+    let fonts = create_shared_font_system(&Assets::default(), &[]).unwrap();
+    let mut renderer =
+        pollster::block_on(OffscreenRenderer::new(PerformanceProfile::Balanced, fonts)).unwrap();
+    let mut tree = UiTree::new();
+    let content = StyledText::new("linked text and plain text")
+        .with_highlights([(0..11, HighlightStyle::default().link("https://example.com"))]);
+    tree.set_root(
+        div()
+            .size(300.0, 80.0)
+            .child(content.into_element().selectable()),
+        Size::new(300.0, 80.0),
+        1.0,
+        &mut renderer,
+    )
+    .unwrap();
+    tree.paint(&mut Scene::new(), &mut renderer).unwrap();
+    let point = Some(Point::new(5.0, 8.0));
+    assert_eq!(
+        tree.cursor_style_at(point.unwrap()),
+        Some(CursorStyle::PointingHand)
+    );
+    let start = std::time::Instant::now();
+    tree.pointer_button(point, true, false, start, &mut renderer);
+    assert_eq!(
+        tree.pointer_button(point, false, false, start, &mut renderer)
+            .open_url
+            .as_deref(),
+        Some("https://example.com")
+    );
+    // A second click selects a word and must not launch the URL again.
+    let second = start + std::time::Duration::from_millis(100);
+    tree.pointer_button(point, true, false, second, &mut renderer);
+    assert!(
+        tree.pointer_button(point, false, false, second, &mut renderer)
+            .open_url
+            .is_none()
+    );
+    let later = start + std::time::Duration::from_secs(2);
+    tree.pointer_button(point, true, true, later, &mut renderer);
+    assert!(
+        tree.pointer_button(point, false, true, later, &mut renderer)
+            .open_url
+            .is_none()
+    );
+    tree.pointer_button(
+        point,
+        true,
+        false,
+        later + std::time::Duration::from_secs(2),
+        &mut renderer,
+    );
+    tree.pointer_moved(Point::new(50.0, 8.0), &mut renderer);
+    assert!(
+        tree.pointer_button(
+            Some(Point::new(50.0, 8.0)),
+            false,
+            false,
+            later,
+            &mut renderer
+        )
+        .open_url
+        .is_none()
+    );
+    tree.pointer_button(
+        point,
+        true,
+        false,
+        later + std::time::Duration::from_secs(4),
+        &mut renderer,
+    );
+    assert!(
+        tree.pointer_button(
+            Some(Point::new(280.0, 8.0)),
+            false,
+            false,
+            later,
+            &mut renderer
+        )
+        .open_url
+        .is_none()
     );
 }

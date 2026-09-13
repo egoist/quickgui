@@ -54,7 +54,9 @@ pub(crate) struct StyledTextGeometry {
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) enum TextPaintKind {
+    SolidUnderlay,
     Solid,
+    Rounded(f32),
     WavyUnderline {
         baseline: f32,
         amplitude: f32,
@@ -523,6 +525,7 @@ struct ShapeInstance {
 struct GpuGradient {
     header: [f32; 4],
     geometry: [f32; 4],
+    projection: [f32; 4],
     positions: [[f32; 4]; 2],
     colors: [[f32; 4]; MAX_GRADIENT_STOPS],
 }
@@ -532,6 +535,7 @@ impl From<GradientData> for GpuGradient {
         Self {
             header: data.header,
             geometry: data.geometry,
+            projection: data.projection,
             positions: data.positions,
             colors: data.colors,
         }
@@ -597,7 +601,7 @@ impl ShapePipeline {
             label: Some("quickgui view bind group layout"),
             entries: &[wgpu::BindGroupLayoutEntry {
                 binding: 0,
-                visibility: ShaderStages::VERTEX,
+                visibility: ShaderStages::VERTEX_FRAGMENT,
                 ty: wgpu::BindingType::Buffer {
                     ty: wgpu::BufferBindingType::Uniform,
                     has_dynamic_offset: false,
@@ -626,6 +630,24 @@ impl ShapePipeline {
             immediate_size: 0,
         });
         let shader = device.create_shader_module(wgpu::include_wgsl!("quad.wgsl"));
+        #[cfg(target_os = "macos")]
+        // SAFETY: Naga validates and translates the repository-owned WGSL at build time.
+        // The fragment has exactly the two buffer bindings declared above, at Metal slots 0/1.
+        // All gradient indices and stop counts are bounded before the instance buffer is uploaded.
+        let fragment = unsafe {
+            device.create_shader_module_passthrough(wgpu::ShaderModuleDescriptorPassthrough {
+                label: Some("quickgui native Metal shape fragment"),
+                msl: Some(include_str!(concat!(env!("OUT_DIR"), "/quad-fragment.metal")).into()),
+                entry_points: vec![wgpu::PassthroughShaderEntryPoint {
+                    name: "fs_main".into(),
+                    workgroup_size: (0, 0, 0),
+                }]
+                .into(),
+                ..Default::default()
+            })
+        };
+        #[cfg(not(target_os = "macos"))]
+        let fragment = shader.clone();
         let attributes = [
             VertexAttribute {
                 format: VertexFormat::Float32x4,
@@ -688,12 +710,12 @@ impl ShapePipeline {
             depth_stencil: None,
             multisample: MultisampleState::default(),
             fragment: Some(FragmentState {
-                module: &shader,
+                module: &fragment,
                 entry_point: Some("fs_main"),
                 compilation_options: PipelineCompilationOptions::default(),
                 targets: &[Some(ColorTargetState {
                     format,
-                    blend: Some(wgpu::BlendState::PREMULTIPLIED_ALPHA_BLENDING),
+                    blend: Some(wgpu::BlendState::ALPHA_BLENDING),
                     write_mask: wgpu::ColorWrites::ALL,
                 })],
             }),
@@ -802,7 +824,7 @@ impl ShapeRenderer {
                             quad.background.as_ref(),
                             quad.rect,
                         );
-                        quad_instance(quad, clip, gradient)
+                        quad_instance(quad, clip, gradient, scale)
                     }
                     ShapeRef::EdgeQuad(index) => {
                         let quad = &layer.edge_quads()[index];
@@ -819,7 +841,7 @@ impl ShapeRenderer {
                             quad.background.as_ref(),
                             quad.rect,
                         );
-                        edge_quad_instance(quad, clip, gradient)
+                        edge_quad_instance(quad, clip, gradient, scale)
                     }
                     ShapeRef::WavyUnderline(index) => {
                         let underline = &layer.wavy_underlines()[index];
@@ -851,7 +873,20 @@ impl ShapeRenderer {
                     instance,
                 });
             }
-            self.pending.sort_unstable_by_key(|shape| shape.order);
+            // GPUI batches shadows before other shapes at the same overlap order.
+            // This matters when only the blur tail crosses a neighboring gradient.
+            self.pending.sort_by_key(|shape| {
+                (
+                    shape.order,
+                    if shape.instance.params[0] == SHAPE_MODE_DROP_SHADOW
+                        || shape.instance.params[0] == SHAPE_MODE_INSET_SHADOW
+                    {
+                        0
+                    } else {
+                        1
+                    },
+                )
+            });
             for shape in &self.pending {
                 let index = self.instances.len() as u32;
                 self.instances.push(shape.instance);
@@ -966,10 +1001,22 @@ fn admit_gradient(
     index
 }
 
-fn quad_instance(quad: &Quad, clip: Rect, gradient: f32) -> ShapeInstance {
-    let corners = quad.radius.resolve(quad.rect.width, quad.rect.height);
+pub(crate) fn snap_paint_rect(rect: Rect, scale: f32) -> Rect {
+    let snap = |value: f32| ((value * scale).abs() - 0.5).ceil().copysign(value) / scale;
+    let (left, top) = (snap(rect.x), snap(rect.y));
+    Rect::new(
+        left,
+        top,
+        (snap(rect.x + rect.width) - left).max(0.),
+        (snap(rect.y + rect.height) - top).max(0.),
+    )
+}
+
+fn quad_instance(quad: &Quad, clip: Rect, gradient: f32, scale: f32) -> ShapeInstance {
+    let rect = snap_paint_rect(quad.rect, scale);
+    let corners = quad.radius.resolve(rect.width, rect.height);
     ShapeInstance {
-        geometry: rect_array(quad.rect),
+        geometry: rect_array(rect),
         primary: quad.fill.as_array(),
         secondary: quad.border_color.as_array(),
         clip: clip_array(clip),
@@ -979,16 +1026,17 @@ fn quad_instance(quad: &Quad, clip: Rect, gradient: f32) -> ShapeInstance {
             quad.border_width.max(0.0),
             0.0,
         ],
-        subject: rect_array(quad.rect),
+        subject: rect_array(rect),
         corners: corners.as_array(),
         effects: [gradient, 0.0, 0.0, 0.0],
     }
 }
 
-fn edge_quad_instance(quad: &EdgeQuad, clip: Rect, gradient: f32) -> ShapeInstance {
-    let corners = quad.radius.resolve(quad.rect.width, quad.rect.height);
+fn edge_quad_instance(quad: &EdgeQuad, clip: Rect, gradient: f32, scale: f32) -> ShapeInstance {
+    let rect = snap_paint_rect(quad.rect, scale);
+    let corners = quad.radius.resolve(rect.width, rect.height);
     ShapeInstance {
-        geometry: rect_array(quad.rect),
+        geometry: rect_array(rect),
         primary: quad.fill.as_array(),
         secondary: quad.border_color.as_array(),
         clip: clip_array(clip),
@@ -1698,3 +1746,43 @@ impl From<PerformanceProfile> for wgpu::PowerPreference {
 
 #[cfg(test)]
 mod tests;
+
+/// Intrinsic text measurement shares the application's font database and shaping caches.
+pub(crate) fn measure_intrinsic_text(
+    fonts: &SharedFontSystem,
+    text: &crate::StyledText,
+    style: &TextStyle,
+    scale: f32,
+) -> Size {
+    let scale = scale.max(f32::EPSILON);
+    let mut fonts = fonts.borrow_mut();
+    let mut buffer = Buffer::new(
+        &mut fonts,
+        Metrics::new(style.font_size * scale, style.line_height * scale),
+    );
+    configure_text_buffer(
+        &mut buffer,
+        &mut fonts,
+        text.content(),
+        style,
+        Some(text.highlights()),
+        None,
+        scale,
+    );
+    let mut size = Size::new(0., 0.);
+    for run in buffer.layout_runs() {
+        size.width = size.width.max(run.line_w / scale);
+        size.height = size.height.max((run.line_top + run.line_height) / scale);
+    }
+    size
+}
+
+fn renderer_device_descriptor() -> DeviceDescriptor<'static> {
+    let descriptor = DeviceDescriptor::default();
+    #[cfg(target_os = "macos")]
+    let descriptor = DeviceDescriptor {
+        required_features: wgpu::Features::PASSTHROUGH_SHADERS,
+        ..descriptor
+    };
+    descriptor
+}

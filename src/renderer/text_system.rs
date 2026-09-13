@@ -111,11 +111,43 @@ impl TextSystem {
                     self.colors.insert(color_key, color);
                     color
                 };
+                let (color, opacity) = if run.highlights.is_none() {
+                    (
+                        glyphon::Color::rgb(color.r(), color.g(), color.b()),
+                        run.opacity * run.style.color.a,
+                    )
+                } else {
+                    (color, run.opacity)
+                };
                 let bounds = physical_text_bounds(clip, scale);
-                let left = run.bounds.x * scale;
-                // Glyphon truncates Y when hinting. Round the origin first so a downward
-                // eased translation does not sit one pixel short until its exact endpoint.
-                let top = (run.bounds.y * scale).round();
+                let left = if cfg!(target_os = "macos") {
+                    ((run.bounds.x * scale).abs() - 0.5)
+                        .ceil()
+                        .copysign(run.bounds.x)
+                } else {
+                    run.bounds.x * scale
+                };
+                let alignment_offset = if cfg!(target_os = "macos") {
+                    let width_delta = snap_paint_rect(run.bounds, scale).width - run.bounds.width;
+                    match run.style.align {
+                        TextAlign::Center | TextAlign::CenterIncludingWhitespace => {
+                            width_delta * 0.5
+                        }
+                        TextAlign::Right | TextAlign::RightIncludingWhitespace => width_delta,
+                        _ => 0.,
+                    }
+                } else {
+                    0.
+                };
+                let left = left + alignment_offset * scale;
+                // Native glyphs snap their complete baseline to the device grid. Other
+                // rasterizers retain origin rounding for stable animated translations.
+                let top = if cfg!(target_os = "macos") && run.style.shaping == TextShaping::Advanced
+                {
+                    run.bounds.y * scale
+                } else {
+                    (run.bounds.y * scale).round()
+                };
                 let run_reshaped = if run.highlights.is_none()
                     && should_fragment_basic_text(&run.content, &run.style)
                 {
@@ -133,7 +165,7 @@ impl TextSystem {
                             top,
                             bounds,
                             color,
-                            opacity: run.opacity,
+                            opacity,
                         });
                         fragment_left += width;
                         fragment_reshaped |= was_reshaped;
@@ -156,7 +188,7 @@ impl TextSystem {
                         top,
                         bounds,
                         color,
-                        opacity: run.opacity,
+                        opacity,
                     });
                     was_reshaped
                 };
@@ -251,26 +283,45 @@ impl TextSystem {
             style.text_overflow.is_some(),
             max_width,
         );
+        let width = if width.is_none()
+            && style.wrap != TextWrap::None
+            && style.text_overflow.is_none()
+        {
+            self.buffers
+                .get(&id)
+                .filter(|entry| {
+                    entry.last_used_frame == self.frame.wrapping_add(1)
+                        && entry.key
+                            == Self::layout_key(content, style, highlights, entry.key.width, scale)
+                })
+                .and_then(|entry| entry.key.width)
+        } else {
+            width
+        };
         let next_frame = self.frame.wrapping_add(1);
         self.update_text_entry(id, content, style, highlights, width, scale, next_frame);
         let buffer = &self.buffers[&id].buffer;
         let mut measured_width = 0.0_f32;
         let mut measured_height = 0.0_f32;
+        let mut previous_line = None;
+        let mut wrapped = false;
         for run in buffer
             .layout_runs()
             .take(style.line_clamp.unwrap_or(usize::MAX))
         {
+            wrapped |= previous_line == Some(run.line_i);
+            previous_line = Some(run.line_i);
             measured_width = measured_width.max(run.line_w);
             measured_height = measured_height.max(run.line_top + run.line_height);
         }
         if measured_height == 0.0 {
             measured_height = style.line_height * scale;
         }
-        // Cosmic Text's unbounded `line_w` can land exactly on its later wrapping threshold.
-        // Reserve one physical pixel so an intrinsically sized single line does not reflow only
-        // after Taffy feeds that measured width back into the paint layout.
-        let measured_width = (measured_width.ceil() + 1.0) / scale;
+        // Intrinsic layout uses logical pixels. Rounding in physical pixels and then adding
+        // a guard pixel grows short labels at Retina scales, shifting adjacent controls.
+        let measured_width = (measured_width / scale).ceil();
         let measured_width = match width {
+            Some(width) if wrapped => width.ceil(),
             Some(width) => measured_width.min(width),
             None => measured_width,
         };
@@ -511,26 +562,14 @@ impl TextSystem {
         )
     }
 
-    #[allow(clippy::too_many_arguments)]
-    pub(super) fn update_text_entry(
-        &mut self,
-        id: TextId,
+    fn layout_key(
         content: &Arc<str>,
         style: &TextStyle,
         highlights: Option<&Arc<[TextHighlight]>>,
         width: Option<f32>,
         scale: f32,
-        frame: u64,
-    ) -> bool {
-        // Left-aligned unwrapped glyph layout is independent of paint bounds. Other alignments need
-        // the assigned width so shaping, hit testing, selection, and rendering share exact x data.
-        let width = canonical_text_width(
-            style.wrap,
-            style.align,
-            style.text_overflow.is_some(),
-            width,
-        );
-        let key = TextLayoutKey {
+    ) -> TextLayoutKey {
+        TextLayoutKey {
             content: content.clone(),
             highlights: highlights.cloned(),
             width,
@@ -556,7 +595,29 @@ impl TextSystem {
             shaping: style.shaping,
             extras: TextShapingExtras::from_style(style),
             scale,
-        };
+        }
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub(super) fn update_text_entry(
+        &mut self,
+        id: TextId,
+        content: &Arc<str>,
+        style: &TextStyle,
+        highlights: Option<&Arc<[TextHighlight]>>,
+        width: Option<f32>,
+        scale: f32,
+        frame: u64,
+    ) -> bool {
+        // Left-aligned unwrapped glyph layout is independent of paint bounds. Other alignments need
+        // the assigned width so shaping, hit testing, selection, and rendering share exact x data.
+        let width = canonical_text_width(
+            style.wrap,
+            style.align,
+            style.text_overflow.is_some(),
+            width,
+        );
+        let key = Self::layout_key(content, style, highlights, width, scale);
 
         if let Some(buffer) = self.buffers.get_mut(&id).and_then(|entry| {
             entry.last_used_frame = frame;

@@ -362,6 +362,16 @@ const (
 	Selected                       uint16 = 358
 	ScrollSnapX                    uint16 = 359
 	ScrollSnapY                    uint16 = 360
+	Motion                         uint16 = 361
+	AnchoredLayer                  uint16 = 362
+	InputPresentation              uint16 = 363
+	OverscanPixels                 uint16 = 364
+	BlockPointer                   uint16 = 365
+	InputSubmitOnEnter             uint16 = 366
+	ScrollRequest                  uint16 = 367
+	RichDocument                   uint16 = 368
+	DocumentTheme                  uint16 = 369
+	LayoutRounding                 uint16 = 370
 )
 const (
 	TagView                  uint8 = 1

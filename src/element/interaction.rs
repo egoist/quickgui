@@ -324,22 +324,28 @@ impl Element {
         self
     }
 
-    /// Submit a valid single-line input when Return is pressed without key repeat.
+    /// Submit a valid input when Return is pressed without key repeat.
+    /// Multiline inputs must explicitly enable `submit_on_enter`.
     pub fn on_submit<V>(mut self, listener: crate::SubmitListener<V>) -> Self {
         assert!(
             matches!(
                 &self.kind,
-                ElementKind::TextInput(TextInputElement {
-                    multiline: false,
-                    ..
-                })
+                ElementKind::TextInput(input) if !input.multiline || input.submit_on_enter
             ),
-            "on_submit can only be attached to a single-line text input"
+            "multiline on_submit requires submit_on_enter"
         );
         self.bind_listener_id(listener.id());
         self.focusable = true;
         self.set_implicit_cursor(CursorStyle::IBeam);
         self.accessibility.role = if matches!(
+            &self.kind,
+            ElementKind::TextInput(TextInputElement {
+                multiline: true,
+                ..
+            })
+        ) {
+            AccessibilityRole::MultilineTextInput
+        } else if matches!(
             &self.kind,
             ElementKind::TextInput(TextInputElement { password: true, .. })
         ) {
@@ -455,6 +461,12 @@ impl Element {
                 phase: DispatchPhase::Capture,
             },
         )
+    }
+
+    /// Choose whether this surface occludes pointer hits behind its bounds.
+    pub fn pointer_blocking(mut self, block: bool) -> Self {
+        self.blocks_pointer = block;
+        self
     }
 
     /// Dismiss this surface on Escape or a pointer press outside its bounds.

@@ -289,7 +289,14 @@ impl TestAppContext {
                     Key::ArrowRight => Some(self.window_mut(window)?.ui.input_move_right(extend)),
                     Key::Home => Some(self.window_mut(window)?.ui.input_move_home(extend)),
                     Key::End => Some(self.window_mut(window)?.ui.input_move_end(extend)),
-                    Key::Enter if self.window(window)?.ui.focused_text_input_is_multiline() => {
+                    Key::Enter
+                        if self.window(window)?.ui.focused_text_input_is_multiline()
+                            && (extend
+                                || !self
+                                    .window(window)?
+                                    .ui
+                                    .focused_text_input_submits_on_enter()) =>
+                    {
                         Some(self.window_mut(window)?.ui.input_insert_newline())
                     }
                     _ => None,
@@ -297,7 +304,12 @@ impl TestAppContext {
             }
             let submitted = matches!(&stroke.key, Key::Enter)
                 && input_focused
-                && !self.window(window)?.ui.focused_text_input_is_multiline()
+                && (!self.window(window)?.ui.focused_text_input_is_multiline()
+                    || (!modifiers.contains(Modifiers::SHIFT)
+                        && self
+                            .window(window)?
+                            .ui
+                            .focused_text_input_submits_on_enter()))
                 && self.submit_focused_input(window)?;
             if !submitted {
                 if let Some(result) = input_result {

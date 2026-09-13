@@ -259,6 +259,10 @@ struct DeclaredCenter {
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct DeclaredGradient {
+    #[serde(default)]
+    dither: bool,
+    #[serde(default)]
+    box_projection: bool,
     #[serde(rename = "type")]
     kind: String,
     #[serde(default)]
@@ -312,7 +316,12 @@ fn parse_gradient_object(value: &str) -> Option<Gradient> {
             .center(center),
         _ => return None,
     };
-    Some(gradient.color_space(color_space(declared.interpolation.as_deref())))
+    Some(
+        gradient
+            .color_space(color_space(declared.interpolation.as_deref()))
+            .dither(declared.dither)
+            .box_projection(declared.box_projection),
+    )
 }
 
 fn declared_stops(stops: &[DeclaredStop]) -> Option<ColorStops> {
@@ -1460,6 +1469,8 @@ pub(super) struct NativeBoxShadow {
     color: Option<u32>,
     #[serde(default)]
     inset: bool,
+    #[serde(default)]
+    order_by_subject: bool,
 }
 
 /// The element's declared shadow list, or `None` when it declares none or too many.
@@ -1489,6 +1500,7 @@ fn box_shadows_from_declarations(
                 .blur_radius(shadow.blur_radius)
                 .spread_radius(shadow.spread_radius)
                 .inset(shadow.inset)
+                .order_by_subject(shadow.order_by_subject)
             })
             .collect(),
     )

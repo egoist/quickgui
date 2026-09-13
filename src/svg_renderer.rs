@@ -367,15 +367,16 @@ impl SvgRenderer {
                 }
                 let transform_scale = primitive.transform.scale_factors();
                 let translation = primitive.transform.translation();
+                let destination = crate::renderer::snap_paint_rect(primitive.destination, scale);
                 self.pending.push(OrderedSvg {
                     order: item.order,
                     key,
                     instance: SvgInstance {
                         rect: [
-                            primitive.destination.x,
-                            primitive.destination.y,
-                            primitive.destination.width,
-                            primitive.destination.height,
+                            destination.x,
+                            destination.y,
+                            destination.width,
+                            destination.height,
                         ],
                         uv: [
                             primitive.source_uv.x,
@@ -535,7 +536,9 @@ fn raster_key(primitive: &SvgPrimitive, scale: f32) -> Option<SvgRasterKey> {
         / f64::from(primitive.source_uv.height.abs())
         * f64::from(scale)
         * f64::from(transform_scale[1].abs());
-    let (width, height) = bounded_raster_size(width, height)?;
+    // Supersample retained masks so thin strokes survive minification and
+    // fractional placement. The existing byte and dimension budgets still apply.
+    let (width, height) = bounded_raster_size(width * 2.0, height * 2.0)?;
     Some(SvgRasterKey {
         svg: primitive.svg.id(),
         width,
@@ -659,7 +662,7 @@ mod tests {
     fn raster_size_is_density_aware_and_bounded() {
         let primitive = SvgPrimitive::new(icon(), Rect::new(0.0, 0.0, 48.0, 24.0), Color::WHITE);
         let key = raster_key(&primitive, 2.0).unwrap();
-        assert_eq!((key.width, key.height), (96, 48));
+        assert_eq!((key.width, key.height), (192, 96));
 
         let huge = bounded_raster_size(1_000_000.0, 1_000_000.0).unwrap();
         assert!(huge.0 <= MAX_SVG_RASTER_DIMENSION);
@@ -672,7 +675,7 @@ mod tests {
         let primitive = SvgPrimitive::new(icon(), Rect::new(0.0, 0.0, 100.0, 100.0), Color::WHITE)
             .source_uv(Rect::new(0.25, 0.0, 0.5, 1.0));
         let key = raster_key(&primitive, 2.0).unwrap();
-        assert_eq!((key.width, key.height), (400, 200));
+        assert_eq!((key.width, key.height), (800, 400));
     }
 
     #[test]

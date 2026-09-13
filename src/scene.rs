@@ -51,6 +51,8 @@ impl TextId {
 pub enum TextWrap {
     None,
     Word,
+    /// Keep a word and its trailing space together when finding a wrap boundary.
+    WordWithTrailingSpace,
     Glyph,
 }
 
@@ -62,6 +64,7 @@ pub enum TextWrap {
 pub enum WhiteSpace {
     #[default]
     Normal,
+    NormalWithTrailingSpace,
     Nowrap,
 }
 
@@ -69,6 +72,7 @@ impl From<WhiteSpace> for TextWrap {
     fn from(value: WhiteSpace) -> Self {
         match value {
             WhiteSpace::Normal => Self::Word,
+            WhiteSpace::NormalWithTrailingSpace => Self::WordWithTrailingSpace,
             WhiteSpace::Nowrap => Self::None,
         }
     }
@@ -119,6 +123,10 @@ pub enum TextAlign {
     Left,
     Center,
     Right,
+    /// Center including whitespace at a soft line break.
+    CenterIncludingWhitespace,
+    /// Right align including whitespace at a soft line break.
+    RightIncludingWhitespace,
     Justify,
     /// Inline start edge of the resolved layout direction.
     #[default]
@@ -1677,6 +1685,7 @@ pub struct BoxShadow {
     blur_radius: f32,
     spread_radius: f32,
     inset: bool,
+    order_by_subject: bool,
 }
 
 impl BoxShadow {
@@ -1690,6 +1699,7 @@ impl BoxShadow {
             blur_radius: 0.0,
             spread_radius: 0.0,
             inset: false,
+            order_by_subject: false,
         }
     }
 
@@ -1706,6 +1716,17 @@ impl BoxShadow {
 
     pub fn inset(mut self, inset: bool) -> Self {
         self.inset = inset;
+        self
+    }
+
+    pub(crate) fn uses_subject_order(self) -> bool {
+        self.order_by_subject
+    }
+
+    /// Use the unblurred subject for overlap ordering, as GPUI does. The full blur
+    /// still contributes to paint damage and capture bounds.
+    pub fn order_by_subject(mut self, enabled: bool) -> Self {
+        self.order_by_subject = enabled;
         self
     }
 
@@ -2471,7 +2492,20 @@ impl Scene {
             layer.shadows.push(shadow);
             let shape = ShapeRef::Shadow(index);
             layer.shapes.push(shape);
-            layer.push_paint(bounds, PrimitiveRef::Shape(shape));
+            let order_bounds = if shadow.style.order_by_subject && !shadow.style.is_inset() {
+                clipped_paint_bounds(
+                    dilate_rect(
+                        shadow.element_rect.translate(shadow.style.offset()),
+                        shadow.style.spread(),
+                    ),
+                    [shadow.clip],
+                )
+                .unwrap_or(bounds)
+            } else {
+                bounds
+            };
+            layer.push_paint(order_bounds, PrimitiveRef::Shape(shape));
+            layer.content_bounds = Some(union_rect(layer.content_bounds.unwrap_or(bounds), bounds));
         }
     }
 
@@ -3336,6 +3370,23 @@ fn quickgui_fragment(input: QuickGuiShaderInput) -> vec4<f32> {
         assert_eq!(layer.custom_shaders().len(), 1);
         assert_eq!(layer.paint()[1].order, 1);
         assert_eq!(layer.paint()[1].primitive, PrimitiveRef::CustomShader(0));
+    }
+
+    #[test]
+    fn subject_ordered_shadows_keep_the_full_blur_in_damage_bounds() {
+        for subject_order in [false, true] {
+            let mut scene = Scene::new();
+            scene.fill(Rect::new(0.0, 0.0, 20.0, 10.0), Color::WHITE);
+            scene.push_shadow(Shadow::new(
+                Rect::new(0.0, 20.0, 20.0, 10.0),
+                BoxShadow::new(0.0, 0.0, Color::BLACK)
+                    .blur_radius(20.0)
+                    .order_by_subject(subject_order),
+            ));
+            let layer = &scene.paint_layers()[0];
+            assert_eq!(layer.paint()[1].order, if subject_order { 0 } else { 1 });
+            assert!(layer.content_bounds().unwrap().y < 0.0);
+        }
     }
 
     #[test]

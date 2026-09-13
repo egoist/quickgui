@@ -15,7 +15,9 @@ impl GpuContext {
                 ..Default::default()
             })
             .await?;
-        let (device, queue) = adapter.request_device(&DeviceDescriptor::default()).await?;
+        let (device, queue) = adapter
+            .request_device(&renderer_device_descriptor())
+            .await?;
         device.on_uncaptured_error(Arc::new(|error| {
             web_sys::console::error_1(&error.to_string().into());
             if let Some(window) = web_sys::window() {
@@ -76,7 +78,9 @@ impl GpuRenderer {
                     ..Default::default()
                 })
                 .await?;
-            let (device, queue) = adapter.request_device(&DeviceDescriptor::default()).await?;
+            let (device, queue) = adapter
+                .request_device(&renderer_device_descriptor())
+                .await?;
             (adapter, device, queue)
         };
         let capabilities = surface.get_capabilities(&adapter);

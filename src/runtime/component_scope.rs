@@ -399,6 +399,7 @@ impl<V: 'static> ViewContext<'_, V> {
             window_state: self.window_state,
             displays: self.displays,
             keyboard_layout: self.keyboard_layout,
+            font_system: self.font_system,
             assets: self.assets,
             app_info: self.app_info,
             app_paths: self.app_paths,

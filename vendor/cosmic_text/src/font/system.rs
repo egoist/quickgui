@@ -156,6 +156,8 @@ pub struct FontSystem {
 
     /// Scratch buffer for shaping and laying out.
     pub(crate) shape_buffer: ShapeBuffer,
+    #[cfg(all(target_os = "macos", feature = "swash", feature = "std"))]
+    pub(crate) native_placement: crate::macos::Rasterizer,
 
     /// Buffer for use in `FontFallbackIter`.
     pub(crate) monospace_fallbacks_buffer: BTreeSet<MonospaceFallbackInfo>,
@@ -269,6 +271,8 @@ impl FontSystem {
             #[cfg(feature = "shape-run-cache")]
             shape_run_cache: crate::ShapeRunCache::default(),
             shape_buffer: ShapeBuffer::default(),
+            #[cfg(all(target_os = "macos", feature = "swash", feature = "std"))]
+            native_placement: crate::macos::Rasterizer::default(),
             dyn_fallback: Box::new(impl_fallback),
             fallbacks,
         }

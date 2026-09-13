@@ -918,6 +918,7 @@ impl Runtime {
                                 )
                             } else {
                                 crate::ui_tree::PointerResult {
+                                    open_url: None,
                                     repaint: false,
                                     clicked: None,
                                     dismissed: None,
@@ -1021,6 +1022,15 @@ impl Runtime {
                         self.dispatch(event_loop, Event::MouseButton { button, pressed }, false);
                         if let Some(request) = pointer_result.dismissed {
                             self.invoke_dismiss(event_loop, request);
+                        }
+                        if let Some(url) = pointer_result.open_url
+                            && let Ok(request) = PlatformRequest::open_url(url)
+                        {
+                            enqueue_platform_requests(
+                                &mut self.platform_requests,
+                                &mut vec![request],
+                            );
+                            self.process_platform_requests();
                         }
                         if let Some(id) = pointer_result.clicked {
                             self.invoke_click(event_loop, id);

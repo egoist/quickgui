@@ -409,11 +409,13 @@ pub(crate) enum AnchorTarget {
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) struct AnchorStyle {
+    pub rounding_scale: Option<f32>,
     pub target: AnchorTarget,
     pub placement: AnchorPlacement,
     pub gap: f32,
     pub align_offset: f32,
     pub viewport_margin: f32,
+    pub flip: bool,
     pub sticky: bool,
 }
 
@@ -1099,18 +1101,38 @@ impl fmt::Debug for ImageReplacement {
 
 #[derive(Clone, Debug)]
 pub(crate) struct TextInputElement {
+    pub presentation: InputPresentation,
     pub value: Arc<str>,
     pub highlights: Arc<[TextHighlight]>,
     pub placeholder: Arc<str>,
     pub multiline: bool,
     pub password: bool,
+    pub submit_on_enter: bool,
     pub constraints: InputConstraints,
+}
+
+/// Optional editor geometry and paint overrides, shared by painting and hit testing.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct InputPresentation {
+    pub content_insets: Option<Insets>,
+    pub caret_width: Option<f32>,
+    pub caret_height_em: Option<f32>,
+    pub caret_color: Option<Color>,
+    pub placeholder_color: Option<Color>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) struct ScrollRequest {
+    pub revision: u64,
+    pub offset: crate::Vector,
+    pub child: Option<usize>,
 }
 
 pub(crate) type InputFilterCallback = Arc<dyn Fn(&str) -> bool>;
 
 #[derive(Clone, Default)]
 pub(crate) struct InputConstraints {
+    pub read_only: bool,
     pub max_length: Option<usize>,
     pub filter: Option<InputFilterCallback>,
     /// Per-input text checking overrides layered over the application policy.
@@ -2109,6 +2131,8 @@ pub struct Element {
     pub(crate) app_region: Option<AppRegion>,
     pub(crate) virtual_scroll: Option<VirtualScrollStyle>,
     pub(crate) scroll_to_end_revision: Option<u64>,
+    pub(crate) scroll_request: Option<ScrollRequest>,
+    pub(crate) layout_rounding: bool,
     pub(crate) list_item_measurement: Option<ListItemMeasurement>,
     pub(crate) animation: Option<ElementAnimation>,
     pub(crate) spring: Option<ElementSpring>,

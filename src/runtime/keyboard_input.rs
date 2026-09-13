@@ -239,7 +239,12 @@ impl Runtime {
             .as_ref()
             .is_some_and(|window| window.ui.focused_text_input_is_multiline());
         if matches!(key, Key::Enter)
-            && !multiline
+            && (!multiline
+                || (!extend
+                    && self
+                        .window
+                        .as_ref()
+                        .is_some_and(|window| window.ui.focused_text_input_submits_on_enter())))
             && !repeat
             && self.submit_focused_input(event_loop)
         {

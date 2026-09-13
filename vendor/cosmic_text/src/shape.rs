@@ -434,6 +434,18 @@ fn shape_run(
         }
     }
 
+    // CoreText places fallback glyphs on the requested run font's baseline. Taking
+    // the maximum descent of the fallback faces can move an entire mixed-script
+    // line by a physical pixel even when the requested font supplies the spaces.
+    #[cfg(target_os = "macos")]
+    {
+        let scale = font.metrics().units_per_em as f32;
+        for glyph in &mut glyphs[glyph_start..] {
+            glyph.ascent = font.metrics().ascent / scale;
+            glyph.descent = -font.metrics().descent / scale;
+        }
+    }
+
     // Debug missing font fallbacks
     font_iter.check_missing(&line[start_run..end_run]);
 
@@ -545,8 +557,10 @@ fn shape_skip(
         };
         let swash = fallback.as_swash();
         let charmap = swash.charmap();
+        #[cfg(not(target_os = "macos"))]
         let metrics = swash.metrics(fallback.normalized_coords());
         let glyph_metrics = swash.glyph_metrics(fallback.normalized_coords()).scale(1.0);
+        #[cfg(not(target_os = "macos"))]
         let scale = f32::from(metrics.units_per_em);
 
         for glyph in glyphs[glyph_start..]
@@ -562,8 +576,11 @@ fn shape_skip(
             glyph.glyph_id = glyph_id;
             glyph.font_id = fallback.id();
             glyph.font_monospace_em_width = fallback.monospace_em_width();
-            glyph.ascent = metrics.ascent / scale;
-            glyph.descent = metrics.descent / scale;
+            #[cfg(not(target_os = "macos"))]
+            {
+                glyph.ascent = metrics.ascent / scale;
+                glyph.descent = metrics.descent / scale;
+            }
             glyph.x_advance = glyph_metrics.advance_width(glyph_id)
                 + span_attrs
                     .letter_spacing_opt
@@ -678,6 +695,7 @@ impl ShapeGlyph {
         level: unicode_bidi::Level,
     ) -> LayoutGlyph {
         LayoutGlyph {
+            native_x: None,
             start: self.start,
             end: self.end,
             font_size,
@@ -705,13 +723,14 @@ impl ShapeGlyph {
     }
 }
 
-fn decoration_metrics(font: &Font) -> (DecorationMetrics, DecorationMetrics, f32) {
+fn decoration_metrics(font: &Font) -> (DecorationMetrics, DecorationMetrics, f32, f32) {
     let metrics = font.metrics();
     let upem = metrics.units_per_em as f32;
     if upem == 0.0 {
         return (
             DecorationMetrics::default(),
             DecorationMetrics::default(),
+            0.0,
             0.0,
         );
     }
@@ -725,6 +744,7 @@ fn decoration_metrics(font: &Font) -> (DecorationMetrics, DecorationMetrics, f32
             thickness: metrics.strikeout.map_or(1.0 / 14.0, |d| d.thickness / upem),
         },
         metrics.ascent / upem,
+        metrics.descent.abs() / upem,
     )
 }
 
@@ -1149,7 +1169,7 @@ impl ShapeSpan {
                         .map(|font| decoration_metrics(&font))
                 });
 
-            if let Some((ul_metrics, st_metrics, ascent)) = primary_metrics {
+            if let Some((ul_metrics, st_metrics, ascent, descent)) = primary_metrics {
                 // Track which sub-ranges of span_range are covered by explicit spans
                 let mut covered_end = span_range.start;
 
@@ -1172,6 +1192,7 @@ impl ShapeSpan {
                                     underline_metrics: ul_metrics,
                                     strikethrough_metrics: st_metrics,
                                     ascent,
+                                    descent,
                                 },
                             ));
                         }
@@ -1187,6 +1208,7 @@ impl ShapeSpan {
                                 underline_metrics: ul_metrics,
                                 strikethrough_metrics: st_metrics,
                                 ascent,
+                                descent,
                             },
                         ));
                     }
@@ -1203,6 +1225,7 @@ impl ShapeSpan {
                                 underline_metrics: ul_metrics,
                                 strikethrough_metrics: st_metrics,
                                 ascent,
+                                descent,
                             },
                         ));
                     }
@@ -2455,11 +2478,21 @@ impl ShapeLine {
                             // Addition in the same order used to compute the final width, so that
                             // relayouts with that width as the `line_width` will produce the same
                             // wrapping results.
-                            if current_visual_line.w + (word_range_width + word_width)
+                            let trailing_space =
+                                if wrap == Wrap::WordWithTrailingSpace && !word.blank {
+                                    i.checked_sub(1)
+                                        .and_then(|i| span.words.get(i))
+                                        .filter(|word| word.blank)
+                                        .map_or(0.0, |word| word.width(font_size))
+                                } else {
+                                    0.0
+                                };
+                            if current_visual_line.w + (word_range_width + word_width + trailing_space)
                             <= width_opt.unwrap_or(f32::INFINITY)
                             // Include one blank word over the width limit since it won't be
                             // counted in the final width
                             || (word.blank
+                                && wrap != Wrap::WordWithTrailingSpace
                                 && (current_visual_line.w + word_range_width) <= width_opt.unwrap_or(f32::INFINITY))
                             {
                                 // fits
@@ -2564,7 +2597,15 @@ impl ShapeLine {
                                         .get(i + 1)
                                         .is_some_and(|previous_word| previous_word.blank);
 
-                                    if trailing_blank {
+                                    if trailing_blank
+                                        && !matches!(
+                                            align,
+                                            Some(
+                                                Align::CenterIncludingWhitespace
+                                                    | Align::RightIncludingWhitespace
+                                            )
+                                        )
+                                    {
                                         number_of_blanks = number_of_blanks.saturating_sub(1);
                                         self.add_to_visual_line(
                                             &mut current_visual_line,
@@ -2638,11 +2679,21 @@ impl ShapeLine {
                         let mut fitting_start = WordGlyphPos::ZERO;
                         for (i, word) in span.words.iter().enumerate() {
                             let word_width = word.width(font_size);
-                            if current_visual_line.w + (word_range_width + word_width)
+                            let trailing_space =
+                                if wrap == Wrap::WordWithTrailingSpace && !word.blank {
+                                    span.words
+                                        .get(i + 1)
+                                        .filter(|word| word.blank)
+                                        .map_or(0.0, |word| word.width(font_size))
+                                } else {
+                                    0.0
+                                };
+                            if current_visual_line.w + (word_range_width + word_width + trailing_space)
                             <= width_opt.unwrap_or(f32::INFINITY)
                             // Include one blank word over the width limit since it won't be
                             // counted in the final width.
                             || (word.blank
+                                && wrap != Wrap::WordWithTrailingSpace
                                 && (current_visual_line.w + word_range_width) <= width_opt.unwrap_or(f32::INFINITY))
                             {
                                 // fits
@@ -2744,7 +2795,15 @@ impl ShapeLine {
                                     // previous word if it's a whitespace.
                                     let trailing_blank = i > 0 && span.words[i - 1].blank;
 
-                                    if trailing_blank {
+                                    if trailing_blank
+                                        && !matches!(
+                                            align,
+                                            Some(
+                                                Align::CenterIncludingWhitespace
+                                                    | Align::RightIncludingWhitespace
+                                            )
+                                        )
+                                    {
                                         number_of_blanks = number_of_blanks.saturating_sub(1);
                                         self.add_to_visual_line(
                                             &mut current_visual_line,
@@ -2853,9 +2912,13 @@ impl ShapeLine {
             let alignment_correction = match (align, self.rtl) {
                 (Align::Left, true) => (line_width - visual_line.w).max(0.),
                 (Align::Left, false) => 0.,
-                (Align::Right, true) => 0.,
-                (Align::Right, false) => (line_width - visual_line.w).max(0.),
-                (Align::Center, _) => (line_width - visual_line.w).max(0.) / 2.0,
+                (Align::Right | Align::RightIncludingWhitespace, true) => 0.,
+                (Align::Right | Align::RightIncludingWhitespace, false) => {
+                    (line_width - visual_line.w).max(0.)
+                }
+                (Align::Center | Align::CenterIncludingWhitespace, _) => {
+                    (line_width - visual_line.w).max(0.) / 2.0
+                }
                 (Align::End, _) => (line_width - visual_line.w).max(0.),
                 (Align::Justified, _) => 0.,
             };
@@ -3028,7 +3091,7 @@ impl ShapeLine {
                             let glyph_idx = glyphs.len() - 1;
                             let extends = matches!(
                                 (decorations.last(), &glyph_deco),
-                                (Some(span), Some((_, d))) if span.data == *d
+                                (Some(span), Some((_, d))) if span.data == *d && span.glyph_range.end == glyph_idx
                             );
                             if extends {
                                 if let Some(last) = decorations.last_mut() {

@@ -32,8 +32,9 @@ const MAX_MARKDOWN_TABLE_COLUMNS: usize = 64;
 /// `None` colors inherit from the surrounding element. The default remains neutral across light
 /// and dark application palettes while retaining heading hierarchy, spacing, code typography,
 /// and list/table structure.
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct MarkdownStyle {
+    pub document_theme: Option<Arc<crate::document::theme::Theme>>,
     pub text_color: Option<Color>,
     pub muted_color: Option<Color>,
     pub link_color: Option<Color>,
@@ -109,6 +110,7 @@ impl MarkdownStyle {
 impl Default for MarkdownStyle {
     fn default() -> Self {
         Self {
+            document_theme: None,
             text_color: None,
             muted_color: None,
             link_color: None,
@@ -139,6 +141,18 @@ struct FlatKey {
     slot: u32,
 }
 
+type TextMeasure<'a> = dyn FnMut(&StyledText, &crate::TextStyle) -> crate::Size + 'a;
+#[derive(Clone)]
+struct TableColumns {
+    naturals: Vec<f32>,
+    minimums: Vec<f32>,
+    minimum: f32,
+}
+struct TableRender<'a> {
+    measure: Option<&'a mut TextMeasure<'a>>,
+    cache: &'a mut HashMap<FlatKey, TableColumns>,
+}
+
 /// Caller-owned retained Markdown document.
 ///
 /// Keep one instance per logical document and call [`Self::set_text`] as streamed content grows.
@@ -148,6 +162,8 @@ pub struct Markdown {
     parser: IncrementalParser,
     display_tail: Option<Vec<TopBlock>>,
     flat_cache: HashMap<FlatKey, StyledText>,
+    table_cache: HashMap<FlatKey, TableColumns>,
+    measurement_scale: f32,
     style: MarkdownStyle,
     streaming: bool,
     truncated: bool,
@@ -165,6 +181,8 @@ impl Markdown {
             parser: IncrementalParser::new(),
             display_tail: None,
             flat_cache: HashMap::new(),
+            table_cache: HashMap::new(),
+            measurement_scale: 0.,
             style: MarkdownStyle::default(),
             streaming: false,
             truncated: false,
@@ -193,8 +211,8 @@ impl Markdown {
         self.truncated
     }
 
-    pub const fn style(&self) -> MarkdownStyle {
-        self.style
+    pub fn style(&self) -> MarkdownStyle {
+        self.style.clone()
     }
 
     pub fn set_style(&mut self, style: MarkdownStyle) -> bool {
@@ -202,8 +220,12 @@ impl Markdown {
         if self.style == style {
             return false;
         }
+        self.parser
+            .set_images_as_links(style.document_theme.is_some());
         self.style = style;
+        self.refresh_display_tail();
         self.flat_cache.clear();
+        self.table_cache.clear();
         true
     }
 
@@ -239,8 +261,11 @@ impl Markdown {
         if appended {
             self.flat_cache
                 .retain(|key, _| key.source_start < reparsed_from);
+            self.table_cache
+                .retain(|key, _| key.source_start < reparsed_from);
         } else {
             self.flat_cache.clear();
+            self.table_cache.clear();
         }
         self.refresh_display_tail();
         MarkdownUpdate {
@@ -253,7 +278,30 @@ impl Markdown {
 
     /// Render the document as ordinary native QuickGUI elements.
     pub fn element(&mut self, id: impl Into<ElementId>) -> Element {
-        let root_id = id.into();
+        self.render_with_measurement(id.into(), None)
+    }
+
+    /// Render native document tables using measured column widths. Measurements are retained
+    /// until the affected source block, style, or display scale changes.
+    pub fn element_with_text_measurement(
+        &mut self,
+        id: impl Into<ElementId>,
+        scale: f32,
+        measure: &mut TextMeasure<'_>,
+    ) -> Element {
+        if self.measurement_scale != scale {
+            self.table_cache.clear();
+            self.measurement_scale = scale;
+        }
+        self.render_with_measurement(id.into(), Some(measure))
+    }
+
+    fn render_with_measurement<'a>(
+        &'a mut self,
+        id: ElementId,
+        measure: Option<&'a mut TextMeasure<'a>>,
+    ) -> Element {
+        let root_id = id;
         let mut root = div()
             .id(root_id)
             .w_full()
@@ -266,9 +314,13 @@ impl Markdown {
             root = root.text_color(color);
         }
 
-        let style = self.style;
+        let style = &self.style;
         let canonical_len = self.canonical_display_prefix_len();
         let cache = &mut self.flat_cache;
+        let mut tables = TableRender {
+            measure,
+            cache: &mut self.table_cache,
+        };
         let canonical = &self.parser.tree().blocks;
         let mut elements = Vec::new();
         for (index, block) in canonical[..canonical_len].iter().enumerate() {
@@ -282,6 +334,7 @@ impl Markdown {
                 0,
                 style,
                 cache,
+                &mut tables,
             ));
         }
         if let Some(tail) = &self.display_tail {
@@ -296,6 +349,7 @@ impl Markdown {
                     0,
                     style,
                     cache,
+                    &mut tables,
                 ));
             }
         }
@@ -328,6 +382,7 @@ impl Markdown {
             .map(|block| block.range.start)
         {
             self.flat_cache.retain(|key, _| key.source_start < start);
+            self.table_cache.retain(|key, _| key.source_start < start);
         }
         self.refresh_display_tail();
     }
@@ -341,8 +396,9 @@ fn render_block(
     root_id: ElementId,
     top_index: usize,
     depth: usize,
-    style: MarkdownStyle,
+    style: &MarkdownStyle,
     cache: &mut HashMap<FlatKey, StyledText>,
+    tables: &mut TableRender<'_>,
 ) -> Element {
     let (id, block_slot) = allocate_id(root_id, top_index, depth, slot);
     match block {
@@ -369,12 +425,57 @@ fn render_block(
                 style,
                 font_size,
                 line_height,
-                FontWeight::BOLD,
+                if style.document_theme.is_some() {
+                    FontWeight::SEMIBOLD
+                } else {
+                    FontWeight::BOLD
+                },
                 cache,
             )
             .accessibility_role(AccessibilityRole::Heading)
         }
         MarkdownBlock::CodeBlock { language, code } => {
+            if let Some(theme) = &style.document_theme {
+                let mut document = crate::document::CodeDocument::default();
+                document.set_source(code, language.as_deref(), None);
+                let m = &theme.metrics;
+                let ink = if theme.bg.l < 0.5 {
+                    Color::WHITE
+                } else {
+                    Color::BLACK
+                };
+                let mut card = div()
+                    .id(id)
+                    .w_full()
+                    .min_w(0.)
+                    .flex_col()
+                    .overflow_hidden()
+                    .rounded(m.md_code_radius)
+                    .bg(ink.with_alpha(0.035))
+                    .border(1., theme.border.into());
+                if let Some(language) = language.as_deref().filter(|s| !s.is_empty()) {
+                    card = card.child(
+                        div()
+                            .px(m.md_code_padding_x)
+                            .py(m.md_code_header_padding_y)
+                            .bg(ink.with_alpha(0.02))
+                            .border_bottom(1., theme.border.into())
+                            .child(
+                                text(language.to_owned())
+                                    .font_family(theme.font_mono.clone())
+                                    .text_size(m.md_code_header_text_size)
+                                    .text_color(theme.text_muted.into()),
+                            ),
+                    );
+                }
+                let (code_id, _) = allocate_id(root_id, top_index, depth + 1, slot);
+                return card.child(
+                    document
+                        .element(code_id, theme, false, m.code_text_size, m.code_line_height)
+                        .px(m.md_code_padding_x)
+                        .py(m.md_code_padding_y),
+                );
+            }
             let (code_id, code_slot) = allocate_id(root_id, top_index, depth + 1, slot);
             let code_key = FlatKey {
                 source_start,
@@ -428,6 +529,34 @@ fn render_block(
             container.children(children)
         }
         MarkdownBlock::BlockQuote(children) => {
+            if let Some(theme) = &style.document_theme {
+                let content = render_blocks(
+                    children,
+                    source_start,
+                    slot,
+                    root_id,
+                    top_index,
+                    depth + 1,
+                    style,
+                    cache,
+                    tables,
+                )
+                .gap(8.);
+                return div()
+                    .id(id)
+                    .w_full()
+                    .min_w(0.)
+                    .flex_col()
+                    .border_left(
+                        2.,
+                        Color::from(theme.accent).with_alpha(theme.accent.a * 0.6),
+                    )
+                    .bg(Color::from(theme.accent).with_alpha(theme.accent.a * 0.05))
+                    .rounded_r(6.)
+                    .padding(6., 10., 6., 12.)
+                    .text_color(theme.text_muted.into())
+                    .child(content);
+            }
             let (marker_id, _) = allocate_id(root_id, top_index, depth + 1, slot);
             let mut marker = div().id(marker_id).w(3.0).self_stretch().rounded_sm();
             if let Some(color) = style.border_color {
@@ -442,6 +571,7 @@ fn render_block(
                 depth + 1,
                 style,
                 cache,
+                tables,
             )
             .flex_1()
             .min_w(0.0);
@@ -477,13 +607,36 @@ fn render_block(
                 );
                 let mut marker = text(marker)
                     .id(marker_id)
-                    .w(26.0)
+                    .w(if style.document_theme.is_some() {
+                        18.0
+                    } else {
+                        26.0
+                    })
                     .flex_none()
                     .text_size(style.font_size)
                     .line_height(style.line_height)
                     .text_right();
                 if let Some(color) = style.muted_color {
                     marker = marker.text_color(color);
+                }
+                if let Some(theme) = &style.document_theme {
+                    let accent = Color::from(theme.accent).with_alpha(theme.accent.a * 0.85);
+                    marker = if ordered_start.is_none() && item.task.is_none() {
+                        div()
+                            .id(marker_id)
+                            .flex_none()
+                            .min_w(18.)
+                            .h(style.line_height)
+                            .flex_row()
+                            .items_center()
+                            .child(div().ml(1.).w(5.).h(5.).rounded_full().bg(accent))
+                    } else {
+                        marker
+                            .min_w(18.)
+                            .text_left()
+                            .font_family(theme.font_sans.clone())
+                            .text_color(accent)
+                    };
                 }
                 let body = render_blocks(
                     &item.blocks,
@@ -494,9 +647,15 @@ fn render_block(
                     depth + 1,
                     style,
                     cache,
+                    tables,
                 )
                 .flex_1()
-                .min_w(0.0);
+                .min_w(0.0)
+                .gap(if style.document_theme.is_some() {
+                    4.0
+                } else {
+                    style.block_gap
+                });
                 let (row_id, _) = allocate_id(root_id, top_index, depth + 1, slot);
                 rows.push(
                     div()
@@ -515,7 +674,11 @@ fn render_block(
                 .w_full()
                 .min_w(0.0)
                 .flex_col()
-                .gap_2()
+                .gap(if style.document_theme.is_some() {
+                    4.0
+                } else {
+                    8.0
+                })
                 .children(rows)
         }
         MarkdownBlock::Table {
@@ -523,6 +686,119 @@ fn render_block(
             rows,
             align,
         } => {
+            if let (Some(theme), Some(measure)) =
+                (&style.document_theme, tables.measure.as_deref_mut())
+            {
+                let columns = header
+                    .len()
+                    .max(rows.iter().map(Vec::len).max().unwrap_or(0))
+                    .clamp(1, MAX_MARKDOWN_TABLE_COLUMNS);
+                let key = FlatKey {
+                    source_start,
+                    top_index,
+                    slot: block_slot,
+                };
+                let m = &theme.metrics;
+                let geometry = tables
+                    .cache
+                    .entry(key)
+                    .or_insert_with(|| {
+                        let mut widths = vec![0.0_f32; columns];
+                        for (row_index, row) in
+                            std::iter::once(header).chain(rows.iter()).enumerate()
+                        {
+                            let text_style =
+                                crate::TextStyle::new(m.md_text_size, theme.text.into())
+                                    .family(theme.font_sans.clone())
+                                    .line_height(m.md_line_height)
+                                    .weight(if row_index == 0 {
+                                        FontWeight::BOLD
+                                    } else {
+                                        FontWeight::NORMAL
+                                    })
+                                    .wrap(crate::TextWrap::None);
+                            for (column, runs) in row.iter().take(columns).enumerate() {
+                                widths[column] = widths[column]
+                                    .max(measure(&flatten_runs(runs, style), &text_style).width);
+                            }
+                        }
+                        let naturals: Vec<_> = widths
+                            .iter()
+                            .map(|width| {
+                                width.max(m.md_table_min_column_content)
+                                    + 2. * m.md_table_cell_padding
+                            })
+                            .collect();
+                        let minimums: Vec<_> = naturals
+                            .iter()
+                            .map(|width| width.min(m.md_table_min_column_width))
+                            .collect();
+                        TableColumns {
+                            minimum: minimums.iter().sum(),
+                            naturals,
+                            minimums,
+                        }
+                    })
+                    .clone();
+                let hairline = if theme.bg.l < 0.5 {
+                    Color::WHITE
+                } else {
+                    Color::BLACK
+                }
+                .with_alpha(0.1);
+                let mut inner = div()
+                    .flex_col()
+                    .w_full()
+                    .min_w(geometry.minimum)
+                    .flex_none();
+                for (row_index, row) in std::iter::once(header).chain(rows.iter()).enumerate() {
+                    if row_index > 0 {
+                        inner = inner.child(div().flex_none().h(1.).w_full().bg(hairline));
+                    }
+                    let mut row_element = div().flex_row();
+                    for column in 0..columns {
+                        let (cell_id, cell_slot) = allocate_id(root_id, top_index, depth + 1, slot);
+                        let content = inline_element(
+                            row.get(column).map(Vec::as_slice).unwrap_or(&[]),
+                            source_start,
+                            top_index,
+                            cell_slot,
+                            cell_id,
+                            style,
+                            m.md_text_size,
+                            m.md_line_height,
+                            if row_index == 0 {
+                                FontWeight::BOLD
+                            } else {
+                                FontWeight::NORMAL
+                            },
+                            cache,
+                        );
+                        let align = match align.get(column).copied().unwrap_or_default() {
+                            MarkdownTableAlign::Left => TextAlign::Left,
+                            MarkdownTableAlign::Center => TextAlign::CenterIncludingWhitespace,
+                            MarkdownTableAlign::Right => TextAlign::RightIncludingWhitespace,
+                        };
+                        row_element = row_element.child(
+                            div()
+                                .flex_grow(geometry.naturals[column])
+                                .flex_shrink(geometry.naturals[column])
+                                .flex_basis(0.)
+                                .min_w(geometry.minimums[column])
+                                .p(m.md_table_cell_padding)
+                                .child(content.text_align(align)),
+                        );
+                    }
+                    inner = inner.child(row_element);
+                }
+                return div()
+                    .id(id)
+                    .w_full()
+                    .min_w(0.)
+                    .flex_row()
+                    .overflow_x_scroll()
+                    .child(inner);
+            }
             let columns = header
                 .len()
                 .max(rows.iter().map(Vec::len).max().unwrap_or(0))
@@ -574,9 +850,13 @@ fn render_block(
         MarkdownBlock::Image { url, alt } => {
             let label = if alt.trim().is_empty() { "Image" } else { alt };
             let runs = [MarkdownInlineRun {
-                text: format!("{label} ({url})"),
+                text: if style.document_theme.is_some() {
+                    label.to_owned()
+                } else {
+                    format!("{label} ({url})")
+                },
                 style: MarkdownInlineStyle {
-                    italic: true,
+                    italic: style.document_theme.is_none(),
                     link: Some(url.clone()),
                     ..MarkdownInlineStyle::default()
                 },
@@ -612,8 +892,9 @@ fn render_blocks(
     root_id: ElementId,
     top_index: usize,
     depth: usize,
-    style: MarkdownStyle,
+    style: &MarkdownStyle,
     cache: &mut HashMap<FlatKey, StyledText>,
+    tables: &mut TableRender<'_>,
 ) -> Element {
     let (id, _) = allocate_id(root_id, top_index, depth, slot);
     let children = blocks
@@ -628,6 +909,7 @@ fn render_blocks(
                 depth,
                 style,
                 cache,
+                tables,
             )
         })
         .collect::<Vec<_>>();
@@ -647,7 +929,7 @@ fn inline_element(
     top_index: usize,
     cache_slot: u32,
     id: ElementId,
-    style: MarkdownStyle,
+    style: &MarkdownStyle,
     font_size: f32,
     line_height: f32,
     weight: FontWeight,
@@ -671,13 +953,16 @@ fn inline_element(
         .text_size(font_size)
         .line_height(line_height)
         .font_weight(weight);
+    if let Some(theme) = &style.document_theme {
+        element = element.font_family(theme.font_sans.clone());
+    }
     if let Some(color) = style.text_color {
         element = element.text_color(color);
     }
     element
 }
 
-fn flatten_runs(runs: &[MarkdownInlineRun], style: MarkdownStyle) -> StyledText {
+fn flatten_runs(runs: &[MarkdownInlineRun], style: &MarkdownStyle) -> StyledText {
     let bytes = runs.iter().map(|run| run.text.len()).sum();
     let mut content = String::with_capacity(bytes);
     let mut highlights = Vec::with_capacity(runs.len().min(MAX_TEXT_HIGHLIGHTS));
@@ -690,7 +975,11 @@ fn flatten_runs(runs: &[MarkdownInlineRun], style: MarkdownStyle) -> StyledText 
         }
         let mut highlight = HighlightStyle::default();
         if run.style.bold {
-            highlight = highlight.font_bold();
+            highlight = highlight.font_weight(if style.document_theme.is_some() {
+                FontWeight::SEMIBOLD
+            } else {
+                FontWeight::BOLD
+            });
         }
         if run.style.italic {
             highlight = highlight.italic();
@@ -699,18 +988,37 @@ fn flatten_runs(runs: &[MarkdownInlineRun], style: MarkdownStyle) -> StyledText 
             highlight = highlight.strikethrough();
         }
         if run.style.code {
-            highlight = highlight.font_family(FontFamily::Monospace);
+            highlight = highlight.font_family(
+                style
+                    .document_theme
+                    .as_ref()
+                    .map(|t| FontFamily::from(t.font_mono.clone()))
+                    .unwrap_or(FontFamily::Monospace),
+            );
             if let Some(color) = style.code_text_color {
                 highlight = highlight.color(color);
             }
             if let Some(background) = style.code_background {
                 highlight = highlight.background(background);
+                if let Some(theme) = &style.document_theme {
+                    highlight =
+                        highlight.background_shape(theme.metrics.md_inline_code_radius, 2.0, 2.0);
+                }
             }
         }
-        if run.style.link.is_some() {
-            highlight = highlight.underline();
+        if let Some(url) = &run.style.link {
+            highlight = highlight.underline().link(url.clone());
+            if style.document_theme.is_some() {
+                highlight = highlight.underline_descent_fraction(0.618);
+            }
             if let Some(color) = style.link_color {
-                highlight = highlight.color(color).underline_color(color);
+                highlight = highlight.color(color).underline_color(
+                    style
+                        .document_theme
+                        .as_ref()
+                        .map(|theme| Color::from(theme.text_muted))
+                        .unwrap_or(color),
+                );
             }
         }
         highlights.push((start..end, highlight));
@@ -718,7 +1026,14 @@ fn flatten_runs(runs: &[MarkdownInlineRun], style: MarkdownStyle) -> StyledText 
     StyledText::new(Arc::<str>::from(content)).with_highlights(highlights)
 }
 
-fn heading_metrics(level: u8, style: MarkdownStyle) -> (f32, f32) {
+fn heading_metrics(level: u8, style: &MarkdownStyle) -> (f32, f32) {
+    if let Some(theme) = &style.document_theme {
+        let i = level.saturating_sub(1).min(3) as usize;
+        return (
+            theme.metrics.md_heading_sizes[i],
+            theme.metrics.md_heading_line_heights[i],
+        );
+    }
     let scale = match level {
         1 => 1.75,
         2 => 1.45,
@@ -889,5 +1204,31 @@ mod tests {
         assert!(markdown.set_style(MarkdownStyle::default().font_size(18.0)));
         assert!(markdown.flat_cache.is_empty());
         assert_eq!(markdown.block_count(), 1);
+    }
+}
+
+#[cfg(test)]
+mod measured_table_tests {
+    use super::*;
+    use std::cell::Cell;
+
+    #[test]
+    fn table_measurements_are_retained_and_invalidated_by_scale() {
+        let mut markdown = Markdown::new();
+        let mut style = MarkdownStyle::default();
+        style.document_theme = Some(Arc::new(crate::document::theme::Theme::from_prop(None)));
+        markdown.set_style(style);
+        markdown.set_text("| A | B |\n|---|---|\n| one | two |\n");
+        let calls = Cell::new(0);
+        let mut measure = |text: &StyledText, _: &crate::TextStyle| {
+            calls.set(calls.get() + 1);
+            crate::Size::new(text.content().len() as f32 * 8., 20.)
+        };
+        let _ = markdown.element_with_text_measurement("table", 2., &mut measure);
+        assert_eq!(calls.get(), 4);
+        let _ = markdown.element_with_text_measurement("table", 2., &mut measure);
+        assert_eq!(calls.get(), 4);
+        let _ = markdown.element_with_text_measurement("table", 1., &mut measure);
+        assert_eq!(calls.get(), 8);
     }
 }

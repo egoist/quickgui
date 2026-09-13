@@ -9,6 +9,7 @@ use crate::{
 
 fn checking_constraints(overrides: TextCheckingOverrides) -> InputConstraints {
     InputConstraints {
+        read_only: false,
         max_length: None,
         filter: None,
         text_checking: overrides,

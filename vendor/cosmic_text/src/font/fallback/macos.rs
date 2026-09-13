@@ -66,6 +66,7 @@ fn script_fallback(script: Script, locale: &str) -> &'static [&'static str] {
         Script::Arabic => &["Geeza Pro"],
         Script::Armenian => &["Noto Sans Armenian"],
         Script::Bengali => &["Bangla Sangam MN"],
+        Script::Braille => &["Apple Braille"],
         Script::Buhid => &["Noto Sans Buhid"],
         Script::Canadian_Aboriginal => &["Euphemia UCAS"],
         Script::Chakma => &["Noto Sans Chakma"],

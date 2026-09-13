@@ -736,6 +736,7 @@ fn queued_input_and_submit_survive_until_javascript_commits_the_controlled_value
         tree: Rc::new(RefCell::new(tree)),
         events: Rc::clone(&events),
         markdown: Rc::new(RefCell::new(HashMap::new())),
+        documents: Rc::new(RefCell::new(HashMap::new())),
         svgs: Rc::new(RefCell::new(HashMap::new())),
         lists: Rc::new(RefCell::new(HashMap::new())),
         terminals: Rc::new(RefCell::new(HashMap::new())),
@@ -747,6 +748,7 @@ fn queued_input_and_submit_survive_until_javascript_commits_the_controlled_value
         context_menu_owner: None,
         focused_node: None,
         components: NativeComponentStates::default(),
+        motions: HashMap::new(),
         #[cfg(target_os = "macos")]
         swift_ui_hosts: Rc::new(RefCell::new(HashMap::new())),
         embedded_views: Rc::new(RefCell::new(HashMap::new())),
@@ -845,6 +847,7 @@ fn flex_without_direction_uses_css_row_default() {
         tree: Rc::new(RefCell::new(tree)),
         events: Rc::new(RefCell::new(VecDeque::new())),
         markdown: Rc::new(RefCell::new(HashMap::new())),
+        documents: Rc::new(RefCell::new(HashMap::new())),
         svgs: Rc::new(RefCell::new(HashMap::new())),
         lists: Rc::new(RefCell::new(HashMap::new())),
         terminals: Rc::new(RefCell::new(HashMap::new())),
@@ -856,6 +859,7 @@ fn flex_without_direction_uses_css_row_default() {
         context_menu_owner: None,
         focused_node: None,
         components: NativeComponentStates::default(),
+        motions: HashMap::new(),
         #[cfg(target_os = "macos")]
         swift_ui_hosts: Rc::new(RefCell::new(HashMap::new())),
         embedded_views: Rc::new(RefCell::new(HashMap::new())),
@@ -923,6 +927,7 @@ fn retained_popover_uses_core_placement_dismissal_and_focus_restoration() {
         tree: Rc::new(RefCell::new(tree)),
         events: Rc::clone(&events),
         markdown: Rc::new(RefCell::new(HashMap::new())),
+        documents: Rc::new(RefCell::new(HashMap::new())),
         svgs: Rc::new(RefCell::new(HashMap::new())),
         lists: Rc::new(RefCell::new(HashMap::new())),
         terminals: Rc::new(RefCell::new(HashMap::new())),
@@ -934,6 +939,7 @@ fn retained_popover_uses_core_placement_dismissal_and_focus_restoration() {
         context_menu_owner: None,
         focused_node: None,
         components: NativeComponentStates::default(),
+        motions: HashMap::new(),
         #[cfg(target_os = "macos")]
         swift_ui_hosts: Rc::new(RefCell::new(HashMap::new())),
         embedded_views: Rc::new(RefCell::new(HashMap::new())),
@@ -1000,6 +1006,7 @@ fn unanchored_overlay_traps_autofocus_dismisses_and_restores_previous_focus() {
         tree: Rc::new(RefCell::new(tree)),
         events: Rc::clone(&events),
         markdown: Rc::new(RefCell::new(HashMap::new())),
+        documents: Rc::new(RefCell::new(HashMap::new())),
         svgs: Rc::new(RefCell::new(HashMap::new())),
         lists: Rc::new(RefCell::new(HashMap::new())),
         terminals: Rc::new(RefCell::new(HashMap::new())),
@@ -1011,6 +1018,7 @@ fn unanchored_overlay_traps_autofocus_dismisses_and_restores_previous_focus() {
         context_menu_owner: None,
         focused_node: None,
         components: NativeComponentStates::default(),
+        motions: HashMap::new(),
         #[cfg(target_os = "macos")]
         swift_ui_hosts: Rc::new(RefCell::new(HashMap::new())),
         embedded_views: Rc::new(RefCell::new(HashMap::new())),
@@ -1116,6 +1124,7 @@ fn native_svg_is_parsed_once_until_its_source_changes() {
         tree: Rc::new(RefCell::new(tree)),
         events: Rc::new(RefCell::new(VecDeque::new())),
         markdown: Rc::new(RefCell::new(HashMap::new())),
+        documents: Rc::new(RefCell::new(HashMap::new())),
         svgs: Rc::clone(&svgs),
         lists: Rc::new(RefCell::new(HashMap::new())),
         terminals: Rc::new(RefCell::new(HashMap::new())),
@@ -1127,6 +1136,7 @@ fn native_svg_is_parsed_once_until_its_source_changes() {
         context_menu_owner: None,
         focused_node: None,
         components: NativeComponentStates::default(),
+        motions: HashMap::new(),
         #[cfg(target_os = "macos")]
         swift_ui_hosts: Rc::new(RefCell::new(HashMap::new())),
         embedded_views: Rc::new(RefCell::new(HashMap::new())),
@@ -1195,6 +1205,7 @@ fn native_virtual_list_mounts_only_the_initial_window_and_overscan() {
         tree: Rc::new(RefCell::new(tree)),
         events: Rc::new(RefCell::new(VecDeque::new())),
         markdown: Rc::new(RefCell::new(HashMap::new())),
+        documents: Rc::new(RefCell::new(HashMap::new())),
         svgs: Rc::new(RefCell::new(HashMap::new())),
         lists: Rc::clone(&lists),
         terminals: Rc::new(RefCell::new(HashMap::new())),
@@ -1206,6 +1217,7 @@ fn native_virtual_list_mounts_only_the_initial_window_and_overscan() {
         context_menu_owner: None,
         focused_node: None,
         components: NativeComponentStates::default(),
+        motions: HashMap::new(),
         #[cfg(target_os = "macos")]
         swift_ui_hosts: Rc::new(RefCell::new(HashMap::new())),
         embedded_views: Rc::new(RefCell::new(HashMap::new())),
@@ -1285,6 +1297,7 @@ fn native_terminal_runs_a_real_pty_and_rerenders_ghostty_output() {
         tree: Rc::new(RefCell::new(tree)),
         events: Rc::clone(&events),
         markdown: Rc::new(RefCell::new(HashMap::new())),
+        documents: Rc::new(RefCell::new(HashMap::new())),
         svgs: Rc::new(RefCell::new(HashMap::new())),
         lists: Rc::new(RefCell::new(HashMap::new())),
         terminals: Rc::clone(&terminals),
@@ -1296,6 +1309,7 @@ fn native_terminal_runs_a_real_pty_and_rerenders_ghostty_output() {
         context_menu_owner: None,
         focused_node: None,
         components: NativeComponentStates::default(),
+        motions: HashMap::new(),
         #[cfg(target_os = "macos")]
         swift_ui_hosts: Rc::new(RefCell::new(HashMap::new())),
         embedded_views: Rc::new(RefCell::new(HashMap::new())),
@@ -1481,6 +1495,7 @@ fn a_declared_close_interception_holds_the_window_and_reports_it_to_javascript()
         tree: Rc::new(RefCell::new(NativeTree::default())),
         events: Rc::clone(&events),
         markdown: Rc::new(RefCell::new(HashMap::new())),
+        documents: Rc::new(RefCell::new(HashMap::new())),
         svgs: Rc::new(RefCell::new(HashMap::new())),
         lists: Rc::new(RefCell::new(HashMap::new())),
         terminals: Rc::new(RefCell::new(HashMap::new())),
@@ -1492,6 +1507,7 @@ fn a_declared_close_interception_holds_the_window_and_reports_it_to_javascript()
         context_menu_owner: None,
         focused_node: None,
         components: NativeComponentStates::default(),
+        motions: HashMap::new(),
         #[cfg(target_os = "macos")]
         swift_ui_hosts: Rc::new(RefCell::new(HashMap::new())),
         embedded_views: Rc::new(RefCell::new(HashMap::new())),
@@ -1554,6 +1570,7 @@ fn component_part_view(window: u32, tree: NativeTree, events: EventQueue) -> Nat
         tree: Rc::new(RefCell::new(tree)),
         events,
         markdown: Rc::new(RefCell::new(HashMap::new())),
+        documents: Rc::new(RefCell::new(HashMap::new())),
         svgs: Rc::new(RefCell::new(HashMap::new())),
         lists: Rc::new(RefCell::new(HashMap::new())),
         terminals: Rc::new(RefCell::new(HashMap::new())),
@@ -1565,6 +1582,7 @@ fn component_part_view(window: u32, tree: NativeTree, events: EventQueue) -> Nat
         context_menu_owner: None,
         focused_node: None,
         components: NativeComponentStates::default(),
+        motions: HashMap::new(),
         #[cfg(target_os = "macos")]
         swift_ui_hosts: Rc::new(RefCell::new(HashMap::new())),
         embedded_views: Rc::new(RefCell::new(HashMap::new())),
@@ -9753,4 +9771,195 @@ fn fluent_layout_presets_reach_native_geometry() {
         Some(quickgui::TextOverflow::ellipsis_middle())
     );
     assert_eq!(native_text_overflow("unsupported"), None);
+}
+
+#[test]
+fn render_external_parity_fixture() {
+    let Ok(directory) = std::env::var("QUICKGUI_PARITY_FIXTURE") else {
+        return;
+    };
+    let mut paths: Vec<_> = std::fs::read_dir(&directory)
+        .unwrap()
+        .map(|entry| entry.unwrap().path())
+        .filter(|path| path.extension().is_some_and(|ext| ext == "qgmb"))
+        .collect();
+    paths.sort_by_key(|path| {
+        path.file_stem()
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .parse::<usize>()
+            .unwrap()
+    });
+    assert!(!paths.is_empty(), "no native mutation fixture was exported");
+    let frames: Vec<usize> = std::fs::read(std::path::Path::new(&directory).join("frames.json"))
+        .ok()
+        .map(|bytes| serde_json::from_slice(&bytes).unwrap())
+        .unwrap_or_default();
+    let first_frame = frames.first().copied().unwrap_or(paths.len());
+    let mut remaining = paths.split_off(first_frame);
+    let mut tree = NativeTree::default();
+    for path in paths {
+        let bytes = std::fs::read(path).unwrap();
+        apply_mutations(&mut tree, decode_batch(&bytes).unwrap()).unwrap();
+    }
+    let events: EventQueue = Rc::new(RefCell::new(VecDeque::new()));
+    let view = component_part_view(1, tree, events);
+    let viewport: serde_json::Value =
+        std::fs::read(std::path::Path::new(&directory).join("viewport.json"))
+            .ok()
+            .map(|bytes| serde_json::from_slice(&bytes).unwrap())
+            .unwrap_or_else(|| serde_json::json!({"width":1180,"height":780}));
+    let (mut cx, view) = quickgui::TestAppContext::from_application(
+        component_application(),
+        quickgui::WindowOptions::default().size(
+            viewport["width"].as_f64().unwrap() as f32,
+            viewport["height"].as_f64().unwrap() as f32,
+        ),
+        view,
+    )
+    .unwrap();
+    let window = view.window_handle();
+    cx.run_until_idle().unwrap();
+    if !remaining.is_empty() {
+        cx.capture_screenshot(window)
+            .unwrap()
+            .write_png(std::path::Path::new(&directory).join("before-interaction.png"))
+            .unwrap();
+    }
+    for (index, path) in remaining.drain(..).enumerate() {
+        let bytes = std::fs::read(path).unwrap();
+        cx.update(view, |view, context| {
+            apply_mutations(&mut view.tree.borrow_mut(), decode_batch(&bytes).unwrap()).unwrap();
+            context.invalidate();
+        })
+        .unwrap();
+        if frames.contains(&(first_frame + index + 1)) {
+            cx.run_until_idle().unwrap();
+        }
+    }
+    cx.run_until_idle().unwrap();
+    cx.capture_screenshot(window)
+        .unwrap()
+        .write_png(std::path::Path::new(&directory).join("initial.png"))
+        .unwrap();
+    cx.advance_time(std::time::Duration::from_secs(2)).unwrap();
+    cx.advance_frame().unwrap();
+    let snapshot = cx.capture_screenshot(window).unwrap();
+    let directory = std::path::Path::new(&directory);
+    snapshot.write_png(directory.join("quickgui.png")).unwrap();
+    if let Ok(raw) = std::fs::read_to_string(directory.join("nodes.json")) {
+        let mut nodes: Vec<serde_json::Value> = serde_json::from_str(&raw).unwrap();
+        for node in &mut nodes {
+            if let Some(id) = node["nativeId"].as_u64() {
+                if let Ok(bounds) = cx.element_bounds(window, ElementId::new(id)) {
+                    node["bounds"] = serde_json::json!({"x":bounds.x,"y":bounds.y,"width":bounds.width,"height":bounds.height});
+                }
+            }
+        }
+        std::fs::write(
+            directory.join("quickgui-tree.json"),
+            serde_json::to_vec_pretty(&nodes).unwrap(),
+        )
+        .unwrap();
+    }
+    cx.capture_screenshot(window)
+        .unwrap()
+        .write_png(directory.join("settled.png"))
+        .unwrap();
+    if directory.join("gpuix.png").exists() {
+        let expected = quickgui::VisualSnapshot::open_png(directory.join("gpuix.png")).unwrap();
+        assert_eq!(
+            (snapshot.width(), snapshot.height()),
+            (expected.width(), expected.height())
+        );
+        let differences: Vec<_> = snapshot
+            .rgba()
+            .chunks_exact(4)
+            .zip(expected.rgba().chunks_exact(4))
+            .map(|(a, b)| a.iter().zip(b).map(|(a, b)| a.abs_diff(*b)).max().unwrap())
+            .collect();
+        let pixels = differences.iter().filter(|d| **d != 0).count();
+        let report = serde_json::json!({"differingPixels":pixels,"totalPixels":differences.len(),"maximumChannelDifference":differences.iter().max(),"exact":pixels==0});
+        std::fs::write(
+            directory.join("comparison.json"),
+            serde_json::to_vec_pretty(&report).unwrap(),
+        )
+        .unwrap();
+        if std::env::var_os("QUICKGUI_PARITY_ASSERT").is_some() {
+            assert_eq!(pixels, 0, "pixel parity: {report}");
+        }
+    }
+}
+
+#[test]
+fn multiline_submit_keeps_shift_enter_for_newlines() {
+    let id = 7;
+    let mut tree = NativeTree::default();
+    let mut input = NativeNode::new(NodeTag::Input);
+    input.parent = Some(ROOT_NODE);
+    for key in [
+        property::MULTILINE,
+        property::INPUT_SUBMIT_ON_ENTER,
+        property::INPUT_LISTENER,
+        property::SUBMIT_LISTENER,
+    ] {
+        input.set_property(key, Some(PropertyValue::Bool(true)));
+    }
+    tree.nodes.insert(id, input);
+    tree.nodes.get_mut(&ROOT_NODE).unwrap().children.push(id);
+    let events = Rc::new(RefCell::new(VecDeque::new()));
+    let (mut cx, view) =
+        quickgui::TestAppContext::new(component_part_view(1, tree, Rc::clone(&events))).unwrap();
+    let window = view.window_handle();
+    cx.focus(window, ElementId::new(id as u64)).unwrap();
+    cx.simulate_input(window, "hello").unwrap();
+    cx.simulate_keystrokes(window, "shift-enter").unwrap();
+    assert_eq!(
+        cx.focused_input_value(window).unwrap().as_deref(),
+        Some("hello\n")
+    );
+    assert!(!events.borrow().iter().any(|e| e.kind == "submit"));
+    cx.simulate_keystrokes(window, "enter").unwrap();
+    let submitted: Vec<_> = events
+        .borrow()
+        .iter()
+        .filter(|e| e.kind == "submit")
+        .cloned()
+        .collect();
+    assert_eq!(submitted.len(), 1);
+    assert_eq!(submitted[0].value.as_deref(), Some("hello\n"));
+}
+
+#[test]
+fn anchored_tooltip_measures_against_the_viewport_instead_of_its_small_trigger() {
+    let mut tree = NativeTree::default();
+    let mut tx = TreeTransaction::new(&tree);
+    tx.create(1, NodeTag::View, Arc::from("")).unwrap();
+    tx.set_property(1, property::WIDTH, Some(PropertyValue::Number(22.0)))
+        .unwrap();
+    tx.set_property(1, property::HEIGHT, Some(PropertyValue::Number(22.0)))
+        .unwrap();
+    tx.insert(ROOT_NODE, 1, None).unwrap();
+    tx.create(2, NodeTag::View, Arc::from("")).unwrap();
+    tx.set_property(2, property::ANCHORED_LAYER, Some(PropertyValue::String(Arc::from(r#"{"target":1,"placement":"bottom","gap":6,"alignOffset":0,"margin":8,"flip":true,"occlude":true,"priority":1}"#)))).unwrap();
+    tx.insert(1, 2, None).unwrap();
+    tx.create(
+        3,
+        NodeTag::Text,
+        Arc::from("Settings and keyboard shortcuts"),
+    )
+    .unwrap();
+    tx.insert(2, 3, None).unwrap();
+    let overlay = tx.finish().unwrap();
+    commit_overlay(&mut tree, overlay);
+    let view = component_part_view(1, tree, Rc::new(RefCell::new(VecDeque::new())));
+    let (mut cx, view) = quickgui::TestAppContext::new(view).unwrap();
+    let bounds = cx
+        .element_bounds(view.window_handle(), ElementId::new(2))
+        .unwrap();
+    assert!(
+        bounds.width > 100.0,
+        "tooltip squeezed into the trigger: {bounds:?}"
+    );
 }

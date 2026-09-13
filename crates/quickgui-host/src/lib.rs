@@ -495,7 +495,17 @@ mod property {
     pub const SELECTED: u16 = 358;
     pub const SCROLL_SNAP_X: u16 = 359;
     pub const SCROLL_SNAP_Y: u16 = 360;
-    pub const LAST: u16 = SCROLL_SNAP_Y;
+    pub const MOTION: u16 = 361;
+    pub const ANCHORED_LAYER: u16 = 362;
+    pub const INPUT_PRESENTATION: u16 = 363;
+    pub const OVERSCAN_PIXELS: u16 = 364;
+    pub const BLOCK_POINTER: u16 = 365;
+    pub const INPUT_SUBMIT_ON_ENTER: u16 = 366;
+    pub const SCROLL_REQUEST: u16 = 367;
+    pub const RICH_DOCUMENT: u16 = 368;
+    pub const DOCUMENT_THEME: u16 = 369;
+    pub const LAYOUT_ROUNDING: u16 = 370;
+    pub const LAST: u16 = LAYOUT_ROUNDING;
 }
 
 /// Base64 transport for optional byte payloads carried inside JSON options and results.
@@ -1072,18 +1082,23 @@ pub(crate) fn strip_nulls(value: &mut serde_json::Value) {
     }
 }
 
+mod anchored_layer;
 mod base_ui;
 mod capi;
 mod collections;
 mod commands;
 mod components;
+mod document;
 mod events;
+mod input_presentation;
 mod menus;
+mod motion;
 mod pickers;
 mod popover_menu;
 mod popovers;
 mod router;
 mod runtime;
+mod scroll_request;
 mod styles;
 mod tree;
 mod view;

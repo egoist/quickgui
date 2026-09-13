@@ -534,6 +534,7 @@ impl TestAppContext {
             let displays = self.displays.clone();
             let keyboard_layout = self.keyboard_layout.clone();
             let assets = self.assets.clone();
+            let font_system = self.font_system.clone();
             let app_info = self.app_info.clone();
             let app_paths = self.app_paths.clone();
             let system_info = self.system_info.clone();
@@ -555,6 +556,7 @@ impl TestAppContext {
                     window_state: state_snapshot,
                     displays: &displays,
                     keyboard_layout: &keyboard_layout,
+                    font_system: &font_system,
                     assets: &assets,
                     app_info: app_info.as_ref(),
                     app_paths: app_paths.as_ref(),
@@ -601,6 +603,7 @@ impl TestAppContext {
                     state_snapshot,
                     &displays,
                     &keyboard_layout,
+                    &font_system,
                     &assets,
                     app_info.as_ref(),
                     app_paths.as_ref(),

@@ -26,6 +26,7 @@ mod date_field;
 mod dialog;
 mod disclosure;
 mod display;
+pub mod document;
 mod drawer;
 mod element;
 mod entity;
@@ -203,7 +204,7 @@ pub use element::{
     AccessibilityRole, AccessibilitySortDirection, AccessibilityValueRange, AnchorAlign,
     AnchorPlacement, AnchorPlacementHandle, AnchorSide, AppRegion, BackgroundImage,
     BackgroundPosition, BackgroundRepeat, BackgroundSize, Element, ElementId, ElementStateStyle,
-    ElementUpdate, FocusHandle, GridTrack, IntoElement, LayoutBoundsHandle,
+    ElementUpdate, FocusHandle, GridTrack, InputPresentation, IntoElement, LayoutBoundsHandle,
     MAX_BACKGROUND_IMAGE_TILES, MAX_BOX_SHADOWS_PER_ELEMENT, MAX_CONTAINER_QUERIES_PER_WINDOW,
     MAX_CONTAINER_QUERY_DEPTH, MAX_CORNER_RADIUS, MAX_GRID_TRACKS, MAX_GROUP_STYLES_PER_ELEMENT,
     MAX_HOVER_GROUP_NAME_BYTES, MAX_KEY_LISTENERS_PER_ELEMENT, MAX_MOUSE_LISTENERS_PER_ELEMENT,

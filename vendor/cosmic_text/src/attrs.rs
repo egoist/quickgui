@@ -311,6 +311,8 @@ pub struct GlyphDecorationData {
     /// Font ascent in EM units (ascent / upem).
     /// Used for overline positioning
     pub ascent: f32,
+    /// Font descent in EM units, for baseline-relative decorations.
+    pub descent: f32,
 }
 
 /// Text attributes

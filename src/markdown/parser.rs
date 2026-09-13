@@ -86,12 +86,17 @@ fn options() -> Options {
 }
 
 pub(crate) fn parse(source: &str) -> BlockTree {
+    parse_with_images(source, false)
+}
+
+fn parse_with_images(source: &str, images_as_links: bool) -> BlockTree {
     let events = Parser::new_ext(source, options())
         .into_offset_iter()
         .collect::<Vec<_>>();
     let mut cursor = Cursor {
         events: &events,
         index: 0,
+        images_as_links,
     };
     let mut blocks = Vec::new();
     while blocks.len() < MAX_MARKDOWN_BLOCKS {
@@ -125,6 +130,7 @@ pub(crate) fn parse(source: &str) -> BlockTree {
 }
 
 struct Cursor<'a, 'event> {
+    images_as_links: bool,
     events: &'a [(Event<'event>, Range<usize>)],
     index: usize,
 }
@@ -484,14 +490,23 @@ fn parse_inline_event(
                 .into_iter()
                 .map(|run| run.text)
                 .collect::<String>();
-            pieces.push(InlinePiece::Image {
-                url: dest_url.to_string(),
-                alt: if alt.trim().is_empty() {
-                    title.to_string()
-                } else {
-                    alt
-                },
-            });
+            if cursor.images_as_links {
+                let mut image_style = style.clone();
+                image_style.link = Some(dest_url.to_string());
+                pieces.push(InlinePiece::Run(MarkdownInlineRun {
+                    text: alt,
+                    style: image_style,
+                }));
+            } else {
+                pieces.push(InlinePiece::Image {
+                    url: dest_url.to_string(),
+                    alt: if alt.trim().is_empty() {
+                        title.to_string()
+                    } else {
+                        alt
+                    },
+                });
+            }
         }
         Event::Start(tag) => {
             let mut nested = style.clone();
@@ -560,6 +575,7 @@ fn merge_runs(runs: Vec<MarkdownInlineRun>) -> Vec<MarkdownInlineRun> {
 }
 
 pub(crate) struct IncrementalParser {
+    images_as_links: bool,
     text: String,
     tree: BlockTree,
     stable_prefix: usize,
@@ -576,11 +592,20 @@ impl Default for IncrementalParser {
 impl IncrementalParser {
     pub fn new() -> Self {
         Self {
+            images_as_links: false,
             text: String::new(),
             tree: BlockTree::default(),
             stable_prefix: 0,
             full_reparse_only: false,
             reparsed_from: 0,
+        }
+    }
+
+    pub fn set_images_as_links(&mut self, enabled: bool) {
+        if self.images_as_links != enabled {
+            self.images_as_links = enabled;
+            let source = self.text.clone();
+            self.reset(&source);
         }
     }
 
@@ -612,7 +637,7 @@ impl IncrementalParser {
     pub fn reset(&mut self, text: &str) {
         self.text.clear();
         self.text.push_str(text);
-        self.tree = parse(&self.text);
+        self.tree = parse_with_images(&self.text, self.images_as_links);
         self.full_reparse_only = has_link_definition(&self.text);
         self.stable_prefix = self.settled_prefix();
         self.reparsed_from = 0;
@@ -648,7 +673,7 @@ impl IncrementalParser {
             self.reset(&text);
             return;
         }
-        let tail = parse(&self.text[boundary..]);
+        let tail = parse_with_images(&self.text[boundary..], self.images_as_links);
         self.tree.blocks.truncate(self.stable_prefix);
         self.tree
             .blocks
@@ -670,7 +695,7 @@ impl IncrementalParser {
         let mended = super::mend::close_hanging(&self.text[last.range.start..])?;
         let offset = last.range.start;
         Some(
-            parse(&mended)
+            parse_with_images(&mended, self.images_as_links)
                 .blocks
                 .into_iter()
                 .map(|mut block| {
@@ -830,5 +855,36 @@ mod tests {
             panic!("expected paragraph");
         };
         assert!(runs.iter().any(|run| run.style.bold && run.text == "bold"));
+    }
+}
+
+#[cfg(test)]
+mod image_link_tests {
+    use super::*;
+
+    #[test]
+    fn native_document_images_remain_inline_links_during_incremental_parsing() {
+        let mut parser = IncrementalParser::new();
+        parser.set_images_as_links(true);
+        parser.set_text("Before ![diagram](https://example.com/diagram.png)");
+        parser.append(" after.");
+        let MarkdownBlock::Paragraph(runs) = &parser.tree().blocks[0].block else {
+            panic!("inline paragraph expected")
+        };
+        assert_eq!(parser.tree().blocks.len(), 1);
+        assert_eq!(
+            runs.iter().map(|r| r.text.as_str()).collect::<String>(),
+            "Before diagram after."
+        );
+        assert!(runs.iter().any(|r| r.text == "diagram"
+            && r.style.link.as_deref() == Some("https://example.com/diagram.png")));
+        parser.set_images_as_links(false);
+        assert!(
+            parser
+                .tree()
+                .blocks
+                .iter()
+                .any(|b| matches!(b.block, MarkdownBlock::Image { .. }))
+        );
     }
 }

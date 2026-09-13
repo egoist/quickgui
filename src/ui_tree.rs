@@ -557,6 +557,7 @@ struct SelectableTextEntry {
 
 #[derive(Clone)]
 struct SelectableTextRegion {
+    links: Vec<(Rect, Arc<str>)>,
     document_index: usize,
     bounds: Rect,
     clip: Rect,
@@ -704,6 +705,7 @@ pub(crate) struct UiTree {
     selectable_text_regions: Vec<SelectableTextRegion>,
     static_text_selection: Option<StaticTextSelection>,
     static_text_gesture: Option<StaticTextGesture>,
+    pressed_link: Option<(ElementId, Arc<str>)>,
     last_static_text_click: Option<StaticTextClick>,
     accessibility_text_ids: HashMap<ElementId, AccessibilityNodeId>,
     accessibility_snapshot: std::cell::RefCell<Option<AccessibilitySnapshot>>,

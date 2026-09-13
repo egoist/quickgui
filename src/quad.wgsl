@@ -5,10 +5,11 @@ struct ViewUniform {
 }
 
 struct GradientRecord {
-    // Kind, interpolation space, stop count, unused.
+    // Kind, interpolation space, stop count, dithering flag.
     header: vec4<f32>,
     // Linear start/end XY, radial center and radii, or conic center and start angle.
     geometry: vec4<f32>,
+    projection: vec4<f32>,
     positions_low: vec4<f32>,
     positions_high: vec4<f32>,
     colors: array<vec4<f32>, 8>,
@@ -109,33 +110,55 @@ fn rounded_rect_distance(point: vec2<f32>, rect: vec4<f32>, radii: vec4<f32>) ->
 // same SDF, but WebGPU cannot prove that across the shared coverage helper.
 @diagnostic(off, derivative_uniformity)
 fn coverage(distance: f32) -> f32 {
-    let antialias_width = max(fwidth(distance), 0.0001);
-    return 1.0 - smoothstep(-antialias_width, antialias_width, distance);
+    // Cover one physical pixel across the edge; a two-pixel smoothstep softens
+    // otherwise crisp borders and changes their apparent thickness on Retina.
+    return clamp(0.5 - distance * view.scale, 0.0, 1.0);
 }
 
-// Maximum absolute error is about 1.5e-7, which is far below an 8-bit alpha step.
-fn erf_approx(value: f32) -> f32 {
-    let x = abs(value);
-    let t = 1.0 / (1.0 + 0.3275911 * x);
-    let polynomial = (((((1.061405429 * t - 1.453152027) * t + 1.421413741) * t
-        - 0.284496736) * t + 0.254829592) * t);
-    let result = 1.0 - polynomial * exp(-x * x);
-    return select(-result, result, value >= 0.0);
+// Border colors composite over the fill in the target's encoded UI color space.
+fn solid_border(fill: vec4<f32>, border: vec4<f32>, outer: f32, inner: f32) -> vec4<f32> {
+    let alpha = border.a + fill.a * (1.0 - border.a);
+    let background = linear_to_srgb(fill.rgb);
+    let above = linear_to_srgb(border.rgb);
+    let blended = (above * border.a + background * fill.a * (1.0 - border.a)) / max(alpha, 0.000001);
+    let amount = 1.0 - inner;
+    let result_alpha = mix(fill.a, alpha, amount) * outer;
+    let result_rgb = mix(background, blended, amount);
+    return vec4<f32>(srgb_to_linear(result_rgb) * result_alpha, result_alpha);
 }
 
-fn blurred_coverage(distance: f32, blur_radius: f32) -> f32 {
-    let crisp = coverage(distance);
-    if blur_radius <= 0.001 {
-        return crisp;
+fn shadow_erf(value: vec2<f32>) -> vec2<f32> {
+    let a = abs(value);
+    let r1 = vec2<f32>(1.0) + (vec2<f32>(0.278393) + (vec2<f32>(0.230389) + (vec2<f32>(0.000972) + 0.078108 * a) * a) * a) * a;
+    let r2 = r1 * r1;
+    return sign(value) - sign(value) / (r2 * r2);
+}
+fn box_shadow_coverage(position: vec2<f32>, rect: vec4<f32>, radii: vec4<f32>, blur: f32) -> f32 {
+    if blur <= 0.001 { return coverage(rounded_rect_distance(position, rect, radii)); }
+    let half_size = rect.zw * 0.5;
+    let point = position - rect.xy - half_size;
+    let corner = corner_radius(position - rect.xy, rect.zw, radii);
+    let sigma = blur * 0.5;
+    let low = point.y - half_size.y;
+    let high = point.y + half_size.y;
+    let start = clamp(-3.0 * sigma, low, high);
+    let end = clamp(3.0 * sigma, low, high);
+    let step = (end - start) * 0.25;
+    var y = start + step * 0.5;
+    var alpha = 0.0;
+    for (var i = 0; i < 4; i += 1) {
+        let delta = min(half_size.y - corner - abs(point.y - y), 0.0);
+        let curved = half_size.x - corner + sqrt(max(0.0, corner * corner - delta * delta));
+        let integral = vec2<f32>(0.5) + 0.5 * shadow_erf((vec2<f32>(point.x) + vec2<f32>(-curved, curved)) * (sqrt(0.5) / sigma));
+        alpha += (integral.y - integral.x) * exp(-(y * y) / (2.0 * sigma * sigma)) / (sqrt(6.28318530718) * sigma) * step;
+        y += step;
     }
-    // CSS blur radii map closely to a Gaussian whose standard deviation is half the radius.
-    let sigma = max(blur_radius * 0.5, 0.0001);
-    let blurred = 0.5 * (1.0 - erf_approx(distance / (1.41421356237 * sigma)));
-    return clamp(blurred, 0.0, 1.0);
+    return alpha;
 }
 
 fn linear_to_srgb_component(value: f32) -> f32 {
-    let clamped = clamp(value, 0.0, 1.0);
+    if value == 1.0 { return 1.0; }
+    let clamped = value;
     if clamped <= 0.0031308 {
         return clamped * 12.92;
     }
@@ -143,7 +166,8 @@ fn linear_to_srgb_component(value: f32) -> f32 {
 }
 
 fn srgb_to_linear_component(value: f32) -> f32 {
-    let clamped = clamp(value, 0.0, 1.0);
+    if value == 1.0 { return 1.0; }
+    let clamped = value;
     if clamped <= 0.04045 {
         return clamped / 12.92;
     }
@@ -242,7 +266,20 @@ fn gradient_stop_position(gradient_index: u32, index: u32) -> f32 {
     return source.w;
 }
 
-fn gradient_amount(gradient_index: u32, position: vec2<f32>) -> f32 {
+fn gradient_amount(gradient_index: u32, position: vec2<f32>, bounds: vec4<f32>) -> f32 {
+    if gradients[gradient_index].projection.y > 0.5 {
+        let radians = (gradients[gradient_index].projection.x - 90.0) * (3.141592653589793 / 180.0);
+        var direction = vec2<f32>(cos(radians), sin(radians));
+        let gradient_bounds = bounds * view.scale;
+        if gradient_bounds.z > gradient_bounds.w { direction.y *= gradient_bounds.w / gradient_bounds.z; }
+        else { direction.x *= gradient_bounds.z / gradient_bounds.w; }
+        let half_size = gradient_bounds.zw / 2.0;
+        let center = gradient_bounds.xy + half_size;
+        let t = dot(position * view.scale - center, direction) / length(direction);
+        if abs(direction.x) > abs(direction.y) { return clamp((t + half_size.x) / gradient_bounds.z, 0.0, 1.0); }
+        return clamp((t + half_size.y) / gradient_bounds.w, 0.0, 1.0);
+    }
+
     let kind = gradients[gradient_index].header.x;
     let geometry = gradients[gradient_index].geometry;
     if kind < 0.5 {
@@ -263,7 +300,7 @@ fn gradient_amount(gradient_index: u32, position: vec2<f32>) -> f32 {
     return fract((angle - geometry.z) / 6.28318530718 + 1.0);
 }
 
-fn gradient_color(gradient_index: u32, position: vec2<f32>) -> vec4<f32> {
+fn gradient_color(gradient_index: u32, position: vec2<f32>, bounds: vec4<f32>) -> vec4<f32> {
     let header = gradients[gradient_index].header;
     let count = u32(max(header.z, 0.0));
     if count == 0u {
@@ -272,7 +309,7 @@ fn gradient_color(gradient_index: u32, position: vec2<f32>) -> vec4<f32> {
     if count == 1u {
         return gradients[gradient_index].colors[0];
     }
-    let amount = gradient_amount(gradient_index, position);
+    let amount = gradient_amount(gradient_index, position, bounds);
     var previous = gradient_stop_position(gradient_index, 0u);
     if amount <= previous {
         return gradients[gradient_index].colors[0];
@@ -301,7 +338,14 @@ fn resolved_fill(input: VertexOutput) -> vec4<f32> {
     if input.effects.x < 0.0 {
         return input.primary;
     }
-    return gradient_color(u32(input.effects.x), input.logical_position);
+    let index = u32(input.effects.x);
+    let color = gradient_color(index, select(input.logical_position, input.position.xy / view.scale, gradients[index].projection.y > 0.5), input.geometry);
+    if gradients[index].header.w < 0.5 { return color; }
+    let seed = input.position.xy * 0.6180339887;
+    let r1 = fract(sin(dot(seed, vec2<f32>(12.9898, 78.233))) * 43758.5453);
+    let r2 = fract(sin(dot(seed, vec2<f32>(39.3460, 11.135))) * 24634.6345);
+    let noise = r1 + r2 - 1.0;
+    return vec4<f32>(srgb_to_linear(linear_to_srgb(color.rgb) + vec3<f32>(noise * 2.0 / 255.0)), color.a + noise * 3.0 / 255.0);
 }
 
 const QUARTER_TURN: f32 = 1.5707963268;
@@ -469,28 +513,29 @@ fn quickgui_shade_linear(input: VertexOutput) -> vec4<f32> {
             input.corners,
         );
         let outer = coverage(outer_distance);
-        let inner_rect = vec4<f32>(
-            input.geometry.xy + vec2<f32>(widths.w, widths.x),
-            max(
-                input.geometry.zw - vec2<f32>(widths.w + widths.y, widths.x + widths.z),
-                vec2<f32>(0.0),
-            ),
-        );
-        // Each inner corner shrinks by the widest of the two edges meeting there.
-        let inner_corners = max(
-            input.corners - vec4<f32>(
-                max(widths.w, widths.x),
-                max(widths.y, widths.x),
-                max(widths.y, widths.z),
-                max(widths.w, widths.z),
-            ),
-            vec4<f32>(0.0),
-        );
-        let inner = coverage(rounded_rect_distance(
-            logical_position,
-            inner_rect,
-            inner_corners,
-        ));
+        // Unequal adjacent widths form an elliptical inner corner.
+        let local = (logical_position - input.geometry.xy) * view.scale;
+        let size = input.geometry.zw * view.scale;
+        let half_size = size * 0.5;
+        let centered = local - half_size;
+        let radius = corner_radius(local, size, input.corners * view.scale);
+        let border = vec2<f32>(select(widths.y, widths.w, centered.x < 0.0), select(widths.z, widths.x, centered.y < 0.0)) * view.scale;
+        let reduced = select(border, vec2<f32>(-0.5), border == vec2<f32>(0.0));
+        let corner_point = abs(centered) - half_size;
+        let circle_point = corner_point + vec2<f32>(radius);
+        let straight = corner_point + reduced;
+        var inner_distance = 0.0;
+        if circle_point.x <= 0.0 || circle_point.y <= 0.0 {
+            inner_distance = -max(straight.x, straight.y);
+        } else if straight.x > 0.0 || straight.y > 0.0 {
+            inner_distance = -1.0;
+        } else if reduced.x == reduced.y {
+            inner_distance = -(outer_distance * view.scale + reduced.x);
+        } else {
+            let ellipse = max(vec2<f32>(0.000001), vec2<f32>(radius) - reduced);
+            inner_distance = (length(circle_point / ellipse) - 1.0) * (ellipse.x + ellipse.y) * -0.5;
+        }
+        let inner = clamp(0.5 + inner_distance, 0.0, 1.0);
         let border_alpha = input.secondary.a * max(outer - inner, 0.0) * dashes;
         if input.effects.y > 0.5 {
             // A dash gap reveals the element background, which CSS paints out to the border box,
@@ -501,12 +546,7 @@ fn quickgui_shade_linear(input: VertexOutput) -> vec4<f32> {
                 + fill_color.rgb * fill_alpha * (1.0 - border_alpha);
             return vec4<f32>(rgb, alpha);
         }
-        // A solid border and its fill cover complementary regions, so their coverage adds
-        // exactly and the shared antialiased edge stays seamless.
-        let fill_alpha = fill_color.a * inner;
-        let alpha = fill_alpha + border_alpha;
-        let rgb = fill_color.rgb * fill_alpha + input.secondary.rgb * border_alpha;
-        return vec4<f32>(rgb, alpha);
+        return solid_border(fill_color, input.secondary, outer, inner);
     }
 
     // A complete underline span is one instance. The fragment shader evaluates its wave
@@ -569,18 +609,12 @@ fn quickgui_shade_linear(input: VertexOutput) -> vec4<f32> {
                 + color.rgb * fill_alpha * (1.0 - border_alpha);
             return vec4<f32>(rgb, alpha);
         }
-        let fill_alpha = color.a * inner;
-        let alpha = fill_alpha + border_alpha;
-        let rgb = color.rgb * fill_alpha + input.secondary.rgb * border_alpha;
-        return vec4<f32>(rgb, alpha);
+        return solid_border(color, input.secondary, subject_coverage, inner);
     }
 
     // Drop shadow. Its element is painted by a later instance in the same ordered draw.
     if input.params.x < 1.5 {
-        let subject_coverage = blurred_coverage(
-            rounded_rect_distance(input.logical_position, input.subject, input.corners),
-            input.params.w,
-        );
+        let subject_coverage = box_shadow_coverage(input.logical_position, input.subject, input.corners, input.params.w);
         let alpha = input.primary.a * subject_coverage;
         return vec4<f32>(input.primary.rgb * alpha, alpha);
     }
@@ -588,10 +622,7 @@ fn quickgui_shade_linear(input: VertexOutput) -> vec4<f32> {
     // Inset shadow: the element is the mask and the translated subject is its clear hole. The
     // hole's corners follow the element's, reduced by the declared spread.
     let hole_corners = max(input.corners - vec4<f32>(input.params.y), vec4<f32>(0.0));
-    let subject_coverage = blurred_coverage(
-        rounded_rect_distance(input.logical_position, input.subject, hole_corners),
-        input.params.w,
-    );
+    let subject_coverage = box_shadow_coverage(input.logical_position, input.subject, hole_corners, input.params.w);
     let geometry_coverage = coverage(rounded_rect_distance(
         input.logical_position,
         input.geometry,
@@ -604,15 +635,28 @@ fn quickgui_shade_linear(input: VertexOutput) -> vec4<f32> {
 
 // Public paint colors stay linear; UI targets blend encoded sRGB, as native UI toolkits do.
 fn quickgui_encode_component(v: f32) -> f32 {
+    if v == 1.0 { return 1.0; }
     if v <= 0.0031308 { return 12.92 * v; }
     return 1.055 * pow(max(v, 0.0), 1.0 / 2.4) - 0.055;
 }
 fn quickgui_encode_output(color: vec4<f32>) -> vec4<f32> {
     if color.a <= 0.0 { return vec4<f32>(0.0); }
     let straight = color.rgb / color.a;
-    return vec4<f32>(vec3<f32>(quickgui_encode_component(straight.r), quickgui_encode_component(straight.g), quickgui_encode_component(straight.b)) * color.a, color.a);
+    return vec4<f32>(vec3<f32>(quickgui_encode_component(straight.r), quickgui_encode_component(straight.g), quickgui_encode_component(straight.b)), color.a);
 }
 @fragment
 fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
+    if input.effects.x >= 0.0 && ((input.params.x < 0.5 && input.params.z == 0.0) || (input.params.x == 4.0 && all(input.subject == vec4<f32>(0.0)))) && all(input.corners == vec4<f32>(0.0)) {
+        let index = u32(input.effects.x);
+        if gradients[index].header.w > 0.5 {
+            if input.logical_position.x < input.clip.x || input.logical_position.y < input.clip.y || input.logical_position.x >= input.clip.z || input.logical_position.y >= input.clip.w { discard; }
+            let color = gradient_color(index, select(input.logical_position, input.position.xy / view.scale, gradients[index].projection.y > 0.5), input.geometry);
+            let seed = input.position.xy * 0.6180339887;
+            let r1 = fract(sin(dot(seed, vec2<f32>(12.9898, 78.233))) * 43758.5453);
+            let r2 = fract(sin(dot(seed, vec2<f32>(39.3460, 11.135))) * 24634.6345);
+            let noise = r1 + r2 - 1.0;
+            return vec4<f32>(linear_to_srgb(color.rgb) + vec3<f32>(noise * 2.0 / 255.0), color.a + noise * 3.0 / 255.0);
+        }
+    }
     return quickgui_encode_output(quickgui_shade_linear(input));
 }

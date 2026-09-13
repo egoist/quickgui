@@ -256,6 +256,50 @@ impl<'a> TreeTransaction<'a> {
         if !(1..=property::LAST).contains(&key) {
             return Err(ProtocolError::new(format!("unknown property code {key}")));
         }
+        if key == property::DOCUMENT_THEME {
+            if !matches!(&value, None)
+                && !matches!(&value, Some(PropertyValue::String(raw)) if super::document::validate_theme(raw))
+            {
+                return Err(ProtocolError::new("invalid document theme"));
+            }
+        }
+        if key == property::RICH_DOCUMENT {
+            if !matches!(&value, None)
+                && !matches!(&value, Some(PropertyValue::String(raw)) if super::document::validate(raw))
+            {
+                return Err(ProtocolError::new("invalid native document declaration"));
+            }
+        }
+        if key == property::MOTION {
+            match &value {
+                Some(PropertyValue::String(raw)) => {
+                    super::motion::validate(raw).map_err(ProtocolError::new)?
+                }
+                None => {}
+                _ => return Err(ProtocolError::new("motion must be a JSON string")),
+            }
+        }
+        if key == property::ANCHORED_LAYER
+            || key == property::INPUT_PRESENTATION
+            || key == property::SCROLL_REQUEST
+        {
+            let valid = match &value {
+                None => true,
+                Some(PropertyValue::String(raw)) if key == property::ANCHORED_LAYER => {
+                    super::anchored_layer::validate(raw)
+                }
+                Some(PropertyValue::String(raw)) if key == property::SCROLL_REQUEST => {
+                    super::scroll_request::validate(raw)
+                }
+                Some(PropertyValue::String(raw)) => super::input_presentation::validate(raw),
+                _ => false,
+            };
+            if !valid {
+                return Err(ProtocolError::new(
+                    "invalid hosted presentation declaration",
+                ));
+            }
+        }
         self.edit(id)?.set_property(key, value);
         Ok(())
     }
@@ -369,6 +413,35 @@ impl<'a> TreeTransaction<'a> {
     pub(super) fn finish(
         self,
     ) -> std::result::Result<HashMap<u32, Option<NativeNode>>, ProtocolError> {
+        if self.overlay.iter().any(|(id, node)| {
+            node.as_ref()
+                .and_then(|node| node.property(property::MOTION))
+                != self
+                    .base
+                    .nodes
+                    .get(id)
+                    .and_then(|node| node.property(property::MOTION))
+        }) {
+            let motions = self
+                .base
+                .nodes
+                .keys()
+                .chain(
+                    self.overlay
+                        .keys()
+                        .filter(|id| !self.base.nodes.contains_key(id)),
+                )
+                .filter(|id| {
+                    self.node(**id)
+                        .is_some_and(|node| node.string(property::MOTION).is_some())
+                })
+                .count();
+            if motions > quickgui::MAX_DECLARATIVE_ANIMATIONS_PER_WINDOW {
+                return Err(ProtocolError::new(
+                    "hosted motion count exceeds the animation limit",
+                ));
+            }
+        }
         let removed = self.overlay.values().filter(|node| node.is_none()).count();
         let inserted = self
             .overlay
@@ -835,6 +908,7 @@ pub(super) type EventQueue = Rc<RefCell<VecDeque<QueuedEvent>>>;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(super) struct NativeListConfig {
+    pub(super) overscan_pixels: f32,
     pub(super) estimated_item_height: f32,
     pub(super) overscan: usize,
     pub(super) alignment: ListAlignment,
@@ -857,6 +931,10 @@ impl NativeListConfig {
             _ => FollowMode::Normal,
         };
         Self {
+            overscan_pixels: node
+                .number(property::OVERSCAN_PIXELS)
+                .unwrap_or(0.0)
+                .clamp(0.0, 1_048_576.0),
             estimated_item_height,
             overscan,
             alignment,
@@ -867,12 +945,14 @@ impl NativeListConfig {
     pub(super) fn create_state(self, item_count: usize) -> ListState {
         ListState::new(item_count, self.estimated_item_height)
             .with_overscan(self.overscan)
+            .with_overscan_pixels(self.overscan_pixels)
             .with_alignment(self.alignment)
             .with_follow_mode(self.follow_mode)
     }
 }
 
 pub(super) struct NativeListState {
+    pub(super) scroll_revision: Option<u64>,
     pub(super) config: NativeListConfig,
     pub(super) children: Vec<u32>,
     pub(super) list: ListState,
@@ -1003,6 +1083,7 @@ impl NativeListState {
     pub(super) fn new(node: &NativeNode) -> Self {
         let config = NativeListConfig::from_node(node);
         Self {
+            scroll_revision: None,
             config,
             children: node.children.clone(),
             list: config.create_state(node.children.len()),
@@ -1012,10 +1093,18 @@ impl NativeListState {
     pub(super) fn sync(&mut self, node: &NativeNode) {
         let config = NativeListConfig::from_node(node);
         if self.config != config {
+            if self.config.estimated_item_height != config.estimated_item_height {
+                self.list = config.create_state(node.children.len());
+            } else {
+                self.list = self
+                    .list
+                    .clone()
+                    .with_overscan(config.overscan)
+                    .with_overscan_pixels(config.overscan_pixels)
+                    .with_alignment(config.alignment)
+                    .with_follow_mode(config.follow_mode);
+            }
             self.config = config;
-            self.children.clone_from(&node.children);
-            self.list = config.create_state(self.children.len());
-            return;
         }
         if self.children == node.children {
             return;

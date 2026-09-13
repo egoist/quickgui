@@ -64,6 +64,7 @@ resvg = { version = "0.46.0", default-features = false, features = ["text", "sys
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 taffy = { version = "0.13.0", default-features = false, features = ["std", "taffy_tree", "flexbox", "grid", "block_layout", "content_size"] }
+csscolorparser = "0.8.3"
 thiserror = "2.0"
 tracing = "0.1"
 web-time = "1.1"
@@ -75,6 +76,8 @@ winit = { package = "quickgui-winit", path = "vendor/winit", version = "=0.1.4-n
 libc = "0.2"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+syntect = { version = "5.3", default-features = false, features = ["regex-onig"] }
+two-face = { version = "0.5.2", default-features = false, features = ["syntect-onig"] }
 quickgui-system = { path = "crates/quickgui-system", version = "=0.1.4-next.1", default-features = false, features = ["autostart", "protocol", "secure-storage"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
@@ -123,6 +126,8 @@ zbus = "5.19.0"
 wgpu = { version = "30.0.1", default-features = false, features = ["gles", "vulkan"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
+syntect = { version = "5.3", default-features = false, features = ["regex-fancy"] }
+two-face = { version = "0.5.2", default-features = false, features = ["syntect-fancy"] }
 wgpu = { version = "30.0.1", default-features = false, features = ["webgpu", "naga-ir", "fragile-send-sync-non-atomic-wasm"] }
 wasm-bindgen-futures = "0.4"
 web-sys = { version = "0.3", features = ["HtmlCanvasElement", "console", "CustomEvent", "Window"] }
@@ -174,3 +179,6 @@ inherits = "release"
 opt-level = "s"
 lto = "thin"
 strip = "debuginfo"
+
+[build-dependencies]
+naga = { version = "30.0.0", default-features = false, features = ["wgsl-in", "msl-out"] }

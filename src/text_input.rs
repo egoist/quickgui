@@ -652,6 +652,9 @@ impl TextInputState {
     }
 
     pub fn set_preedit(&mut self, value: &str, cursor: Option<(usize, usize)>) -> bool {
+        if self.constraints.read_only {
+            return false;
+        }
         self.edit_group = None;
         let value = normalize_text(value, self.multiline);
         let previous_text = self.text.clone();
@@ -707,18 +710,25 @@ impl TextInputState {
     }
 
     pub fn can_undo(&self) -> bool {
-        self.undo
-            .back()
-            .is_some_and(|snapshot| self.accepts_existing(&snapshot.text))
+        !self.constraints.read_only
+            && self
+                .undo
+                .back()
+                .is_some_and(|snapshot| self.accepts_existing(&snapshot.text))
     }
 
     pub fn can_redo(&self) -> bool {
-        self.redo
-            .back()
-            .is_some_and(|snapshot| self.accepts_existing(&snapshot.text))
+        !self.constraints.read_only
+            && self
+                .redo
+                .back()
+                .is_some_and(|snapshot| self.accepts_existing(&snapshot.text))
     }
 
     pub fn undo(&mut self) -> bool {
+        if self.constraints.read_only {
+            return false;
+        }
         self.edit_group = None;
         if !self.can_undo() {
             return false;
@@ -734,6 +744,9 @@ impl TextInputState {
     }
 
     pub fn redo(&mut self) -> bool {
+        if self.constraints.read_only {
+            return false;
+        }
         self.edit_group = None;
         if !self.can_redo() {
             return false;
@@ -851,6 +864,9 @@ impl TextInputState {
     }
 
     fn constrained_replacement(&self, range: Range<usize>, value: &str) -> Option<(String, usize)> {
+        if self.constraints.read_only {
+            return None;
+        }
         debug_assert!(range.start <= range.end && range.end <= self.text.len());
         debug_assert!(self.text.is_char_boundary(range.start));
         debug_assert!(self.text.is_char_boundary(range.end));
@@ -1908,6 +1924,23 @@ mod tests {
     }
 
     #[test]
+    fn read_only_keeps_selection_but_rejects_editing_and_history() {
+        let mut input = TextInputState::new("original");
+        assert!(input.replace_selection("!"));
+        input.constraints.read_only = true;
+        assert!(input.select_all());
+        assert_eq!(input.selection(), 0..9);
+        assert!(!input.replace_selection("changed"));
+        assert!(!input.undo());
+        assert!(!input.redo());
+        assert_eq!(input.text(), "original!");
+        assert!(!input.set_value("service edit"));
+        let constraints = input.constraints.clone();
+        input.sync_external("controlled", false, &constraints);
+        assert_eq!(input.text(), "controlled");
+    }
+
+    #[test]
     fn undo_and_redo_restore_text_and_selection() {
         let mut input = TextInputState::new("a");
         assert!(input.replace_selection("b"));
@@ -2040,6 +2073,7 @@ mod tests {
     #[test]
     fn max_length_truncates_at_unicode_grapheme_boundaries() {
         let constraints = InputConstraints {
+            read_only: false,
             max_length: Some(3),
             filter: None,
             text_checking: crate::TextCheckingOverrides::default(),
@@ -2059,6 +2093,7 @@ mod tests {
     #[test]
     fn rejected_edits_do_not_mutate_text_selection_or_history() {
         let constraints = InputConstraints {
+            read_only: false,
             max_length: None,
             filter: Some(Arc::new(|value| {
                 value.chars().all(|character| character.is_ascii_digit())
@@ -2077,6 +2112,7 @@ mod tests {
     #[test]
     fn rejected_ime_commit_restores_the_preedit_backup_without_history() {
         let constraints = InputConstraints {
+            read_only: false,
             max_length: None,
             filter: Some(Arc::new(|value| value.is_ascii())),
             text_checking: crate::TextCheckingOverrides::default(),
@@ -2101,6 +2137,7 @@ mod tests {
             "abc",
             false,
             &InputConstraints {
+                read_only: false,
                 max_length: Some(1),
                 filter: None,
                 text_checking: crate::TextCheckingOverrides::default(),
@@ -2156,6 +2193,7 @@ mod tests {
 
     fn checking_input(value: &str, policy: TextCheckingPolicy) -> TextInputState {
         let constraints = InputConstraints {
+            read_only: false,
             max_length: None,
             filter: None,
             text_checking: crate::TextCheckingOverrides {
@@ -2274,6 +2312,7 @@ mod tests {
             &content,
             false,
             InputConstraints {
+                read_only: false,
                 max_length: None,
                 filter: None,
                 text_checking: crate::TextCheckingOverrides {

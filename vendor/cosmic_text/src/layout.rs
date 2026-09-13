@@ -29,6 +29,8 @@ pub struct LayoutGlyph {
     pub font_id: fontdb::ID,
     /// Font id of the glyph
     pub glyph_id: u16,
+    /// Native paragraph position used to retain float precision during painting.
+    pub native_x: Option<f32>,
     /// X offset of hitbox
     pub x: f32,
     /// Y offset of hitbox
@@ -88,6 +90,15 @@ pub struct PhysicalGlyph {
 
 impl LayoutGlyph {
     pub fn physical(&self, offset: (f32, f32), scale: f32) -> PhysicalGlyph {
+        self.physical_with_x(offset, scale, None)
+    }
+
+    pub fn physical_with_x(
+        &self,
+        offset: (f32, f32),
+        scale: f32,
+        native_x: Option<f32>,
+    ) -> PhysicalGlyph {
         let x_offset = self.font_size * self.x_offset;
         let y_offset = self.font_size * self.y_offset;
 
@@ -96,8 +107,21 @@ impl LayoutGlyph {
             self.glyph_id,
             self.font_size * scale,
             (
-                (self.x + x_offset).mul_add(scale, offset.0),
-                math::truncf((self.y - y_offset).mul_add(scale, offset.1)), // Hinting in Y axis
+                native_x.unwrap_or_else(|| (self.x + x_offset).mul_add(scale, offset.0)),
+                {
+                    let y = (self.y - y_offset).mul_add(scale, offset.1);
+                    #[cfg(target_os = "macos")]
+                    if self
+                        .cache_key_flags
+                        .contains(CacheKeyFlags::NATIVE_RASTERIZATION)
+                    {
+                        (y.abs() - 0.5).ceil().copysign(y)
+                    } else {
+                        math::truncf(y)
+                    }
+                    #[cfg(not(target_os = "macos"))]
+                    math::truncf(y)
+                },
             ),
             self.font_weight,
             self.cache_key_flags,
@@ -136,6 +160,8 @@ pub enum Wrap {
     Word,
     /// Wraps at the word level, or fallback to glyph level if a word can't fit on a line by itself
     WordOrGlyph,
+    /// Keep trailing spaces with their word when choosing a line boundary.
+    WordWithTrailingSpace,
 }
 
 impl Display for Wrap {
@@ -144,6 +170,7 @@ impl Display for Wrap {
             Self::None => write!(f, "No Wrap"),
             Self::Word => write!(f, "Word Wrap"),
             Self::WordOrGlyph => write!(f, "Word Wrap or Character"),
+            Self::WordWithTrailingSpace => write!(f, "Word with trailing space"),
             Self::Glyph => write!(f, "Character"),
         }
     }
@@ -155,6 +182,8 @@ pub enum Align {
     Left,
     Right,
     Center,
+    CenterIncludingWhitespace,
+    RightIncludingWhitespace,
     Justified,
     End,
 }
@@ -165,6 +194,8 @@ impl Display for Align {
             Self::Left => write!(f, "Left"),
             Self::Right => write!(f, "Right"),
             Self::Center => write!(f, "Center"),
+            Self::CenterIncludingWhitespace => write!(f, "CenterIncludingWhitespace"),
+            Self::RightIncludingWhitespace => write!(f, "RightIncludingWhitespace"),
             Self::Justified => write!(f, "Justified"),
             Self::End => write!(f, "End"),
         }

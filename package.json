@@ -18,12 +18,17 @@
     "version:check": "bun scripts/sync-release-version.ts --check",
     "test:go": "bash scripts/check-go.sh",
     "fmt:go": "go -C go run ./cmd/quickguifmt -w ../go ../examples",
-    "fmt:go:check": "go -C go run ./cmd/quickguifmt -check ../go ../examples"
+    "fmt:go:check": "go -C go run ./cmd/quickguifmt -check ../go ../examples",
+    "test:gpuix": "bun test --tsconfig-override ./examples/fx-ui/tsconfig.json --preload ./packages/gpuix/test/preload.ts ./packages/gpuix/test ./examples/fx-ui/test"
   },
   "devDependencies": {
     "@types/bun": "latest",
     "@types/node": "^24.0.0",
     "oxfmt": "^0.67.0",
     "typescript": "7.0.2"
+  },
+  "patchedDependencies": {
+    "@gpuix/react@0.7.0": "examples/fx-ui/patches/@gpuix%2Freact@0.7.0.patch",
+    "libfx@0.0.9": "examples/fx-ui/patches/libfx@0.0.9.patch"
   }
 }

@@ -3054,3 +3054,158 @@ fn ui_target_premultiplies_transparent_backgrounds_in_srgb() {
         }
     }
 }
+
+#[test]
+fn rounded_range_washes_merge_across_syntax_colors_without_affecting_glyphs() {
+    let content: Arc<str> = Arc::from("const value");
+    let wash = Color::rgba8(120, 180, 240, 60);
+    let styled = StyledText::new(content.clone()).with_highlights([
+        (
+            0..6,
+            HighlightStyle::default()
+                .color(Color::WHITE)
+                .background(wash)
+                .background_shape(3.0, 2.0, 1.5),
+        ),
+        (
+            6..11,
+            HighlightStyle::default()
+                .color(Color::BLACK)
+                .background(wash)
+                .background_shape(3.0, 2.0, 1.5),
+        ),
+    ]);
+    let style = TextStyle::new(14.0, Color::WHITE).line_height(22.0);
+    let mut font_system = create_font_system();
+    let mut buffer = Buffer::new(&mut font_system, Metrics::new(14.0, 22.0));
+    let highlights = Arc::from(styled.highlights());
+    configure_text_buffer(
+        &mut buffer,
+        &mut font_system,
+        &content,
+        &style,
+        Some(&highlights),
+        Some(300.0),
+        1.0,
+    );
+    let geometry =
+        collect_styled_text_geometry(&buffer, &highlights, &style, 1.0, 0.0..100.0, None);
+    assert_eq!(geometry.backgrounds.len(), 1);
+    let background = geometry.backgrounds[0];
+    assert_eq!(background.kind, TextPaintKind::Rounded(3.0));
+    assert_eq!(background.rect.x, -2.0);
+    assert_eq!(background.rect.y, 1.5);
+    assert_eq!(background.rect.height, 19.0);
+}
+
+#[cfg(target_os = "macos")]
+#[test]
+fn native_intrinsic_labels_round_once_in_logical_pixels() {
+    let fonts = create_shared_font_system(&Assets::default(), &[]).unwrap();
+    let mut renderer =
+        pollster::block_on(OffscreenRenderer::new(PerformanceProfile::Balanced, fonts)).unwrap();
+    let content: Arc<str> = Arc::from("Parity fixture");
+    let style = TextStyle::new(12.0, Color::WHITE)
+        .family(FontFamily::named("SF Mono"))
+        .line_height(18.0);
+    let measured = renderer.measure_text(TextId::new(900), &content, &style, None, 2.0);
+    assert_eq!(measured.width, 104.0);
+    let constrained = renderer.measure_text(
+        TextId::new(900),
+        &content,
+        &style,
+        Some(measured.width),
+        2.0,
+    );
+    assert_eq!(constrained.height, 18.0);
+}
+
+#[cfg(target_os = "macos")]
+#[test]
+fn macos_braille_uses_the_native_script_fallback() {
+    let mut fonts = create_font_system();
+    let style = TextStyle::new(12., Color::WHITE).family(FontFamily::from("SF Mono"));
+    let mut buffer = Buffer::new(&mut fonts, Metrics::new(24., 26.));
+    configure_text_buffer(&mut buffer, &mut fonts, "⣸⣿⡿", &style, None, None, 2.);
+    for run in buffer.layout_runs() {
+        for glyph in run.glyphs {
+            let face = fonts.db().face(glyph.font_id).unwrap();
+            assert_eq!(face.post_script_name, "AppleBraille");
+        }
+    }
+}
+
+#[test]
+fn aligned_wrapped_text_can_preserve_break_whitespace() {
+    let mut fonts = create_font_system();
+    let mut buffer = Buffer::new(&mut fonts, Metrics::new(24., 36.));
+    let mut style = TextStyle::new(12., Color::WHITE).family(FontFamily::Monospace);
+    style.align = TextAlign::Center;
+    configure_text_buffer(
+        &mut buffer,
+        &mut fonts,
+        "hello world again",
+        &style,
+        None,
+        Some(90.),
+        2.,
+    );
+    let trimmed = buffer.layout_runs().next().unwrap().glyphs[0].x;
+    style.align = TextAlign::CenterIncludingWhitespace;
+    configure_text_buffer(
+        &mut buffer,
+        &mut fonts,
+        "hello world again",
+        &style,
+        None,
+        Some(90.),
+        2.,
+    );
+    let preserved = buffer.layout_runs().next().unwrap().glyphs[0].x;
+    assert!(
+        preserved < trimmed,
+        "the trailing space participates in centering"
+    );
+}
+
+#[test]
+fn wrapped_measurement_reuse_is_invalidated_by_font_metrics() {
+    let fonts = Rc::new(RefCell::new(fixture_font_system()));
+    let mut renderer =
+        pollster::block_on(OffscreenRenderer::new(PerformanceProfile::Balanced, fonts)).unwrap();
+    let content: Arc<str> =
+        Arc::from("A paragraph whose intrinsic width changes with its font size.");
+    let small = TextStyle::new(12., Color::WHITE).family(FontFamily::named("Inter"));
+    renderer.measure_text(TextId::new(901), &content, &small, Some(100.), 2.);
+    let large = TextStyle::new(24., Color::WHITE).family(FontFamily::named("Inter"));
+    let reused = renderer.measure_text(TextId::new(901), &content, &large, None, 2.);
+    let fresh = renderer.measure_text(TextId::new(902), &content, &large, None, 2.);
+    assert_eq!(reused, fresh);
+    assert!(reused.width > 100.);
+}
+
+#[test]
+fn equal_underlines_do_not_bridge_undecorated_text() {
+    let content: Arc<str> = Arc::from("link plain link");
+    let styled = StyledText::new(content.clone()).with_highlights([
+        (0..4, HighlightStyle::default().underline()),
+        (11..15, HighlightStyle::default().underline()),
+    ]);
+    let style = TextStyle::new(14.0, Color::WHITE).line_height(22.0);
+    let mut fonts = fixture_font_system();
+    let mut buffer = Buffer::new(&mut fonts, Metrics::new(14.0, 22.0));
+    let highlights = Arc::from(styled.highlights());
+    configure_text_buffer(
+        &mut buffer,
+        &mut fonts,
+        &content,
+        &style,
+        Some(&highlights),
+        Some(300.0),
+        1.0,
+    );
+    let geometry =
+        collect_styled_text_geometry(&buffer, &highlights, &style, 1.0, 0.0..100.0, None);
+    assert_eq!(geometry.decorations.len(), 2);
+    assert!(geometry.decorations[0].rect.right() < geometry.decorations[1].rect.x);
+}

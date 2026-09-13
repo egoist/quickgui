@@ -1,0 +1,22 @@
+{
+  "name": "@quickgui/gpuix",
+  "version": "0.1.4-next.1",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./native": "./src/native.ts",
+    "./build": "./src/build.ts"
+  },
+  "dependencies": {
+    "@gpuix/react": "0.7.0",
+    "@quickgui/native": "workspace:*",
+    "@quickgui/solid": "workspace:*",
+    "react": "19.2.4",
+    "solid-js": "2.0.0-rc.8"
+  },
+  "devDependencies": {
+    "@gpuix/native": "0.7.0",
+    "@types/react": "19.2.0"
+  }
+}
