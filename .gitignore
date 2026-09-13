@@ -22,3 +22,5 @@ packages/extension-*/lib/**/*.dll
 # Extension resources and installation helpers are generated native artifacts.
 packages/extension-*/lib/
 examples/native-extension/backend/lib/
+/examples/openclicky-chat
+examples/openclicky_chat.rs
