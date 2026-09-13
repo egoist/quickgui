@@ -43,8 +43,8 @@ const goDescriptions = {
   'native-services': 'Open windows and use menus, clipboard, dialogs, and file watching.',
   'swift-ui': 'Embed real SwiftUI controls inside a Go application.',
   'swift-ui-hosting': 'Style SwiftUI controls and nest QuickGUI content inside them.',
-  'app-icon': 'Set the packaged application icon and the window or Dock icon at runtime.',
-  'bundled-resources': 'Ship extra files with the app and load them from the resource directory.',
+  'app-icon': 'Use resources/icon.png as the packaged application icon, or change the window or Dock icon at runtime.',
+  'bundled-resources': 'Ship files in resources/ and load them from the packaged resource directory.',
   updater: 'Ship signed automatic updates for macOS, Windows, and Linux.',
   extensions: 'Share Go components or add a native service your app can call.',
 } satisfies Record<DocsSlug, string>

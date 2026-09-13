@@ -43,8 +43,7 @@ identifier = "com.example.my-app"
 entry = "."
 version = "0.1.0"
 fonts = ["assets/Custom.ttf"]
-resources = ["assets"]
-icon = "assets/icon.png"
+resources = ["legal/NOTICE.txt"]
 protocols = ["my-app"]
 
 [native]
@@ -73,8 +72,7 @@ export default defineConfig({
   entry: ".", // A Go main package, e.g. "cmd/app".
   version: "0.1.0",
   fonts: ["assets/Custom.ttf"],
-  resources: ["assets"],
-  icon: "assets/icon.png",
+  resources: ["legal/NOTICE.txt"],
   protocols: ["my-app"],
   native: { tags: ["production"] },
   macos: {
@@ -85,6 +83,8 @@ export default defineConfig({
   },
 });
 ```
+
+The project `resources/` directory is packaged automatically. Put the application icon at `resources/icon.png`. The `resources` array only adds extra files or folders.
 
 `native.libraryPath` or `QUICKGUI_LIBRARY` selects a custom host library for Go and TypeScript. Otherwise the CLI finds the matching asset in `@quickgui/native` or the repository build output. Rust apps ignore that library and link the `quickgui` crate. `native.tags` passes Go build tags. Go application metadata and packaged font paths are injected at link time; Rust metadata is written to `quickgui.json`. There is no runtime TypeScript compiler, JSX lowering, or native-module code generator.
 
@@ -98,7 +98,7 @@ quickgui build --update-manifest --update-base-url https://dl.example.com/demo
 quickgui build --mas
 ```
 
-Production Go builds use `-trimpath -ldflags='-s -w …'`. Production Rust builds use `cargo build --release`. macOS packages put the shared library for Go and TypeScript in `Contents/Frameworks` and resources in `Contents/Resources`. Linux AppDir/Debian and Windows installer payloads keep the shared library, fonts, and `resources` beside the executable. Rust apps omit that library and keep `quickgui.json` with the resources. The signed `.app` is packaged in a versioned DMG with an Applications link. Notarization uses an existing `notarytool` Keychain profile; development builds do not create DMGs. MAS builds use the configured app/installer identities and entitlements. Signed update manifests require the configured update signing key. Set `icon` (or `macos.icon` / `windows.icon` / `linux.icon`) for the packaged application icon.
+Production Go builds use `-trimpath -ldflags='-s -w …'`. Production Rust builds use `cargo build --release`. macOS packages put the shared library for Go and TypeScript in `Contents/Frameworks` and resources in `Contents/Resources`. Linux AppDir/Debian and Windows installer payloads keep the shared library, fonts, and `resources` beside the executable. Rust apps omit that library and keep `quickgui.json` with the resources. The signed `.app` is packaged in a versioned DMG with an Applications link. Notarization uses an existing `notarytool` Keychain profile; development builds do not create DMGs. MAS builds use the configured app/installer identities and entitlements. Signed update manifests require the configured update signing key. The project `resources/` directory is packaged automatically; `resources/icon.png` is the application icon. The `resources` config option adds extra files. `macos.icon` / `windows.icon` / `linux.icon` override platform containers.
 
 The Go compiler maps `darwin-x64`, `linux-x64`, and `windows-x64` to `GOARCH=amd64`; arm64 targets use `GOARCH=arm64`. A matching native library and target packaging tools are required. Linux AppDir/Debian and Windows installer payloads include the shared library beside the executable. Published native assets cover macOS arm64/x64, Linux arm64/x64, and Windows x64.
 

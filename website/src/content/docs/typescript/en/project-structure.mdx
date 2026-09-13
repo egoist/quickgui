@@ -4,6 +4,8 @@ A TypeScript project keeps application code in `app.tsx` and development command
 
 ```text
 my-app/
+├── resources/
+│   └── icon.png
 ├── app.tsx
 ├── quickgui.config.ts
 ├── tsconfig.json
@@ -27,13 +29,11 @@ export default defineConfig({
   name: "My App",
   identifier: "com.example.my-app",
   entry: "app.tsx",
-  icon: "assets/icon.png",
   fonts: ["assets/MyFont.ttf"],
-  resources: ["assets"],
 });
 ```
 
-See [App Icon](/docs/typescript/app-icon) and [Bundled Resources](/docs/typescript/bundled-resources). TOML supports the same keys. In `tsconfig.json`, set `jsx` to `"preserve"` and `jsxImportSource` to `"@quickgui/solid"`.
+The application icon comes from `resources/icon.png`. Extra files can be listed in `resources`. See [App Icon](/docs/typescript/app-icon) and [Bundled Resources](/docs/typescript/bundled-resources). TOML supports the same keys. In `tsconfig.json`, set `jsx` to `"preserve"` and `jsxImportSource` to `"@quickgui/solid"`.
 
 ## Packages
 

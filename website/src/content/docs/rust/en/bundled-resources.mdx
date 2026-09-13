@@ -1,8 +1,27 @@
-Use `resources` to ship files that are not compiled into the executable: images, templates, JSON, and other data. The CLI copies each path into the packaged app under its basename. The running app reads them from `AppPaths::resource_dir()`, which does not depend on the launch working directory.
+Put application files that are not compiled into the executable in a `resources/` directory: images, templates, JSON, and other data. The CLI copies that directory’s contents into the packaged app. The running app reads them from `AppPaths::resource_dir()`, which does not depend on the launch working directory.
 
 To embed bytes at compile time instead, use `BundledAssets` and `Application::assets`. Custom fonts are a separate option. See [Fonts](#fonts).
 
-## Configuration
+## The resources directory
+
+```text
+my-app/
+├── resources/
+│   ├── icon.png
+│   ├── hero.png
+│   └── copy/
+│       └── template.txt
+├── src/main.rs
+└── quickgui.config.ts
+```
+
+Each file keeps its path relative to `resources/`. `resources/hero.png` is installed as `hero.png`. `resources/copy/template.txt` is installed as `copy/template.txt`. Destination names must not replace reserved names such as `fonts`, `AppIcon.icns`, or `quickgui.json`.
+
+`quickgui dev` and `quickgui build` both stage these files. A missing extra path listed in config fails the build. The `resources/` directory itself is optional. Rust identity and font paths are written to `quickgui.json` in the same resource directory.
+
+## Additional files
+
+Use the `resources` config option to merge extra files or folders into the same packaged directory. Each extra path is copied under its basename. Do not list the project `resources/` folder here; it is included automatically.
 
 ```ts
 import { defineConfig } from "@quickgui/cli";
@@ -12,14 +31,12 @@ export default defineConfig({
   name: "My App",
   identifier: "com.example.my-app",
   entry: ".",
-  resources: ["assets", "copy/template.txt"],
+  resources: ["legal/NOTICE.txt", "vendor/data"],
   fonts: ["assets/MyFont.ttf"],
 });
 ```
 
-Each entry is a file or a directory. Relative paths resolve from the project directory. Destination names must be unique and must not replace reserved names such as `fonts`, `AppIcon.icns`, or `quickgui.json`.
-
-`quickgui dev` and `quickgui build` both stage these files. Missing paths fail the build. Rust identity and font paths are written to `quickgui.json` in the same resource directory.
+`legal/NOTICE.txt` is installed as `NOTICE.txt`. `vendor/data` is installed as `data/`.
 
 ## Install locations
 
@@ -29,7 +46,7 @@ Each entry is a file or a directory. Relative paths resolve from the project dir
 | Linux AppDir, AppImage, and `.deb` | Next to the executable (`usr/bin`) |
 | Windows installer | Next to the executable in `$INSTDIR` |
 
-A configured path `assets` is installed as `assets/` in that directory. A file `copy/template.txt` is installed as `template.txt`. Join those names onto `resource_dir()` at runtime; do not read from the project tree or the current working directory.
+Join packaged names onto `resource_dir()` at runtime; do not read from the project tree or the current working directory.
 
 ## Loading files
 
@@ -38,7 +55,7 @@ let hero = cx
     .app_paths()
     .unwrap()
     .resource_dir()
-    .join("assets/hero.png");
+    .join("hero.png");
 
 img(hero).size(160.0, 120.0)
 ```
@@ -47,7 +64,7 @@ img(hero).size(160.0, 120.0)
 
 ```rust
 let bundle = BundledAssets::new()
-    .with("copy/template.txt", include_bytes!("../assets/template.txt"))?;
+    .with("copy/template.txt", include_bytes!("../resources/copy/template.txt"))?;
 let assets = Assets::new(bundle);
 ```
 
@@ -67,4 +84,4 @@ export default defineConfig({
 });
 ```
 
-You can also call `Application::font` with bytes or an asset path. Fonts are not a replacement for `resources`: an image or JSON file still belongs in `resources` or `BundledAssets`.
+You can also call `Application::font` with bytes or an asset path. Fonts are not a replacement for `resources/`: an image or JSON file still belongs in that directory, in the extra `resources` list, or in `BundledAssets`.

@@ -1,12 +1,67 @@
 /** Copy and archive helpers for application files that sit next to the packaged executable. */
 
-import { cpSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { cpSync, mkdirSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { basename, join, posix, resolve } from "node:path";
 
 import { CliError } from "../error.ts";
 import type { TarEntry } from "./archive.ts";
 
-/** Copy each configured resource into `destination` using its basename. */
+const SKIPPED_RESOURCE_NAMES = new Set(["icon.iconset"]);
+
+function isSkippedResourceName(name: string): boolean {
+  return name.startsWith(".") || SKIPPED_RESOURCE_NAMES.has(name.toLocaleLowerCase("en-US"));
+}
+
+/** Copy the contents of the project `resources/` directory into `destination`. */
+export function copyResourceDirectory(
+  source: string,
+  destination: string,
+  reservedNames: ReadonlySet<string> = new Set(),
+): string[] {
+  const names = new Map(
+    [...reservedNames].map((name) => [name.toLocaleLowerCase("en-US"), name] as const),
+  );
+  const staged: string[] = [];
+  mkdirSync(destination, { recursive: true });
+  for (const name of readdirSync(source).sort()) {
+    if (isSkippedResourceName(name)) continue;
+    const normalizedName = name.toLocaleLowerCase("en-US");
+    const previous = names.get(normalizedName);
+    if (previous) {
+      throw new CliError(
+        `Resource destination name is reserved or duplicated: ${name} conflicts with ${previous}`,
+      );
+    }
+    names.set(normalizedName, name);
+    const target = resolve(destination, name);
+    cpSync(join(source, name), target, { recursive: statSync(join(source, name)).isDirectory() });
+    staged.push(target);
+  }
+  return staged;
+}
+
+/**
+ * Copy the convention `resources/` directory, then extra configured files, into `destination`.
+ * Destination names must be unique and must not replace reserved packaging files.
+ */
+export function stageApplicationResources(
+  resourceDir: string | undefined,
+  extras: readonly string[],
+  destination: string,
+  reservedNames: ReadonlySet<string> = new Set(),
+): string[] {
+  const reserved = new Set(reservedNames);
+  const staged: string[] = [];
+  if (resourceDir) {
+    const copied = copyResourceDirectory(resourceDir, destination, reserved);
+    staged.push(...copied);
+    for (const path of copied) reserved.add(basename(path));
+  }
+  staged.push(...copyResources(extras, destination, reserved));
+  return staged;
+}
+
+/** Copy each extra configured resource into `destination` using its basename. */
 export function copyResources(
   paths: readonly string[],
   destination: string,

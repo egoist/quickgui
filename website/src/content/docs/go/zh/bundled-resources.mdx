@@ -1,8 +1,27 @@
-用 `resources` 打包未编译进可执行文件的文件：图像、模板、JSON 和其他数据。CLI 按基本名称把每个路径复制进应用包。运行中的应用从资源目录读取它们，不依赖启动时的工作目录。
+把不会编译进可执行文件的应用文件放在 `resources/` 目录：图像、模板、JSON 和其他数据。CLI 会把该目录的内容复制进打包后的应用。运行中的应用从资源目录读取它们，不依赖启动时的工作目录。
 
 自定义字体是单独的选项。见[字体](#fonts)。
 
-## 配置
+## resources 目录
+
+```text
+my-app/
+├── resources/
+│   ├── icon.png
+│   ├── hero.png
+│   └── copy/
+│       └── template.txt
+├── main.go
+└── quickgui.config.ts
+```
+
+每个文件保留相对于 `resources/` 的路径。`resources/hero.png` 安装为 `hero.png`。`resources/copy/template.txt` 安装为 `copy/template.txt`。目标名称不得覆盖 `fonts`、`AppIcon.icns`、`quickgui.json` 或主机共享库等保留名。
+
+`quickgui dev` 和 `quickgui build` 都会暂存这些文件。配置里列出的额外路径缺失时构建失败。`resources/` 目录本身是可选的。
+
+## 额外文件
+
+用 `resources` 配置项把额外文件或文件夹合并进同一个打包目录。每条额外路径按其基名复制。不要在这里列出项目的 `resources/` 文件夹，它会自动包含。
 
 ```ts
 import { defineConfig } from "@quickgui/cli";
@@ -11,28 +30,26 @@ export default defineConfig({
   name: "My App",
   identifier: "com.example.my-app",
   entry: ".",
-  resources: ["assets", "copy/template.txt"],
+  resources: ["legal/NOTICE.txt", "vendor/data"],
   fonts: ["assets/MyFont.ttf"],
 });
 ```
 
-每一项都是文件或目录。相对路径相对项目目录解析。目标名称必须唯一，且不能覆盖 `fonts`、`AppIcon.icns`、`quickgui.json` 或宿主共享库等保留名。
-
-`quickgui dev` 和 `quickgui build` 都会暂存这些文件。路径不存在时构建失败。
+`legal/NOTICE.txt` 安装为 `NOTICE.txt`。`vendor/data` 安装为 `data/`。
 
 ## 安装位置
 
-| 平台 | 资源目录 |
+| Platform | Resource directory |
 | --- | --- |
 | macOS `.app` | `Contents/Resources` |
-| Linux AppDir、AppImage 和 `.deb` | 可执行文件旁边（`usr/bin`） |
-| Windows 安装程序 | `$INSTDIR` 里可执行文件旁边 |
+| Linux AppDir, AppImage, and `.deb` | Next to the executable (`usr/bin`) |
+| Windows installer | Next to the executable in `$INSTDIR` |
 
-配置的路径 `assets` 会安装为该目录下的 `assets/`。文件 `copy/template.txt` 会安装为 `template.txt`。运行时把这些名称拼到 `ResourceDir` 上；不要从项目树或当前工作目录读取。
+运行时把打包后的名称拼到 `ResourceDir` 上；不要从项目树或当前工作目录读取。
 
 ## 读取文件
 
-在 `native.Run` 就绪后向宿主查询路径，再拼接打包后的名称：
+在 `native.Run` 就绪后向主机查询路径，再拼接打包后的名称：
 
 ```go
 import (
@@ -54,7 +71,7 @@ func main() {
 			if err != nil || paths == nil {
 				return
 			}
-			hero = filepath.Join(paths.ResourceDir, "assets", "hero.png")
+			hero = filepath.Join(paths.ResourceDir, "hero.png")
 			native.NewWindow(native.WindowOptions{
 				Title:     "My App",
 				Component: App,
@@ -64,11 +81,11 @@ func main() {
 }
 ```
 
-`ui.Image` 接受该文件系统路径。其他文件用同样的拼接：用 `os.ReadFile` 或你自己的加载器打开。相对图像路径不会相对资源目录解析。
+`ui.Image` 接受该文件系统路径。其他文件用同样的拼接：用 `os.ReadFile` 或自己的加载器打开。相对图像路径不会相对资源目录解析。
 
 ## 字体
 
-`fonts` 列出 OpenType 文件。CLI 把它们复制到资源目录中的 `fonts/`，并在打开第一个窗口之前注册。
+`fonts` 列出 OpenType 文件。CLI 把它们复制到资源目录里的 `fonts/`，并在第一个窗口打开前注册。
 
 ```ts
 export default defineConfig({
@@ -79,4 +96,4 @@ export default defineConfig({
 });
 ```
 
-在样式里使用字体家族名。字体不能代替 `resources`：图像或 JSON 文件仍应放在 `resources` 中。
+在样式里使用字体系列名。字体不能代替 `resources/`：图像或 JSON 文件仍应放在该目录或额外的 `resources` 列表里。

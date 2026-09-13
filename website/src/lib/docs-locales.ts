@@ -48,12 +48,12 @@ const GUIDE_TRANSLATIONS: Record<TranslatedLocale, Record<DocsSlug, GuideTransla
       searchTerms: ['文件', '配置', '入口', '软件包', 'quickgui.config'],
     },
     'app-icon': {
-      description: '设置打包后的应用图标，以及运行时的窗口或程序坞图标。',
-      searchTerms: ['图标', 'icns', 'ico', '程序坞', '任务栏', 'png'],
+      description: '用 resources/icon.png 作为打包后的应用图标，或在运行时更换窗口与程序坞图标。',
+      searchTerms: ['图标', 'icns', 'ico', '程序坞', '任务栏', 'png', 'resources'],
     },
     'bundled-resources': {
-      description: '把额外文件打进应用，并从资源目录读取它们。',
-      searchTerms: ['资源', '资源文件', '打包', '字体', 'resourceDir'],
+      description: '把文件放进 resources/，并从打包后的资源目录读取它们。',
+      searchTerms: ['资源', '资源文件', '打包', '字体', 'resourceDir', 'resources'],
     },
     reactivity: {
       description: '用信号、memo、effect 和批量更新保持界面同步。',
@@ -143,12 +143,12 @@ const GUIDE_TRANSLATIONS: Record<TranslatedLocale, Record<DocsSlug, GuideTransla
       searchTerms: ['ファイル', '設定', 'エントリ', 'パッケージ', 'quickgui.config'],
     },
     'app-icon': {
-      description: 'パッケージのアプリアイコンと、実行時のウィンドウまたは Dock アイコンを設定します。',
-      searchTerms: ['アイコン', 'icns', 'ico', 'Dock', 'タスクバー', 'png'],
+      description: 'resources/icon.png をパッケージのアプリアイコンにし、実行時のウィンドウまたは Dock アイコンも変えられます。',
+      searchTerms: ['アイコン', 'icns', 'ico', 'Dock', 'タスクバー', 'png', 'resources'],
     },
     'bundled-resources': {
-      description: '追加ファイルをアプリに同梱し、リソースディレクトリから読み込みます。',
-      searchTerms: ['リソース', 'アセット', 'バンドル', 'フォント', 'resourceDir'],
+      description: 'resources/ にファイルを置き、パッケージ後のリソースディレクトリから読み込みます。',
+      searchTerms: ['リソース', 'アセット', 'バンドル', 'フォント', 'resourceDir', 'resources'],
     },
     reactivity: {
       description: 'シグナル、memo、effect、バッチ更新で UI を同期します。',

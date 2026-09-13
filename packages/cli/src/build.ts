@@ -41,7 +41,7 @@ import {
   writeUpdateManifest,
   type IconBuildResult,
 } from "./packaging/pipeline.ts";
-import { copyResources } from "./packaging/resources.ts";
+import { stageApplicationResources } from "./packaging/resources.ts";
 import { updaterMetadata } from "./packaging/appcast.ts";
 import { targetInfo, type QuickGuiTarget } from "./targets.ts";
 
@@ -210,7 +210,7 @@ async function buildMacApp(
     ...(iconFile ? [iconFile] : []),
     ...(fonts.length > 0 ? ["fonts"] : []),
   ]);
-  copyResources(config.resources, resources, reservedResources);
+  stageApplicationResources(config.resourceDir, config.resources, resources, reservedResources);
   if (config.macos.icon && iconFile) {
     cpSync(config.macos.icon, resolve(resources, iconFile));
   } else if (generatedIcns && iconFile) {
@@ -669,7 +669,9 @@ export function stageExecutableSidecars(
     staged.push(fontsDir);
     names.add("fonts");
   }
-  staged.push(...copyResources(config.resources, stagingRoot, reserved));
+  staged.push(
+    ...stageApplicationResources(config.resourceDir, config.resources, stagingRoot, reserved),
+  );
   return staged;
 }
 
@@ -705,6 +707,12 @@ export function validateBuildInputs(
     throw new CliError(
       `${languageLabel(config.language)} application package not found: ${config.entry}`,
     );
+  }
+  if (
+    config.resourceDir &&
+    (!existsSync(config.resourceDir) || !statSync(config.resourceDir).isDirectory())
+  ) {
+    throw new CliError(`Resource directory not found: ${config.resourceDir}`);
   }
   for (const resource of config.resources) {
     if (!existsSync(resource)) throw new CliError(`Resource not found: ${resource}`);

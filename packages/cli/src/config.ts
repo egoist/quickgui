@@ -1,5 +1,5 @@
-import { existsSync } from "node:fs";
-import { extname, isAbsolute, resolve } from "node:path";
+import { existsSync, statSync } from "node:fs";
+import { extname, isAbsolute, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
 import { CliError } from "./error.ts";
@@ -90,7 +90,7 @@ export interface UpdatesConfig {
 }
 
 export interface LinuxConfig {
-  /** Square PNG used for the desktop icon set when the top-level `icon` is omitted. */
+  /** Square PNG used for the desktop icon set when `resources/icon.png` and `icon` are omitted. */
   icon?: string;
   /** Freedesktop main categories. Defaults to `["Utility"]`. */
   categories?: string[];
@@ -196,12 +196,19 @@ export interface QuickGuiConfig {
   native?: NativeConfig;
   /** TypeScript extensions: npm packages, directories, or terminal/updater names. */
   extensions?: string[];
+  /**
+   * Extra files or directories merged into the packaged resource directory.
+   * The project `resources/` folder is included automatically when present.
+   */
   resources?: string[];
   /** OpenType font files embedded in the executable and registered before app startup. */
   fonts?: string[];
   /** Custom URL schemes. Packaged macOS apps declare these in their signed Info.plist. */
   protocols?: string[];
-  /** Square source PNG (>= 256x256) used to generate `.icns`, `.ico`, and Linux icon sizes. */
+  /**
+   * Square source PNG (>= 256x256) used to generate `.icns`, `.ico`, and Linux icon sizes.
+   * Defaults to `resources/icon.png` when that file exists.
+   */
   icon?: string;
   /** File associations declared to every packaging backend. */
   documentTypes?: DocumentTypeConfig[];
@@ -224,6 +231,9 @@ export interface ResolvedQuickGuiConfig {
   target?: QuickGuiTarget;
   native: { libraryPath?: string; tags: string[] };
   extensions: string[];
+  /** Project `resources/` directory, when it exists. */
+  resourceDir?: string;
+  /** Extra files or directories merged into the packaged resource directory. */
   resources: string[];
   fonts: string[];
   protocols: string[];
@@ -302,15 +312,15 @@ export function resolveConfig(
     input.target === undefined
       ? undefined
       : parseTarget(requiredString(input.target, "target", 64));
-  const resources = stringArray(input.resources, "resources").map((path) =>
-    resolveRelative(projectRoot, path),
-  );
+  const resourceDir = conventionResourceDir(projectRoot);
+  const resources = extraResourcePaths(input.resources, projectRoot, resourceDir);
   const fonts = stringArray(input.fonts, "fonts").map((path) => resolveRelative(projectRoot, path));
   const protocols = protocolArray(input.protocols);
   const macos = objectOrEmpty(input.macos, "macos");
   const windows = objectOrEmpty(input.windows, "windows");
   const linux = objectOrEmpty(input.linux, "linux");
-  const sourceIcon = optionalString(input.icon, "icon", 1_024);
+  const sourceIcon =
+    optionalString(input.icon, "icon", 1_024) ?? conventionFile(resourceDir, "icon.png");
   const documentTypes = resolveDocumentTypes(input.documentTypes);
   const updates = resolveUpdates(input.updates, projectRoot);
   const native = objectOrEmpty(input.native, "native");
@@ -335,10 +345,12 @@ export function resolveConfig(
   const appStore = resolveMacAppStore(macos.appStore, projectRoot);
   const nsis = resolveWindowsNsis(windows.nsis);
   const windowsSigning = resolveWindowsSigning(windows.signing, projectRoot);
-  const icon = optionalString(macos.icon, "macos.icon", 1_024);
+  const icon =
+    optionalString(macos.icon, "macos.icon", 1_024) ?? conventionFile(resourceDir, "icon.icns");
   const entitlements = optionalString(macos.entitlements, "macos.entitlements", 1_024);
   const notarization = resolveMacOSNotarization(macos.notarization, projectRoot);
-  const windowsIcon = optionalString(windows.icon, "windows.icon", 1_024);
+  const windowsIcon =
+    optionalString(windows.icon, "windows.icon", 1_024) ?? conventionFile(resourceDir, "icon.ico");
 
   return {
     language,
@@ -364,6 +376,7 @@ export function resolveConfig(
         ? path
         : resolveRelative(projectRoot, path),
     ),
+    ...(resourceDir ? { resourceDir } : {}),
     resources,
     fonts,
     protocols,
@@ -675,6 +688,42 @@ function executableName(name: string): string {
     throw new CliError("Application name does not contain a usable executable name");
   }
   return value;
+}
+
+/** Project directory whose contents become the packaged resource directory. */
+export const APPLICATION_RESOURCE_DIR = "resources";
+
+function conventionResourceDir(projectRoot: string): string | undefined {
+  const path = resolve(projectRoot, APPLICATION_RESOURCE_DIR);
+  if (!existsSync(path)) return undefined;
+  if (!statSync(path).isDirectory()) {
+    throw new CliError("`resources` at the project root must be a directory");
+  }
+  return path;
+}
+
+function conventionFile(directory: string | undefined, name: string): string | undefined {
+  if (!directory) return undefined;
+  const path = join(directory, name);
+  return existsSync(path) && statSync(path).isFile() ? path : undefined;
+}
+
+function extraResourcePaths(
+  value: unknown,
+  projectRoot: string,
+  resourceDir: string | undefined,
+): string[] {
+  const extras = stringArray(value, "resources").map((path) => resolveRelative(projectRoot, path));
+  if (!resourceDir) return extras;
+  for (const extra of extras) {
+    if (resolve(extra) === resourceDir) {
+      throw new CliError(
+        "`resources` lists extra files to merge into the packaged resource directory; " +
+          "omit the project `resources/` folder — it is included automatically",
+      );
+    }
+  }
+  return extras;
 }
 
 function resolveRelative(root: string, path: string): string {

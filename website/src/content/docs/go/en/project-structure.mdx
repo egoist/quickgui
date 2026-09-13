@@ -4,6 +4,8 @@ A Go project keeps application code in a Go module and development commands in a
 
 ```text
 my-app/
+├── resources/
+│   └── icon.png
 ├── main.go
 ├── go.mod
 ├── go.sum
@@ -51,16 +53,14 @@ entry = "."
 
 The CLI reads `quickgui.toml` before `quickgui.config.ts`. Pass `--config configs/dev.toml` to choose a file. Quote version values, for example `version = "..."`.
 
-Set the application icon with `icon`. Bundle extra files with `resources` and custom fonts with `fonts`. See [App Icon](/docs/go/app-icon) and [Bundled Resources](/docs/go/bundled-resources).
+The application icon comes from `resources/icon.png`. Extra files can be listed in `resources`. Bundle custom fonts with `fonts`. See [App Icon](/docs/go/app-icon) and [Bundled Resources](/docs/go/bundled-resources).
 
 ```ts
 export default defineConfig({
   name: "My App",
   identifier: "com.example.my-app",
   entry: ".",
-  icon: "assets/icon.png",
   fonts: ["assets/MyFont.ttf"],
-  resources: ["assets"],
 });
 ```
 

@@ -168,6 +168,27 @@ test("explicit relative and absolute TOML paths resolve resources from the proje
   }
 });
 
+test("the project resources directory and icon.png are picked up automatically", () => {
+  const root = project();
+  mkdirSync(join(root, "resources"));
+  writeFileSync(join(root, "resources", "icon.png"), "png");
+  writeFileSync(join(root, "resources", "hero.png"), "hero");
+  writeFileSync(join(root, "notes.txt"), "extra");
+  const config = resolveConfig(
+    { name: "Demo", identifier: "com.example.demo", resources: ["notes.txt"] },
+    root,
+  );
+  expect(config.resourceDir).toBe(join(root, "resources"));
+  expect(config.icon).toBe(join(root, "resources", "icon.png"));
+  expect(config.resources).toEqual([join(root, "notes.txt")]);
+  expect(() =>
+    resolveConfig(
+      { name: "Demo", identifier: "com.example.demo", resources: ["resources"] },
+      root,
+    ),
+  ).toThrow("included automatically");
+});
+
 test("TOML edits are read again on reload and are not ignored by the watcher", async () => {
   const root = project();
   const path = join(root, "quickgui.toml");

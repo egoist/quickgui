@@ -4,6 +4,8 @@ Rust プロジェクトでは、アプリケーションコードを Cargo パ�
 
 ```text
 my-app/
+├── resources/
+│   └── icon.png
 ├── src/main.rs
 ├── Cargo.toml
 ├── Cargo.lock
@@ -36,13 +38,11 @@ export default defineConfig({
   name: "My App",
   identifier: "com.example.my-app",
   entry: ".",
-  icon: "assets/icon.png",
   fonts: ["assets/MyFont.ttf"],
-  resources: ["assets"],
 });
 ```
 
-[アプリアイコン](/docs/rust/app-icon)と[バンドルするリソース](/docs/rust/bundled-resources)を参照してください。TOML でも同じキーを使えます。CLI は `quickgui.config.ts` より先に `quickgui.toml` を読みます。任意のクレート機能は、アプリ設定の `extensions` ではなく `Cargo.toml` で有効にします。
+アプリアイコンは `resources/icon.png` です。追加ファイルは `resources` に列挙できます。[アプリアイコン](/docs/rust/app-icon)と[バンドルするリソース](/docs/rust/bundled-resources)を参照してください。TOML でも同じキーを使えます。CLI は `quickgui.config.ts` より先に `quickgui.toml` を読みます。任意のクレート機能は、アプリ設定の `extensions` ではなく `Cargo.toml` で有効にします。
 
 ## パッケージ
 

@@ -1,8 +1,27 @@
-用 `resources` 打包未编译进可执行文件的文件：图像、模板、JSON 和其他数据。CLI 按基本名称把每个路径复制进应用包。运行中的应用从 `AppPaths::resource_dir()` 读取它们，不依赖启动时的工作目录。
+把不会编译进可执行文件的应用文件放在 `resources/` 目录：图像、模板、JSON 和其他数据。CLI 会把该目录的内容复制进打包后的应用。运行中的应用从 `AppPaths::resource_dir()` 读取它们，不依赖启动时的工作目录。
 
 若要在编译期嵌入字节，使用 `BundledAssets` 和 `Application::assets`。自定义字体是单独的选项。见[字体](#fonts)。
 
-## 配置
+## resources 目录
+
+```text
+my-app/
+├── resources/
+│   ├── icon.png
+│   ├── hero.png
+│   └── copy/
+│       └── template.txt
+├── src/main.rs
+└── quickgui.config.ts
+```
+
+每个文件保留相对于 `resources/` 的路径。`resources/hero.png` 安装为 `hero.png`。`resources/copy/template.txt` 安装为 `copy/template.txt`。目标名称不得覆盖 `fonts`、`AppIcon.icns` 或 `quickgui.json` 等保留名。
+
+`quickgui dev` 和 `quickgui build` 都会暂存这些文件。配置里列出的额外路径缺失时构建失败。`resources/` 目录本身是可选的。Rust 的身份和字体路径会写入同一资源目录中的 `quickgui.json`。
+
+## 额外文件
+
+用 `resources` 配置项把额外文件或文件夹合并进同一个打包目录。每条额外路径按其基名复制。不要在这里列出项目的 `resources/` 文件夹，它会自动包含。
 
 ```ts
 import { defineConfig } from "@quickgui/cli";
@@ -12,24 +31,22 @@ export default defineConfig({
   name: "My App",
   identifier: "com.example.my-app",
   entry: ".",
-  resources: ["assets", "copy/template.txt"],
+  resources: ["legal/NOTICE.txt", "vendor/data"],
   fonts: ["assets/MyFont.ttf"],
 });
 ```
 
-每一项都是文件或目录。相对路径相对项目目录解析。目标名称必须唯一，且不能覆盖 `fonts`、`AppIcon.icns` 或 `quickgui.json` 等保留名。
-
-`quickgui dev` 和 `quickgui build` 都会暂存这些文件。路径不存在时构建失败。Rust 的身份和字体路径会写入同一资源目录中的 `quickgui.json`。
+`legal/NOTICE.txt` 安装为 `NOTICE.txt`。`vendor/data` 安装为 `data/`。
 
 ## 安装位置
 
-| 平台 | 资源目录 |
+| Platform | Resource directory |
 | --- | --- |
 | macOS `.app` | `Contents/Resources` |
-| Linux AppDir、AppImage 和 `.deb` | 可执行文件旁边（`usr/bin`） |
-| Windows 安装程序 | `$INSTDIR` 里可执行文件旁边 |
+| Linux AppDir, AppImage, and `.deb` | Next to the executable (`usr/bin`) |
+| Windows installer | Next to the executable in `$INSTDIR` |
 
-配置的路径 `assets` 会安装为该目录下的 `assets/`。文件 `copy/template.txt` 会安装为 `template.txt`。运行时把这些名称拼到 `resource_dir()` 上；不要从项目树或当前工作目录读取。
+运行时把打包后的名称拼到 `resource_dir()` 上；不要从项目树或当前工作目录读取。
 
 ## 读取文件
 
@@ -38,7 +55,7 @@ let hero = cx
     .app_paths()
     .unwrap()
     .resource_dir()
-    .join("assets/hero.png");
+    .join("hero.png");
 
 img(hero).size(160.0, 120.0)
 ```
@@ -47,7 +64,7 @@ img(hero).size(160.0, 120.0)
 
 ```rust
 let bundle = BundledAssets::new()
-    .with("copy/template.txt", include_bytes!("../assets/template.txt"))?;
+    .with("copy/template.txt", include_bytes!("../resources/copy/template.txt"))?;
 let assets = Assets::new(bundle);
 ```
 
@@ -55,7 +72,7 @@ let assets = Assets::new(bundle);
 
 ## 字体
 
-`fonts` 列出 OpenType 文件。CLI 把它们复制到资源目录中的 `fonts/`，并在打开第一个窗口之前根据 `quickgui.json` 注册。
+`fonts` 列出 OpenType 文件。CLI 把它们复制到资源目录里的 `fonts/`，并在第一个窗口打开前根据 `quickgui.json` 注册。
 
 ```ts
 export default defineConfig({
@@ -67,4 +84,4 @@ export default defineConfig({
 });
 ```
 
-也可以对 `Application::font` 传入字节或资源路径。字体不能代替 `resources`：图像或 JSON 文件仍应放在 `resources` 或 `BundledAssets` 中。
+也可以对 `Application::font` 传入字节或资源路径。字体不能代替 `resources/`：图像或 JSON 文件仍应放在该目录、额外的 `resources` 列表或 `BundledAssets` 中。

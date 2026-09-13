@@ -1,8 +1,27 @@
-実行ファイルにコンパイルしないファイル（画像、テンプレート、JSON、その他のデータ）は `resources` で同梱します。CLI は各パスをベース名のままアプリにコピーします。実行中のアプリは `AppPaths::resource_dir()` から読みます。起動時のカレントディレクトリには依存しません。
+実行ファイルにコンパイルしないファイル（画像、テンプレート、JSON、その他のデータ）は `resources/` ディレクトリに置きます。CLI はその内容をパッケージ後のアプリにコピーします。実行中のアプリは `AppPaths::resource_dir()` から読みます。起動時のカレントディレクトリには依存しません。
 
 コンパイル時にバイトを埋め込む場合は `BundledAssets` と `Application::assets` を使います。カスタムフォントは別オプションです。[フォント](#fonts)を参照してください。
 
-## 設定
+## resources ディレクトリ
+
+```text
+my-app/
+├── resources/
+│   ├── icon.png
+│   ├── hero.png
+│   └── copy/
+│       └── template.txt
+├── src/main.rs
+└── quickgui.config.ts
+```
+
+各ファイルは `resources/` からの相対パスを保ちます。`resources/hero.png` は `hero.png` としてインストールされます。`resources/copy/template.txt` は `copy/template.txt` としてインストールされます。行き先の名前は、`fonts`、`AppIcon.icns`、`quickgui.json` などの予約名を置き換えてはいけません。
+
+`quickgui dev` と `quickgui build` はどちらもこれらのファイルをステージします。設定に書いた追加パスが無いとビルドは失敗します。`resources/` ディレクトリ自体は任意です。Rust の識別情報とフォントパスは、同じリソースディレクトリの `quickgui.json` に書かれます。
+
+## 追加ファイル
+
+`resources` 設定で、同じパッケージ先に追加のファイルやフォルダをマージします。各追加パスはベース名でコピーされます。プロジェクトの `resources/` フォルダはここに書かないでください。自動で含まれます。
 
 ```ts
 import { defineConfig } from "@quickgui/cli";
@@ -12,24 +31,22 @@ export default defineConfig({
   name: "My App",
   identifier: "com.example.my-app",
   entry: ".",
-  resources: ["assets", "copy/template.txt"],
+  resources: ["legal/NOTICE.txt", "vendor/data"],
   fonts: ["assets/MyFont.ttf"],
 });
 ```
 
-各項目はファイルまたはディレクトリです。相対パスはプロジェクトディレクトリから解決されます。行き先の名前は一意で、`fonts`、`AppIcon.icns`、`quickgui.json` などの予約名を置き換えてはいけません。
-
-`quickgui dev` と `quickgui build` の両方がこれらのファイルをステージします。パスが無いとビルドは失敗します。Rust の識別情報とフォントパスは、同じリソースディレクトリの `quickgui.json` に書かれます。
+`legal/NOTICE.txt` は `NOTICE.txt` としてインストールされます。`vendor/data` は `data/` としてインストールされます。
 
 ## インストール先
 
-| プラットフォーム | リソースディレクトリ |
+| Platform | Resource directory |
 | --- | --- |
 | macOS `.app` | `Contents/Resources` |
-| Linux の AppDir、AppImage、`.deb` | 実行ファイルの隣（`usr/bin`） |
-| Windows インストーラー | `$INSTDIR` 内の実行ファイルの隣 |
+| Linux AppDir, AppImage, and `.deb` | Next to the executable (`usr/bin`) |
+| Windows installer | Next to the executable in `$INSTDIR` |
 
-設定したパス `assets` は、そのディレクトリの `assets/` として入ります。ファイル `copy/template.txt` は `template.txt` として入ります。実行時はこれらの名前を `resource_dir()` に結合してください。プロジェクトツリーやカレントディレクトリから読まないでください。
+実行時はパッケージ名を `resource_dir()` に結合してください。プロジェクトツリーやカレントディレクトリからは読まないでください。
 
 ## ファイルの読み込み
 
@@ -38,7 +55,7 @@ let hero = cx
     .app_paths()
     .unwrap()
     .resource_dir()
-    .join("assets/hero.png");
+    .join("hero.png");
 
 img(hero).size(160.0, 120.0)
 ```
@@ -47,15 +64,15 @@ img(hero).size(160.0, 120.0)
 
 ```rust
 let bundle = BundledAssets::new()
-    .with("copy/template.txt", include_bytes!("../assets/template.txt"))?;
+    .with("copy/template.txt", include_bytes!("../resources/copy/template.txt"))?;
 let assets = Assets::new(bundle);
 ```
 
-相対的な画像パスはリソースディレクトリ基準では解決されません。
+相対画像パスはリソースディレクトリに対して解決されません。
 
 ## フォント
 
-`fonts` は OpenType ファイルの一覧です。CLI はそれらをリソースディレクトリ内の `fonts/` にコピーし、最初のウィンドウを開く前に `quickgui.json` から登録します。
+`fonts` は OpenType ファイルです。CLI はそれらをリソースディレクトリ内の `fonts/` にコピーし、最初のウィンドウを開く前に `quickgui.json` から登録します。
 
 ```ts
 export default defineConfig({
@@ -67,4 +84,4 @@ export default defineConfig({
 });
 ```
 
-`Application::font` にバイトまたはアセットパスを渡すこともできます。フォントは `resources` の代わりにはなりません。画像や JSON は引き続き `resources` または `BundledAssets` に置きます。
+`Application::font` にバイトまたはアセットパスを渡すこともできます。フォントは `resources/` の代わりにはなりません。画像や JSON は、そのディレクトリ、追加の `resources` リスト、または `BundledAssets` に置きます。

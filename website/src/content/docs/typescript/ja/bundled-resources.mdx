@@ -1,8 +1,27 @@
-実行ファイルにコンパイルしないファイル（画像、テンプレート、JSON、その他のデータ）は `resources` で同梱します。CLI は各パスをベース名のままアプリにコピーします。実行中のアプリはリソースディレクトリから読みます。起動時のカレントディレクトリには依存しません。
+実行ファイルにコンパイルしないファイル（画像、テンプレート、JSON、その他のデータ）は `resources/` ディレクトリに置きます。CLI はその内容をパッケージ後のアプリにコピーします。実行中のアプリはリソースディレクトリから読みます。起動時のカレントディレクトリには依存しません。
 
 カスタムフォントは別オプションです。[フォント](#fonts)を参照してください。
 
-## 設定
+## resources ディレクトリ
+
+```text
+my-app/
+├── resources/
+│   ├── icon.png
+│   ├── hero.png
+│   └── copy/
+│       └── template.txt
+├── app.tsx
+└── quickgui.config.ts
+```
+
+各ファイルは `resources/` からの相対パスを保ちます。`resources/hero.png` は `hero.png` としてインストールされます。`resources/copy/template.txt` は `copy/template.txt` としてインストールされます。行き先の名前は、`fonts`、`AppIcon.icns`、`quickgui.json`、ホスト共有ライブラリなどの予約名を置き換えてはいけません。
+
+`quickgui dev` と `quickgui build` はどちらもこれらのファイルをステージします。設定に書いた追加パスが無いとビルドは失敗します。`resources/` ディレクトリ自体は任意です。
+
+## 追加ファイル
+
+`resources` 設定で、同じパッケージ先に追加のファイルやフォルダをマージします。各追加パスはベース名でコピーされます。プロジェクトの `resources/` フォルダはここに書かないでください。自動で含まれます。
 
 ```ts
 import { defineConfig } from "@quickgui/cli";
@@ -12,28 +31,26 @@ export default defineConfig({
   name: "My App",
   identifier: "com.example.my-app",
   entry: "app.tsx",
-  resources: ["assets", "copy/template.txt"],
+  resources: ["legal/NOTICE.txt", "vendor/data"],
   fonts: ["assets/MyFont.ttf"],
 });
 ```
 
-各項目はファイルまたはディレクトリです。相対パスはプロジェクトディレクトリから解決されます。行き先の名前は一意で、`fonts`、`AppIcon.icns`、`quickgui.json`、ホスト共有ライブラリなどの予約名を置き換えてはいけません。
-
-`quickgui dev` と `quickgui build` の両方がこれらのファイルをステージします。パスが無いとビルドは失敗します。
+`legal/NOTICE.txt` は `NOTICE.txt` としてインストールされます。`vendor/data` は `data/` としてインストールされます。
 
 ## インストール先
 
-| プラットフォーム | リソースディレクトリ |
+| Platform | Resource directory |
 | --- | --- |
 | macOS `.app` | `Contents/Resources` |
-| Linux の AppDir、AppImage、`.deb` | 実行ファイルの隣（`usr/bin`） |
-| Windows インストーラー | `$INSTDIR` 内の実行ファイルの隣 |
+| Linux AppDir, AppImage, and `.deb` | Next to the executable (`usr/bin`) |
+| Windows installer | Next to the executable in `$INSTDIR` |
 
-設定したパス `assets` は、そのディレクトリの `assets/` として入ります。ファイル `copy/template.txt` は `template.txt` として入ります。実行時はこれらの名前を `resourceDir` に結合してください。プロジェクトツリーやカレントディレクトリから読まないでください。
+実行時はパッケージ名を `resourceDir` に結合してください。プロジェクトツリーやカレントディレクトリからは読まないでください。
 
 ## ファイルの読み込み
 
-`app.whenReady()` を待ってから、パッケージ後の名前を `resourceDir` に結合します：
+`app.whenReady()` を待ってから、パッケージ後の名前を `resourceDir` に結合します。
 
 ```tsx
 import { join } from "node:path";
@@ -42,7 +59,7 @@ import { Image, createRenderer } from "@quickgui/solid";
 
 await app.whenReady();
 const paths = await app.getPaths();
-const hero = join(paths!.resourceDir, "assets", "hero.png");
+const hero = join(paths!.resourceDir, "hero.png");
 
 new Window({
   title: "My App",
@@ -52,11 +69,11 @@ new Window({
 });
 ```
 
-`Image` はそのファイルシステムパスを受け取ります。他のファイルも同じ結合を使い、`Bun.file` や `readFileSync` で読みます。相対的な画像パスはリソースディレクトリ基準では解決されません。
+`Image` はそのファイルシステムパスを受け取ります。他のファイルも同じ結合を使います。`Bun.file` や `readFileSync` で読みます。相対画像パスはリソースディレクトリに対して解決されません。
 
 ## フォント
 
-`fonts` は OpenType ファイルの一覧です。CLI はそれらをリソースディレクトリ内の `fonts/` にコピーし、最初のウィンドウを開く前に登録します。
+`fonts` は OpenType ファイルです。CLI はそれらをリソースディレクトリ内の `fonts/` にコピーし、最初のウィンドウを開く前に登録します。
 
 ```ts
 export default defineConfig({
@@ -68,4 +85,4 @@ export default defineConfig({
 });
 ```
 
-`style` ではフォントファミリー名を使います。フォントは `resources` の代わりにはなりません。画像や JSON は引き続き `resources` に置きます。
+`style` ではフォントファミリー名を使います。フォントは `resources/` の代わりにはなりません。画像や JSON は、そのディレクトリか追加の `resources` リストに置きます。

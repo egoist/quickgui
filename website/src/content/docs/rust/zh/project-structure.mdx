@@ -4,6 +4,8 @@ Rust 项目把应用代码放在 Cargo 包里，开发命令放在一个小型 B
 
 ```text
 my-app/
+├── resources/
+│   └── icon.png
 ├── src/main.rs
 ├── Cargo.toml
 ├── Cargo.lock
@@ -36,13 +38,11 @@ export default defineConfig({
   name: "My App",
   identifier: "com.example.my-app",
   entry: ".",
-  icon: "assets/icon.png",
   fonts: ["assets/MyFont.ttf"],
-  resources: ["assets"],
 });
 ```
 
-见[应用图标](/docs/rust/app-icon)和[打包资源](/docs/rust/bundled-resources)。TOML 支持相同的键。CLI 会先读 `quickgui.toml`，再读 `quickgui.config.ts`。可选的 crate feature 请在 `Cargo.toml` 中启用，不要在应用配置里设置 `extensions`。
+应用图标来自 `resources/icon.png`。额外文件可以列在 `resources` 中。见[应用图标](/docs/rust/app-icon)和[打包资源](/docs/rust/bundled-resources)。TOML 支持相同的键。CLI 会先读 `quickgui.toml`，再读 `quickgui.config.ts`。可选的 crate feature 请在 `Cargo.toml` 中启用，不要在应用配置里设置 `extensions`。
 
 ## 软件包
 

@@ -46,9 +46,9 @@ const sectionTitles = {
     ],
   },
   'bundled-resources': {
-    en: ['Configuration', 'Install locations', 'Loading files', 'Fonts'],
-    zh: ['配置', '安装位置', '读取文件', '字体'],
-    ja: ['設定', 'インストール先', 'ファイルの読み込み', 'フォント'],
+    en: ['The resources directory', 'Additional files', 'Install locations', 'Loading files', 'Fonts'],
+    zh: ['resources 目录', '额外文件', '安装位置', '读取文件', '字体'],
+    ja: ['resources ディレクトリ', '追加ファイル', 'インストール先', 'ファイルの読み込み', 'フォント'],
   },
   updater: {
     en: [

@@ -47,7 +47,12 @@ import {
   validateMasConfig,
 } from "./mas.ts";
 import { debianPackageName, packageLinux, payloadMd5Sums } from "./pipeline.ts";
-import { copyResources, extraPayloadEntries } from "./resources.ts";
+import {
+  copyResourceDirectory,
+  copyResources,
+  extraPayloadEntries,
+  stageApplicationResources,
+} from "./resources.ts";
 import {
   buildUpdateManifest,
   joinUrl,
@@ -204,6 +209,31 @@ describe("icon containers", () => {
 });
 
 describe("application resources", () => {
+  test("copies the resources directory contents and extra configured files", () => {
+    const root = mkdtempSync(join(tmpdir(), "quickgui-convention-"));
+    try {
+      const resources = join(root, "resources");
+      mkdirSync(join(resources, "icon.iconset"), { recursive: true });
+      writeFileSync(join(resources, "icon.png"), "png");
+      writeFileSync(join(resources, "icon.iconset", "icon_256x256.png"), "256");
+      writeFileSync(join(resources, ".gitkeep"), "");
+      writeFileSync(join(resources, "hero.png"), "hero");
+      writeFileSync(join(root, "notes.txt"), "extra");
+      const destination = join(root, "out");
+      expect(
+        stageApplicationResources(resources, [join(root, "notes.txt")], destination),
+      ).toEqual([join(destination, "hero.png"), join(destination, "icon.png"), join(destination, "notes.txt")]);
+      expect(readFileSync(join(destination, "hero.png"), "utf8")).toBe("hero");
+      expect(existsSync(join(destination, "icon.iconset"))).toBe(false);
+      expect(existsSync(join(destination, ".gitkeep"))).toBe(false);
+      expect(() => copyResourceDirectory(resources, destination, new Set(["hero.png"]))).toThrow(
+        "reserved or duplicated",
+      );
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   test("copies files and directories by basename and rejects reserved names", () => {
     const root = mkdtempSync(join(tmpdir(), "quickgui-resources-"));
     try {

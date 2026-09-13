@@ -1,25 +1,22 @@
-パッケージ後のアプリアイコンは、Finder、Dock、Windows のタスクバーとスタートメニュー、Linux のデスクトップランチャーが表示する画像です。CLI の設定で指定します。実行中にウィンドウアイコンや macOS の Dock アイコンを変えることもできます。
+パッケージ後のアプリアイコンは、Finder、Dock、Windows のタスクバーとスタートメニュー、Linux のデスクトップランチャーが表示する画像です。PNG を `resources/icon.png` に置きます。実行中にウィンドウアイコンや macOS の Dock アイコンを変えることもできます。
 
 ## 元になるアイコン
 
-一辺が 256 ピクセル以上の正方形 PNG を追加します。1024×1024 が扱いやすい元画像です。QuickGUI は原稿をラスタライズしません。すでに存在する PNG データをパッケージします。
-
-```ts
-import { defineConfig } from "@quickgui/cli";
-
-export default defineConfig({
-  name: "My App",
-  identifier: "com.example.my-app",
-  entry: ".",
-  icon: "assets/icon.png",
-});
-```
-
-macOS では `quickgui build` が `sips` でその PNG をリサイズできます。それ以外の環境では、元ファイルの横の `assets/icon.iconset/` に事前サイズのファイルを置きます：
+`resources/icon.png` に、少なくとも 256×256 ピクセルの正方形 PNG を置きます。1024×1024 がよい元画像です。QuickGUI は原稿をラスタライズしません。既にある PNG データをパッケージします。
 
 ```text
-assets/icon.png
-assets/icon.iconset/
+my-app/
+├── resources/
+│   └── icon.png
+├── main.go
+└── quickgui.config.ts
+```
+
+macOS では `quickgui build` が `sips` でその PNG をリサイズできます。他のプラットフォームでは、元ファイルの隣の `resources/icon.iconset/` に事前サイズのファイルを置きます。
+
+```text
+resources/icon.png
+resources/icon.iconset/
   icon_16x16.png
   icon_32x32.png
   icon_48x48.png
@@ -30,31 +27,39 @@ assets/icon.iconset/
   icon_1024x1024.png
 ```
 
-CLI は macOS 向けに `.icns`、Windows インストーラー向けに `.ico`、Linux 向けに Freedesktop の `hicolor` サイズを書き出します。開発時のリロードは生成コンテナをスキップします。本番ビルドと設定済みの `macos.icon` はアイコンをインストールします。
+CLI は macOS 用に `.icns`、Windows インストーラー用に `.ico`、Linux 用に Freedesktop の `hicolor` サイズを書き出します。開発リロードは生成コンテナをスキップします。本番ビルドと設定済みの `macos.icon` はアイコンをインストールします。`icon.iconset` はビルド入力であり、パッケージにはコピーされません。
+
+ソース PNG が `resources/icon.png` 以外にあるときだけ、CLI 設定の `icon` を使います。
 
 ## プラットフォーム固有のアイコン
 
-すでにプラットフォーム用コンテナがある場合や、Linux 専用の PNG がある場合に使います：
+既にプラットフォーム用コンテナがあるときに使います。
+
+```text
+resources/icon.png
+resources/icon.icns
+resources/icon.ico
+```
+
+`macos.icon` を省略すると macOS は `resources/icon.icns` を使います。`windows.icon` を省略すると NSIS インストーラーは `resources/icon.ico` を使います。`resources/icon.png` と `icon` の両方を省略したとき、`linux.icon` が正方形 PNG として使われます。
 
 ```ts
 export default defineConfig({
   name: "My App",
   identifier: "com.example.my-app",
   entry: ".",
-  icon: "assets/icon.png",
-  macos: { icon: "assets/AppIcon.icns" },
-  windows: { icon: "assets/AppIcon.ico" },
-  linux: { icon: "assets/icon.png" },
+  macos: { icon: "packaging/AppIcon.icns" },
+  windows: { icon: "packaging/AppIcon.ico" },
 });
 ```
 
-`macos.icon` は `.icns` でなければなりません。`windows.icon` は NSIS インストーラーが使う `.ico` です。トップレベルの `icon` を省略したとき、`linux.icon` は正方形 PNG として使われます。トップレベルの `icon` は、専用ファイルがないプラットフォームに使われます。
+`macos.icon` は `.icns` でなければなりません。`windows.icon` は `.ico` です。これらの設定パスは `resources/` 内のファイルより優先されます。
 
 ドキュメントタイプのアイコンは、パッケージされたリソース内のベース名です。[バンドルするリソース](/docs/go/bundled-resources)を参照してください。
 
 ## ウィンドウと Dock のアイコン
 
-パッケージのアイコンはアプリの識別です。ウィンドウは Windows と X11 で別の画像を表示できます：
+パッケージされたアイコンはアプリケーションの識別です。ウィンドウは Windows と X11 で別の画像を表示できます。
 
 ```go
 native.NewWindow(native.WindowOptions{
@@ -64,16 +69,16 @@ native.NewWindow(native.WindowOptions{
 })
 ```
 
-`iconPath` は絶対ファイルシステムパスです。[バンドルするリソース](/docs/go/bundled-resources)のとおり `GetPaths` で結合します。ウィンドウの作成後は `window.SetIcon(source)` または `window.ClearIcon()` を呼びます。
+`iconPath` は絶対ファイルシステムパスです。[バンドルするリソース](/docs/go/bundled-resources)のとおり `GetPaths` から結合します。ウィンドウ作成後は `window.SetIcon(source)` または `window.ClearIcon()` を呼びます。
 
-macOS ではウィンドウ固有のアイコンはありません。`native.Desktop.SetDockIcon(&native.ImageSource{Path: iconPath})` でこのプロセスの Dock 画像を差し替えます。`nil` を渡すとパッケージのアイコンに戻ります。
+macOS ではウィンドウ固有のアイコンはありません。`native.Desktop.SetDockIcon(&native.ImageSource{Path: iconPath})` でこのプロセスの Dock 画像を置き換えます。`nil` を渡すとバンドルされたアイコンに戻ります。
 
 ## 生成されるサイズ
 
-| 対象 | サイズ |
+| Target | Sizes |
 | --- | --- |
 | macOS `.icns` | 32, 64, 128, 256, 512, 1024 |
 | Windows `.ico` | 16, 24, 32, 48, 64, 128, 256 |
 | Linux `hicolor` | 16, 32, 48, 64, 128, 256, 512 |
 
-そのピクセルサイズの PNG があるときだけ、そのサイズが入ります。元の PNG は正方形で、256×256 以上、最大 16 MiB です。
+そのピクセルサイズの PNG があるときだけ含まれます。ソース PNG は正方形で、少なくとも 256×256、最大 16 MiB です。
