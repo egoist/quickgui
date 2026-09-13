@@ -47,6 +47,14 @@ const GUIDE_TRANSLATIONS: Record<TranslatedLocale, Record<DocsSlug, GuideTransla
       description: '了解 QuickGUI Go 项目中各个文件的用途。',
       searchTerms: ['文件', '配置', '入口', '软件包', 'quickgui.config'],
     },
+    'app-icon': {
+      description: '设置打包后的应用图标，以及运行时的窗口或程序坞图标。',
+      searchTerms: ['图标', 'icns', 'ico', '程序坞', '任务栏', 'png'],
+    },
+    'bundled-resources': {
+      description: '把额外文件打进应用，并从资源目录读取它们。',
+      searchTerms: ['资源', '资源文件', '打包', '字体', 'resourceDir'],
+    },
     reactivity: {
       description: '用信号、memo、effect 和批量更新保持界面同步。',
       searchTerms: ['signal', 'reactivity', 'memo', 'effect', 'batch', 'cleanup'],
@@ -133,6 +141,14 @@ const GUIDE_TRANSLATIONS: Record<TranslatedLocale, Record<DocsSlug, GuideTransla
     'project-structure': {
       description: 'QuickGUI の Go プロジェクトの各ファイルの役割です。',
       searchTerms: ['ファイル', '設定', 'エントリ', 'パッケージ', 'quickgui.config'],
+    },
+    'app-icon': {
+      description: 'パッケージのアプリアイコンと、実行時のウィンドウまたは Dock アイコンを設定します。',
+      searchTerms: ['アイコン', 'icns', 'ico', 'Dock', 'タスクバー', 'png'],
+    },
+    'bundled-resources': {
+      description: '追加ファイルをアプリに同梱し、リソースディレクトリから読み込みます。',
+      searchTerms: ['リソース', 'アセット', 'バンドル', 'フォント', 'resourceDir'],
     },
     reactivity: {
       description: 'シグナル、memo、effect、バッチ更新で UI を同期します。',

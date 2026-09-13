@@ -51,13 +51,14 @@ entry = "."
 
 CLI は `quickgui.config.ts` より先に `quickgui.toml` を読みます。ファイルを指定するには `--config configs/dev.toml` を渡します。バージョン値は引用符で囲んでください。例: `version = "..."`。
 
-追加ファイルは `resources`、カスタムフォントは `fonts` で同梱します：
+アプリアイコンは `icon` で設定します。追加ファイルは `resources`、カスタムフォントは `fonts` で同梱します。[アプリアイコン](/docs/go/app-icon)と[バンドルするリソース](/docs/go/bundled-resources)を参照してください。
 
 ```ts
 export default defineConfig({
   name: "My App",
   identifier: "com.example.my-app",
   entry: ".",
+  icon: "assets/icon.png",
   fonts: ["assets/MyFont.ttf"],
   resources: ["assets"],
 });

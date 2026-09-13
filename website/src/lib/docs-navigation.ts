@@ -138,7 +138,12 @@ export function docsNavGroups(
     {
       id: 'advanced',
       title: text.advanced,
-      items: [guide('updater'), guide('extensions')],
+      items: [
+        guide('app-icon'),
+        guide('bundled-resources'),
+        guide('updater'),
+        guide('extensions'),
+      ],
     },
   ]
 }

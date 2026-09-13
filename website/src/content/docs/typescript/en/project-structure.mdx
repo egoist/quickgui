@@ -27,12 +27,13 @@ export default defineConfig({
   name: "My App",
   identifier: "com.example.my-app",
   entry: "app.tsx",
+  icon: "assets/icon.png",
   fonts: ["assets/MyFont.ttf"],
   resources: ["assets"],
 });
 ```
 
-TOML supports the same keys. In `tsconfig.json`, set `jsx` to `"preserve"` and `jsxImportSource` to `"@quickgui/solid"`.
+See [App Icon](/docs/typescript/app-icon) and [Bundled Resources](/docs/typescript/bundled-resources). TOML supports the same keys. In `tsconfig.json`, set `jsx` to `"preserve"` and `jsxImportSource` to `"@quickgui/solid"`.
 
 ## Packages
 

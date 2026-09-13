@@ -1,0 +1,70 @@
+用 `resources` 打包未编译进可执行文件的文件：图像、模板、JSON 和其他数据。CLI 按基本名称把每个路径复制进应用包。运行中的应用从 `AppPaths::resource_dir()` 读取它们，不依赖启动时的工作目录。
+
+若要在编译期嵌入字节，使用 `BundledAssets` 和 `Application::assets`。自定义字体是单独的选项。见[字体](#fonts)。
+
+## 配置
+
+```ts
+import { defineConfig } from "@quickgui/cli";
+
+export default defineConfig({
+  language: "rust",
+  name: "My App",
+  identifier: "com.example.my-app",
+  entry: ".",
+  resources: ["assets", "copy/template.txt"],
+  fonts: ["assets/MyFont.ttf"],
+});
+```
+
+每一项都是文件或目录。相对路径相对项目目录解析。目标名称必须唯一，且不能覆盖 `fonts`、`AppIcon.icns` 或 `quickgui.json` 等保留名。
+
+`quickgui dev` 和 `quickgui build` 都会暂存这些文件。路径不存在时构建失败。Rust 的身份和字体路径会写入同一资源目录中的 `quickgui.json`。
+
+## 安装位置
+
+| 平台 | 资源目录 |
+| --- | --- |
+| macOS `.app` | `Contents/Resources` |
+| Linux AppDir、AppImage 和 `.deb` | 可执行文件旁边（`usr/bin`） |
+| Windows 安装程序 | `$INSTDIR` 里可执行文件旁边 |
+
+配置的路径 `assets` 会安装为该目录下的 `assets/`。文件 `copy/template.txt` 会安装为 `template.txt`。运行时把这些名称拼到 `resource_dir()` 上；不要从项目树或当前工作目录读取。
+
+## 读取文件
+
+```rust
+let hero = cx
+    .app_paths()
+    .unwrap()
+    .resource_dir()
+    .join("assets/hero.png");
+
+img(hero).size(160.0, 120.0)
+```
+
+`img` 接受文件系统路径。其他文件用同样的拼接：用 `std::fs::read` 读取该路径，或在字节应留在二进制内时加载编译期的 `BundledAssets` 映射。
+
+```rust
+let bundle = BundledAssets::new()
+    .with("copy/template.txt", include_bytes!("../assets/template.txt"))?;
+let assets = Assets::new(bundle);
+```
+
+相对图像路径不会相对资源目录解析。
+
+## 字体
+
+`fonts` 列出 OpenType 文件。CLI 把它们复制到资源目录中的 `fonts/`，并在打开第一个窗口之前根据 `quickgui.json` 注册。
+
+```ts
+export default defineConfig({
+  language: "rust",
+  name: "My App",
+  identifier: "com.example.my-app",
+  entry: ".",
+  fonts: ["assets/MyFont.ttf"],
+});
+```
+
+也可以对 `Application::font` 传入字节或资源路径。字体不能代替 `resources`：图像或 JSON 文件仍应放在 `resources` 或 `BundledAssets` 中。

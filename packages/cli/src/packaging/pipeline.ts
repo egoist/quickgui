@@ -44,6 +44,7 @@ import {
   desktopEntry,
 } from "./linux.ts";
 import { writeAppcast } from "./appcast.ts";
+import { copyBesideExecutable, extraPayloadEntries } from "./resources.ts";
 import { makensisArguments, nsisScript, signToolArguments } from "./windows.ts";
 import {
   buildUpdateManifest,
@@ -188,7 +189,7 @@ export async function packageLinux(input: LinuxPackagingInput): Promise<Packagin
     for (const library of input.libraries ?? [
       join(input.stagingRoot, sharedLibraryName(input.target)),
     ]) {
-      cpSync(library, join(appDir, "usr", "bin", basename(library)));
+      copyBesideExecutable(library, join(appDir, "usr", "bin"));
     }
     writeFileSync(join(appDir, `${config.executableName}.desktop`), entry);
     writeFileSync(join(appDir, "AppRun"), appRunScript(config.executableName));
@@ -225,11 +226,9 @@ export async function packageLinux(input: LinuxPackagingInput): Promise<Packagin
     const executable = new Uint8Array(readFileSync(input.executablePath));
     const data: TarEntry[] = [
       { path: paths.executable, data: executable, mode: 0o755 },
-      ...(input.libraries ?? [join(input.stagingRoot, sharedLibraryName(input.target))]).map(
-        (library) => ({
-          path: join(dirname(paths.executable), basename(library)),
-          data: new Uint8Array(readFileSync(library)),
-        }),
+      ...extraPayloadEntries(
+        input.libraries ?? [join(input.stagingRoot, sharedLibraryName(input.target))],
+        dirname(paths.executable),
       ),
       { path: paths.desktopEntry, data: new TextEncoder().encode(entry) },
       ...(mimeXml ? [{ path: paths.mimePackage, data: new TextEncoder().encode(mimeXml) }] : []),

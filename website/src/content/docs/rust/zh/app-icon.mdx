@@ -1,0 +1,82 @@
+打包后的应用图标是 Finder、程序坞、Windows 任务栏、开始菜单和 Linux 桌面启动器显示的图像。在 CLI 配置中设置它。运行时也可以更换窗口图标或 macOS 程序坞图标。
+
+## 源图标
+
+添加一张至少 256×256 像素的正方形 PNG。1024×1024 是合适的源图。QuickGUI 不会栅格化原稿：它打包已经存在的 PNG 数据。
+
+```ts
+import { defineConfig } from "@quickgui/cli";
+
+export default defineConfig({
+  language: "rust",
+  name: "My App",
+  identifier: "com.example.my-app",
+  entry: ".",
+  icon: "assets/icon.png",
+});
+```
+
+在 macOS 上，`quickgui build` 可以用 `sips` 缩放这张 PNG。在其他平台，把预缩放文件放在源文件旁边的 `assets/icon.iconset/` 里：
+
+```text
+assets/icon.png
+assets/icon.iconset/
+  icon_16x16.png
+  icon_32x32.png
+  icon_48x48.png
+  icon_64x64.png
+  icon_128x128.png
+  icon_256x256.png
+  icon_512x512.png
+  icon_1024x1024.png
+```
+
+CLI 会为 macOS 生成 `.icns`，为 Windows 安装程序生成 `.ico`，并为 Linux 生成 Freedesktop `hicolor` 尺寸。开发热重载会跳过生成的容器；生产构建和已配置的 `macos.icon` 仍会安装图标。
+
+## 平台专用图标
+
+已有平台容器或只需 Linux PNG 时使用这些选项：
+
+```ts
+export default defineConfig({
+  language: "rust",
+  name: "My App",
+  identifier: "com.example.my-app",
+  entry: ".",
+  icon: "assets/icon.png",
+  macos: { icon: "assets/AppIcon.icns" },
+  windows: { icon: "assets/AppIcon.ico" },
+  linux: { icon: "assets/icon.png" },
+});
+```
+
+`macos.icon` 必须是 `.icns`。`windows.icon` 是 NSIS 安装程序使用的 `.ico`。未设置顶层 `icon` 时，`linux.icon` 作为正方形 PNG 使用。顶层 `icon` 仍会供给没有单独文件的平台。
+
+文档类型图标是打包资源里的基本名称。见[打包资源](/docs/rust/bundled-resources)。
+
+## 窗口与程序坞图标
+
+打包图标是应用身份。窗口可以在 Windows 和 X11 上显示另一张图：
+
+```rust
+let icon = Image::open(
+    cx.app_paths()
+        .unwrap()
+        .resource_dir()
+        .join("assets/icon.png"),
+)
+.expect("icon");
+cx.open_window(WindowOptions::new("My App").icon(icon), App);
+```
+
+窗口存在后，`cx.set_window_icon(icon)` 和 `cx.clear_window_icon()` 会更新该图像。在 macOS 上，窗口没有自己的图标。用 `cx.set_dock_icon(icon)` 替换当前进程的程序坞图像。
+
+## 生成的尺寸
+
+| 目标 | 尺寸 |
+| --- | --- |
+| macOS `.icns` | 32, 64, 128, 256, 512, 1024 |
+| Windows `.ico` | 16, 24, 32, 48, 64, 128, 256 |
+| Linux `hicolor` | 16, 32, 48, 64, 128, 256, 512 |
+
+只有存在对应像素尺寸的 PNG 时才会写入该尺寸。源 PNG 必须是正方形，至少 256×256，最大 16 MiB。

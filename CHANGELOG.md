@@ -4,6 +4,17 @@ All notable user-facing changes to QuickGUI are recorded here.
 
 ## Unreleased
 
+### CLI
+
+- `resources` and staged `fonts` are now copied beside the executable on Linux and Windows
+  (AppDir, `.deb`, NSIS, and development builds), matching macOS `Contents/Resources`. Directory
+  payloads are copied recursively instead of being treated as a single file.
+- `linux.icon` is used as the Linux desktop PNG source when the top-level `icon` is omitted.
+
+### Website
+
+- Added App Icon and Bundled Resources guides for Go, TypeScript, and Rust.
+
 ## 0.1.4-next.4 - 2026-09-13
 
 Same user-facing cut as 0.1.4-next.3. This version is the complete `latest` npm

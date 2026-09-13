@@ -1,0 +1,84 @@
+The packaged application icon is the image Finder, the Dock, the Windows taskbar, Start Menu, and Linux desktop launchers show for your app. Set it in the CLI config. You can also change a window icon or the macOS Dock icon while the app is running.
+
+## Source icon
+
+Add a square PNG that is at least 256×256 pixels. 1024×1024 is a good source. QuickGUI does not rasterize artwork: it packages PNG data that already exists.
+
+```ts
+import { defineConfig } from "@quickgui/cli";
+
+export default defineConfig({
+  language: "typescript",
+  name: "My App",
+  identifier: "com.example.my-app",
+  entry: "app.tsx",
+  icon: "assets/icon.png",
+});
+```
+
+On macOS, `quickgui build` can resize that PNG with `sips`. Everywhere else, put pre-sized files in `assets/icon.iconset/` next to the source:
+
+```text
+assets/icon.png
+assets/icon.iconset/
+  icon_16x16.png
+  icon_32x32.png
+  icon_48x48.png
+  icon_64x64.png
+  icon_128x128.png
+  icon_256x256.png
+  icon_512x512.png
+  icon_1024x1024.png
+```
+
+The CLI writes `.icns` for macOS, `.ico` for the Windows installer, and the Freedesktop `hicolor` sizes for Linux. Development reloads skip generated containers; production builds and a configured `macos.icon` still install an icon.
+
+## Platform-specific icons
+
+Use these when you already have a platform container, or a Linux-only PNG:
+
+```ts
+export default defineConfig({
+  language: "typescript",
+  name: "My App",
+  identifier: "com.example.my-app",
+  entry: "app.tsx",
+  icon: "assets/icon.png",
+  macos: { icon: "assets/AppIcon.icns" },
+  windows: { icon: "assets/AppIcon.ico" },
+  linux: { icon: "assets/icon.png" },
+});
+```
+
+`macos.icon` must be an `.icns`. `windows.icon` is an `.ico` used by the NSIS installer. `linux.icon` is a square PNG used when the top-level `icon` is omitted. The top-level `icon` still supplies every platform that does not have its own file.
+
+Document-type icons are a basename inside the packaged resources. See [Bundled Resources](/docs/typescript/bundled-resources).
+
+## Window and Dock icons
+
+The packaged icon is the application identity. A window can show a different image on Windows and X11:
+
+```tsx
+import { Window } from "@quickgui/native";
+import { createRenderer } from "@quickgui/solid";
+
+new Window({
+  title: "My App",
+  icon: iconPath,
+  renderer: createRenderer(App),
+});
+```
+
+`iconPath` is an absolute filesystem path. Join it from `app.getPaths()` as shown in [Bundled Resources](/docs/typescript/bundled-resources). After the window exists, call `window.setIcon(iconPath)` or `window.clearIcon()`.
+
+On macOS, windows do not have their own icon. Use `app.dock.setIcon(iconPath)` to replace the Dock image for this process.
+
+## Generated sizes
+
+| Target | Sizes |
+| --- | --- |
+| macOS `.icns` | 32, 64, 128, 256, 512, 1024 |
+| Windows `.ico` | 16, 24, 32, 48, 64, 128, 256 |
+| Linux `hicolor` | 16, 32, 48, 64, 128, 256, 512 |
+
+A size is included only when a PNG of that pixel size is available. The source PNG must be square, at least 256×256, and at most 16 MiB.

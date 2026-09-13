@@ -149,6 +149,11 @@ test('guide, components, and SwiftUI each have a dedicated sidebar', async () =>
           'native-services',
         ].map((slug) => `/docs/${frontend}/${slug}`),
       )
+      expect(guides.find((group) => group.id === 'advanced')!.items.map((item) => item.path)).toEqual(
+        ['app-icon', 'bundled-resources', 'updater', 'extensions'].map(
+          (slug) => `/docs/${frontend}/${slug}`,
+        ),
+      )
       expect(guidePaths).not.toContain(`/docs/${frontend}/components`)
       expect(guidePaths).not.toContain(`/docs/${frontend}/swift-ui`)
       expect(guidePaths).not.toContain(`/docs/${frontend}/swift-ui-hosting`)

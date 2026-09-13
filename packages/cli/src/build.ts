@@ -40,6 +40,7 @@ import {
   writeUpdateManifest,
   type IconBuildResult,
 } from "./packaging/pipeline.ts";
+import { copyResources } from "./packaging/resources.ts";
 import { updaterMetadata } from "./packaging/appcast.ts";
 import { targetInfo, type QuickGuiTarget } from "./targets.ts";
 
@@ -448,21 +449,22 @@ async function buildExecutable(
   const fonts = stageFonts(config, resolve(stagingRoot, "fonts"));
   const libraries = await compileExecutable(config, options, executablePath, fonts);
   if (info.platform !== "windows") chmodSync(executablePath, 0o755);
+  const payload = stageExecutableSidecars(config, stagingRoot, libraries);
   const result: StagedBuild = {
     artifactPath: executablePath,
-    extraArtifacts: libraries,
+    extraArtifacts: payload,
     executablePath,
     target: options.target,
     mode: options.mode,
   };
   if (options.mode !== "production") return result;
 
-  const icons = resolveIcons(config, stagingRoot);
+  const icons = resolveIcons(config, stagingRoot, iconSource(config, info.platform));
   const packaged =
     info.platform === "linux"
       ? await packageLinux({
           config,
-          libraries,
+          libraries: payload,
           target: options.target,
           executablePath,
           stagingRoot,
@@ -471,7 +473,7 @@ async function buildExecutable(
         })
       : await packageWindows({
           config,
-          libraries,
+          libraries: payload,
           executablePath,
           stagingRoot,
           run: (command, cwd) => run(command, cwd),
@@ -581,12 +583,21 @@ function updateSource(
   return appImage ?? artifactPath;
 }
 
+function iconSource(
+  config: ResolvedQuickGuiConfig,
+  platform: "darwin" | "linux" | "windows",
+): string | undefined {
+  if (config.icon) return config.icon;
+  return platform === "linux" ? config.linux.icon : undefined;
+}
+
 function resolveIcons(
   config: ResolvedQuickGuiConfig,
   stagingRoot: string,
+  source = config.icon,
 ): IconBuildResult | undefined {
-  if (!config.icon) return undefined;
-  return buildIcons(config.icon, resolve(stagingRoot, ".quickgui-icons"), (command) => {
+  if (!source) return undefined;
+  return buildIcons(source, resolve(stagingRoot, ".quickgui-icons"), (command) => {
     const result = Bun.spawnSync(command, {
       cwd: config.projectRoot,
       stdout: "pipe",
@@ -596,6 +607,29 @@ function resolveIcons(
       throw new CliError(`Command failed: ${command.join(" ")}`);
     }
   });
+}
+
+/** Files and directories that must travel with the executable on Linux and Windows. */
+function stageExecutableSidecars(
+  config: ResolvedQuickGuiConfig,
+  stagingRoot: string,
+  alreadyStaged: readonly string[],
+): string[] {
+  const reserved = new Set([
+    config.executableName,
+    `${config.executableName}.exe`,
+    ...alreadyStaged.map((path) => basename(path)),
+  ]);
+  const staged = [...alreadyStaged];
+  const names = new Set(staged.map((path) => basename(path)));
+  const fontsDir = resolve(stagingRoot, "fonts");
+  if (existsSync(fontsDir) && !names.has("fonts")) {
+    staged.push(fontsDir);
+    names.add("fonts");
+    reserved.add("fonts");
+  }
+  staged.push(...copyResources(config.resources, stagingRoot, reserved));
+  return staged;
 }
 
 function validateMacPackaging(config: ResolvedQuickGuiConfig, options: BuildProjectOptions): void {
@@ -644,33 +678,14 @@ function validateInputs(
   if (platform === "windows" && config.windows.icon && !existsSync(config.windows.icon)) {
     throw new CliError(`Windows icon not found: ${config.windows.icon}`);
   }
+  if (platform === "linux" && config.linux.icon && !existsSync(config.linux.icon)) {
+    throw new CliError(`Linux icon not found: ${config.linux.icon}`);
+  }
   if (config.icon && (!existsSync(config.icon) || !statSync(config.icon).isFile())) {
     throw new CliError(`Icon not found: ${config.icon}`);
   }
   if (config.updates?.notesFile && !existsSync(config.updates.notesFile)) {
     throw new CliError(`Release notes not found: ${config.updates.notesFile}`);
-  }
-}
-
-function copyResources(
-  paths: string[],
-  destination: string,
-  reservedNames: ReadonlySet<string> = new Set(),
-): void {
-  const names = new Map(
-    [...reservedNames].map((name) => [name.toLocaleLowerCase("en-US"), name] as const),
-  );
-  for (const path of paths) {
-    const name = basename(path);
-    const normalizedName = name.toLocaleLowerCase("en-US");
-    const previous = names.get(normalizedName);
-    if (previous) {
-      throw new CliError(
-        `Resource destination name is reserved or duplicated: ${name} conflicts with ${previous}`,
-      );
-    }
-    names.set(normalizedName, name);
-    cpSync(path, resolve(destination, name), { recursive: statSync(path).isDirectory() });
   }
 }
 

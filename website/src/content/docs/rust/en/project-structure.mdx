@@ -36,12 +36,13 @@ export default defineConfig({
   name: "My App",
   identifier: "com.example.my-app",
   entry: ".",
+  icon: "assets/icon.png",
   fonts: ["assets/MyFont.ttf"],
   resources: ["assets"],
 });
 ```
 
-TOML supports the same keys. The CLI reads `quickgui.toml` before `quickgui.config.ts`. Enable optional crate features in `Cargo.toml` instead of setting `extensions` in the app config.
+See [App Icon](/docs/rust/app-icon) and [Bundled Resources](/docs/rust/bundled-resources). TOML supports the same keys. The CLI reads `quickgui.toml` before `quickgui.config.ts`. Enable optional crate features in `Cargo.toml` instead of setting `extensions` in the app config.
 
 ## Packages
 

@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
 
 import { resolveConfig } from "../config.ts";
 import { macInfoPlist } from "../build.ts";
@@ -39,7 +40,8 @@ import {
   productBuildArguments,
   validateMasConfig,
 } from "./mas.ts";
-import { debianPackageName } from "./pipeline.ts";
+import { debianPackageName, packageLinux } from "./pipeline.ts";
+import { copyResources, extraPayloadEntries } from "./resources.ts";
 import {
   buildUpdateManifest,
   joinUrl,
@@ -192,6 +194,85 @@ describe("icon containers", () => {
     expect(iconsetEntryPath("/assets/icon.png", 512)).toBe(
       "/assets/icon.iconset/icon_512x512.png",
     );
+  });
+});
+
+describe("application resources", () => {
+  test("copies files and directories by basename and rejects reserved names", () => {
+    const root = mkdtempSync(join(tmpdir(), "quickgui-resources-"));
+    try {
+      const assets = join(root, "assets");
+      mkdirSync(assets);
+      writeFileSync(join(assets, "logo.png"), "png");
+      writeFileSync(join(root, "notes.txt"), "hello");
+      const destination = join(root, "out");
+      mkdirSync(destination);
+      expect(copyResources([assets, join(root, "notes.txt")], destination)).toEqual([
+        join(destination, "assets"),
+        join(destination, "notes.txt"),
+      ]);
+      expect(readFileSync(join(destination, "assets", "logo.png"), "utf8")).toBe("png");
+      expect(() => copyResources([assets], destination, new Set(["assets"]))).toThrow(
+        "reserved or duplicated",
+      );
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("expands directories into deterministic archive members", () => {
+    const root = mkdtempSync(join(tmpdir(), "quickgui-payload-"));
+    try {
+      const assets = join(root, "assets");
+      mkdirSync(join(assets, "copy"), { recursive: true });
+      writeFileSync(join(assets, "logo.png"), "png");
+      writeFileSync(join(assets, "copy", "template.txt"), "hi");
+      const entries = extraPayloadEntries([assets], "usr/bin");
+      expect(entries.map((entry) => entry.path)).toEqual([
+        "usr/bin/assets",
+        "usr/bin/assets/copy",
+        "usr/bin/assets/copy/template.txt",
+        "usr/bin/assets/logo.png",
+      ]);
+      expect(entries[0]).toMatchObject({ type: "directory" });
+      expect(new TextDecoder().decode(entries[2]?.data)).toBe("hi");
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("Linux AppDir and Debian payloads keep resources beside the executable", async () => {
+    const root = mkdtempSync(join(tmpdir(), "quickgui-linux-resources-"));
+    try {
+      writeFileSync(join(root, "demo"), "exe");
+      const assets = join(root, "assets");
+      mkdirSync(assets);
+      writeFileSync(join(assets, "note.txt"), "bundled");
+      const config = resolveConfig(
+        {
+          name: "Demo",
+          identifier: "com.example.demo",
+          language: "go",
+          entry: ".",
+          linux: { appImage: true, deb: true, maintainer: "Demo <demo@example.com>" },
+        },
+        root,
+      );
+      const result = await packageLinux({
+        config,
+        libraries: [assets],
+        target: "linux-x64",
+        executablePath: join(root, "demo"),
+        stagingRoot: root,
+        run: async () => {},
+      });
+      expect(existsSync(join(root, "Demo.AppDir", "usr", "bin", "assets", "note.txt"))).toBe(true);
+      const deb = result.artifacts.find((path) => path.endsWith(".deb"));
+      expect(deb).toBeDefined();
+      expect(readFileSync(deb!).byteLength).toBeGreaterThan(0);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 });
 
@@ -436,6 +517,35 @@ describe("Windows packaging", () => {
     expect(perMachine).toContain('InstallDir "$PROGRAMFILES64\\Demo"');
     expect(perMachine).toContain("SetShellVarContext all");
     expect(perMachine).not.toContain('CreateShortCut "$DESKTOP\\Demo.lnk"');
+  });
+
+  test("installs extra files and directories beside the executable", () => {
+    const root = mkdtempSync(join(tmpdir(), "quickgui-nsis-resources-"));
+    try {
+      const assets = join(root, "assets");
+      mkdirSync(assets);
+      const withFiles = nsisScript({
+        name: "Demo",
+        executableName: "Demo.exe",
+        identifier: "com.example.demo",
+        version: "1.2.3",
+        publisher: "Example Inc",
+        executablePath: "/build/Demo.exe",
+        outputFile: "/build/setup.exe",
+        extraFiles: [
+          ["/build/quickgui_host.dll", "quickgui_host.dll"],
+          [assets, "assets"],
+        ],
+        protocols: [],
+        documentTypes: [],
+      });
+      expect(withFiles).toContain('File "/oname=quickgui_host.dll" "/build/quickgui_host.dll"');
+      expect(withFiles).toContain('CreateDirectory "$INSTDIR\\assets"');
+      expect(withFiles).toContain(`File /r "${assets}\\*.*"`);
+      expect(withFiles).toContain('RMDir /r "$INSTDIR\\assets"');
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 
   test("file versions are four numeric components", () => {

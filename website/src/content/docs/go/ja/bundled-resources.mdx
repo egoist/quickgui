@@ -1,0 +1,82 @@
+実行ファイルにコンパイルしないファイル（画像、テンプレート、JSON、その他のデータ）は `resources` で同梱します。CLI は各パスをベース名のままアプリにコピーします。実行中のアプリはリソースディレクトリから読みます。起動時のカレントディレクトリには依存しません。
+
+カスタムフォントは別オプションです。[フォント](#fonts)を参照してください。
+
+## 設定
+
+```ts
+import { defineConfig } from "@quickgui/cli";
+
+export default defineConfig({
+  name: "My App",
+  identifier: "com.example.my-app",
+  entry: ".",
+  resources: ["assets", "copy/template.txt"],
+  fonts: ["assets/MyFont.ttf"],
+});
+```
+
+各項目はファイルまたはディレクトリです。相対パスはプロジェクトディレクトリから解決されます。行き先の名前は一意で、`fonts`、`AppIcon.icns`、`quickgui.json`、ホスト共有ライブラリなどの予約名を置き換えてはいけません。
+
+`quickgui dev` と `quickgui build` の両方がこれらのファイルをステージします。パスが無いとビルドは失敗します。
+
+## インストール先
+
+| プラットフォーム | リソースディレクトリ |
+| --- | --- |
+| macOS `.app` | `Contents/Resources` |
+| Linux の AppDir、AppImage、`.deb` | 実行ファイルの隣（`usr/bin`） |
+| Windows インストーラー | `$INSTDIR` 内の実行ファイルの隣 |
+
+設定したパス `assets` は、そのディレクトリの `assets/` として入ります。ファイル `copy/template.txt` は `template.txt` として入ります。実行時はこれらの名前を `ResourceDir` に結合してください。プロジェクトツリーやカレントディレクトリから読まないでください。
+
+## ファイルの読み込み
+
+`native.Run` の準備が終わってからホストにパスを尋ね、パッケージ後の名前を結合します：
+
+```go
+import (
+	"path/filepath"
+
+	"github.com/egoist/quickgui/go/native"
+	"github.com/egoist/quickgui/go/ui"
+)
+
+func App() *ui.Element {
+	return ui.Image().Value(hero).Width(160).Height(120)
+}
+
+var hero string
+
+func main() {
+	native.Run(func() {
+		native.App.GetPaths(func(paths *native.AppPaths, err error) {
+			if err != nil || paths == nil {
+				return
+			}
+			hero = filepath.Join(paths.ResourceDir, "assets", "hero.png")
+			native.NewWindow(native.WindowOptions{
+				Title:     "My App",
+				Component: App,
+			})
+		})
+	})
+}
+```
+
+`ui.Image` はそのファイルシステムパスを受け取ります。他のファイルも同じ結合を使い、`os.ReadFile` や独自のローダーで開きます。相対的な画像パスはリソースディレクトリ基準では解決されません。
+
+## フォント
+
+`fonts` は OpenType ファイルの一覧です。CLI はそれらをリソースディレクトリ内の `fonts/` にコピーし、最初のウィンドウを開く前に登録します。
+
+```ts
+export default defineConfig({
+  name: "My App",
+  identifier: "com.example.my-app",
+  entry: ".",
+  fonts: ["assets/MyFont.ttf"],
+});
+```
+
+スタイルではフォントファミリー名を使います。フォントは `resources` の代わりにはなりません。画像や JSON は引き続き `resources` に置きます。

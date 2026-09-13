@@ -36,12 +36,13 @@ export default defineConfig({
   name: "My App",
   identifier: "com.example.my-app",
   entry: ".",
+  icon: "assets/icon.png",
   fonts: ["assets/MyFont.ttf"],
   resources: ["assets"],
 });
 ```
 
-TOML 支持相同的键。CLI 会先读 `quickgui.toml`，再读 `quickgui.config.ts`。可选的 crate feature 请在 `Cargo.toml` 中启用，不要在应用配置里设置 `extensions`。
+见[应用图标](/docs/rust/app-icon)和[打包资源](/docs/rust/bundled-resources)。TOML 支持相同的键。CLI 会先读 `quickgui.toml`，再读 `quickgui.config.ts`。可选的 crate feature 请在 `Cargo.toml` 中启用，不要在应用配置里设置 `extensions`。
 
 ## 软件包
 

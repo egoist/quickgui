@@ -90,7 +90,7 @@ export interface UpdatesConfig {
 }
 
 export interface LinuxConfig {
-  /** Square PNG used for the desktop icon set. Falls back to the top-level `icon`. */
+  /** Square PNG used for the desktop icon set when the top-level `icon` is omitted. */
   icon?: string;
   /** Freedesktop main categories. Defaults to `["Utility"]`. */
   categories?: string[];

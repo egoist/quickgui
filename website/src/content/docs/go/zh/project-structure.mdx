@@ -51,13 +51,14 @@ entry = "."
 
 CLI 会先读 `quickgui.toml`，再读 `quickgui.config.ts`。用 `--config configs/dev.toml` 指定文件。版本号请加引号，例如 `version = "..."`。
 
-用 `resources` 打包额外文件，用 `fonts` 注册自定义字体：
+用 `icon` 设置应用图标。用 `resources` 打包额外文件，用 `fonts` 注册自定义字体。见[应用图标](/docs/go/app-icon)和[打包资源](/docs/go/bundled-resources)。
 
 ```ts
 export default defineConfig({
   name: "My App",
   identifier: "com.example.my-app",
   entry: ".",
+  icon: "assets/icon.png",
   fonts: ["assets/MyFont.ttf"],
   resources: ["assets"],
 });
