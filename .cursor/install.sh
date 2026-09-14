@@ -3,9 +3,9 @@
 #
 # QuickGUI is a native desktop GUI framework with Go, TypeScript, and Rust
 # applications that share a Rust core (built as a shared library and loaded in
-# the same process via purego / bun:ffi). This script provisions the toolchains
-# and Linux system libraries needed to build the native core and run the
-# example applications, then installs JS dependencies and builds the native
+# the same process via purego / bun:ffi). This script installs the Linux system
+# libraries the native core needs, provisions the language toolchains with mise
+# (pinned in ./mise.toml), installs JS dependencies, and builds the native
 # library once.
 #
 # It is safe to run repeatedly: every step checks for the desired state first.
@@ -14,16 +14,14 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
 
-GO_VERSION="1.23.12"
-BUN_VERSION="1.4.0"
-
 log() { printf '\n[install] %s\n' "$*"; }
 
 # ---------------------------------------------------------------------------
 # System packages: build tooling plus the X11/Wayland/GL/Vulkan/udev/dbus
 # development and runtime libraries winit + wgpu need on Linux. mesa-vulkan-
 # drivers provides lavapipe, a software Vulkan implementation, so the GUI apps
-# render even without a physical GPU.
+# render even without a physical GPU. (mise manages the language toolchains, not
+# these OS-level libraries.)
 # ---------------------------------------------------------------------------
 log "Installing system packages"
 sudo DEBIAN_FRONTEND=noninteractive apt-get update -qq
@@ -37,65 +35,56 @@ sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommen
   xvfb x11-utils
 
 # ---------------------------------------------------------------------------
-# Rust: the workspace is edition 2024 with a 1.90 MSRV, so a current stable
-# toolchain is required. rustup ships in the default base image.
+# mise: manages the Rust (stable; the workspace is edition 2024 with a 1.90
+# MSRV), Go, Bun, and Zig toolchains pinned in ./mise.toml.
 # ---------------------------------------------------------------------------
-log "Ensuring Rust stable toolchain (>= 1.90)"
+export MISE_DATA_DIR="${MISE_DATA_DIR:-$HOME/.local/share/mise}"
+if ! command -v mise >/dev/null 2>&1 && [ ! -x "$HOME/.local/bin/mise" ]; then
+  log "Installing mise"
+  curl -fsSL https://mise.run | sh
+fi
+export PATH="$HOME/.local/bin:$MISE_DATA_DIR/shims:$PATH"
+mise --version
+
+log "Installing pinned toolchains with mise"
+mise trust "$REPO_ROOT/mise.toml"
+mise install
+mise reshim
+
+# The rust core tool drives rustup; make sure a default toolchain is selected so
+# bare `cargo`/`rustc` (outside a mise shim) still resolve during builds.
 if command -v rustup >/dev/null 2>&1; then
-  rustup toolchain install stable --profile minimal --component clippy,rustfmt --no-self-update
-  rustup default stable
-else
-  echo "[install] rustup not found; installing via rustup.rs" >&2
-  curl -fsSL https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain stable --component clippy rustfmt
-  # shellcheck disable=SC1090
-  source "$HOME/.cargo/env"
+  rustup default stable >/dev/null 2>&1 || true
 fi
-rustc --version
 
-# ---------------------------------------------------------------------------
-# Go 1.23+: install into /usr/local/go when a matching version is not present.
-# ---------------------------------------------------------------------------
-log "Ensuring Go ${GO_VERSION}"
-if ! /usr/local/go/bin/go version 2>/dev/null | grep -q "go${GO_VERSION}"; then
-  tmp_go="$(mktemp -d)"
-  curl -fsSL "https://go.dev/dl/go${GO_VERSION}.linux-amd64.tar.gz" -o "$tmp_go/go.tgz"
-  sudo rm -rf /usr/local/go
-  sudo tar -C /usr/local -xzf "$tmp_go/go.tgz"
-  rm -rf "$tmp_go"
-fi
-/usr/local/go/bin/go version
-
-# ---------------------------------------------------------------------------
-# Bun 1.4: JS runtime, package manager, and FFI host for the TypeScript apps.
-# ---------------------------------------------------------------------------
-log "Ensuring Bun ${BUN_VERSION}"
-if ! "$HOME/.bun/bin/bun" --version 2>/dev/null | grep -q "^${BUN_VERSION}$"; then
-  curl -fsSL https://bun.sh/install | bash -s "bun-v${BUN_VERSION}"
-fi
-"$HOME/.bun/bin/bun" --version
+log "Toolchain versions"
+mise exec -- rustc --version
+mise exec -- go version
+mise exec -- bun --version
 
 # ---------------------------------------------------------------------------
 # Persist PATH and GUI runtime environment for interactive agent shells.
-# VK_ICD_FILENAMES pins lavapipe (software Vulkan); XDG_RUNTIME_DIR gives the
-# native host a valid runtime directory when running example apps.
+# The mise shim directory exposes the pinned tools in non-interactive shells;
+# `mise activate` wires them up for interactive ones. VK_ICD_FILENAMES pins
+# lavapipe (software Vulkan) and XDG_RUNTIME_DIR gives the native host a valid
+# runtime directory when running example apps.
 # ---------------------------------------------------------------------------
 log "Configuring shell environment"
 BASHRC="$HOME/.bashrc"
 add_line() { grep -qxF "$1" "$BASHRC" 2>/dev/null || echo "$1" >> "$BASHRC"; }
 touch "$BASHRC"
-add_line 'export PATH="/usr/local/go/bin:$HOME/.bun/bin:$HOME/.cargo/bin:$PATH"'
+add_line 'export PATH="$HOME/.local/bin:$HOME/.local/share/mise/shims:$PATH"'
+add_line 'command -v mise >/dev/null 2>&1 && eval "$(mise activate bash)"'
 add_line 'export VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.json'
 add_line 'export XDG_RUNTIME_DIR=/tmp/xdg-runtime'
 
-export PATH="/usr/local/go/bin:$HOME/.bun/bin:$HOME/.cargo/bin:$PATH"
-
 # ---------------------------------------------------------------------------
-# JS dependencies and the shared native library.
+# JS dependencies and the shared native library, using the mise-managed tools.
 # ---------------------------------------------------------------------------
 log "Installing JS dependencies (bun install --frozen-lockfile)"
-bun install --frozen-lockfile
+mise exec -- bun install --frozen-lockfile
 
 log "Building the native shared library (bun run build:native)"
-bun run build:native
+mise exec -- bun run build:native
 
-log "Done. Toolchains, dependencies, and the native library are ready."
+log "Done. Toolchains (via mise), dependencies, and the native library are ready."
