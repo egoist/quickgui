@@ -75,7 +75,12 @@ func TestStateStyleTracksThemeAndReleasesBindings(t *testing.T) {
 		defer dispose()
 		accent := reactive.NewSignal("#112233")
 		parent := View()
-		node := Button().Hover(func(s StyleBuilder) StyleBuilder { return s.BackgroundColor(accent.Read) }).FocusStyle(func(s StyleBuilder) StyleBuilder { return s.OutlineWidth(2).OutlineColor(accent.Read) }).Child("Retained")
+		node := Button().
+			Hover(func(s StyleBuilder) StyleBuilder { return s.BackgroundColor(accent.Read) }).
+			FocusStyle(func(s StyleBuilder) StyleBuilder {
+				return s.OutlineWidth(2).OutlineColor(accent.Read)
+			}).
+			Child("Retained")
 		native.InsertNode(parent.Node, node.Node, nil)
 		child := node.Node.Children[0]
 		before := len(parent.Pending.Body())

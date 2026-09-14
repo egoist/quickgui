@@ -222,29 +222,43 @@ func (m *model) installMenu() {
 	}
 	native.SetApplicationMenu([]native.MenuDefinition{
 		{Label: "Herdr GUI", Items: []native.MenuItem{
-			{Label: "About Herdr GUI", Enabled: ptr(false)}, {Type: "separator"},
+			{Label: "About Herdr GUI", Enabled: ptr(false)},
+			{Type: "separator"},
 			{Label: "Hide Herdr GUI", Role: "hide-application", Accelerator: "CmdOrCtrl+H"},
-			{Label: "Hide Others", Role: "hide-other-applications", Accelerator: "CmdOrCtrl+Alt+H"}, {Label: "Show All", Role: "show-all-applications"},
-			{Type: "separator"}, {Label: "Quit Herdr GUI", Role: "quit", Accelerator: "CmdOrCtrl+Q"},
+			{Label: "Hide Others", Role: "hide-other-applications", Accelerator: "CmdOrCtrl+Alt+H"},
+			{Label: "Show All", Role: "show-all-applications"},
+			{Type: "separator"},
+			{Label: "Quit Herdr GUI", Role: "quit", Accelerator: "CmdOrCtrl+Q"},
 		}},
 		{Label: "File", Items: []native.MenuItem{
 			{Label: "New Agent…", Accelerator: "CmdOrCtrl+N", Click: action(m.openAgentSheet)},
 			{Label: "New Tab", Accelerator: "CmdOrCtrl+T", Click: action(func() { m.newTerminal(m.activeSpace()) })},
-			{Label: "Add Space…", Accelerator: "CmdOrCtrl+O", Click: action(m.addSpace)}, {Type: "separator"},
+			{Label: "Add Space…", Accelerator: "CmdOrCtrl+O", Click: action(m.addSpace)},
+			{Type: "separator"},
 			{Label: "Split Right", Accelerator: "CmdOrCtrl+D", Click: action(func() { m.splitTerminal("horizontal") })},
-			{Label: "Split Down", Accelerator: "CmdOrCtrl+Shift+D", Click: action(func() { m.splitTerminal("vertical") })}, {Type: "separator"},
+			{Label: "Split Down", Accelerator: "CmdOrCtrl+Shift+D", Click: action(func() { m.splitTerminal("vertical") })},
+			{Type: "separator"},
 			{Label: "Close", Role: "close-window", Accelerator: "CmdOrCtrl+W", Click: action(m.closeFocusedItem)},
 		}},
 		{Label: "Edit", Items: []native.MenuItem{
-			{Label: "Undo", Role: "undo", Accelerator: "CmdOrCtrl+Z"}, {Label: "Redo", Role: "redo", Accelerator: "CmdOrCtrl+Shift+Z"},
-			{Type: "separator"}, {Label: "Cut", Role: "cut", Accelerator: "CmdOrCtrl+X"}, {Label: "Copy", Role: "copy", Accelerator: "CmdOrCtrl+C"}, {Label: "Paste", Role: "paste", Accelerator: "CmdOrCtrl+V"}, {Label: "Select All", Role: "select-all", Accelerator: "CmdOrCtrl+A"},
+			{Label: "Undo", Role: "undo", Accelerator: "CmdOrCtrl+Z"},
+			{Label: "Redo", Role: "redo", Accelerator: "CmdOrCtrl+Shift+Z"},
+			{Type: "separator"},
+			{Label: "Cut", Role: "cut", Accelerator: "CmdOrCtrl+X"},
+			{Label: "Copy", Role: "copy", Accelerator: "CmdOrCtrl+C"},
+			{Label: "Paste", Role: "paste", Accelerator: "CmdOrCtrl+V"},
+			{Label: "Select All", Role: "select-all", Accelerator: "CmdOrCtrl+A"},
 		}},
 		{Label: "View", Items: []native.MenuItem{
 			{Label: "System Appearance", Checked: m.Preference.Peek() == "system", Click: action(func() { m.setTheme("system") })},
 			{Label: "Light Appearance", Checked: m.Preference.Peek() == "light", Click: action(func() { m.setTheme("light") })},
 			{Label: "Dark Appearance", Checked: m.Preference.Peek() == "dark", Click: action(func() { m.setTheme("dark") })},
 		}},
-		{Label: "Window", Items: []native.MenuItem{{Label: "Minimize", Role: "minimize-window", Accelerator: "CmdOrCtrl+M"}, {Label: "Zoom", Role: "zoom-window"}, {Label: "Enter Full Screen", Role: "toggle-fullscreen", Accelerator: "CmdOrCtrl+Ctrl+F"}}},
+		{Label: "Window", Items: []native.MenuItem{
+			{Label: "Minimize", Role: "minimize-window", Accelerator: "CmdOrCtrl+M"},
+			{Label: "Zoom", Role: "zoom-window"},
+			{Label: "Enter Full Screen", Role: "toggle-fullscreen", Accelerator: "CmdOrCtrl+Ctrl+F"},
+		}},
 	})
 }
 func ptr[T any](value T) *T { return &value }

@@ -37,15 +37,18 @@ var centered = ui.Style().
 
 func Panel(title string, children ui.Component) *ui.Element {
 	warm := warmPalette.Use()
-	return ui.View().Children(
+	return ui.View().
+		Children(
 
-		ui.Text(title).Style(captionStyle),
-		children,
-	).Style(panelStyle).When(
-		warm,
-		ui.Style().BackgroundColor("#30231c"),
-		ui.Style().BorderColor("#594338"),
-	)
+			ui.Text(title).Style(captionStyle),
+			children,
+		).
+		Style(panelStyle).
+		When(
+			warm,
+			ui.Style().BackgroundColor("#30231c"),
+			ui.Style().BorderColor("#594338"),
+		)
 
 }
 

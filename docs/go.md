@@ -107,7 +107,7 @@ return ui.Button().Child("Toggle selection").
 
 For a computed condition, use `.When(func() bool { return count() >= 5 }, ...)`. Keep ref callbacks outside conditional options; refs run after mounting.
 
-Run `quickgui fmt` to apply QuickGUI's formatting rule. Long UI calls (over 100 columns), multiline calls, and calls with callback arguments use one argument per line and a trailing comma. Multiline typed props use one field per line. Short calls stay compact; `gofmt` then handles ordinary Go spacing, indentation, and alignment. Comments and string contents are preserved, and generated files are left to their generator. Running `gofmt` afterward preserves the layout.
+Run `quickgui fmt` to apply QuickGUI's formatting rule. Long UI calls (over 100 columns), multiline calls, and calls with callback arguments use one argument per line and a trailing comma. Long or multiline fluent method chains put each method on its own line. Multiline typed props use one field per line. Short calls stay compact; `gofmt` then handles ordinary Go spacing, indentation, and alignment. Comments and string contents are preserved, and generated files are left to their generator. Running `gofmt` afterward preserves the layout.
 
 Use `quickgui fmt --check` in CI or `quickgui fmt --project path/to/app` for another project. The formatter uses the SDK version in the project's `go.mod`. In this repository, `bun run fmt:go` formats the SDK and examples; `bun run test:go` checks the same rule. The Go command can also read source on stdin for editor integration: `go run github.com/egoist/quickgui/go/cmd/quickguifmt`.
 

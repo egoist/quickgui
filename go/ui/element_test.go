@@ -15,7 +15,12 @@ func TestFluentChildrenDeclareOneRetainedRoot(t *testing.T) {
 		defer dispose()
 		var view *Element
 		roots := native.CollectChildren(func() *Element {
-			view = View().Flex().Child(Text("hello")).PaddingLeft(20).Child(Input().Value("xxx")).TextAlign("center")
+			view = View().
+				Flex().
+				Child(Text("hello")).
+				PaddingLeft(20).
+				Child(Input().Value("xxx")).
+				TextAlign("center")
 			return view
 		})
 		if len(roots) != 1 || roots[0] != view.Node || len(view.Node.Children) != 2 {
@@ -34,8 +39,12 @@ func TestFluentChildrenDeclareOneRetainedRoot(t *testing.T) {
 			t.Fatal("fluent declarations did not reach the native properties")
 		}
 		var empty *Element
-		other := View().Child("before").Children([]*Element{Text("one"), nil, empty, Text("two")}).
-			Children([]*native.Node{nil, Text("three").Node}).Children("four", []any{"five", nil}).Child("after")
+		other := View().
+			Child("before").
+			Children([]*Element{Text("one"), nil, empty, Text("two")}).
+			Children([]*native.Node{nil, Text("three").Node}).
+			Children("four", []any{"five", nil}).
+			Child("after")
 		if got := blockText(other.Node); fmt.Sprint(got) != "[before one two three four five after]" {
 			t.Fatalf("appending children lost order or nil handling: %v", got)
 		}
@@ -109,11 +118,15 @@ func TestFluentBindingsStayIndependentAndChildrenKeepTheirOwners(t *testing.T) {
 		width, color, text := reactive.NewSignal(100), reactive.NewSignal("#112233"), reactive.NewSignal("first")
 		mounts, cleanups := 0, 0
 		parent := View()
-		view := View().Child(func() *Element {
-			mounts++
-			OnCleanup(func() { cleanups++ })
-			return Text(text.Read)
-		}).Width(width.Read).Bg(color.Read).PaddingLeft(20)
+		view := View().
+			Child(func() *Element {
+				mounts++
+				OnCleanup(func() { cleanups++ })
+				return Text(text.Read)
+			}).
+			Width(width.Read).
+			Bg(color.Read).
+			PaddingLeft(20)
 		native.InsertNode(parent.Node, view.Node, nil)
 		child := view.Node.Children[0]
 		offset := len(parent.Pending.Body())
@@ -145,8 +158,11 @@ func TestFluentConditionsRestoreStylesAndReleaseHandlers(t *testing.T) {
 		selected, setSelected := CreateSignal(false)
 		base, active := reactive.NewSignal(10), reactive.NewSignal(30)
 		calls := 0
-		view := View().Child(Text("kept")).Width(base.Read).
-			When(selected, styleWidth(active.Read), OnClick(func() { calls++ })).PaddingLeft(20)
+		view := View().
+			Child(Text("kept")).
+			Width(base.Read).
+			When(selected, styleWidth(active.Read), OnClick(func() { calls++ })).
+			PaddingLeft(20)
 		child := view.Node.Children[0]
 		setSelected(true)
 		view.Listeners[0].Listener(&native.Event{})
@@ -171,18 +187,22 @@ func TestFluentConfigurationIsImmediateInsideBatchesAndEventsBatchWrites(t *test
 		label := Text(func() string { reads++; return value() })
 		var input *Element
 		Batch(func() {
-			input = Input().Value("ready").PaddingLeft(20).OnInput(func(text string) {
-				setValue("intermediate")
-				setValue(text)
-			}).Ref(func(node *native.Node) {
-				refs++
-				before := node.Pending.MutationCount()
-				native.SetString(node, protocol.Value, "ready")
-				native.SetNumber(node, protocol.PaddingLeft, 20)
-				if node.Pending.MutationCount() != before {
-					t.Fatal("Ref ran before the fluent declarations were applied")
-				}
-			})
+			input = Input().
+				Value("ready").
+				PaddingLeft(20).
+				OnInput(func(text string) {
+					setValue("intermediate")
+					setValue(text)
+				}).
+				Ref(func(node *native.Node) {
+					refs++
+					before := node.Pending.MutationCount()
+					native.SetString(node, protocol.Value, "ready")
+					native.SetNumber(node, protocol.PaddingLeft, 20)
+					if node.Pending.MutationCount() != before {
+						t.Fatal("Ref ran before the fluent declarations were applied")
+					}
+				})
 
 		})
 		input.Listeners[0].Listener(&native.Event{Value: "typed"})
@@ -238,7 +258,10 @@ func TestRustLayoutPresetsPreserveValuesAndOverrideSpecificProperties(t *testing
 			t.Fatal("zero grids or negative fractions do not match Rust")
 		}
 		shared := composeStyles(Style().RoundedLg(), styleHover(styleTextColor("white")))
-		reused := View().RoundedTl(3).Style(StyleBuilder{style: shared}).Hover(func(s StyleBuilder) StyleBuilder { return s.Bg("#112233") })
+		reused := View().
+			RoundedTl(3).
+			Style(StyleBuilder{style: shared}).
+			Hover(func(s StyleBuilder) StyleBuilder { return s.Bg("#112233") })
 		before = reused.Pending.MutationCount()
 		native.ClearProperty(reused.Node, protocol.BorderTopLeftRadius)
 		if reused.Pending.MutationCount() != before || shared.Hover.BackgroundColor != nil {

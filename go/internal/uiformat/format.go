@@ -1,5 +1,6 @@
-// Package uiformat adds predictable line breaks to QuickGUI declarations before
-// letting gofmt handle indentation, spacing, and alignment.
+// Package uiformat adds predictable line breaks to QuickGUI declarations and
+// fluent method chains before letting gofmt handle indentation, spacing, and
+// alignment.
 package uiformat
 
 import (
@@ -53,36 +54,9 @@ func wrap(source []byte, width int) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	aliases := map[string]bool{}
-	for _, spec := range file.Imports {
-		path, _ := strconv.Unquote(spec.Path.Value)
-		if path != "github.com/egoist/quickgui/go/ui" && path != "github.com/egoist/quickgui/go/native" {
-			continue
-		}
-		name := path[strings.LastIndexByte(path, '/')+1:]
-		if spec.Name != nil {
-			name = spec.Name.Name
-		}
-		if name != "." && name != "_" {
-			aliases[name] = true
-		}
-	}
-	qualified := func(expr ast.Expr) bool {
-		for {
-			switch value := expr.(type) {
-			case *ast.SelectorExpr:
-				expr = value.X
-			case *ast.IndexExpr:
-				expr = value.X
-			case *ast.IndexListExpr:
-				expr = value.X
-			case *ast.CallExpr:
-				expr = value.Fun
-			default:
-				id, ok := expr.(*ast.Ident)
-				return ok && aliases[id.Name]
-			}
-		}
+	aliases, imported := uiImports(file)
+	uiExpr := func(expr ast.Expr) bool {
+		return isUIExpr(expr, aliases, imported)
 	}
 	// Insert only whitespace and trailing commas. Keeping existing tokens in place
 	// preserves comments, raw strings, and the meaning of callbacks and variadics.
@@ -128,35 +102,89 @@ func wrap(source []byte, width int) ([]byte, error) {
 		}
 		breakBefore(lastEnd, close)
 	}
+	multilineCall := func(call *ast.CallExpr) bool {
+		return fs.Position(call.Lparen).Line != fs.Position(call.Rparen).Line
+	}
+	chainLong := func(start, end token.Pos) bool {
+		from, to := offset(start), offset(end)
+		lineStart := bytes.LastIndexByte(source[:from], '\n') + 1
+		pad := source[lineStart:from]
+		indent := displayWidth(pad[:len(pad)-len(bytes.TrimLeft(pad, "\t "))])
+		for i, line := range bytes.Split(source[from:to], []byte{'\n'}) {
+			widthHere := displayWidth(line)
+			if i == 0 {
+				widthHere += indent
+			}
+			if widthHere > width {
+				return true
+			}
+		}
+		return false
+	}
+	shouldWrapChain := func(chain []*ast.CallExpr) bool {
+		if len(chain) < 2 {
+			return false
+		}
+		if chainLong(chain[0].Pos(), chain[len(chain)-1].End()) {
+			return true
+		}
+		for _, call := range chain {
+			if multilineCall(call) {
+				return true
+			}
+			sel := methodSelector(call)
+			if sel == nil {
+				continue
+			}
+			if prev := receiverCall(sel); prev != nil && fs.Position(prev.End()).Line != fs.Position(sel.Sel.Pos()).Line {
+				return true
+			}
+		}
+		return false
+	}
 	ast.Inspect(file, func(node ast.Node) bool {
 		switch value := node.(type) {
 		case *ast.CallExpr:
-			if !qualified(value.Fun) || len(value.Args) == 0 {
+			if !uiExpr(value.Fun) {
 				return true
 			}
-			callback := false
-			for _, arg := range value.Args {
-				if fn, ok := arg.(*ast.FuncLit); ok {
-					callback = true
-					if longCallback(fn) && len(fn.Body.List) > 0 {
-						breakBefore(fn.Body.Lbrace, fn.Body.List[0].Pos())
-						for i := 1; i < len(fn.Body.List); i++ {
-							breakBefore(fn.Body.List[i-1].End(), fn.Body.List[i].Pos())
+			if len(value.Args) > 0 {
+				callback := false
+				for _, arg := range value.Args {
+					if fn, ok := arg.(*ast.FuncLit); ok {
+						callback = true
+						if longCallback(fn) && len(fn.Body.List) > 0 {
+							breakBefore(fn.Body.Lbrace, fn.Body.List[0].Pos())
+							for i := 1; i < len(fn.Body.List); i++ {
+								breakBefore(fn.Body.List[i-1].End(), fn.Body.List[i].Pos())
+							}
+							breakBefore(fn.Body.List[len(fn.Body.List)-1].End(), fn.Body.Rbrace)
 						}
-						breakBefore(fn.Body.List[len(fn.Body.List)-1].End(), fn.Body.Rbrace)
+					}
+				}
+				if len(value.Args) > 1 && (callback || multilineCall(value) || longLine(value.Pos(), value.End())) {
+					lastEnd := value.Args[len(value.Args)-1].End()
+					if value.Ellipsis.IsValid() {
+						lastEnd = value.Ellipsis + 3
+					}
+					split(value.Lparen, value.Rparen, value.Args, lastEnd)
+				}
+			}
+			// Long, multiline, or already-broken fluent chains put each method on
+			// its own line. Nested short chains stay compact.
+			if chain := fluentChain(value); shouldWrapChain(chain) {
+				for _, call := range chain[1:] {
+					sel := methodSelector(call)
+					if sel == nil {
+						continue
+					}
+					if prev := receiverCall(sel); prev != nil {
+						breakBefore(prev.End(), sel.Sel.Pos())
 					}
 				}
 			}
-			multiline := fs.Position(value.Lparen).Line != fs.Position(value.Rparen).Line
-			if len(value.Args) > 1 && (callback || multiline || longLine(value.Pos(), value.End())) {
-				lastEnd := value.Args[len(value.Args)-1].End()
-				if value.Ellipsis.IsValid() {
-					lastEnd = value.Ellipsis + 3
-				}
-				split(value.Lparen, value.Rparen, value.Args, lastEnd)
-			}
 		case *ast.CompositeLit:
-			if value.Type == nil || !qualified(value.Type) || len(value.Elts) < 2 {
+			if value.Type == nil || !uiExpr(value.Type) || len(value.Elts) < 2 {
 				return true
 			}
 			multiline := fs.Position(value.Lbrace).Line != fs.Position(value.Rbrace).Line
@@ -195,6 +223,136 @@ func displayWidth(line []byte) int {
 		}
 	}
 	return columns
+}
+
+var fluentParts = map[string]bool{
+	"Backdrop":         true,
+	"Child":            true,
+	"Children":         true,
+	"Close":            true,
+	"Content":          true,
+	"DisabledStyle":    true,
+	"Group":            true,
+	"GroupActive":      true,
+	"GroupActiveNamed": true,
+	"GroupHover":       true,
+	"GroupHoverNamed":  true,
+	"Hover":            true,
+	"Merge":            true,
+	"NativeNode":       true,
+	"Popup":            true,
+	"Portal":           true,
+	"Ref":              true,
+	"Root":             true,
+	"Style":            true,
+	"Trigger":          true,
+	"When":             true,
+}
+
+func uiImports(file *ast.File) (aliases, imported map[string]bool) {
+	aliases = map[string]bool{}
+	imported = map[string]bool{}
+	for _, spec := range file.Imports {
+		path, _ := strconv.Unquote(spec.Path.Value)
+		name := path[strings.LastIndexByte(path, '/')+1:]
+		if spec.Name != nil {
+			name = spec.Name.Name
+		}
+		if name == "." || name == "_" {
+			continue
+		}
+		imported[name] = true
+		if path == "github.com/egoist/quickgui/go/ui" || path == "github.com/egoist/quickgui/go/native" {
+			aliases[name] = true
+		}
+	}
+	return aliases, imported
+}
+
+func isUIExpr(expr ast.Expr, aliases, imported map[string]bool) bool {
+	var names []string
+	for expr != nil {
+		switch value := expr.(type) {
+		case *ast.SelectorExpr:
+			names = append(names, value.Sel.Name)
+			expr = value.X
+		case *ast.IndexExpr:
+			expr = value.X
+		case *ast.IndexListExpr:
+			expr = value.X
+		case *ast.StarExpr:
+			expr = value.X
+		case *ast.ArrayType:
+			expr = value.Elt
+		case *ast.CallExpr:
+			expr = value.Fun
+		case *ast.ParenExpr:
+			expr = value.X
+		default:
+			id, ok := expr.(*ast.Ident)
+			if !ok {
+				return false
+			}
+			if aliases[id.Name] {
+				return true
+			}
+			if imported[id.Name] {
+				return false
+			}
+			for _, name := range names {
+				if fluentParts[name] {
+					return true
+				}
+			}
+			return false
+		}
+	}
+	return false
+}
+
+func fluentChain(call *ast.CallExpr) []*ast.CallExpr {
+	var chain []*ast.CallExpr
+	for call != nil {
+		chain = append([]*ast.CallExpr{call}, chain...)
+		sel := methodSelector(call)
+		if sel == nil {
+			break
+		}
+		call = receiverCall(sel)
+	}
+	return chain
+}
+
+func methodSelector(call *ast.CallExpr) *ast.SelectorExpr {
+	expr := call.Fun
+	for {
+		switch value := expr.(type) {
+		case *ast.ParenExpr:
+			expr = value.X
+		case *ast.IndexExpr:
+			expr = value.X
+		case *ast.IndexListExpr:
+			expr = value.X
+		case *ast.SelectorExpr:
+			return value
+		default:
+			return nil
+		}
+	}
+}
+
+func receiverCall(sel *ast.SelectorExpr) *ast.CallExpr {
+	expr := sel.X
+	for {
+		switch value := expr.(type) {
+		case *ast.ParenExpr:
+			expr = value.X
+		case *ast.CallExpr:
+			return value
+		default:
+			return nil
+		}
+	}
 }
 
 func hasComma(source []byte) bool {

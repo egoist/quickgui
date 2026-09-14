@@ -19,26 +19,29 @@ func TestKeyedComponentsRetainMultipleRootsAndDisposeRemovedRows(t *testing.T) {
 		items, setItems := CreateSignal([]item{{1, "one"}, {2, "two"}})
 		mounts, cleanups, fallbackMounts, fallbackCleanups := 0, 0, 0, 0
 		refs := map[int]*native.Node{}
-		root := View().Child(func() *native.Node {
-			return Fragment([]*native.Node{Text("before").Node,
-				KeyedFor(items, func(i item) any { return i.ID }, func(read func() item, index func() int) *native.Node {
-					var children_ []*native.Node
-					mounts++
-					id := read().ID
-					OnCleanup(func() { cleanups++ })
-					children_ = append(children_, Text(Ref(func(node *native.Node) { refs[id] = node }), func() string { return read().Label }).Node)
-					children_ = append(children_, Text(index).Node)
-					return Fragment(children_)
-				}, func() *native.Node {
-					var children_ []*native.Node
-					fallbackMounts++
-					OnCleanup(func() { fallbackCleanups++ })
-					children_ = append(children_, Text("empty").Node)
-					children_ = append(children_, Text("add an item").Node)
-					return Fragment(children_)
-				}),
-				Text("after").Node})
-		})
+		root := View().
+			Child(func() *native.Node {
+				return Fragment([]*native.Node{
+					Text("before").Node,
+					KeyedFor(items, func(i item) any { return i.ID }, func(read func() item, index func() int) *native.Node {
+						var children_ []*native.Node
+						mounts++
+						id := read().ID
+						OnCleanup(func() { cleanups++ })
+						children_ = append(children_, Text(Ref(func(node *native.Node) { refs[id] = node }), func() string { return read().Label }).Node)
+						children_ = append(children_, Text(index).Node)
+						return Fragment(children_)
+					}, func() *native.Node {
+						var children_ []*native.Node
+						fallbackMounts++
+						OnCleanup(func() { fallbackCleanups++ })
+						children_ = append(children_, Text("empty").Node)
+						children_ = append(children_, Text("add an item").Node)
+						return Fragment(children_)
+					}),
+					Text("after").Node,
+				})
+			})
 		first := refs[1]
 		setItems([]item{{2, "second"}, {1, "first"}})
 		if got := blockText(root.Node); !reflect.DeepEqual(got, []string{"before", "second", "0", "first", "1", "after"}) {
@@ -98,19 +101,20 @@ func TestChildrenBlocksHandleLazyRegionsAndComponentHelpers(t *testing.T) {
 		visible, setVisible := CreateSignal(true)
 		created := 0
 		helper := func() *Element { return Text(Props{}, "helper") }
-		root := View().Child(func() *native.Node {
-			var children_ []*native.Node
-			children_ = append(children_, helper().Node)
-			children_ = append(children_, Show(visible, func() *native.Node {
+		root := View().
+			Child(func() *native.Node {
 				var children_ []*native.Node
-				created++
-				children_ = append(children_, Text(Props{}, "one").Node)
-				children_ = append(children_, Text(Props{}, "two").Node)
+				children_ = append(children_, helper().Node)
+				children_ = append(children_, Show(visible, func() *native.Node {
+					var children_ []*native.Node
+					created++
+					children_ = append(children_, Text(Props{}, "one").Node)
+					children_ = append(children_, Text(Props{}, "two").Node)
+					return Fragment(children_)
+				}))
+				children_ = append(children_, Text(Props{}, "end").Node)
 				return Fragment(children_)
-			}))
-			children_ = append(children_, Text(Props{}, "end").Node)
-			return Fragment(children_)
-		})
+			})
 		if got := blockText(root.Node); !reflect.DeepEqual(got, []string{"helper", "one", "two", "end"}) {
 			t.Fatal(got)
 		}
@@ -133,12 +137,14 @@ func TestCompoundChildrenInheritContextAndDisposeEffects(t *testing.T) {
 		effects, cleanups := 0, 0
 		parent := View()
 		root := (tabsAPI{}).Root(TabsRootProps{DefaultValue: "one"}, func() *native.Node {
-			return Fragment([]*native.Node{(tabsAPI{}).List(PartProps{}, func() *native.Node { return (tabsAPI{}).Tab(TabsTabProps{Value: "one"}, "One") }),
+			return Fragment([]*native.Node{
+				(tabsAPI{}).List(PartProps{}, func() *native.Node { return (tabsAPI{}).Tab(TabsTabProps{Value: "one"}, "One") }),
 				(tabsAPI{}).Panel(TabsPanelProps{Value: "one"}, func() *Element {
 					CreateRenderEffect(func() { _ = value(); effects++ })
 					OnCleanup(func() { cleanups++ })
 					return Text(Props{}, "panel")
-				})})
+				}),
+			})
 		})
 		native.InsertNode(parent.Node, root, nil)
 		setValue(1)
@@ -173,14 +179,15 @@ func TestDynamicViewSelectionPreservesChildBindings(t *testing.T) {
 			OnCleanup(func() { cleanups++ })
 			return Text(value)
 		}
-		root := View().Child(func() *native.Node {
-			return Dynamic(func() Component {
-				if selected() {
-					return func() *Element { return Text("other view") }
-				}
-				return component
+		root := View().
+			Child(func() *native.Node {
+				return Dynamic(func() Component {
+					if selected() {
+						return func() *Element { return Text("other view") }
+					}
+					return component
+				})
 			})
-		})
 		setValue("second")
 		if mounts != 1 || cleanups != 0 || !reflect.DeepEqual(blockText(root.Node), []string{"second"}) {
 			t.Fatal("a child signal remounted the selected component")

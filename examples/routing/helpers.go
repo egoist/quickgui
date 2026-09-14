@@ -60,22 +60,48 @@ func button(label string, click func()) *ui.Element {
 }
 
 func historyButton(label, path string, click func(), disabled func() bool) *ui.Element {
-	return ui.Button().Child(ui.SVG().Value(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#e8edf7" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="` + path + `"/></svg>`).
-		Width(17).Height(17)).Style(buttonStyle).Width(34).Height(30).PaddingLeft(0).PaddingRight(0).BorderRadius(7).AriaLabel(label).Disabled(disabled()).OnClick(click)
+	return ui.Button().
+		Child(ui.SVG().
+			Value(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#e8edf7" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="` + path + `"/></svg>`).
+			Width(17).
+			Height(17)).
+		Style(buttonStyle).
+		Width(34).
+		Height(30).
+		PaddingLeft(0).
+		PaddingRight(0).
+		BorderRadius(7).
+		AriaLabel(label).
+		Disabled(disabled()).
+		OnClick(click)
 
 }
 
 func page(title, description any, children ...any) *ui.Element {
-	return ui.View().Children(
+	return ui.View().
+		Children(
 
-		ui.Text(
-			title,
-		).FontSize(28).LineHeight(36).FontWeight(750),
-		ui.Text(
-			description,
-		).MaxWidth(620).TextColor(muted).LineHeight(21),
-		children,
-	).Display("flex").FlexDirection("column").Width("100%").Height("100%").Padding(28).Gap(16).OverflowY("auto")
+			ui.Text(
+				title,
+			).
+				FontSize(28).
+				LineHeight(36).
+				FontWeight(750),
+			ui.Text(
+				description,
+			).
+				MaxWidth(620).
+				TextColor(muted).
+				LineHeight(21),
+			children,
+		).
+		Display("flex").
+		FlexDirection("column").
+		Width("100%").
+		Height("100%").
+		Padding(28).
+		Gap(16).
+		OverflowY("auto")
 }
 
 func card(title, detail, href string) *native.Node {
@@ -102,8 +128,10 @@ func card(title, detail, href string) *native.Node {
 				})},
 		},
 		func() *native.Node {
-			return ui.Fragment([]*native.Node{ui.Text(title).FontWeight(700).Node,
-				ui.Text(detail).TextColor(muted).LineHeight(19).Node})
+			return ui.Fragment([]*native.Node{
+				ui.Text(title).FontWeight(700).Node,
+				ui.Text(detail).TextColor(muted).LineHeight(19).Node,
+			})
 		},
 	)
 }

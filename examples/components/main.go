@@ -88,73 +88,169 @@ func Gallery() *native.Node {
 		Orientation: "vertical",
 		Activation:  "manual",
 		PartProps: ui.PartProps{Style: func() ui.StyleBuilder {
-			return ui.Style().Display("flex").Width("100%").Height("100%").BackgroundColor(p().Window).TextColor(p().Ink)
+			return ui.Style().
+				Display("flex").
+				Width("100%").
+				Height("100%").
+				BackgroundColor(p().Window).
+				TextColor(p().Ink)
 		}},
 	})
-	return tabs4.Root().Children(func() *native.Node {
-		return ui.Fragment([]*native.Node{ui.View().Children(
-			ui.View().Display("flex").Height(52).FlexShrink(0).AlignItems("center").PaddingLeft(82).AppRegion("drag"),
-			ui.View().Child(tabs4.List(ui.PartProps{Style: ui.Style().Display("flex").FlexDirection("column").Gap(1).PaddingLeft(8).PaddingRight(8).PaddingBottom(12)}).Children(func() *native.Node {
-				var children []*native.Node
-				for index, entry := range demos {
-					children = append(children, tabs4.TabWith(ui.TabsTabProps{
-						Value: entry.ID,
-						Index: ptr(index),
-						PartProps: ui.PartProps{Style: func() ui.StyleBuilder {
-							background, ink, weight := "transparent", p().Ink, 400
-							if selected() == entry.ID {
-								background, ink, weight = p().Accent, p().OnAccent, 600
-							}
-							return ui.Style().Display("flex").AlignItems("center").Height(28).FlexShrink(0).PaddingLeft(10).PaddingRight(10).BorderRadius(7).Cursor("default").UserSelect("none").BackgroundColor(background).TextColor(ink).FontSize(13).FontWeight(weight).Hover(func(s ui.StyleBuilder) ui.StyleBuilder {
-								return s.BackgroundColor(choose(selected() == entry.ID, p().Accent, p().ControlHover))
-							}).FocusStyle(func(s ui.StyleBuilder) ui.StyleBuilder {
-								return s.Outline("2px solid " + p().Accent)
-							}).OutlineOffset(-2)
-						}},
-					}).Children(entry.Label).NativeNode())
-				}
-				return ui.Fragment(children)
-			}).NativeNode()).Display("flex").FlexDirection("column").Flex(1).MinHeight(0).OverflowY("scroll"),
-		).Display("flex").FlexDirection("column").Width(214).FlexShrink(0).Height("100%").BackgroundColor(color(func(p palette) string {
-			return p.Sidebar
-		})).BorderRightWidth(1).BorderColor(color(func(p palette) string {
-			return p.Border
-		})).Node, ui.View().Children(
-			ui.View().Children(
-				row(func() *native.Node {
-					return ui.Fragment([]*native.Node{ui.Text(current().Label).FontSize(15).FontWeight(700).Node, ui.Text(func() string {
-						switch current().Source {
-						case "QuickGUI":
-							return "QuickGUI component"
-						case "System":
-							return "Native system menu"
-						default:
-							return "Base UI part set"
-						}
-					}).FontSize(11).TextColor(color(func(p palette) string {
-						return p.Faint
-					})).Node})
-				}),
-				ui.Text(func() string {
-					theme := galleryContext.Use()
-					size := theme.Size()
-					return strconv.Itoa(len(demos)) + " components · " + theme.Appearance() + " appearance · " + strconv.FormatFloat(size.X, 'f', 0, 64) + "×" + strconv.FormatFloat(size.Y, 'f', 0, 64)
-				}).FontSize(11).TextColor(color(func(p palette) string {
-					return p.Faint
-				})),
-			).Display("flex").AlignItems("center").JustifyContent("space-between").Height(52).FlexShrink(0).PaddingLeft(20).PaddingRight(20).BorderBottomWidth(1).BorderColor(color(func(p palette) string {
-				return p.Border
-			})).AppRegion("drag"),
-			ui.View().Child(func() *native.Node {
-				var children []*native.Node
-				for _, entry := range demos {
-					children = append(children, tabs4.PanelWith(ui.TabsPanelProps{
-						Value:     entry.ID,
-						PartProps: ui.PartProps{Style: ui.Style().Display("flex").FlexDirection("column").Gap(16).MaxWidth(720).FlexShrink(0)},
-					}).Children(entry.Component).NativeNode())
-				}
-				return ui.Fragment(children)
-			}).Display("flex").FlexDirection("column").Flex(1).MinHeight(0).Padding(20).Gap(16).OverflowY("scroll"),
-		).Display("flex").FlexDirection("column").Flex(1).MinWidth(0).Height("100%").Node})
-	}).NativeNode()
+	return tabs4.Root().
+		Children(func() *native.Node {
+			return ui.Fragment([]*native.Node{
+				ui.View().
+					Children(
+						ui.View().
+							Display("flex").
+							Height(52).
+							FlexShrink(0).
+							AlignItems("center").
+							PaddingLeft(82).
+							AppRegion("drag"),
+						ui.View().
+							Child(tabs4.List(ui.PartProps{Style: ui.Style().
+								Display("flex").
+								FlexDirection("column").
+								Gap(1).
+								PaddingLeft(8).
+								PaddingRight(8).
+								PaddingBottom(12)}).
+								Children(func() *native.Node {
+									var children []*native.Node
+									for index, entry := range demos {
+										children = append(children, tabs4.TabWith(ui.TabsTabProps{
+											Value: entry.ID,
+											Index: ptr(index),
+											PartProps: ui.PartProps{Style: func() ui.StyleBuilder {
+												background, ink, weight := "transparent", p().Ink, 400
+												if selected() == entry.ID {
+													background, ink, weight = p().Accent, p().OnAccent, 600
+												}
+												return ui.Style().
+													Display("flex").
+													AlignItems("center").
+													Height(28).
+													FlexShrink(0).
+													PaddingLeft(10).
+													PaddingRight(10).
+													BorderRadius(7).
+													Cursor("default").
+													UserSelect("none").
+													BackgroundColor(background).
+													TextColor(ink).
+													FontSize(13).
+													FontWeight(weight).
+													Hover(func(s ui.StyleBuilder) ui.StyleBuilder {
+														return s.BackgroundColor(choose(selected() == entry.ID, p().Accent, p().ControlHover))
+													}).
+													FocusStyle(func(s ui.StyleBuilder) ui.StyleBuilder {
+														return s.Outline("2px solid " + p().Accent)
+													}).
+													OutlineOffset(-2)
+											}},
+										}).
+											Children(entry.Label).
+											NativeNode())
+									}
+									return ui.Fragment(children)
+								}).
+								NativeNode()).
+							Display("flex").
+							FlexDirection("column").
+							Flex(1).
+							MinHeight(0).
+							OverflowY("scroll"),
+					).
+					Display("flex").
+					FlexDirection("column").
+					Width(214).
+					FlexShrink(0).
+					Height("100%").
+					BackgroundColor(color(func(p palette) string {
+						return p.Sidebar
+					})).
+					BorderRightWidth(1).
+					BorderColor(color(func(p palette) string {
+						return p.Border
+					})).Node,
+				ui.View().
+					Children(
+						ui.View().
+							Children(
+								row(func() *native.Node {
+									return ui.Fragment([]*native.Node{
+										ui.Text(current().Label).FontSize(15).FontWeight(700).Node,
+										ui.Text(func() string {
+											switch current().Source {
+											case "QuickGUI":
+												return "QuickGUI component"
+											case "System":
+												return "Native system menu"
+											default:
+												return "Base UI part set"
+											}
+										}).
+											FontSize(11).
+											TextColor(color(func(p palette) string {
+												return p.Faint
+											})).Node,
+									})
+								}),
+								ui.Text(func() string {
+									theme := galleryContext.Use()
+									size := theme.Size()
+									return strconv.Itoa(len(demos)) + " components · " + theme.Appearance() + " appearance · " + strconv.FormatFloat(size.X, 'f', 0, 64) + "×" + strconv.FormatFloat(size.Y, 'f', 0, 64)
+								}).
+									FontSize(11).
+									TextColor(color(func(p palette) string {
+										return p.Faint
+									})),
+							).
+							Display("flex").
+							AlignItems("center").
+							JustifyContent("space-between").
+							Height(52).
+							FlexShrink(0).
+							PaddingLeft(20).
+							PaddingRight(20).
+							BorderBottomWidth(1).
+							BorderColor(color(func(p palette) string {
+								return p.Border
+							})).
+							AppRegion("drag"),
+						ui.View().
+							Child(func() *native.Node {
+								var children []*native.Node
+								for _, entry := range demos {
+									children = append(children, tabs4.PanelWith(ui.TabsPanelProps{
+										Value: entry.ID,
+										PartProps: ui.PartProps{Style: ui.Style().
+											Display("flex").
+											FlexDirection("column").
+											Gap(16).
+											MaxWidth(720).
+											FlexShrink(0)},
+									}).
+										Children(entry.Component).
+										NativeNode())
+								}
+								return ui.Fragment(children)
+							}).
+							Display("flex").
+							FlexDirection("column").
+							Flex(1).
+							MinHeight(0).
+							Padding(20).
+							Gap(16).
+							OverflowY("scroll"),
+					).
+					Display("flex").
+					FlexDirection("column").
+					Flex(1).
+					MinWidth(0).
+					Height("100%").Node,
+			})
+		}).
+		NativeNode()
 }

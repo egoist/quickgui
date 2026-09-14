@@ -146,10 +146,11 @@ func TestRouterMountsMatchedChainAndKeepsPageOnParamChange(t *testing.T) {
 			Routes: []*RouteDeclaration{
 				Route("/", func() *Element {
 					shellCreated++
-					return View().Children(
-						Text("shell"),
-						Outlet(),
-					)
+					return View().
+						Children(
+							Text("shell"),
+							Outlet(),
+						)
 				}, Route("", func() *Element {
 					homeCreated++
 					navigate = UseNavigate()

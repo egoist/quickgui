@@ -64,7 +64,12 @@ func (s *systemState) actions() []systemAction {
 		{"Keyboard layout", func(done completion) { native.Keyboard.GetLayout(report[native.KeyboardLayout](done)) }},
 		{"Permissions", func(done completion) {
 			values := map[native.PermissionKind]native.PermissionStatus{}
-			for _, kind := range []native.PermissionKind{native.PermissionCamera, native.PermissionMicrophone, native.PermissionScreenRecording, native.PermissionAccessibility} {
+			for _, kind := range []native.PermissionKind{
+				native.PermissionCamera,
+				native.PermissionMicrophone,
+				native.PermissionScreenRecording,
+				native.PermissionAccessibility,
+			} {
 				status, err := native.Permissions.Status(kind)
 				if err != nil {
 					done("", err)

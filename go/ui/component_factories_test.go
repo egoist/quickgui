@@ -37,12 +37,13 @@ func TestReturnedChildFactoriesRetainContextAndCleanupWithoutWrapperNodes(t *tes
 		builds, cleaned := 0, 0
 		var child *Element
 		root := reactive.Provide(context, "inside", func() *Element {
-			return View().Child(func() *Element {
-				builds++
-				OnCleanup(func() { cleaned++ })
-				child = Text(context.Use(), value)
-				return child
-			})
+			return View().
+				Child(func() *Element {
+					builds++
+					OnCleanup(func() { cleaned++ })
+					child = Text(context.Use(), value)
+					return child
+				})
 		})
 		if len(root.Node.Children) != 1 || root.Node.Children[0] != child.Node {
 			t.Fatal("returning a child added a wrapper node")
@@ -72,15 +73,17 @@ func TestReturnedConditionalAndKeyedComponentsKeepIdentity(t *testing.T) {
 		visible, setVisible := CreateSignal(true)
 		mounted, cleaned := 0, 0
 		refs := map[int]*native.Node{}
-		root := View().Child(Show(visible, func() *Element {
-			return View().Child(KeyedFor(items, func(value item) any { return value.ID }, func(read func() item) *Element {
-				mounted++
-				OnCleanup(func() { cleaned++ })
-				node := Text(func() string { return read().Name })
-				refs[read().ID] = node.Node
-				return node
-			}, nil))
-		}))
+		root := View().
+			Child(Show(visible, func() *Element {
+				return View().
+					Child(KeyedFor(items, func(value item) any { return value.ID }, func(read func() item) *Element {
+						mounted++
+						OnCleanup(func() { cleaned++ })
+						node := Text(func() string { return read().Name })
+						refs[read().ID] = node.Node
+						return node
+					}, nil))
+			}))
 		first := refs[1]
 		setItems([]item{{2, "second"}, {1, "first"}})
 		if mounted != 2 || refs[1] != first || !reflect.DeepEqual(blockText(root.Node), []string{"second", "first"}) {

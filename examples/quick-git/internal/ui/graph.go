@@ -88,24 +88,37 @@ func paintGraphRow(row git.GraphRow, width, height float64) []graphLayer {
 
 func historyGraph(row func() *git.GraphRow, width func() float64) *gui.Element {
 	app := UseApp()
-	return gui.View().Child(
+	return gui.View().
+		Child(
 
-		gui.KeyedFor(
-			func() []graphLayer {
-				if current := row(); current != nil {
-					return paintGraphRow(*current, width(), historyRowHeight)
-				}
-				return nil
-			},
-			func(layer graphLayer) any { return layer.Color },
-			func(layer func() graphLayer, _ func() int) *gui.Element {
-				return gui.SVG().Position("absolute").Left(0).Top(0).Width(width()).Height(historyRowHeight).TextColor(func() string {
-					palette := app.Theme().Graph
-					return palette[layer().Color%len(palette)]
-				}).Value(func() string { return layer().Source })
+			gui.KeyedFor(
+				func() []graphLayer {
+					if current := row(); current != nil {
+						return paintGraphRow(*current, width(), historyRowHeight)
+					}
+					return nil
+				},
+				func(layer graphLayer) any { return layer.Color },
+				func(layer func() graphLayer, _ func() int) *gui.Element {
+					return gui.SVG().
+						Position("absolute").
+						Left(0).
+						Top(0).
+						Width(width()).
+						Height(historyRowHeight).
+						TextColor(func() string {
+							palette := app.Theme().Graph
+							return palette[layer().Color%len(palette)]
+						}).
+						Value(func() string { return layer().Source })
 
-			},
-			nil,
-		),
-	).Position("relative").Width(width()).Height(historyRowHeight).FlexShrink(0).Overflow("hidden")
+				},
+				nil,
+			),
+		).
+		Position("relative").
+		Width(width()).
+		Height(historyRowHeight).
+		FlexShrink(0).
+		Overflow("hidden")
 }

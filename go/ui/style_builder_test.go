@@ -12,11 +12,17 @@ import (
 
 func TestFluentStyleReusePreservesOverridesAndLayoutResets(t *testing.T) {
 	base := Style().RoundedLg().PaddingStart(12).GridCols(3)
-	variant := Style().Merge(base).PaddingInlineStart(0).ColSpan(2).
-		When(false, func(s StyleBuilder) StyleBuilder {
-			t.Fatal("an inactive style callback ran")
-			return s
-		})
+	variant := Style().
+		Merge(base).
+		PaddingInlineStart(0).
+		ColSpan(2).
+		When(
+			false,
+			func(s StyleBuilder) StyleBuilder {
+				t.Fatal("an inactive style callback ran")
+				return s
+			},
+		)
 	view := View().RoundedTl(3).ColStart(5).ColEnd(8).Style(variant)
 	before := view.Pending.MutationCount()
 	native.SetNumber(view.Node, protocol.BorderRadius, 8)
@@ -60,8 +66,15 @@ func TestFluentStyleInteractionCallbacksMergeWithoutMutatingSharedValues(t *test
 
 		})
 	}
-	base := Style().GroupHoverNamed("card", func(s StyleBuilder) StyleBuilder { return s.Opacity(.5) })
-	variant := base.GroupHoverNamed("toolbar", func(s StyleBuilder) StyleBuilder { return s.Opacity(1) })
+	base := Style().
+		GroupHoverNamed(
+			"card",
+			func(s StyleBuilder) StyleBuilder { return s.Opacity(.5) },
+		)
+	variant := base.GroupHoverNamed(
+		"toolbar",
+		func(s StyleBuilder) StyleBuilder { return s.Opacity(1) },
+	)
 	if got := groupHoverRules(variant.style); len(got) != 2 || got[0].name != "card" || got[1].name != "toolbar" {
 		t.Fatal("fluent group rules lost their names or declaration order")
 	}
@@ -122,7 +135,10 @@ func TestFluentStylePartAccessorRestoresConditionalFallback(t *testing.T) {
 		base := Style().Bg(color.Read).Padding(12)
 		parent := View()
 		part := createViewPart(PartProps{Style: func() StyleBuilder {
-			return base.When(selected(), func(s StyleBuilder) StyleBuilder { return s.Bg("#445566").Opacity(.5) })
+			return base.When(
+				selected(),
+				func(s StyleBuilder) StyleBuilder { return s.Bg("#445566").Opacity(.5) },
+			)
 		}})
 		native.InsertNode(parent.Node, part, nil)
 		setSelected(true)

@@ -25,20 +25,33 @@ func resizablePanel(label string, width func() float64, setWidth func(float64), 
 		},
 		PartProps: gui.PartProps{Style: gui.Style().Display("flex").FlexShrink(0).MinWidth(0).MinHeight(0)},
 	})
-	return splitter75.Root().Children(func() *native.Node {
-		return gui.Fragment([]*native.Node{splitter75.PaneWith(gui.SplitterPaneProps{
-			Index:     &index,
-			PartProps: gui.PartProps{Style: style},
-		}).Children(children).NativeNode(), splitter75.HandleWith(gui.SplitterPaneProps{
-			Index: &index,
-			PartProps: gui.PartProps{
-				AriaLabel: label,
-				Ref: func(node *native.Node) {
-					native.SetNumber(node, protocol.HitSlopLeft, 4)
-					native.SetNumber(node, protocol.HitSlopRight, 4)
-				},
-				Style: gui.Style().Width(1).FlexShrink(0).Cursor("col-resize").AppRegion("no-drag").BackgroundColor(UseApp().Theme().Border),
-			},
-		}).NativeNode()})
-	}).NativeNode()
+	return splitter75.Root().
+		Children(func() *native.Node {
+			return gui.Fragment([]*native.Node{
+				splitter75.PaneWith(gui.SplitterPaneProps{
+					Index:     &index,
+					PartProps: gui.PartProps{Style: style},
+				}).
+					Children(children).
+					NativeNode(),
+				splitter75.HandleWith(gui.SplitterPaneProps{
+					Index: &index,
+					PartProps: gui.PartProps{
+						AriaLabel: label,
+						Ref: func(node *native.Node) {
+							native.SetNumber(node, protocol.HitSlopLeft, 4)
+							native.SetNumber(node, protocol.HitSlopRight, 4)
+						},
+						Style: gui.Style().
+							Width(1).
+							FlexShrink(0).
+							Cursor("col-resize").
+							AppRegion("no-drag").
+							BackgroundColor(UseApp().Theme().Border),
+					},
+				}).
+					NativeNode(),
+			})
+		}).
+		NativeNode()
 }

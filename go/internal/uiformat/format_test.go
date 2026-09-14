@@ -17,9 +17,85 @@ func root() {
 ui.View().Child(ui.Text("hello")).Child(ui.Input().Value("xxx")).Flex().Style(ui.Style().Merge(ui.Style().PaddingLeft(20), ui.Style().TextAlign("center"), ui.Style().Bg("#112233")))
 ui.Button().Child("Toggle").When(func() bool { return selected() }, ui.Style().BackgroundColor("blue"), ui.Style().TextColor("white"))
 }`)
-	result := checkFormat(t, source)
-	if !bytes.Contains(result, []byte(".Merge(\n")) || !bytes.Contains(result, []byte(".When(\n")) {
-		t.Fatalf("fluent declarations were not wrapped:\n%s", result)
+	result := string(checkFormat(t, source))
+	for _, want := range []string{
+		"ui.View().\n",
+		"Child(ui.Text(\"hello\")).\n",
+		"Flex().\n",
+		"ui.Style().\n",
+		"Merge(\n",
+		"ui.Style().PaddingLeft(20),\n",
+		"ui.Style().TextAlign(\"center\"),\n",
+		"ui.Button().\n",
+		"When(\n",
+		"ui.Style().BackgroundColor(\"blue\"),\n",
+	} {
+		if !strings.Contains(result, want) {
+			t.Errorf("missing %q in:\n%s", want, result)
+		}
+	}
+}
+
+func TestWrapsFluentMethodChains(t *testing.T) {
+	source := []byte(`package example
+import ui "github.com/egoist/quickgui/go/ui"
+func buttonStyle() ui.StyleBuilder {
+return ui.Style().Display("flex").AlignItems("center").JustifyContent("center").Height(34).FlexShrink(0).PaddingLeft(12).PaddingRight(12).BorderRadius(7).BackgroundColor("#253855").TextColor("#e2e8f0").UserSelect("none").AppRegion("no-drag").Cursor("default").FontSize(13)
+}
+func root() *ui.Element {
+return ui.View().Children(ui.Text("Conversations").FontSize(18).FontWeight(700), ui.Button().Child("New chat")).Display("flex").FlexDirection("column").Width(248).Height("100%").FlexShrink(0).Padding(16)
+}
+func short() *ui.Element {
+return ui.Text("Conversations").FontSize(18).FontWeight(700)
+}
+`)
+	result := string(checkFormat(t, source))
+	for _, want := range []string{
+		"return ui.Style().\n",
+		"Display(\"flex\").\n",
+		"AlignItems(\"center\").\n",
+		"FontSize(13)\n",
+		"return ui.View().\n",
+		"Children(\n",
+		"ui.Text(\"Conversations\").FontSize(18).FontWeight(700),\n",
+		"Display(\"flex\").\n",
+		"FlexDirection(\"column\").\n",
+		"return ui.Text(\"Conversations\").FontSize(18).FontWeight(700)\n",
+	} {
+		if !strings.Contains(result, want) {
+			t.Errorf("missing %q in:\n%s", want, result)
+		}
+	}
+}
+
+func TestWrapsInstanceFluentChains(t *testing.T) {
+	source := []byte(`package example
+import (
+ native "github.com/egoist/quickgui/go/native"
+ ui "github.com/egoist/quickgui/go/ui"
+)
+func root() *ui.Element {
+popover := ui.NewPopover()
+return popover.Root().Children(popover.Trigger().Child("Open"), popover.Content().Child("Hello")).Display("flex").Width("100%").Height("100%").Padding(20).Gap(12)
+}
+func nodes() *native.Node {
+popover := ui.NewPopover()
+return ui.Fragment([]*native.Node{popover.Trigger().Child("Open").NativeNode(), popover.Content().Child("Hello").NativeNode()})
+}
+`)
+	result := string(checkFormat(t, source))
+	for _, want := range []string{
+		"return popover.Root().\n",
+		"Children(\n",
+		"Display(\"flex\").\n",
+		"Width(\"100%\").\n",
+		"popover.Trigger().Child(\"Open\"),\n",
+		"[]*native.Node{\n",
+		"popover.Trigger().Child(\"Open\").NativeNode(),\n",
+	} {
+		if !strings.Contains(result, want) {
+			t.Errorf("missing %q in:\n%s", want, result)
+		}
 	}
 }
 
@@ -83,6 +159,7 @@ import (
 func root() {
 ui.Text(ui.Style().FontSize(14), "Hello")
 other.View(other.Padding(20), other.BackgroundColor("a long value that is not part of a QuickGUI UI declaration"), "Hello")
+other.View().Child("Hello").Style(other.Padding(20)).Width("100%").Height("100%").Padding(16)
 }`)
 	want, err := format.Source(source)
 	if err != nil {

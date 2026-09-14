@@ -130,11 +130,16 @@ func TestCompoundBindingsAndDeferredChildrenDisposeWithRoot(t *testing.T) {
 		reads, builds, cleanups := 0, 0, 0
 		popover := NewPopover().Open(func() bool { reads++; return open() })
 		trigger := popover.Trigger().Child("Open")
-		root := popover.Root().Children(trigger, func() *Element {
-			builds++
-			OnCleanup(func() { cleanups++ })
-			return popover.Positioner().Child(popover.Popup().Child(popover.Title().Child("Title")))
-		})
+		root := popover.Root().
+			Children(
+				trigger,
+				func() *Element {
+					builds++
+					OnCleanup(func() { cleanups++ })
+					return popover.Positioner().
+						Child(popover.Popup().Child(popover.Title().Child("Title")))
+				},
+			)
 		parent := View().Child(root)
 		node := trigger.NativeNode()
 		setOpen(true)
@@ -158,7 +163,15 @@ func TestCompoundNestedItemContextAndControlledValues(t *testing.T) {
 		selected, setSelected := CreateSignal("account")
 		tabs := NewTabs().Value(selected).OnValueChange(func(value string, _ *native.Event) { setSelected(value) })
 		profile := tabs.Tab("profile").Child(tabs.Indicator()).Child("Profile")
-		root := tabs.Root().Children(tabs.List().Children(tabs.Tab("account").Child("Account"), profile), tabs.Panel("profile").Child("Profile content"))
+		root := tabs.Root().
+			Children(
+				tabs.List().
+					Children(
+						tabs.Tab("account").Child("Account"),
+						profile,
+					),
+				tabs.Panel("profile").Child("Profile content"),
+			)
 		node := root.NativeNode()
 		before := profile.ID
 		clickComponent(profile.NativeNode())
@@ -274,7 +287,11 @@ func TestNumericInstanceSettingsAcceptGoIntegerValuesAndAccessors(t *testing.T) 
 		if reads != before {
 			t.Fatal("integer accessor survived unmount")
 		}
-		NewTable().Columns([]TableColumnDeclaration{{ID: "name", Track: "1fr"}}).RowCount(2).Root().NativeNode()
+		NewTable().
+			Columns([]TableColumnDeclaration{{ID: "name", Track: "1fr"}}).
+			RowCount(2).
+			Root().
+			NativeNode()
 		NewProgress().SetValue(1).Root().NativeNode()
 		return struct{}{}
 	})

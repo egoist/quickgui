@@ -21,11 +21,13 @@ func TestToastPortalIsCenteredAgainstTheAppRoot(t *testing.T) {
 		var toastID string
 		root := captureComponent(func() *native.Node {
 			return ProvideApp(AppContext{Store: &model.Store{}, Theme: theme}, func() *native.Node {
-				return toast.Provider().Child(func() *native.Node {
-					toastID = gui.UseToastManager().Add(gui.ToastRequest{Title: "Short"})
-					portal = notices(toast)
-					return portal
-				}).NativeNode()
+				return toast.Provider().
+					Child(func() *native.Node {
+						toastID = gui.UseToastManager().Add(gui.ToastRequest{Title: "Short"})
+						portal = notices(toast)
+						return portal
+					}).
+					NativeNode()
 			})
 		})
 		if root == nil || portal == nil || len(portal.Children) != 1 {

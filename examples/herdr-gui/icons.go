@@ -25,39 +25,54 @@ func icon(name string, size float64, color func() string) *ui.Element {
 	return dynamicIcon(func() string { return name }, size, color)
 }
 func dynamicIcon(name func() string, size float64, color func() string) *ui.Element {
-	return ui.SVG().Width(size).Height(size).FlexShrink(0).Value(func() string {
-		return strings.ReplaceAll(svgFrame+icons[name()]+"</svg>", "currentColor", color())
-	})
+	return ui.SVG().
+		Width(size).
+		Height(size).
+		FlexShrink(0).
+		Value(func() string {
+			return strings.ReplaceAll(svgFrame+icons[name()]+"</svg>", "currentColor", color())
+		})
 
 }
 func statusGlyph(m *model, status func() string, compact bool) *ui.Element {
 	size := choose(compact, 12.0, 14.0)
-	return ui.View().Child(
+	return ui.View().
+		Child(
 
-		dynamicIcon(func() string {
-			switch status() {
-			case "blocked":
-				return "warning-circle"
-			case "working":
-				return "loader"
-			case "idle":
-				return "check-circle"
-			}
-			return "circle"
-		}, size-1, func() string {
-			switch status() {
-			case "blocked":
-				return m.theme().Danger
-			case "working":
-				return m.theme().Working
-			case "idle":
-				return m.theme().Success
-			}
-			return m.theme().TextGhost
-		}),
-	).Display("flex").Width(size).Height(size).FlexShrink(0).AlignItems("center").JustifyContent("center")
+			dynamicIcon(func() string {
+				switch status() {
+				case "blocked":
+					return "warning-circle"
+				case "working":
+					return "loader"
+				case "idle":
+					return "check-circle"
+				}
+				return "circle"
+			}, size-1, func() string {
+				switch status() {
+				case "blocked":
+					return m.theme().Danger
+				case "working":
+					return m.theme().Working
+				case "idle":
+					return m.theme().Success
+				}
+				return m.theme().TextGhost
+			}),
+		).
+		Display("flex").
+		Width(size).
+		Height(size).
+		FlexShrink(0).
+		AlignItems("center").
+		JustifyContent("center")
 }
 func iconButton(m *model, label, name string, size float64, click func()) *ui.Element {
-	return ui.Button().AriaLabel(label).FocusOnPointer(false).Style(m.iconStyle(size)).OnClick(click).
+	return ui.Button().
+		AriaLabel(label).
+		FocusOnPointer(false).
+		Style(m.iconStyle(size)).
+		OnClick(click).
 		Child(icon(name, 14, m.color(func(t theme) string { return t.TextTertiary })))
 }

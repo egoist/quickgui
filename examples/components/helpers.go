@@ -56,45 +56,88 @@ func textValue[T any](value *T) string {
 	return fmt.Sprint(*value)
 }
 func controlStyle() ui.StyleBuilder {
-	return ui.Style().Display("flex").FlexDirection("row").AlignItems("center").JustifyContent("center").Gap(6).Height(30).FlexShrink(0).PaddingLeft(12).PaddingRight(12).BorderRadius(8).BackgroundColor(color(func(p palette) string {
-		return p.Control
-	})).BorderColor(color(func(p palette) string {
-		return p.Border
-	})).BorderWidth(1).TextColor(color(func(p palette) string {
-		return p.Ink
-	})).FontSize(13).Cursor("default").UserSelect("none").AppRegion("no-drag").Hover(func(s ui.StyleBuilder) ui.StyleBuilder {
-		return s.BackgroundColor(color(func(p palette) string {
-			return p.ControlHover
-		}))
-	}).FocusStyle(func(s ui.StyleBuilder) ui.StyleBuilder {
-		return s.OutlineWidth(2).OutlineColor(color(func(p palette) string {
-			return p.Accent
-		}))
-	}).OutlineOffset(2).DisabledStyle(func(s ui.StyleBuilder) ui.StyleBuilder {
-		return s.Opacity(0.45)
-	})
+	return ui.Style().
+		Display("flex").
+		FlexDirection("row").
+		AlignItems("center").
+		JustifyContent("center").
+		Gap(6).
+		Height(30).
+		FlexShrink(0).
+		PaddingLeft(12).
+		PaddingRight(12).
+		BorderRadius(8).
+		BackgroundColor(color(func(p palette) string {
+			return p.Control
+		})).
+		BorderColor(color(func(p palette) string {
+			return p.Border
+		})).
+		BorderWidth(1).
+		TextColor(color(func(p palette) string {
+			return p.Ink
+		})).
+		FontSize(13).
+		Cursor("default").
+		UserSelect("none").
+		AppRegion("no-drag").
+		Hover(func(s ui.StyleBuilder) ui.StyleBuilder {
+			return s.BackgroundColor(color(func(p palette) string {
+				return p.ControlHover
+			}))
+		}).
+		FocusStyle(func(s ui.StyleBuilder) ui.StyleBuilder {
+			return s.OutlineWidth(2).OutlineColor(color(func(p palette) string {
+				return p.Accent
+			}))
+		}).
+		OutlineOffset(2).
+		DisabledStyle(func(s ui.StyleBuilder) ui.StyleBuilder {
+			return s.Opacity(0.45)
+		})
 }
 func inputStyle() ui.StyleBuilder {
-	return ui.Style().Height(30).PaddingLeft(10).PaddingRight(10).BorderRadius(8).BackgroundColor(color(func(p palette) string {
-		return p.PanelAlt
-	})).BorderColor(color(func(p palette) string {
-		return p.Border
-	})).BorderWidth(1).TextColor(color(func(p palette) string {
-		return p.Ink
-	})).FontSize(13).FocusStyle(func(s ui.StyleBuilder) ui.StyleBuilder {
-		return s.OutlineWidth(2).OutlineColor(color(func(p palette) string {
-			return p.Accent
-		}))
-	}).OutlineOffset(2)
+	return ui.Style().
+		Height(30).
+		PaddingLeft(10).
+		PaddingRight(10).
+		BorderRadius(8).
+		BackgroundColor(color(func(p palette) string {
+			return p.PanelAlt
+		})).
+		BorderColor(color(func(p palette) string {
+			return p.Border
+		})).
+		BorderWidth(1).
+		TextColor(color(func(p palette) string {
+			return p.Ink
+		})).
+		FontSize(13).
+		FocusStyle(func(s ui.StyleBuilder) ui.StyleBuilder {
+			return s.OutlineWidth(2).OutlineColor(color(func(p palette) string {
+				return p.Accent
+			}))
+		}).
+		OutlineOffset(2)
 }
 func popupStyle() ui.StyleBuilder {
-	return ui.Style().Display("flex").FlexDirection("column").Gap(8).Padding(14).BorderRadius(12).BackgroundColor(color(func(p palette) string {
-		return p.Popup
-	})).BorderColor(color(func(p palette) string {
-		return p.Border
-	})).BorderWidth(1).TextColor(color(func(p palette) string {
-		return p.Ink
-	})).BoxShadow("0 18px 40px #00000033")
+	return ui.Style().
+		Display("flex").
+		FlexDirection("column").
+		Gap(8).
+		Padding(14).
+		BorderRadius(12).
+		BackgroundColor(color(func(p palette) string {
+			return p.Popup
+		})).
+		BorderColor(color(func(p palette) string {
+			return p.Border
+		})).
+		BorderWidth(1).
+		TextColor(color(func(p palette) string {
+			return p.Ink
+		})).
+		BoxShadow("0 18px 40px #00000033")
 }
 func fillStyle() ui.StyleBuilder {
 	return ui.Style().Position("absolute").Top(0).Right(0).Bottom(0).Left(0)
@@ -128,50 +171,80 @@ func overlay() ui.PartProps {
 	return ui.PartProps{Style: s}
 }
 func panel(title, hint string, children ui.Component) *ui.Element {
-	return ui.View().Children(
-		ui.Text(title).FontSize(17).FontWeight(700),
-		ui.Text(hint).FontSize(12).LineHeight(18).TextColor(color(func(p palette) string {
-			return p.Muted
-		})),
-		children,
-	).Display("flex").FlexDirection("column").Gap(14).Padding(20).BorderRadius(12).BorderWidth(1).BorderColor(color(func(p palette) string {
-		return p.Border
-	})).BackgroundColor(color(func(p palette) string {
-		return p.Panel
-	})).FlexShrink(0)
+	return ui.View().
+		Children(
+			ui.Text(title).FontSize(17).FontWeight(700),
+			ui.Text(hint).
+				FontSize(12).
+				LineHeight(18).
+				TextColor(color(func(p palette) string {
+					return p.Muted
+				})),
+			children,
+		).
+		Display("flex").
+		FlexDirection("column").
+		Gap(14).
+		Padding(20).
+		BorderRadius(12).
+		BorderWidth(1).
+		BorderColor(color(func(p palette) string {
+			return p.Border
+		})).
+		BackgroundColor(color(func(p palette) string {
+			return p.Panel
+		})).
+		FlexShrink(0)
 }
 func row(children ui.Component) *ui.Element {
-	return ui.View().Child(children).Display("flex").FlexDirection("row").AlignItems("center").FlexWrap("wrap").Gap(10)
+	return ui.View().
+		Child(children).
+		Display("flex").
+		FlexDirection("row").
+		AlignItems("center").
+		FlexWrap("wrap").
+		Gap(10)
 }
 func col(children ui.Component) *ui.Element {
 	return ui.View().Child(children).Display("flex").FlexDirection("column").Gap(8)
 }
 func note(value any) *ui.Element {
-	return ui.Text(value).FontSize(12).LineHeight(18).FontFamily("monospace").TextColor(color(func(p palette) string {
-		return p.Muted
-	}))
+	return ui.Text(value).
+		FontSize(12).
+		LineHeight(18).
+		FontFamily("monospace").
+		TextColor(color(func(p palette) string {
+			return p.Muted
+		}))
 }
 func label(value any) *ui.Element {
 	return ui.Text(value).FontSize(12)
 }
 func muted(value any) *ui.Element {
-	return ui.Text(value).FontSize(12).LineHeight(17).TextColor(color(func(p palette) string {
-		return p.Muted
-	}))
+	return ui.Text(value).
+		FontSize(12).
+		LineHeight(17).
+		TextColor(color(func(p palette) string {
+			return p.Muted
+		}))
 }
 func button(label any, click func()) *ui.Element {
 	return ui.Button().Style(controlStyle()).OnClick(click).Child(label)
 }
 func primary(label any, click func()) *ui.Element {
-	return button(label, click).Style(ui.Style().BackgroundColor(color(func(p palette) string {
-		return p.Accent
-	})).TextColor(color(func(p palette) string {
-		return p.OnAccent
-	})).Hover(func(s ui.StyleBuilder) ui.StyleBuilder {
-		return s.BackgroundColor(color(func(p palette) string {
-			return p.AccentHover
-		}))
-	}))
+	return button(label, click).
+		Style(ui.Style().
+			BackgroundColor(color(func(p palette) string {
+				return p.Accent
+			})).
+			TextColor(color(func(p palette) string {
+				return p.OnAccent
+			})).
+			Hover(func(s ui.StyleBuilder) ui.StyleBuilder {
+				return s.BackgroundColor(color(func(p palette) string {
+					return p.AccentHover
+				}))
+			}))
 }
 func input(value any, set func(string), placeholder string) *ui.Element {
 	return ui.Input().Style(inputStyle()).Value(value).Placeholder(placeholder).OnInput(set)
@@ -205,28 +278,49 @@ func checkbox(props ui.CheckboxProps, caption any) *native.Node {
 		}
 	}
 	checkbox34 := ui.NewCheckbox(props)
-	return checkbox34.Root().Children(func() *native.Node {
-		return ui.Fragment([]*native.Node{checkbox34.Indicator(ui.PartProps{Style: func() ui.StyleBuilder {
-			border, background := p().Border, p().Control
-			if props.Checked() != false {
-				border, background = p().Accent, p().Accent
-			}
-			return ui.Style().Width(16).Height(16).BorderRadius(5).BorderWidth(1).BorderColor(border).BackgroundColor(background).TextColor(p().OnAccent).Display("flex").AlignItems("center").JustifyContent("center")
-		}}).Children(func() *native.Node {
-			return ui.Show(
-				props.Checked() != false,
-				func() *ui.Element {
-					return ui.SVG().Value(func() string {
-						path := "M3 6l2 2 4-4"
-						if props.Checked() == ui.CheckedIndeterminate {
-							path = "M3 6h6"
-						}
-						return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 12"><path d="` + path + `" fill="none" stroke="` + p().OnAccent + `" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`
-					}).Width(12).Height(12).FlexShrink(0)
-				},
-			)
-		}).NativeNode(), label(caption).Node})
-	}).NativeNode()
+	return checkbox34.Root().
+		Children(func() *native.Node {
+			return ui.Fragment([]*native.Node{
+				checkbox34.Indicator(ui.PartProps{Style: func() ui.StyleBuilder {
+					border, background := p().Border, p().Control
+					if props.Checked() != false {
+						border, background = p().Accent, p().Accent
+					}
+					return ui.Style().
+						Width(16).
+						Height(16).
+						BorderRadius(5).
+						BorderWidth(1).
+						BorderColor(border).
+						BackgroundColor(background).
+						TextColor(p().OnAccent).
+						Display("flex").
+						AlignItems("center").
+						JustifyContent("center")
+				}}).
+					Children(func() *native.Node {
+						return ui.Show(
+							props.Checked() != false,
+							func() *ui.Element {
+								return ui.SVG().
+									Value(func() string {
+										path := "M3 6l2 2 4-4"
+										if props.Checked() == ui.CheckedIndeterminate {
+											path = "M3 6h6"
+										}
+										return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 12"><path d="` + path + `" fill="none" stroke="` + p().OnAccent + `" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`
+									}).
+									Width(12).
+									Height(12).
+									FlexShrink(0)
+							},
+						)
+					}).
+					NativeNode(),
+				label(caption).Node,
+			})
+		}).
+		NativeNode()
 }
 func checkboxSelectionState(checked, total int) ui.CheckedState {
 	if checked == 0 {

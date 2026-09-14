@@ -15,12 +15,27 @@ func commitRefBadge(ref git.CommitRef) *gui.Element {
 	} else if ref.Kind == "tag" {
 		background, color = theme.WarningWash, theme.Warning
 	}
-	return gui.View().Child(
+	return gui.View().
+		Child(
 
-		gui.Text(
-			ref.Name,
-		).FontSize(10.5).FontWeight(700).TextColor(color).LineClamp(1).TextOverflow("ellipsis"),
-	).Display("flex").Height(16).MinWidth(0).MaxWidth(140).AlignItems("center").PaddingLeft(5).PaddingRight(5).BorderRadius(4).BackgroundColor(background)
+			gui.Text(
+				ref.Name,
+			).
+				FontSize(10.5).
+				FontWeight(700).
+				TextColor(color).
+				LineClamp(1).
+				TextOverflow("ellipsis"),
+		).
+		Display("flex").
+		Height(16).
+		MinWidth(0).
+		MaxWidth(140).
+		AlignItems("center").
+		PaddingLeft(5).
+		PaddingRight(5).
+		BorderRadius(4).
+		BackgroundColor(background)
 }
 
 // Reserve space for the subject even when a commit has several long ref names.
@@ -41,17 +56,26 @@ func commitRefs(read func() []git.CommitRef) *native.Node {
 	return gui.Show(
 		len(visible()) > 0,
 		func() *gui.Element {
-			return gui.View().Child(
+			return gui.View().
+				Child(
 
-				gui.For(
-					visible,
-					func(ref git.CommitRef, _ func() int) *gui.Element {
-						return commitRefBadge(ref)
-					},
-					func(ref git.CommitRef) any { return string(ref.Kind) + ":" + ref.Name },
-					nil,
-				),
-			).Display("flex").FlexDirection("row").AlignItems("center").MinWidth(0).MaxWidth("48%").FlexShrink(1).Overflow("hidden").Gap(4)
+					gui.For(
+						visible,
+						func(ref git.CommitRef, _ func() int) *gui.Element {
+							return commitRefBadge(ref)
+						},
+						func(ref git.CommitRef) any { return string(ref.Kind) + ":" + ref.Name },
+						nil,
+					),
+				).
+				Display("flex").
+				FlexDirection("row").
+				AlignItems("center").
+				MinWidth(0).
+				MaxWidth("48%").
+				FlexShrink(1).
+				Overflow("hidden").
+				Gap(4)
 		},
 	)
 }
