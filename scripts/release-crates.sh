@@ -142,7 +142,7 @@ for index in "${!crate_names[@]}"; do
   if [[ ${QUICKGUI_RELEASE_ALLOW_DIRTY:-0} == 1 ]]; then
     publish_args+=(--allow-dirty)
   fi
-  if [[ $crate_name == quickgui-system || $crate_name == quickgui ]]; then
+  if [[ $crate_name == quickgui-extension-sdk || $crate_name == quickgui-system || $crate_name == quickgui ]]; then
     publish_args+=(--locked)
   fi
   cargo publish "${publish_args[@]}"

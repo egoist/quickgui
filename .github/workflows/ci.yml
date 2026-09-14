@@ -129,7 +129,7 @@ jobs:
       - name: Test dynamic host and standalone extension backends
         run: |
           scripts/with-macos-ghostty-zig.sh cargo test -p quickgui-host -p quickgui-terminal -p quickgui-updater --lib --locked
-          cargo test --lib --features terminal-extension --locked
+          scripts/with-macos-ghostty-zig.sh cargo test --lib --features terminal --locked
 
   macos-package:
     name: macOS package gate
