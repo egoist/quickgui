@@ -79,12 +79,18 @@ add_line 'export VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.json'
 add_line 'export XDG_RUNTIME_DIR=/tmp/xdg-runtime'
 
 # ---------------------------------------------------------------------------
-# JS dependencies and the shared native library, using the mise-managed tools.
+# JS dependencies, using the mise-managed tools.
+#
+# The shared native library (`bun run build:native`, a full release cargo
+# build) is intentionally NOT built here: it is only needed to actually run an
+# application, and building it every install is slow. Build it on demand when
+# running an app, e.g.:
+#     bun run build:native           # release (staged for Go/TS apps)
+#     bun run build:native --debug   # faster, for iterating locally
+# Rust examples build with cargo directly (`cargo run --example <name>`).
 # ---------------------------------------------------------------------------
 log "Installing JS dependencies (bun install --frozen-lockfile)"
 mise exec -- bun install --frozen-lockfile
 
-log "Building the native shared library (bun run build:native)"
-mise exec -- bun run build:native
-
-log "Done. Toolchains (via mise), dependencies, and the native library are ready."
+log "Done. Toolchains (via mise) and JS dependencies are ready."
+log "Run 'bun run build:native' when you need the native library to run an app."
