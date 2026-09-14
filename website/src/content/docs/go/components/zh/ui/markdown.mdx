@@ -2,10 +2,14 @@
 
 ## 导入
 
-从 `github.com/egoist/quickgui/go/ui` 导入 `ui`。
+```sh
+go get github.com/egoist/quickgui/extensions/markdown github.com/egoist/quickgui/extensions/editor
+```
 
 ```go
 import (
+	"github.com/egoist/quickgui/extensions/editor"
+	"github.com/egoist/quickgui/extensions/markdown"
 	"github.com/egoist/quickgui/go/ui"
 )
 ```
@@ -13,15 +17,21 @@ import (
 ## 用法
 
 ```go
-func MarkdownExample(source func() string, streaming func() bool) *ui.Element {
-	return ui.Markdown().Value(source()).Streaming(streaming).Width("100%")
+func MarkdownExample(source string, streaming bool) *ui.Element {
+	return markdown.View(markdown.Props{
+		Value: source,
+		Streaming: streaming,
+		CodeBlockComponent: editor.HighlightedCodeBlock,
+	}).Width("100%")
 }
 ```
 
 ## 主要属性
 
-| 属性 | 说明 |
-| --- | --- |
-| `Value` | 用于排版和绘制的 Markdown 源文本。 |
-| `Streaming` | 对追加内容使用增量 Markdown 协调。 |
-| `ui.Style().BackgroundColor(...)`, `ui.Style().Padding(...)`, `ui.Style().Hover(...)` | QuickGUI 的布局、绘制、排版和交互状态样式。 |
+| 属性                                                                                  | 说明                                                                         |
+| ------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| `Value`                                                                               | 用于排版和绘制的 Markdown 源文本。                                           |
+| `Streaming`                                                                           | 对追加内容使用增量 Markdown 协调。                                           |
+| `CodeBlockComponent`                                                                  | 设为 `HighlightedCodeBlock`，使用保留式 CodeBlock 模型渲染已解析的代码围栏。 |
+| `CodeBlockMaxHeight`                                                                  | 限制单个嵌入 CodeBlock 在开始滚动前的高度。                                  |
+| `ui.Style().BackgroundColor(...)`, `ui.Style().Padding(...)`, `ui.Style().Hover(...)` | QuickGUI 的布局、绘制、排版和交互状态样式。                                  |

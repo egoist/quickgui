@@ -695,6 +695,8 @@ mod tests {
                 max_length: None,
                 filter: None,
                 text_checking: TextCheckingOverrides::default(),
+                #[cfg(feature = "text-input-decorations")]
+                editor: None,
             },
         );
         assert!(input.set_value(&replaced));

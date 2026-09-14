@@ -1,0 +1,50 @@
+保留式原生代码编辑器，支持语法着色、行号、缩进和双轴滚动。
+
+组件默认不带视觉样式：文本和行号继承颜色，不添加背景、边框、圆角、内边距或语法／差异配色。外观由应用显式提供样式与颜色。
+
+## 导入
+
+启用 QuickGUI 可选的 `editor` crate feature，并导入保留式编辑器类型。
+
+```rust
+use quickgui::{Editor, IntoElement, SyntaxLanguage, View, ViewContext};
+```
+
+## 用法
+
+```rust
+struct EditorExample {
+    editor: Editor,
+}
+
+impl View for EditorExample {
+    fn render(&mut self, cx: &mut ViewContext<'_, Self>) -> impl IntoElement {
+        let changed = cx.input_listener("source", |view, value, cx| {
+            if view.editor.set_text(value).changed {
+                cx.invalidate();
+            }
+        });
+        self.editor.element("source").on_input(changed)
+    }
+}
+```
+
+## 语法高亮
+
+`SyntaxLanguage` 选择内置的 Tree-sitter 语法和高亮查询。查询捕获结果会归并为八种稳定的 `SyntaxTheme` 类别，并以只影响前景色的 `HighlightStyle` 区间应用，因此颜色不会改变文本尺寸。源码或语言变化时重新解析受限文档；调色板变化只重新映射已有捕获，滚动不会执行语法分析。解析最多处理 2 MiB，超过 32 KiB 的单行保持普通颜色，捕获数量也有上限。这是结构化语法高亮，不是语言服务器语义标记。
+
+## 主要属性
+
+| 属性                | 说明                                                   |
+| ------------------- | ------------------------------------------------------ |
+| `Editor::with_text` | 创建保留式受控源码模型。                               |
+| `set_text`          | 提交输入回调的值，仅在需要时刷新语法区间。             |
+| `set_language`      | 选择一个内置 Tree-sitter 语法。                        |
+| `TextInputIndentation`    | 配置制表符、空格、自动缩进和只读行为。                 |
+| `EditorStyle`       | 配置排版、换行、调色板、行号栏、活动行及可选焦点边框。 |
+| `element`           | 使用稳定元素 ID 构建原生编辑器叶节点。                 |
+
+<Note>
+  在 `quickgui` 依赖中添加 `features = ["editor"]`。每个打开的文档保留一个 Editor
+  模型，使输入、选择、撤销和滚动状态具有稳定标识。
+</Note>

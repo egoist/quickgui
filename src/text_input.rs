@@ -5,6 +5,8 @@ use web_time::{Duration, Instant};
 
 use unicode_segmentation::UnicodeSegmentation;
 
+#[cfg(feature = "text-input-decorations")]
+use crate::TextInputIndentation;
 use crate::{
     FontFallbacks, FontFamily, FontFeatures, HighlightStyle, PopoverMenuItem, TextHighlight,
     element::InputConstraints,
@@ -46,6 +48,8 @@ pub(crate) struct TextInputState {
     /// One provider checking session, released when this input unmounts.
     document: Option<Rc<SpellDocument>>,
     highlight_cache: RefCell<Option<HighlightCache>>,
+    #[cfg(feature = "text-input-decorations")]
+    line_starts_cache: RefCell<Option<LineStartsCache>>,
     /// The caret blink QuickGUI paints while this input is focused.
     blink: Option<CaretBlink>,
 }
@@ -88,6 +92,13 @@ struct HighlightCache {
     revision: u64,
     base: Arc<[TextHighlight]>,
     merged: Arc<[TextHighlight]>,
+}
+
+#[cfg(feature = "text-input-decorations")]
+#[derive(Clone, Debug)]
+struct LineStartsCache {
+    text: Arc<str>,
+    starts: Arc<[usize]>,
 }
 
 #[derive(Clone, Debug)]
@@ -212,6 +223,8 @@ impl TextInputState {
             last_autocorrection: None,
             document: None,
             highlight_cache: RefCell::new(None),
+            #[cfg(feature = "text-input-decorations")]
+            line_starts_cache: RefCell::new(None),
             blink: None,
         }
     }
@@ -222,6 +235,37 @@ impl TextInputState {
 
     pub fn is_multiline(&self) -> bool {
         self.multiline
+    }
+
+    #[cfg(feature = "text-input-decorations")]
+    pub fn editor_behavior(&self) -> Option<TextInputIndentation> {
+        self.constraints.editor
+    }
+
+    /// UTF-8 starts of every logical line, cached for the editor gutter.
+    #[cfg(feature = "text-input-decorations")]
+    pub fn logical_line_starts(&self) -> Arc<[usize]> {
+        let mut cache = self.line_starts_cache.borrow_mut();
+        if let Some(entry) = cache.as_ref()
+            && (Arc::ptr_eq(&entry.text, &self.text) || entry.text == self.text)
+        {
+            return entry.starts.clone();
+        }
+        let mut starts =
+            Vec::with_capacity(self.text.bytes().filter(|byte| *byte == b'\n').count() + 1);
+        starts.push(0);
+        starts.extend(
+            self.text
+                .bytes()
+                .enumerate()
+                .filter_map(|(index, byte)| (byte == b'\n').then_some(index + 1)),
+        );
+        let starts: Arc<[usize]> = starts.into();
+        *cache = Some(LineStartsCache {
+            text: self.text.clone(),
+            starts: starts.clone(),
+        });
+        starts
     }
 
     pub fn shared_text(&self) -> Arc<str> {
@@ -275,6 +319,16 @@ impl TextInputState {
 
     pub fn caret(&self) -> usize {
         self.caret
+    }
+
+    /// Whether the next focused paint must bring the caret back into the viewport.
+    ///
+    /// Once that paint arms the blink for the current caret and content revision, ordinary wheel
+    /// scrolling is allowed to move away from the caret until another edit, caret move, or focus
+    /// transition changes this state.
+    pub(crate) fn caret_reveal_required(&self) -> bool {
+        self.blink
+            .is_none_or(|blink| blink.caret != self.caret || blink.len != self.text.len())
     }
 
     /// Whether the caret is drawn at `now`, arming or restarting the blink as needed.
@@ -651,7 +705,125 @@ impl TextInputState {
         self.multiline && self.replace_selection("\n")
     }
 
+    #[cfg(feature = "text-input-decorations")]
+    pub fn insert_editor_newline(&mut self, behavior: TextInputIndentation) -> bool {
+        if !self.multiline || !behavior.auto_indent {
+            return self.insert_newline();
+        }
+        let selection = self.selection();
+        let start = line_start(&self.text, selection.start);
+        let before = &self.text[start..selection.start];
+        let indentation_end = before
+            .char_indices()
+            .find_map(|(index, character)| (!matches!(character, ' ' | '\t')).then_some(index))
+            .unwrap_or(before.len());
+        let mut insertion = String::from("\n");
+        insertion.push_str(&before[..indentation_end]);
+        if before
+            .trim_end()
+            .chars()
+            .next_back()
+            .is_some_and(|character| matches!(character, '{' | '[' | '(' | ':'))
+        {
+            if behavior.insert_spaces {
+                insertion.extend(std::iter::repeat_n(' ', usize::from(behavior.tab_size)));
+            } else {
+                insertion.push('\t');
+            }
+        }
+        self.replace_selection(&insertion)
+    }
+
+    /// Insert or remove one indentation level. A multi-line selection changes as one undo step.
+    #[cfg(feature = "text-input-decorations")]
+    pub fn editor_tab(&mut self, outdent: bool, behavior: TextInputIndentation) -> bool {
+        if !self.multiline {
+            return false;
+        }
+        let behavior = behavior.sanitized();
+        let selection = self.selection();
+        if selection.is_empty() && !outdent {
+            let start = line_start(&self.text, self.caret);
+            let column = self.text[start..self.caret].chars().count();
+            let count = usize::from(behavior.tab_size) - column % usize::from(behavior.tab_size);
+            let insertion = if behavior.insert_spaces {
+                " ".repeat(count)
+            } else {
+                "\t".to_owned()
+            };
+            return self.replace_selection(&insertion);
+        }
+
+        let first_line = line_start(&self.text, selection.start);
+        let effective_end = if selection.end > selection.start
+            && selection.end > 0
+            && self.text.as_bytes().get(selection.end - 1) == Some(&b'\n')
+        {
+            selection.end - 1
+        } else {
+            selection.end
+        };
+        let last_line_end = line_end(&self.text, effective_end);
+        let mut starts = vec![first_line];
+        starts.extend(
+            self.text[first_line..last_line_end]
+                .bytes()
+                .enumerate()
+                .filter_map(|(index, byte)| (byte == b'\n').then_some(first_line + index + 1)),
+        );
+        let indent = if behavior.insert_spaces {
+            " ".repeat(usize::from(behavior.tab_size))
+        } else {
+            "\t".to_owned()
+        };
+        let mut edits: Vec<(usize, usize, String)> = Vec::with_capacity(starts.len());
+        for start in starts {
+            if outdent {
+                let tail = &self.text[start..];
+                let removed = if tail.starts_with('\t') {
+                    1
+                } else {
+                    tail.bytes()
+                        .take(usize::from(behavior.tab_size))
+                        .take_while(|byte| *byte == b' ')
+                        .count()
+                };
+                if removed > 0 {
+                    edits.push((start, removed, String::new()));
+                }
+            } else {
+                edits.push((start, 0, indent.clone()));
+            }
+        }
+        if edits.is_empty() {
+            return false;
+        }
+        let replace_end = last_line_end;
+        let mut replacement = self.text[first_line..replace_end].to_owned();
+        for (start, removed, inserted) in edits.iter().rev() {
+            let local = start - first_line;
+            replacement.replace_range(local..local + removed, inserted);
+        }
+        let anchor = shifted_editor_offset(self.anchor, &edits);
+        let caret = shifted_editor_offset(self.caret, &edits);
+        if !self.replace_range(first_line..replace_end, &replacement, None) {
+            return false;
+        }
+        self.anchor = boundary_at_or_before(&self.text, anchor.min(self.text.len()));
+        self.caret = boundary_at_or_before(&self.text, caret.min(self.text.len()));
+        self.preferred_x = None;
+        true
+    }
+
     pub fn set_preedit(&mut self, value: &str, cursor: Option<(usize, usize)>) -> bool {
+        #[cfg(feature = "text-input-decorations")]
+        if !value.is_empty()
+            && self
+                .editor_behavior()
+                .is_some_and(|behavior| behavior.read_only)
+        {
+            return false;
+        }
         self.edit_group = None;
         let value = normalize_text(value, self.multiline);
         let previous_text = self.text.clone();
@@ -707,18 +879,39 @@ impl TextInputState {
     }
 
     pub fn can_undo(&self) -> bool {
+        #[cfg(feature = "text-input-decorations")]
+        if self
+            .editor_behavior()
+            .is_some_and(|behavior| behavior.read_only)
+        {
+            return false;
+        }
         self.undo
             .back()
             .is_some_and(|snapshot| self.accepts_existing(&snapshot.text))
     }
 
     pub fn can_redo(&self) -> bool {
+        #[cfg(feature = "text-input-decorations")]
+        if self
+            .editor_behavior()
+            .is_some_and(|behavior| behavior.read_only)
+        {
+            return false;
+        }
         self.redo
             .back()
             .is_some_and(|snapshot| self.accepts_existing(&snapshot.text))
     }
 
     pub fn undo(&mut self) -> bool {
+        #[cfg(feature = "text-input-decorations")]
+        if self
+            .editor_behavior()
+            .is_some_and(|behavior| behavior.read_only)
+        {
+            return false;
+        }
         self.edit_group = None;
         if !self.can_undo() {
             return false;
@@ -734,6 +927,13 @@ impl TextInputState {
     }
 
     pub fn redo(&mut self) -> bool {
+        #[cfg(feature = "text-input-decorations")]
+        if self
+            .editor_behavior()
+            .is_some_and(|behavior| behavior.read_only)
+        {
+            return false;
+        }
         self.edit_group = None;
         if !self.can_redo() {
             return false;
@@ -815,6 +1015,13 @@ impl TextInputState {
         value: &str,
         edit_kind: Option<EditKind>,
     ) -> bool {
+        #[cfg(feature = "text-input-decorations")]
+        if self
+            .editor_behavior()
+            .is_some_and(|behavior| behavior.read_only)
+        {
+            return self.cancel_composition();
+        }
         let Some((text, end)) = self.constrained_replacement(range.clone(), value) else {
             self.edit_group = None;
             return self.cancel_composition();
@@ -1451,6 +1658,23 @@ fn shifted_offset(offset: usize, shift: isize) -> usize {
     }
 }
 
+#[cfg(feature = "text-input-decorations")]
+fn shifted_editor_offset(offset: usize, edits: &[(usize, usize, String)]) -> usize {
+    let mut shifted = offset as isize;
+    for (start, removed, inserted) in edits {
+        if offset < *start {
+            break;
+        }
+        let removed_end = start.saturating_add(*removed);
+        if offset <= removed_end {
+            shifted = (*start + inserted.len()) as isize;
+            continue;
+        }
+        shifted += inserted.len() as isize - *removed as isize;
+    }
+    shifted.max(0) as usize
+}
+
 fn previous_boundary(text: &str, offset: usize) -> usize {
     text.grapheme_indices(true)
         .rev()
@@ -2043,6 +2267,8 @@ mod tests {
             max_length: Some(3),
             filter: None,
             text_checking: crate::TextCheckingOverrides::default(),
+            #[cfg(feature = "text-input-decorations")]
+            editor: None,
         };
         let mut input = TextInputState::with_constraints("a", false, constraints);
 
@@ -2064,6 +2290,8 @@ mod tests {
                 value.chars().all(|character| character.is_ascii_digit())
             })),
             text_checking: crate::TextCheckingOverrides::default(),
+            #[cfg(feature = "text-input-decorations")]
+            editor: None,
         };
         let mut input = TextInputState::with_constraints("12", false, constraints);
         let selection = input.selection();
@@ -2080,6 +2308,8 @@ mod tests {
             max_length: None,
             filter: Some(Arc::new(|value| value.is_ascii())),
             text_checking: crate::TextCheckingOverrides::default(),
+            #[cfg(feature = "text-input-decorations")]
+            editor: None,
         };
         let mut input = TextInputState::with_constraints("hello", false, constraints);
 
@@ -2104,6 +2334,8 @@ mod tests {
                 max_length: Some(1),
                 filter: None,
                 text_checking: crate::TextCheckingOverrides::default(),
+                #[cfg(feature = "text-input-decorations")]
+                editor: None,
             },
         );
 
@@ -2167,6 +2399,8 @@ mod tests {
                 text_replacement: Some(policy.text_replacement),
                 lookup_on_force_click: Some(policy.lookup_on_force_click),
             },
+            #[cfg(feature = "text-input-decorations")]
+            editor: None,
         };
         TextInputState::with_constraints(value, false, constraints)
     }
@@ -2280,6 +2514,8 @@ mod tests {
                     spellcheck: Some(true),
                     ..crate::TextCheckingOverrides::default()
                 },
+                #[cfg(feature = "text-input-decorations")]
+                editor: None,
             },
             highlights,
         );
@@ -2562,5 +2798,46 @@ mod tests {
         assert_eq!(input.accessibility_character_index(26), 2);
         assert_eq!(input.accessibility_byte_index(2), 26);
         assert_eq!(input.accessibility_byte_index(99), input.text().len());
+    }
+
+    #[cfg(feature = "text-input-decorations")]
+    #[test]
+    fn editor_tab_indents_and_outdents_a_multiline_selection_atomically() {
+        let behavior = crate::TextInputIndentation::default().tab_size(2);
+        let mut input = TextInputState::with_mode("one\ntwo\nthree", true);
+        assert!(input.set_selection(0, 7));
+        assert!(input.editor_tab(false, behavior));
+        assert_eq!(input.text(), "  one\n  two\nthree");
+        assert_eq!(input.selection(), 2..11);
+        assert!(input.editor_tab(true, behavior));
+        assert_eq!(input.text(), "one\ntwo\nthree");
+        assert_eq!(input.selection(), 0..7);
+        assert!(input.undo());
+        assert_eq!(input.text(), "  one\n  two\nthree");
+    }
+
+    #[cfg(feature = "text-input-decorations")]
+    #[test]
+    fn editor_newline_copies_indent_and_steps_after_an_opener() {
+        let behavior = crate::TextInputIndentation::default().tab_size(2);
+        let mut input = TextInputState::with_mode("  if ready {", true);
+        assert!(input.insert_editor_newline(behavior));
+        assert_eq!(input.text(), "  if ready {\n    ");
+        assert_eq!(input.selection(), input.text().len()..input.text().len());
+    }
+
+    #[cfg(feature = "text-input-decorations")]
+    #[test]
+    fn read_only_editor_keeps_selection_but_refuses_every_text_history_path() {
+        let mut constraints = InputConstraints::default();
+        constraints.editor = Some(crate::TextInputIndentation::default().read_only(true));
+        let mut input = TextInputState::with_constraints("value", true, constraints);
+        assert!(input.set_selection(0, 5));
+        assert_eq!(input.selected_text(), Some("value"));
+        assert!(!input.replace_selection("other"));
+        assert!(!input.insert_editor_newline(crate::TextInputIndentation::default()));
+        assert!(!input.can_undo());
+        assert!(!input.undo());
+        assert_eq!(input.text(), "value");
     }
 }

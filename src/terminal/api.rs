@@ -75,10 +75,6 @@ impl Terminal {
                 .unwrap_or_else(|p| p.into_inner())
                 .clone()
         }
-        #[cfg(not(any(feature = "terminal", quickgui_terminal_extension)))]
-        {
-            self.inner.session.snapshot()
-        }
     }
 
     /// Write raw bytes to the PTY. Prefer normal keyboard events or [`Self::paste`] for user input.
@@ -649,10 +645,6 @@ impl Terminal {
         #[cfg(any(feature = "terminal", quickgui_terminal_extension))]
         {
             self.inner.messages.try_send(message).is_ok()
-        }
-        #[cfg(not(any(feature = "terminal", quickgui_terminal_extension)))]
-        {
-            self.inner.session.command(message)
         }
     }
 

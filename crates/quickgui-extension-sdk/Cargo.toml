@@ -1,0 +1,12 @@
+[package]
+name = "quickgui-extension-sdk"
+version = "0.1.4-next.4"
+edition = "2024"
+rust-version = "1.90"
+description = "Renderer-independent ABI and declarations for QuickGUI native extensions"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/egoist/quickgui"
+
+[dependencies]
+serde = { version = "1.0", features = ["derive", "rc"] }
+serde_json = "1.0"

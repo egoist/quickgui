@@ -1,0 +1,7 @@
+{
+ "name": "quickgui-example-extensions",
+ "private": true,
+ "type": "module",
+ "scripts": { "dev": "quickgui dev", "build": "quickgui build" },
+ "devDependencies": { "@quickgui/cli": "workspace:*" }
+}

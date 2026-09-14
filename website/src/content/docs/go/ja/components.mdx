@@ -55,6 +55,10 @@ func CardComponent(title string, children ...any) *ui.Element {
 
 `View`、`Text`、`Button`、`Input` でほとんどのレイアウトとテキストをカバーします。スタイル、プロパティ、ハンドラーは同じ要素にチェーンします。
 
+任意の `extensions/editor` パッケージは、CGO や別のネイティブライブラリを追加せず、Rust コアの [Editor](/docs/go/components/editor)、[CodeBlock](/docs/go/components/code-block)、[DiffView](/docs/go/components/diff-view) を提供します。
+
+任意の `extensions/markdown` パッケージは、ストリーミング差分更新と CodeBlock 描画を含む保持型 [Markdown](/docs/go/components/markdown) を提供します。
+
 ```go
 func ButtonExample(save func()) *ui.Element {
 	return ui.Button().Child("Save changes").

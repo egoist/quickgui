@@ -1,0 +1,56 @@
+行を同期しつつ各ペインを個別に横スクロールできる、仮想化された分割／統合ファイル差分ビューです。
+
+既定では見た目のスタイルを持ちません。文字と行番号の色は継承され、背景、枠線、角丸、余白、構文・差分の配色は追加されません。外観はアプリ側で明示的に指定します。
+
+## インポート
+
+```sh
+go get github.com/egoist/quickgui/extensions/editor
+```
+
+```go
+import (
+	"github.com/egoist/quickgui/extensions/editor"
+	"github.com/egoist/quickgui/go/ui"
+)
+```
+
+## 使い方
+
+```go
+func DiffViewExample() *ui.Element {
+	return editor.DiffView(editor.DiffViewProps{
+		OldPath: "before.go",
+		NewPath: "after.go",
+		OldText: "func answer() int { return 41 }\n",
+		NewText: "func answer() int { return 42 }\n",
+		Options: editor.DiffOptions{
+			Layout:      editor.DiffSplit,
+			Indicators:  editor.DiffBars,
+			LineNumbers: true,
+			Language:    "go",
+		},
+		Props: ui.Props{Style: ui.Style().Width("100%").Height(420)},
+	})
+}
+```
+
+## シンタックスハイライト
+
+DiffView は Editor と同じ同梱 Tree-sitter 文法を使います。ドキュメント、言語、構文配色が変わると、Rust コアは表示対象となる各ファイルの新旧行シーケンスを一度ずつ解析し、キャプチャ断片を論理行へ割り当てます。スタイル付きテキストは行のマウント時にだけ生成してキャッシュし、重ならないバイト境界で行内の追加／削除強調を統合します。スクロール時にパーサーは動きません。
+
+## 主なプロパティ
+
+| プロパティ            | 説明                                                                         |
+| --------------------- | ---------------------------------------------------------------------------- |
+| `OldText` / `NewText` | 完全な制御ソースの組です。文字列またはアクセサーを指定できます。             |
+| `OldPath` / `NewPath` | ファイルラベルと構文言語推論用のパスです。                                   |
+| `Patch`               | 取得済みの Git または通常の unified patch です。ソースの組より優先されます。 |
+| `Options.Layout`      | `DiffSplit` または `DiffUnified`。                                           |
+| `Options.Indicators`  | `DiffBars`、`DiffClassic`、`DiffNone`。                                      |
+| `Options.Wrap`        | 横スクロールの代わりに長い行を折り返します。                                 |
+| `Options.Backgrounds` | 追加行と削除行の背景を有効にします。                                         |
+| `Theme`               | 差分、ガター、ハンク、行内変更の色を上書きします。                           |
+| `SyntaxTheme`         | Tree-sitter キャプチャの色を上書きします。                                   |
+
+分割ペインは個別の横オフセットと、同期された 1 つの縦オフセットを保持します。表示行と上限付きオーバースキャンだけをマウントします。

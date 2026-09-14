@@ -10,6 +10,10 @@ impl Runtime {
             self.invalidate_external(*handle);
             return;
         }
+        if let RuntimeEvent::InvalidateElement(handle, element) = &event {
+            self.invalidate_external_scopes(*handle, &[*element]);
+            return;
+        }
         if matches!(&event, RuntimeEvent::ForegroundTasksReady) {
             self.process_foreground_tasks(event_loop);
             return;
@@ -232,7 +236,9 @@ impl Runtime {
         let released_image_capacity = matches!(&event, RuntimeEvent::ImageLoaded(_, _));
         let target = match &event {
             RuntimeEvent::ExternalCommandsReady => unreachable!("handled before target routing"),
-            RuntimeEvent::InvalidateWindow(_) => unreachable!("handled before target routing"),
+            RuntimeEvent::InvalidateWindow(_) | RuntimeEvent::InvalidateElement(_, _) => {
+                unreachable!("handled before target routing")
+            }
             RuntimeEvent::Accessibility(event) => Some(event.window_id),
             RuntimeEvent::ImageLoaded(handle, _) => self.window_handles.get(handle).copied(),
             RuntimeEvent::BackgroundCompleted(completion) => {
@@ -322,7 +328,9 @@ impl Runtime {
         }
         (|| match event {
             RuntimeEvent::ExternalCommandsReady => unreachable!("handled before window routing"),
-            RuntimeEvent::InvalidateWindow(_) => unreachable!("handled before window routing"),
+            RuntimeEvent::InvalidateWindow(_) | RuntimeEvent::InvalidateElement(_, _) => {
+                unreachable!("handled before window routing")
+            }
             RuntimeEvent::ImageLoaded(_, completion) => {
                 let Some(state) = &mut self.window else {
                     return;

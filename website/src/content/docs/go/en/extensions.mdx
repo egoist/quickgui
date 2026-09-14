@@ -1,4 +1,4 @@
-An extension is either a Go package of reusable components, or a Go package plus a native library for a service the app can call. Start with a Go package. Add a native library only when you need an optional backend, as the terminal and [updater](/docs/go/updater) packages do.
+Extensions can provide ordinary Go components, retained native components, or asynchronous native services. Editor, Markdown, and Terminal are optional native component packages; Updater is an optional service. All use the same public registration boundary. Third-party extensions need no changes to `quickgui-host`.
 
 ## Choose an extension type
 
@@ -6,7 +6,7 @@ An extension is either a Go package of reusable components, or a Go package plus
 | --- | --- |
 | Components or application logic | A Go module |
 | A native service or optional backend | A Go package, a manifest, and a native library |
-| UI backed by native data | A native service plus Go components |
+| Retained native UI | A component SDK library and Go bindings |
 
 Consumers import your Go package. The CLI finds the manifest and bundles the matching native artifact.
 
@@ -36,9 +36,9 @@ package notice
 
 import "github.com/egoist/quickgui/go/ui"
 
-func Notice(message func() string, styles ...ui.StyleBuilder) *ui.Element {
+func Notice(message string, styles ...ui.StyleBuilder) *ui.Element {
 	return ui.Text(
-		message(),
+		message,
 	).
 		Padding(12).
 		BackgroundColor("#eff6ff").
@@ -53,23 +53,23 @@ Publish with Go version tags. Consumers add it with `go get`. Importing `termina
 
 ## Lay out a native extension
 
-The [`native-extension` example](https://github.com/egoist/quickgui/tree/main/examples/native-extension) pairs a Go package with a small C library. It builds against [`quickgui_extension.h`](https://github.com/egoist/quickgui/blob/main/include/quickgui_extension.h).
+The first-party packages in [`extensions/`](https://github.com/egoist/quickgui/tree/main/extensions) are each both a Go module and an npm package. Keep Rust in `src/` and TypeScript bindings in `js/`. You can use the same layout for your own combined package:
 
 ```text
+Cargo.toml
 go.mod
-echo/
-  echo.go
-  quickgui.extension.json
-native/
-  quickgui_extension.h
-  echo.c
-artifacts/
-  package.json
-  lib/darwin-arm64/libquickgui_acme_echo.dylib
-build-extension.ts
+badge.go
+package.json
+quickgui.extension.json
+src/
+  lib.rs
+js/
+  index.ts
+lib/
+  darwin-arm64/libquickgui_acme_badge.dylib
 ```
 
-C, C++, Rust, and other languages that export a C ABI can implement an extension. Rust extensions can vendor [`extension_api.rs`](https://github.com/egoist/quickgui/blob/main/src/extension_api.rs) and build a `cdylib` without linking QuickGUI itself.
+C, C++, Rust, and other languages with a C ABI can implement extensions. Rust component libraries depend on [`quickgui-extension-sdk`](https://github.com/egoist/quickgui/tree/main/crates/quickgui-extension-sdk), not on the renderer or `quickgui-host`. Implement `Component` and `ComponentFactory`; `ComponentRuntime` supplies the lifecycle table. The extension owns its name, component names, properties, and release version.
 
 ## Declare dependencies
 
@@ -121,7 +121,32 @@ The CLI discovers manifests through `go list -deps`. Both the manifest and `Requ
 
 ## Implement the native contract
 
-Export `quickgui_extension_v1` with C linkage. It returns a descriptor with your name, version, ABI version `1`, and a two-function table (`invoke` and `shutdown`). Copy borrowed request bytes before keeping them, return quickly, and reply later.
+Export `quickgui_extension_v1` with C linkage and a descriptor containing your name, independent version, ABI version `1`, and one of the generic function tables. A **component** table has `create`, `update`, `render`, `event`, and `destroy`; a **service** table has `invoke` and `shutdown`.
+
+A component retains an opaque instance and renders the SDK's primitive tree. Stable node keys preserve focus, selection, and scrolling. Virtual lists request only visible rows plus overscan. Input returns to the package; emitted events reach its Go binding. Calls on an instance are serialized on the native UI thread. Move slow work to a worker and wake only that instance when its data changes. Return unchanged for equivalent props, and release state and wake handles on destruction.
+
+A Go wrapper can mount any registered component:
+
+```go
+package badge
+
+import (
+	"github.com/egoist/quickgui/go/host"
+	"github.com/egoist/quickgui/go/ui"
+)
+
+func init() { host.RequireExtension("acme-badge", "1.0.0") }
+
+func View(label string) *ui.Element {
+	return ui.ExtensionComponent("acme-badge", "badge", map[string]any{
+		"label": label,
+	}, ui.Props{})
+}
+```
+
+See the [independently compiled C counter](https://github.com/egoist/quickgui/blob/main/tests/fixtures/native_component.c) for a complete component descriptor and lifecycle. Component frames are bounded to 16 MiB; frontend property JSON is bounded to 12 MiB.
+
+For a **service**, copy any borrowed request bytes before keeping them, return quickly, and reply later.
 
 | Request | What the extension does |
 | --- | --- |
@@ -139,16 +164,18 @@ The app loads each selected library at startup and checks its name, version, and
 
 ## Build and package artifacts
 
-Build the native library for each host you support and stage it under `artifacts/lib/<platform>-<arch>/`. Publish that folder as an npm package whose `version` matches the manifest.
+Build the native library for each host you support and stage it under `lib/<platform>-<arch>/`. Publish that folder as an npm package whose `version` matches the manifest.
 
 ```json
 {
   "name": "@acme/extension-echo",
   "version": "1.0.0",
-  "files": ["lib", "README.md"],
-  "exports": { "./package.json": "./package.json" }
+  "files": ["js", "lib", "quickgui.extension.json", "README.md"],
+  "exports": { ".": "./js/index.ts", "./package.json": "./package.json" }
 }
 ```
+
+If the npm package includes TypeScript bindings, export `js/index.ts`. Declare `@quickgui/*` runtime packages and Solid as peer dependencies, with development copies in `devDependencies`, not runtime `dependencies`. Keep the package README to build instructions; publish the user guide on your website.
 
 Helper files go next to the library. Declare their basenames in a manifest `resources` object keyed by `darwin`, `linux`, or `windows`.
 

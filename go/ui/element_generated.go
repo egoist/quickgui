@@ -104,41 +104,6 @@ func (element *Element) TransitionMaxFps(value any) *Element {
 	return element.configureStyle("TransitionMaxFps", styleTransitionMaxFps(value))
 }
 
-// MarkdownCodeBackground sets the corresponding style property.
-func (element *Element) MarkdownCodeBackground(value any) *Element {
-	return element.configureStyle("MarkdownCodeBackground", styleMarkdownCodeBackground(value))
-}
-
-// MarkdownBorderColor sets the corresponding style property.
-func (element *Element) MarkdownBorderColor(value any) *Element {
-	return element.configureStyle("MarkdownBorderColor", styleMarkdownBorderColor(value))
-}
-
-// MarkdownMutedColor sets the corresponding style property.
-func (element *Element) MarkdownMutedColor(value any) *Element {
-	return element.configureStyle("MarkdownMutedColor", styleMarkdownMutedColor(value))
-}
-
-// MarkdownLinkColor sets the corresponding style property.
-func (element *Element) MarkdownLinkColor(value any) *Element {
-	return element.configureStyle("MarkdownLinkColor", styleMarkdownLinkColor(value))
-}
-
-// MarkdownCodeTextColor sets the corresponding style property.
-func (element *Element) MarkdownCodeTextColor(value any) *Element {
-	return element.configureStyle("MarkdownCodeTextColor", styleMarkdownCodeTextColor(value))
-}
-
-// MarkdownBlockGap sets the corresponding style property.
-func (element *Element) MarkdownBlockGap(value any) *Element {
-	return element.configureStyle("MarkdownBlockGap", styleMarkdownBlockGap(value))
-}
-
-// MarkdownCodeFontSize sets the corresponding style property.
-func (element *Element) MarkdownCodeFontSize(value any) *Element {
-	return element.configureStyle("MarkdownCodeFontSize", styleMarkdownCodeFontSize(value))
-}
-
 // ScrollToEndRevision sets the corresponding style property.
 func (element *Element) ScrollToEndRevision(value any) *Element {
 	return element.configureStyle("ScrollToEndRevision", styleScrollToEndRevision(value))
@@ -759,11 +724,6 @@ func (element *Element) OnDismiss(value func(*native.Event)) *Element {
 	return element.configureProperty("OnDismiss", OnDismiss(value))
 }
 
-// OnStatus configures the corresponding node property.
-func (element *Element) OnStatus(value func(*native.Event)) *Element {
-	return element.configureProperty("OnStatus", OnStatus(value))
-}
-
 // OnPointer configures the corresponding node property.
 func (element *Element) OnPointer(value func(*native.Event)) *Element {
 	return element.configureProperty("OnPointer", OnPointer(value))
@@ -957,11 +917,6 @@ func (element *Element) HitSlopLeft(value any) *Element {
 // Password configures the corresponding node property.
 func (element *Element) Password(value any) *Element {
 	return element.configureProperty("Password", Password(value))
-}
-
-// Streaming configures the corresponding node property.
-func (element *Element) Streaming(value any) *Element {
-	return element.configureProperty("Streaming", Streaming(value))
 }
 
 // EstimatedItemHeight configures the corresponding node property.

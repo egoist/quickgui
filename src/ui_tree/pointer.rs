@@ -251,20 +251,21 @@ impl UiTree {
         {
             let offset = self.scroll_offsets.entry(id).or_default();
             let previous = *offset;
-            if point.x < region.bounds.x {
-                offset.x -= region.bounds.x - point.x;
-            } else if point.x > region.bounds.right() {
-                offset.x += point.x - region.bounds.right();
+            if point.x < region.clip.x {
+                offset.x -= region.clip.x - point.x;
+            } else if point.x > region.clip.right() {
+                offset.x += point.x - region.clip.right();
             }
-            if point.y < region.bounds.y {
-                offset.y -= region.bounds.y - point.y;
-            } else if point.y > region.bounds.bottom() {
-                offset.y += point.y - region.bounds.bottom();
+            if point.y < region.clip.y {
+                offset.y -= region.clip.y - point.y;
+            } else if point.y > region.clip.bottom() {
+                offset.y += point.y - region.clip.bottom();
             }
             offset.x = offset.x.clamp(0.0, region.max_scroll.x);
             offset.y = offset.y.clamp(0.0, region.max_scroll.y);
             if previous != *offset {
                 let state = self.scrollbar_states.entry(id).or_default();
+                state.axis = ScrollbarAxis::for_change(previous, *offset);
                 if !state.hovered && !state.dragging {
                     state.visible_until = now.checked_add(SCROLLBAR_AUTO_HIDE_DELAY);
                 }
@@ -664,35 +665,51 @@ impl UiTree {
         self.drag_preview.take().is_some()
     }
 
-    /// Start a captured drag on the topmost built-in vertical scrollbar under `point`.
+    /// Start a captured drag on the topmost built-in scrollbar under `point`.
     ///
     /// The full 12-point track is interactive even though the painted thumb stays visually slim.
     /// Pressing the track first centers the thumb at the pointer, then continues as a drag.
     pub(crate) fn begin_scrollbar_drag(&mut self, point: Option<Point>) -> Option<bool> {
         let point = point?;
-        let (region, geometry) = self.scrollbar_at(point)?;
+        let (region, axis, geometry) = self.scrollbar_at(point)?;
         let offset = self.scroll_offsets.entry(region.id).or_default();
         let previous = *offset;
         if !geometry.thumb.contains(point) && geometry.travel > 0.0 {
-            let thumb_top = (point.y - region.scrollbar_bounds.y - geometry.thumb.height * 0.5)
-                .clamp(0.0, geometry.travel);
-            offset.y = thumb_top / geometry.travel * region.max_offset.y;
+            let track_start = axis.point(Point::new(geometry.track.x, geometry.track.y));
+            let thumb_length = match axis {
+                ScrollbarAxis::Horizontal => geometry.thumb.width,
+                ScrollbarAxis::Vertical => geometry.thumb.height,
+            };
+            let thumb_origin =
+                (axis.point(point) - track_start - thumb_length * 0.5).clamp(0.0, geometry.travel);
+            let next = thumb_origin / geometry.travel * axis.component(region.max_offset);
+            axis.set_component(offset, next);
         }
-        let view_dirty = region.virtual_scroll
+        let view_dirty = axis == ScrollbarAxis::Vertical
+            && region.virtual_scroll
             && *offset != previous
             && self
                 .virtual_scroll_handles
                 .get(&region.id)
                 .is_none_or(|binding| binding.update_from_input(offset.y, region.bounds.height));
-        if let Some(binding) = self.virtual_scroll_handles.get(&region.id) {
+        let linked_offset_y = offset.y;
+        let scroll_origin = axis.component(*offset);
+        if axis == ScrollbarAxis::Vertical && region.virtual_scroll {
+            self.sync_linked_virtual_scroll_offsets(region.id, linked_offset_y, None);
+        }
+        if axis == ScrollbarAxis::Vertical
+            && let Some(binding) = self.virtual_scroll_handles.get(&region.id)
+        {
             binding.handle.scrollbar_drag_started();
         }
         self.scrollbar_drag = Some(ScrollbarDrag {
             id: region.id,
-            pointer_origin_y: point.y,
-            scroll_origin_y: offset.y,
+            axis,
+            pointer_origin: axis.point(point),
+            scroll_origin,
         });
         let state = self.scrollbar_states.entry(region.id).or_default();
+        state.axis = axis;
         state.hovered = true;
         state.dragging = true;
         state.visible_until = None;
@@ -717,29 +734,35 @@ impl UiTree {
             self.scrollbar_drag = None;
             return ScrollResult::default();
         };
-        let Some(geometry) = vertical_scrollbar_geometry(region, drag.scroll_origin_y) else {
+        let Some(geometry) = scrollbar_geometry(region, drag.axis, drag.scroll_origin) else {
             self.scrollbar_drag = None;
             return ScrollResult::default();
         };
         if geometry.travel <= 0.0 {
             return ScrollResult::default();
         }
-        let next = (drag.scroll_origin_y
-            + (point.y - drag.pointer_origin_y) * region.max_offset.y / geometry.travel)
-            .clamp(0.0, region.max_offset.y);
+        let maximum = drag.axis.component(region.max_offset);
+        let next = (drag.scroll_origin
+            + (drag.axis.point(point) - drag.pointer_origin) * maximum / geometry.travel)
+            .clamp(0.0, maximum);
         let offset = self.scroll_offsets.entry(region.id).or_default();
         let state = self.scrollbar_states.entry(region.id).or_default();
+        state.axis = drag.axis;
         state.dragging = true;
         state.visible_until = None;
-        if offset.y == next {
+        if drag.axis.component(*offset) == next {
             ScrollResult::default()
         } else {
-            offset.y = next;
-            let view_dirty = region.virtual_scroll
+            drag.axis.set_component(offset, next);
+            let view_dirty = drag.axis == ScrollbarAxis::Vertical
+                && region.virtual_scroll
                 && self
                     .virtual_scroll_handles
                     .get(&region.id)
                     .is_none_or(|binding| binding.update_from_input(next, region.bounds.height));
+            if drag.axis == ScrollbarAxis::Vertical && region.virtual_scroll {
+                self.sync_linked_virtual_scroll_offsets(region.id, next, None);
+            }
             ScrollResult {
                 changed: true,
                 view_dirty,
@@ -756,10 +779,11 @@ impl UiTree {
         if !state.hovered {
             state.visible_until = now.checked_add(SCROLLBAR_AUTO_HIDE_DELAY);
         }
-        let view_dirty = self
-            .virtual_scroll_handles
-            .get(&drag.id)
-            .is_some_and(|binding| binding.handle.scrollbar_drag_ended());
+        let view_dirty = drag.axis == ScrollbarAxis::Vertical
+            && self
+                .virtual_scroll_handles
+                .get(&drag.id)
+                .is_some_and(|binding| binding.handle.scrollbar_drag_ended());
         // Releasing a scrollbar thumb ends a scroll just as a momentum phase does.
         if self.scroll_snap_geometry.container(drag.id).is_some() {
             self.snap_scroll_container(drag.id, now);
@@ -800,8 +824,14 @@ impl UiTree {
     pub(crate) fn update_scrollbar_hover(&mut self, point: Option<Point>, now: Instant) -> bool {
         let next = point
             .and_then(|point| self.scrollbar_at(point))
-            .map(|(region, _)| region.id);
-        if next == self.hovered_scrollbar {
+            .map(|(region, axis, _)| (region.id, axis));
+        if next.is_some_and(|(id, axis)| {
+            self.hovered_scrollbar == Some(id)
+                && self
+                    .scrollbar_states
+                    .get(&id)
+                    .is_some_and(|state| state.axis == axis)
+        }) {
             return false;
         }
 
@@ -812,8 +842,9 @@ impl UiTree {
                 state.visible_until = now.checked_add(SCROLLBAR_AUTO_HIDE_DELAY);
             }
         }
-        if let Some(next) = next {
+        if let Some((next, axis)) = next {
             let state = self.scrollbar_states.entry(next).or_default();
+            state.axis = axis;
             state.hovered = true;
             state.visible_until = None;
             self.hovered_scrollbar = Some(next);
@@ -824,28 +855,38 @@ impl UiTree {
     pub(super) fn scrollbar_at(
         &self,
         point: Point,
-    ) -> Option<(ScrollRegion, VerticalScrollbarGeometry)> {
+    ) -> Option<(ScrollRegion, ScrollbarAxis, ScrollbarGeometry)> {
         let blocker = self
             .hit_regions
             .iter()
             .rev()
             .find(|region| region.blocks_pointer && region.contains(point))
             .map(|region| region.order);
-        self.scroll_regions
-            .iter()
-            .filter_map(|region| {
-                let offset = self
-                    .scroll_offsets
-                    .get(&region.id)
-                    .copied()
-                    .unwrap_or_default();
-                let geometry = vertical_scrollbar_geometry(*region, offset.y)?;
-                (region.clip.contains(point)
-                    && geometry.track.contains(point)
-                    && blocker.is_none_or(|blocker| blocker < region.scrollbar_order))
-                .then_some((*region, geometry))
-            })
-            .max_by_key(|(region, _)| region.scrollbar_order)
+        for region in self.scroll_regions.iter().rev() {
+            if !region.clip.contains(point)
+                || blocker.is_some_and(|blocker| blocker < region.scrollbar_order)
+            {
+                continue;
+            }
+            let offset = self
+                .scroll_offsets
+                .get(&region.id)
+                .copied()
+                .unwrap_or_default();
+            for axis in [ScrollbarAxis::Vertical, ScrollbarAxis::Horizontal] {
+                if axis == ScrollbarAxis::Vertical && !region.vertical_scrollbar {
+                    continue;
+                }
+                let Some(geometry) = scrollbar_geometry(*region, axis, axis.component(offset))
+                else {
+                    continue;
+                };
+                if geometry.track.contains(point) {
+                    return Some((*region, axis, geometry));
+                }
+            }
+        }
+        None
     }
 
     pub fn pointer_button(
@@ -1035,7 +1076,9 @@ impl UiTree {
             );
             if next != *offset {
                 *offset = next;
+                let active_axis = ScrollbarAxis::for_change(previous, next);
                 let state = self.scrollbar_states.entry(region.id).or_default();
+                state.axis = active_axis;
                 if !state.hovered && !state.dragging {
                     state.visible_until = now.checked_add(SCROLLBAR_AUTO_HIDE_DELAY);
                 }
@@ -1046,6 +1089,17 @@ impl UiTree {
                         .is_none_or(|binding| {
                             binding.update_from_input(next.y, region.bounds.height)
                         });
+                if region.virtual_scroll && next.y != previous.y {
+                    self.sync_linked_virtual_scroll_offsets(
+                        region.id,
+                        next.y,
+                        if active_axis == ScrollbarAxis::Vertical {
+                            now.checked_add(SCROLLBAR_AUTO_HIDE_DELAY)
+                        } else {
+                            None
+                        },
+                    );
+                }
                 // Wheels carry no phase on most platforms. Arm one bounded settle deadline that
                 // the next delta pushes back; it is the only timer scroll snapping ever creates.
                 if self.scroll_snap_geometry.container(region.id).is_some() {
@@ -1060,6 +1114,37 @@ impl UiTree {
         ScrollResult {
             changed: tooltip_changed,
             view_dirty: false,
+        }
+    }
+
+    fn sync_linked_virtual_scroll_offsets(
+        &mut self,
+        source: ElementId,
+        offset_y: f32,
+        visible_until: Option<Instant>,
+    ) {
+        let Some(source_handle) = self
+            .virtual_scroll_handles
+            .get(&source)
+            .map(|binding| binding.handle.clone())
+        else {
+            return;
+        };
+        let handles = &self.virtual_scroll_handles;
+        let offsets = &mut self.scroll_offsets;
+        let states = &mut self.scrollbar_states;
+        for (id, binding) in handles {
+            if !binding.handle.shares_state(&source_handle) {
+                continue;
+            }
+            offsets.entry(*id).or_default().y = offset_y;
+            if let Some(deadline) = visible_until {
+                let state = states.entry(*id).or_default();
+                state.axis = ScrollbarAxis::Vertical;
+                if !state.hovered && !state.dragging {
+                    state.visible_until = Some(deadline);
+                }
+            }
         }
     }
 

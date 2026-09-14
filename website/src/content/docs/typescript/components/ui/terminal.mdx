@@ -2,10 +2,12 @@ Embeds the retained Ghostty terminal surface and reports process lifecycle event
 
 ## Import
 
-Import `Terminal` from `@quickgui/solid`.
+```sh
+bun add @quickgui/extension-terminal
+```
 
 ```tsx
-import { Terminal } from "@quickgui/solid";
+import { Terminal } from "@quickgui/extension-terminal";
 ```
 
 ## Usage
@@ -30,4 +32,4 @@ import { Terminal } from "@quickgui/solid";
 | `onStatus` | Reports terminal process lifecycle changes. |
 
 
-<Note>Terminal requires the optional `@quickgui/extension-terminal` package and `extensions: ["terminal"]` in the TypeScript project configuration.</Note>
+<Note>Terminal requires the optional `@quickgui/extension-terminal` package and `extensions: ["@quickgui/extension-terminal"]` in the TypeScript project configuration.</Note>

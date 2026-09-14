@@ -51,7 +51,7 @@ const coreGraph = await run([
   "none",
 ]);
 if (
-  /^(libghostty|portable-pty|quickgui-terminal|quickgui-updater|ed25519-dalek|minisign-verify)\b/m.test(
+  /^(tree-sitter|imara-diff|pulldown-cmark|libghostty|portable-pty|quickgui-editor|quickgui-markdown|quickgui-terminal|quickgui-updater|ed25519-dalek|minisign-verify)\b/m.test(
     coreGraph,
   )
 )
@@ -61,6 +61,7 @@ const extensionGraph = await run([
   "tree",
   "-p",
   "quickgui-terminal",
+  "-p", "quickgui-editor", "-p", "quickgui-markdown",
   "--edges",
   "normal",
   "--prefix",
@@ -72,13 +73,17 @@ if (/^(quickgui |quickgui-host|wgpu|taffy)\b/m.test(extensionGraph))
 const directory = mkdtempSync(join(tmpdir(), "quickgui-native-extensions-"));
 try {
   const core = resolveHostLibrary(target, root);
+  const independentComponent = join(directory, process.platform === "darwin" ? "libacme-counter.dylib" : process.platform === "win32" ? "acme-counter.dll" : "libacme-counter.so");
+  await run(["cc", ...(process.platform === "darwin" ? ["-dynamiclib"] : ["-shared", "-fPIC"]), "-I", join(root, "include"), join(root, "tests/fixtures/native_component.c"), "-o", independentComponent]);
+  await run(["go", "test", "./internal/ffi", "-run", "TestIndependentComponentLibrarySmoke", "-count=1"], join(root, "go"), { QUICKGUI_TEST_CORE: core, QUICKGUI_TEST_COMPONENT: independentComponent });
+  console.log("[extensions] Independent C component: registered through purego without any host-specific component code");
   const backendManifest = JSON.parse(
-    readFileSync(join(root, "go/terminal/quickgui.extension.json"), "utf8"),
+    readFileSync(join(root, "extensions/terminal/quickgui.extension.json"), "utf8"),
   );
   const { extensionLibraryName } = await import("../packages/cli/src/extensions.ts");
   const backend = join(
     root,
-    "packages/extension-terminal/lib",
+    "extensions/terminal/lib",
     target,
     extensionLibraryName(backendManifest, target),
   );
@@ -91,12 +96,12 @@ try {
     join(root, "go"),
     { QUICKGUI_TEST_CORE: core, QUICKGUI_TEST_TERMINAL: backend },
   );
-  for (const extensions of [[], ["terminal"], ["updater"], ["terminal", "updater"]]) {
+  for (const extensions of [[], ["editor"], ["markdown"], ["terminal"], ["updater"], ["editor", "markdown", "terminal", "updater"]]) {
     const project = join(directory, extensions.join("-") || "core");
     mkdirSync(project);
     writeFileSync(
       join(project, "go.mod"),
-      `module example.test/extensions\n\ngo 1.23\n\nrequire github.com/egoist/quickgui/go v${version}\nreplace github.com/egoist/quickgui/go => ${JSON.stringify(join(root, "go"))}\n`,
+      `module example.test/extensions\n\ngo 1.23\n\nrequire github.com/egoist/quickgui/go v${version}\nreplace github.com/egoist/quickgui/go => ${JSON.stringify(join(root, "go"))}\n` + extensions.map(name => `require github.com/egoist/quickgui/extensions/${name} v${version}\nreplace github.com/egoist/quickgui/extensions/${name} => ${JSON.stringify(join(root, "extensions", name))}\n`).join(""),
     );
     writeFileSync(
       join(project, "main.go"),
@@ -104,7 +109,7 @@ try {
 import (
   "github.com/egoist/quickgui/go/host"
   _ "github.com/egoist/quickgui/go/ui"
-  ${extensions.map((name) => '_ "github.com/egoist/quickgui/go/' + name + '"').join("\n")}
+  ${extensions.map((name) => '_ "github.com/egoist/quickgui/extensions/' + name + '"').join("\n")}
 )
 func main() { if err := host.Load(); err != nil { panic(err) } }
 `,

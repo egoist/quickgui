@@ -9,7 +9,7 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 web-time = "1.1"
-quickgui = { path = "../..", default-features = false }
+quickgui = { path = "../..", default-features = false, features = ["markdown"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wasm-bindgen = "=0.2.128"
@@ -18,4 +18,4 @@ console_error_panic_hook = "0.1"
 web-sys = { version = "0.3", features = ["HtmlCanvasElement"] }
 
 [dev-dependencies]
-quickgui = { path = "../..", default-features = false, features = ["test-support"] }
+quickgui = { path = "../..", default-features = false, features = ["markdown", "test-support"] }

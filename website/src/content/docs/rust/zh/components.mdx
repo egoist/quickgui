@@ -18,7 +18,7 @@ impl View for Greeting {
 
 ## 基础组件
 
-`div`、`text`、`button`、`text_input`、`text_area`、`Markdown`、`img`、`svg`、`custom_shader` 和 `VirtualList` 是基础构件。`submit_button` 会提交最近的 `form`。`Terminal` 需要对应的 crate feature。
+`div`、`text`、`button`、`text_input`、`text_area`、`img`、`svg`、`custom_shader` 和 `VirtualList` 是基础构件。`submit_button` 会提交最近的 `form`。[Markdown](/docs/rust/components/markdown) 使用 `features = ["markdown"]`；[Editor](/docs/rust/components/editor)、[CodeBlock](/docs/rust/components/code-block) 和 [DiffView](/docs/rust/components/diff-view) 使用 `features = ["editor"]`；Terminal 也是可选功能。
 
 ## 复合组件
 

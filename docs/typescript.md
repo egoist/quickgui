@@ -60,7 +60,7 @@ Components construct once. Solid tracks JSX expressions and updates affected nat
 
 The TypeScript binding exposes the complete native component families:
 
-- Primitives: `View`, `Text`, `Button`, `Input`/`TextInput`, `TextArea`, `Markdown`, `Image`, `Svg`, `Shader`, `VirtualList`, and optional `Terminal`.
+- Primitives: `View`, `Text`, `Button`, `Input`/`TextInput`, `TextArea`, `Image`, `Svg`, `Shader`, `VirtualList`, and optional `Terminal`, `Markdown`, `Editor`, `CodeBlock`, and `DiffView`.
 - Forms: `Field`, `Fieldset`, `Checkbox`, `CheckboxGroup`, `Radio`, `RadioGroup`, `Switch`, `NumberField`, `OtpField`, `Select`, `Combobox`, and `Autocomplete`.
 - Layout and data: `Tabs`, `Accordion`, `Collapsible`, `Separator`, `Splitter`, `ScrollArea`, `Table`, `Tree`, `Calendar`, `DateField`, and `TimeField`.
 - Menus and overlays: `Menu`, `Menubar`, `ContextMenu`, `NavigationMenu`, `PopoverMenu`, `Popover`, `SystemPopover`, `Dialog`, `AlertDialog`, `Tooltip`, `PreviewCard`, and `Drawer`.
@@ -86,7 +86,9 @@ Styles and nested style arrays merge left to right. A falsey array entry is igno
 import type { JSX } from "@quickgui/solid";
 
 const panel = { p3: true, roundedXl: true, bg: "#18181b" } satisfies JSX.Style;
-<View style={[panel, { textColor: "#fafafa" }]}><Text>Hello</Text></View>
+<View style={[panel, { textColor: "#fafafa" }]}>
+  <Text>Hello</Text>
+</View>;
 ```
 
 Removing a style field clears its native value. Colors accept CSS hex forms or an integer packed as `0xAABBGGRR`, matching Rust. Component state, accessibility, and event handlers remain ordinary props. Property IDs and bounds are generated from Rust with `bun scripts/generate-typescript.ts`.
@@ -94,13 +96,22 @@ Removing a style field clears its native value. Colors accept CSS hex forms or a
 Input handlers receive native events, with text in `event.value`:
 
 ```tsx
-<TextInput value={name()} onInput={event => setName(event.value ?? "")} />
+<TextInput value={name()} onInput={(event) => setName(event.value ?? "")} />
 ```
 
 `Window.close()`, `Window.setTitle()`, `Window.getState()`, `app.quit()`, and `app.exit()` use the native host. Operations returning values are asynchronous. `Window.whenReady()` resolves when Rust has mounted the window, including hidden windows; snapshot getters await that event; setters queue their native work until creation. `app.command()` exposes existing native JSON commands for advanced use.
 Native window snapshots use `bounds`, `viewportSize`, and `scaleFactor`. Observe close completion with `window.onClose()` or `window.on("closed", ...)`. Menus, clipboard, file and alert dialogs, display information, appearance, notifications, global shortcuts, tray icons, permissions, power assertions, secure storage, and metrics are available from `@quickgui/native`.
 
 Declare optional extensions with `extensions: ["terminal"]` or `["updater"]`, and install their corresponding native packages. `ExtensionSession` and `invokeExtension` expose other extension services through the shared C ABI. Import `Updater` from `@quickgui/extension-updater`; the [TypeScript updater guide](../website/src/content/docs/typescript/en/updater.mdx) shows installation, a complete `quickgui.config.ts`, application startup, and signed release commands.
+
+Install the optional code surfaces with `bun add @quickgui/extension-editor`. `Editor`,
+`CodeBlock`, and `DiffView` need no config entry or second native image. Rust keeps their
+implementation behind its `editor` crate feature; the hosted renderer enables the adapter
+explicitly. See [editor, CodeBlock, and diff view](editor-and-diffs.md).
+
+Install retained Markdown with `bun add @quickgui/extension-markdown`. Parsed code fences can opt
+into the shared CodeBlock renderer without adding another native image. See [retained
+Markdown](markdown.md).
 
 The [Quick Git example](../examples/quick-git-typescript/README.md) includes changes and history, partial staging, branches, stashes, worktrees, native menus and dialogs, independent per-window stores, and cancellable Bun subprocesses. Its interface follows the current Go example, including native splitters, the QuickGUI toolbar and composer, virtualized commit files, and history selection that survives focus refresh.
 

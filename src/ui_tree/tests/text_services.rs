@@ -12,6 +12,8 @@ fn checking_constraints(overrides: TextCheckingOverrides) -> InputConstraints {
         max_length: None,
         filter: None,
         text_checking: overrides,
+        #[cfg(feature = "text-input-decorations")]
+        editor: None,
     }
 }
 

@@ -1,0 +1,8 @@
+{
+  "schema": 1,
+  "name": "editor",
+  "abi": 1,
+  "package": "@quickgui/extension-editor",
+  "version": "0.1.4-next.4",
+  "library": "quickgui_editor"
+}

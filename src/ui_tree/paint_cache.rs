@@ -209,7 +209,7 @@ impl UiTree {
             }
         }
         for (id, state) in &self.scrollbar_states {
-            if cache.scrollbars.get(id) != Some(&(*state, state.visible(now))) {
+            if cache.scrollbars.get(id) != Some(&(*state, state.visible_any(now))) {
                 cache.invalidate_element(*id, &self.parents);
             }
         }
@@ -228,7 +228,7 @@ impl UiTree {
         cache.scrollbars.extend(
             self.scrollbar_states
                 .iter()
-                .map(|(id, state)| (*id, (*state, state.visible(now)))),
+                .map(|(id, state)| (*id, (*state, state.visible_any(now)))),
         );
     }
 

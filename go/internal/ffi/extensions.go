@@ -38,7 +38,7 @@ func (library *Library) LoadExtension(name, path string, version ...string) (err
 		status = library.RegisterExtension(value, bytes, uintptr(len(bytes)))
 	}
 	if status != 0 {
-		return fmt.Errorf("QuickGUI extension %s failed name, version, ABI, or duplicate-provider validation", name)
+		return fmt.Errorf("QuickGUI extension %s at %s (requested version %q) failed name, version, ABI, or duplicate-provider validation", name, path, version)
 	}
 	return nil
 }

@@ -12,13 +12,9 @@ zig-out/
 _build/
 
 # Generated native host assets are staged by build:native.
-packages/native/lib/**/*.dylib
-packages/native/lib/**/*.so
-packages/native/lib/**/*.dll
-packages/extension-*/lib/**/*.dylib
-packages/extension-*/lib/**/*.so
-packages/extension-*/lib/**/*.dll
+*.dylib
+*.so
+*.dll
 
 # Extension resources and installation helpers are generated native artifacts.
-packages/extension-*/lib/
-examples/native-extension/backend/lib/
+extensions/*/lib/

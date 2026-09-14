@@ -143,6 +143,8 @@ impl Element {
             tooltip: None,
             app_region: None,
             virtual_scroll: None,
+            vertical_scrollbar_hidden: false,
+            horizontal_scrollbar_left_inset: 0.0,
             scroll_to_end_revision: None,
             layout_rounding: true,
             list_item_measurement: None,
@@ -261,6 +263,8 @@ impl Element {
             multiline,
             password: false,
             constraints: InputConstraints::default(),
+            #[cfg(feature = "text-input-decorations")]
+            editor: None,
         });
         element.layout.size = TaffySize {
             width: Dimension::length(if multiline { 320.0 } else { 240.0 }),
@@ -1235,6 +1239,25 @@ impl Element {
         self.layout.overflow = TaffyPoint {
             x: Overflow::Scroll,
             y: Overflow::Hidden,
+        };
+        self
+    }
+
+    /// Suppress the built-in vertical overlay thumb without disabling vertical wheel scrolling.
+    ///
+    /// This is useful for synchronized split panes where only the trailing pane should paint the
+    /// shared vertical position.
+    pub(crate) fn hide_vertical_scrollbar(mut self) -> Self {
+        self.vertical_scrollbar_hidden = true;
+        self
+    }
+
+    /// Start the horizontal overlay scrollbar after a fixed left gutter.
+    pub(crate) fn horizontal_scrollbar_left_inset(mut self, value: f32) -> Self {
+        self.horizontal_scrollbar_left_inset = if value.is_finite() {
+            value.max(0.0)
+        } else {
+            0.0
         };
         self
     }

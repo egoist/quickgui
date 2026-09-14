@@ -1,0 +1,48 @@
+虚拟化的分栏或统一文件差异视图，行同步且面板可独立横向滚动。
+
+组件默认不带视觉样式：文本和行号继承颜色，不添加背景、边框、圆角、内边距或语法／差异配色。外观由应用显式提供样式与颜色。
+
+## 导入
+
+启用 QuickGUI 可选的 `editor` crate feature，并导入差异模型与显示类型。
+
+```rust
+use quickgui::{DiffLayout, DiffView, DiffViewStyle, IntoElement, SyntaxLanguage};
+```
+
+## 用法
+
+```rust
+let diff = DiffView::from_texts(
+    "before.rs",
+    "pub const ANSWER: u8 = 41;\n",
+    "after.rs",
+    "pub const ANSWER: u8 = 42;\n",
+)
+.with_style(
+    DiffViewStyle::default()
+        .layout(DiffLayout::Split)
+        .language(Some(SyntaxLanguage::Rust)),
+);
+
+diff.element("source-diff")
+```
+
+## 语法高亮
+
+DiffView 使用与 Editor 相同的内置 Tree-sitter 语法。文档、语言或语法调色板变化时，它会分别解析每个可见文件的新旧行序列，并把捕获片段分配给逻辑行。每个 `RenderSide` 仅在挂载时延迟构建并缓存 `StyledText`，再按互不重叠的字节边界合并行内新增/删除强调。滚动不会调用解析器。
+
+## 主要属性
+
+| 属性                        | 说明                                          |
+| --------------------------- | --------------------------------------------- |
+| `DiffView::from_texts`      | 从两个完整的内存源码计算受限的直方图差异。    |
+| `DiffView::from_patch`      | 解析已捕获的 Git 或普通统一补丁，不调用 Git。 |
+| `DiffViewStyle::layout`     | 选择分栏或统一显示。                          |
+| `DiffViewStyle::indicators` | 选择色条、经典 `+`/`−` 或无指示器。           |
+| `DiffViewStyle::word_wrap`  | 对长行换行，而不是启用横向滚动。              |
+| `DiffTheme`                 | 配置行、行号栏、区块、标题及行内变化颜色。    |
+| `set_document`              | 替换不可变差异模型，同时保留视图与列表状态。  |
+| `element`                   | 使用稳定元素 ID 构建虚拟化差异表面。          |
+
+分栏面板各自保留横向偏移，并共享一个同步的纵向偏移。`ListState` 只挂载可见行及受限的预渲染行。

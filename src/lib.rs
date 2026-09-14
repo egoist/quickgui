@@ -15,6 +15,8 @@ mod calendar;
 mod canvas;
 mod checkbox_group;
 mod clipboard;
+#[cfg(feature = "editor")]
+mod code_block;
 mod color;
 mod combobox;
 mod constrained_combobox;
@@ -24,9 +26,13 @@ mod custom_shader;
 mod custom_shader_renderer;
 mod date_field;
 mod dialog;
+#[cfg(feature = "editor")]
+mod diff_view;
 mod disclosure;
 mod display;
 mod drawer;
+#[cfg(feature = "editor")]
+mod editor;
 mod element;
 mod entity;
 mod event;
@@ -57,6 +63,7 @@ mod macos_keyboard;
 mod macos_menu;
 #[cfg(target_os = "macos")]
 mod macos_shell;
+#[cfg(feature = "markdown")]
 mod markdown;
 mod menu;
 mod menubar;
@@ -95,13 +102,21 @@ mod svg;
 mod svg_renderer;
 #[cfg(all(target_os = "macos", feature = "swift-ui"))]
 mod swift_ui;
+#[cfg(feature = "editor")]
+mod syntax;
 mod table;
 mod tabs;
-#[cfg(any(feature = "terminal", feature = "terminal-extension"))]
+#[cfg(feature = "terminal")]
 mod terminal;
 #[cfg(feature = "terminal")]
 mod terminal_process;
 mod text_input;
+#[cfg(feature = "text-input-decorations")]
+mod text_input_decorations;
+#[cfg(feature = "text-input-decorations")]
+pub use text_input_decorations::{TextInputGutter, TextInputIndentation};
+mod component_extension;
+pub use component_extension::ExtensionComponent;
 mod toast;
 mod toggle;
 mod toolbar;
@@ -155,6 +170,10 @@ pub use clipboard::{
     MAX_CLIPBOARD_METADATA_BYTES, MAX_CLIPBOARD_MIME_TYPE_BYTES, MAX_CLIPBOARD_PATH_BYTES,
     MAX_CLIPBOARD_PATHS, MAX_CLIPBOARD_TEXT_BYTES, MAX_CLIPBOARD_TOTAL_PATH_BYTES,
 };
+#[cfg(feature = "editor")]
+pub use code_block::{
+    CodeBlock, CodeBlockStyle, CodeBlockUpdate, MAX_CODE_BLOCK_LINES, MAX_CODE_BLOCK_SOURCE_BYTES,
+};
 pub use color::Color;
 pub use combobox::{
     ComboboxConfirm, ComboboxFirst, ComboboxLast, ComboboxNext, ComboboxPageDown, ComboboxPageUp,
@@ -185,6 +204,12 @@ pub use date_field::{
     date_field_key_bindings, time_field, time_field_key_bindings,
 };
 pub use dialog::{Dialog, DialogKind, DialogState, MAX_DIALOG_TRANSITION};
+#[cfg(feature = "editor")]
+pub use diff_view::{
+    DiffDocument, DiffFile, DiffFileKind, DiffHunk, DiffIndicators, DiffLayout, DiffLine,
+    DiffLineKind, DiffTheme, DiffView, DiffViewStyle, MAX_DIFF_FILES, MAX_DIFF_LINES,
+    MAX_DIFF_SOURCE_BYTES,
+};
 pub use disclosure::{
     Accordion, AccordionItem, AccordionItemState, AccordionState, AccordionStateError, Collapsible,
     CollapsibleState, MAX_ACCORDION_OPEN_ITEMS,
@@ -198,6 +223,8 @@ pub use drawer::{
     MAX_DRAWER_DISMISS_VELOCITY, MAX_DRAWER_SNAP_POINTS, MAX_NESTED_DRAWERS, SwipeDirection,
     drawer_popup,
 };
+#[cfg(feature = "editor")]
+pub use editor::{Editor, EditorStyle, EditorUpdate, MAX_EDITOR_SOURCE_BYTES};
 pub use element::{
     AccessibilityAutoComplete, AccessibilityLive, AccessibilityOrientation, AccessibilityPopover,
     AccessibilityRole, AccessibilitySortDirection, AccessibilityValueRange, AnchorAlign,
@@ -289,10 +316,11 @@ pub use keymap::{Accelerator, MAX_ACCELERATOR_BYTES};
 pub use keymap::{
     ContextPredicate, KeyBinding, KeyContext, Keymap, KeymapError, KeymapMatch, Keystroke,
 };
+#[cfg(feature = "markdown")]
 pub use markdown::{
     MAX_MARKDOWN_BLOCKS, MAX_MARKDOWN_NESTING_DEPTH, MAX_MARKDOWN_SOURCE_BYTES, Markdown,
-    MarkdownBlock, MarkdownInlineRun, MarkdownInlineStyle, MarkdownListItem, MarkdownStyle,
-    MarkdownTableAlign, MarkdownUpdate,
+    MarkdownBlock, MarkdownCodeBlock, MarkdownInlineRun, MarkdownInlineStyle, MarkdownListItem,
+    MarkdownStyle, MarkdownTableAlign, MarkdownUpdate,
 };
 pub use menu::{
     MAX_NATIVE_MENU_DEPTH, MAX_NATIVE_MENU_ITEMS, MAX_NATIVE_MENU_TEXT_BYTES,
@@ -561,6 +589,11 @@ pub use swift_ui::{
     SwiftUiProgressView, SwiftUiQuickGuiHost, SwiftUiSegmentedControl, SwiftUiSegmentedTabs,
     SwiftUiSlider, SwiftUiStepper, SwiftUiTextField, SwiftUiToggle,
 };
+#[cfg(feature = "editor")]
+pub use syntax::{
+    MAX_SYNTAX_HIGHLIGHTS, MAX_SYNTAX_LINE_BYTES, MAX_SYNTAX_SOURCE_BYTES, SyntaxLanguage,
+    SyntaxTheme, highlight_syntax,
+};
 pub use table::{
     MAX_TABLE_COLUMN_WIDTH, MAX_TABLE_COLUMNS, MAX_TABLE_ROWS, MAX_TABLE_SELECTION_RANGES,
     MIN_TABLE_COLUMN_WIDTH, TABLE_COLUMN_RESIZE_STEP, TableActivate, TableCancelEdit,
@@ -576,7 +609,7 @@ pub use tabs::{
     Tab, TabState, Tabs, TabsActivationDirection, TabsActivationMovement, TabsIndicatorGeometry,
     TabsOrientation, TabsState,
 };
-#[cfg(any(feature = "terminal", feature = "terminal-extension"))]
+#[cfg(feature = "terminal")]
 pub use terminal::{
     MAX_TERMINAL_ARGUMENTS, MAX_TERMINAL_ENVIRONMENT, MAX_TERMINAL_SCROLLBACK,
     MAX_TERMINAL_STRING_BYTES, TERMINAL_ANSI_COLOR_COUNT, Terminal, TerminalAgent,

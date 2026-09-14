@@ -735,10 +735,9 @@ fn queued_input_and_submit_survive_until_javascript_commits_the_controlled_value
         handles: None,
         tree: Rc::new(RefCell::new(tree)),
         events: Rc::clone(&events),
-        markdown: Rc::new(RefCell::new(HashMap::new())),
+        extensions: Rc::new(RefCell::new(HashMap::new())),
         svgs: Rc::new(RefCell::new(HashMap::new())),
         lists: Rc::new(RefCell::new(HashMap::new())),
-        terminals: Rc::new(RefCell::new(HashMap::new())),
         images: Rc::new(RefCell::new(HashMap::new())),
         background_images: Rc::new(RefCell::new(HashMap::new())),
         shaders: Rc::new(RefCell::new(HashMap::new())),
@@ -844,10 +843,9 @@ fn flex_without_direction_uses_css_row_default() {
         handles: None,
         tree: Rc::new(RefCell::new(tree)),
         events: Rc::new(RefCell::new(VecDeque::new())),
-        markdown: Rc::new(RefCell::new(HashMap::new())),
+        extensions: Rc::new(RefCell::new(HashMap::new())),
         svgs: Rc::new(RefCell::new(HashMap::new())),
         lists: Rc::new(RefCell::new(HashMap::new())),
-        terminals: Rc::new(RefCell::new(HashMap::new())),
         images: Rc::new(RefCell::new(HashMap::new())),
         background_images: Rc::new(RefCell::new(HashMap::new())),
         shaders: Rc::new(RefCell::new(HashMap::new())),
@@ -922,10 +920,9 @@ fn retained_popover_uses_core_placement_dismissal_and_focus_restoration() {
         handles: None,
         tree: Rc::new(RefCell::new(tree)),
         events: Rc::clone(&events),
-        markdown: Rc::new(RefCell::new(HashMap::new())),
+        extensions: Rc::new(RefCell::new(HashMap::new())),
         svgs: Rc::new(RefCell::new(HashMap::new())),
         lists: Rc::new(RefCell::new(HashMap::new())),
-        terminals: Rc::new(RefCell::new(HashMap::new())),
         images: Rc::new(RefCell::new(HashMap::new())),
         background_images: Rc::new(RefCell::new(HashMap::new())),
         shaders: Rc::new(RefCell::new(HashMap::new())),
@@ -999,10 +996,9 @@ fn unanchored_overlay_traps_autofocus_dismisses_and_restores_previous_focus() {
         handles: None,
         tree: Rc::new(RefCell::new(tree)),
         events: Rc::clone(&events),
-        markdown: Rc::new(RefCell::new(HashMap::new())),
+        extensions: Rc::new(RefCell::new(HashMap::new())),
         svgs: Rc::new(RefCell::new(HashMap::new())),
         lists: Rc::new(RefCell::new(HashMap::new())),
-        terminals: Rc::new(RefCell::new(HashMap::new())),
         images: Rc::new(RefCell::new(HashMap::new())),
         background_images: Rc::new(RefCell::new(HashMap::new())),
         shaders: Rc::new(RefCell::new(HashMap::new())),
@@ -1115,10 +1111,9 @@ fn native_svg_is_parsed_once_until_its_source_changes() {
         handles: None,
         tree: Rc::new(RefCell::new(tree)),
         events: Rc::new(RefCell::new(VecDeque::new())),
-        markdown: Rc::new(RefCell::new(HashMap::new())),
+        extensions: Rc::new(RefCell::new(HashMap::new())),
         svgs: Rc::clone(&svgs),
         lists: Rc::new(RefCell::new(HashMap::new())),
-        terminals: Rc::new(RefCell::new(HashMap::new())),
         images: Rc::new(RefCell::new(HashMap::new())),
         background_images: Rc::new(RefCell::new(HashMap::new())),
         shaders: Rc::new(RefCell::new(HashMap::new())),
@@ -1194,10 +1189,9 @@ fn native_virtual_list_mounts_only_the_initial_window_and_overscan() {
         handles: None,
         tree: Rc::new(RefCell::new(tree)),
         events: Rc::new(RefCell::new(VecDeque::new())),
-        markdown: Rc::new(RefCell::new(HashMap::new())),
+        extensions: Rc::new(RefCell::new(HashMap::new())),
         svgs: Rc::new(RefCell::new(HashMap::new())),
         lists: Rc::clone(&lists),
-        terminals: Rc::new(RefCell::new(HashMap::new())),
         images: Rc::new(RefCell::new(HashMap::new())),
         background_images: Rc::new(RefCell::new(HashMap::new())),
         shaders: Rc::new(RefCell::new(HashMap::new())),
@@ -1274,125 +1268,6 @@ fn native_virtual_list_applies_pixel_overscan_and_known_heights() {
     node.set_property(property::ITEM_HEIGHTS, None);
     retained.sync(&node);
     assert_eq!(retained.list.stats().measured_items, 0);
-}
-
-#[cfg(unix)]
-#[test]
-fn native_terminal_runs_a_real_pty_and_rerenders_ghostty_output() {
-    // Production loads this descriptor from its separate image through purego. The native
-    // integration test links the same backend as a dev dependency and exercises the C ABI.
-    unsafe {
-        quickgui::extensions::register_extension(
-            quickgui_terminal::quickgui_extension_v1().cast(),
-            b"terminal",
-        )
-    }
-    .unwrap();
-    let terminal_id = 50;
-    let mut tree = NativeTree::default();
-    let mut terminal = NativeNode::new(NodeTag::Terminal);
-    terminal.parent = Some(ROOT_NODE);
-    terminal.set_property(
-        property::TERMINAL_PROGRAM,
-        Some(PropertyValue::String(Arc::from("/bin/sh"))),
-    );
-    terminal.set_property(
-        property::TERMINAL_ARGUMENTS,
-        Some(PropertyValue::String(Arc::from(
-            serde_json::json!(["-c", "printf 'quickgui-pty-ok\\n'"]).to_string(),
-        ))),
-    );
-    terminal.set_property(
-        property::TERMINAL_STATUS_LISTENER,
-        Some(PropertyValue::Bool(true)),
-    );
-    terminal.set_property(
-        property::POSITION,
-        Some(PropertyValue::String(Arc::from("absolute"))),
-    );
-    terminal.set_property(property::TOP, Some(PropertyValue::Number(8.0)));
-    terminal.set_property(property::RIGHT, Some(PropertyValue::Number(9.0)));
-    terminal.set_property(property::BOTTOM, Some(PropertyValue::Number(8.0)));
-    terminal.set_property(property::LEFT, Some(PropertyValue::Number(9.0)));
-    terminal.set_property(property::PADDING_TOP, Some(PropertyValue::Number(8.0)));
-    terminal.set_property(property::PADDING_RIGHT, Some(PropertyValue::Number(9.0)));
-    terminal.set_property(property::PADDING_BOTTOM, Some(PropertyValue::Number(8.0)));
-    terminal.set_property(property::PADDING_LEFT, Some(PropertyValue::Number(9.0)));
-    tree.nodes.insert(terminal_id, terminal);
-    tree.nodes
-        .get_mut(&ROOT_NODE)
-        .unwrap()
-        .children
-        .push(terminal_id);
-
-    let terminals = Rc::new(RefCell::new(HashMap::new()));
-    let events = Rc::new(RefCell::new(VecDeque::new()));
-    let view = NativeView {
-        window: 6,
-        handles: None,
-        tree: Rc::new(RefCell::new(tree)),
-        events: Rc::clone(&events),
-        markdown: Rc::new(RefCell::new(HashMap::new())),
-        svgs: Rc::new(RefCell::new(HashMap::new())),
-        lists: Rc::new(RefCell::new(HashMap::new())),
-        terminals: Rc::clone(&terminals),
-        images: Rc::new(RefCell::new(HashMap::new())),
-        background_images: Rc::new(RefCell::new(HashMap::new())),
-        shaders: Rc::new(RefCell::new(HashMap::new())),
-        menus: Rc::new(RefCell::new(HashMap::new())),
-        context_menu: ContextMenuState::new(),
-        context_menu_owner: None,
-        focused_node: None,
-        components: NativeComponentStates::default(),
-        #[cfg(target_os = "macos")]
-        swift_ui_hosts: Rc::new(RefCell::new(HashMap::new())),
-        embedded_views: Rc::new(RefCell::new(HashMap::new())),
-    };
-    let (mut cx, view) = quickgui::TestAppContext::new(view).unwrap();
-    let window = view.window_handle();
-    for _ in 0..200 {
-        let finished_with_output = terminals
-            .borrow()
-            .get(&terminal_id)
-            .and_then(|state| state.terminal.as_ref())
-            .is_some_and(|terminal| {
-                let snapshot = terminal.snapshot();
-                matches!(snapshot.status, TerminalStatus::Exited { .. })
-                    && snapshot.content.contains("quickgui-pty-ok")
-            });
-        if finished_with_output {
-            break;
-        }
-        std::thread::sleep(std::time::Duration::from_millis(10));
-    }
-    cx.update(view, |_view, cx| cx.invalidate()).unwrap();
-
-    let snapshot = terminals.borrow()[&terminal_id]
-        .terminal
-        .as_ref()
-        .unwrap()
-        .snapshot();
-    assert!(
-        snapshot.content.contains("quickgui-pty-ok"),
-        "snapshot: {snapshot:#?}"
-    );
-    assert!(matches!(snapshot.status, TerminalStatus::Exited { .. }));
-    let root_bounds = cx
-        .element_bounds(window, ElementId::new(crate::ROOT_ELEMENT_ID))
-        .unwrap();
-    let terminal_bounds = cx
-        .element_bounds(window, ElementId::new(terminal_id as u64))
-        .unwrap();
-    assert_eq!(terminal_bounds.x, root_bounds.x + 9.0);
-    assert_eq!(terminal_bounds.y, root_bounds.y + 8.0);
-    assert_eq!(terminal_bounds.right(), root_bounds.right() - 9.0);
-    assert_eq!(terminal_bounds.bottom(), root_bounds.bottom() - 8.0);
-    assert!(
-        events
-            .borrow()
-            .iter()
-            .any(|event| event.kind == "terminal" && event.target == terminal_id)
-    );
 }
 
 #[test]
@@ -1528,10 +1403,9 @@ fn a_declared_close_interception_holds_the_window_and_reports_it_to_javascript()
         handles: None,
         tree: Rc::new(RefCell::new(NativeTree::default())),
         events: Rc::clone(&events),
-        markdown: Rc::new(RefCell::new(HashMap::new())),
+        extensions: Rc::new(RefCell::new(HashMap::new())),
         svgs: Rc::new(RefCell::new(HashMap::new())),
         lists: Rc::new(RefCell::new(HashMap::new())),
-        terminals: Rc::new(RefCell::new(HashMap::new())),
         images: Rc::new(RefCell::new(HashMap::new())),
         background_images: Rc::new(RefCell::new(HashMap::new())),
         shaders: Rc::new(RefCell::new(HashMap::new())),
@@ -1601,10 +1475,9 @@ fn component_part_view(window: u32, tree: NativeTree, events: EventQueue) -> Nat
         handles: None,
         tree: Rc::new(RefCell::new(tree)),
         events,
-        markdown: Rc::new(RefCell::new(HashMap::new())),
+        extensions: Rc::new(RefCell::new(HashMap::new())),
         svgs: Rc::new(RefCell::new(HashMap::new())),
         lists: Rc::new(RefCell::new(HashMap::new())),
-        terminals: Rc::new(RefCell::new(HashMap::new())),
         images: Rc::new(RefCell::new(HashMap::new())),
         background_images: Rc::new(RefCell::new(HashMap::new())),
         shaders: Rc::new(RefCell::new(HashMap::new())),

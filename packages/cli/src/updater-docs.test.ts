@@ -29,8 +29,9 @@ test("the TypeScript updater guide loads real configuration and compiles the ext
     copyFileSync(keys.publicKeyPath, join(project, "update-public-key.pub"));
     const packages = join(project, "node_modules/@quickgui");
     mkdirSync(packages, { recursive: true });
-    for (const name of ["cli", "native", "solid", "extension-updater"])
+    for (const name of ["cli", "native", "solid"])
       symlinkSync(join(root, "packages", name), join(packages, name), "dir");
+    symlinkSync(join(root, "extensions/updater"), join(packages, "extension-updater"), "dir");
     symlinkSync(
       dirname(Bun.resolveSync("solid-js/package.json", join(root, "packages/solid"))),
       join(project, "node_modules/solid-js"),

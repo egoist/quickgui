@@ -1,0 +1,50 @@
+A retained native code editor with syntax coloring, line numbers, indentation, and both-axis scrolling.
+
+Unstyled by default: text and line-number colors inherit, and the component adds no background, border, rounding, padding, or syntax/diff palette. Supply application styles and explicit colors to opt into an appearance.
+
+## Import
+
+Enable QuickGUI's opt-in `editor` crate feature and import the retained editor types.
+
+```rust
+use quickgui::{Editor, IntoElement, SyntaxLanguage, View, ViewContext};
+```
+
+## Usage
+
+```rust
+struct EditorExample {
+    editor: Editor,
+}
+
+impl View for EditorExample {
+    fn render(&mut self, cx: &mut ViewContext<'_, Self>) -> impl IntoElement {
+        let changed = cx.input_listener("source", |view, value, cx| {
+            if view.editor.set_text(value).changed {
+                cx.invalidate();
+            }
+        });
+        self.editor.element("source").on_input(changed)
+    }
+}
+```
+
+## Syntax highlighting
+
+`SyntaxLanguage` selects a bundled Tree-sitter grammar and highlight query. Query captures are flattened into eight stable `SyntaxTheme` classes and applied as foreground-only `HighlightStyle` spans, so color never changes text metrics. Source or language changes reparse the bounded document; palette changes only remap the retained captures, and scrolling does no syntax work. Parsing is limited to 2 MiB, individual lines over 32 KiB stay plain, and the capture count is capped. This is structural syntax highlighting, not language-server semantic tokens.
+
+## Key props
+
+| Prop                | Purpose                                                                                      |
+| ------------------- | -------------------------------------------------------------------------------------------- |
+| `Editor::with_text` | Creates the retained controlled source model.                                                |
+| `set_text`          | Commits an input callback's value and refreshes syntax spans only when needed.               |
+| `set_language`      | Selects one of the bundled Tree-sitter grammars.                                             |
+| `TextInputIndentation`    | Configures tabs, spaces, automatic indentation, and read-only behavior.                      |
+| `EditorStyle`       | Configures typography, wrapping, palette, gutter, active line, and an optional focus border. |
+| `element`           | Builds the native editor leaf for a stable element ID.                                       |
+
+<Note>
+  Add `features = ["editor"]` to the `quickgui` dependency. Keep one Editor model per open document
+  so input, selection, undo, and scroll state retain stable identity.
+</Note>

@@ -213,6 +213,8 @@ impl TestAppContext {
             if input_focused {
                 let extend = modifiers.contains(Modifiers::SHIFT);
                 let primary = primary_modifier(modifiers);
+                #[cfg(feature = "text-input-decorations")]
+                let editor_behavior = self.window(window)?.ui.focused_editor_behavior();
                 input_result = match &stroke.key {
                     Key::Character(value)
                         if primary
@@ -290,7 +292,27 @@ impl TestAppContext {
                     Key::Home => Some(self.window_mut(window)?.ui.input_move_home(extend)),
                     Key::End => Some(self.window_mut(window)?.ui.input_move_end(extend)),
                     Key::Enter if self.window(window)?.ui.focused_text_input_is_multiline() => {
-                        Some(self.window_mut(window)?.ui.input_insert_newline())
+                        #[cfg(feature = "text-input-decorations")]
+                        {
+                            Some(match editor_behavior {
+                                Some(behavior) => self
+                                    .window_mut(window)?
+                                    .ui
+                                    .input_insert_editor_newline(behavior),
+                                None => self.window_mut(window)?.ui.input_insert_newline(),
+                            })
+                        }
+                        #[cfg(not(feature = "text-input-decorations"))]
+                        {
+                            Some(self.window_mut(window)?.ui.input_insert_newline())
+                        }
+                    }
+                    #[cfg(feature = "text-input-decorations")]
+                    Key::Tab if editor_behavior.is_some() => {
+                        Some(self.window_mut(window)?.ui.input_editor_tab(
+                            modifiers.contains(Modifiers::SHIFT),
+                            editor_behavior.expect("editor behavior was checked"),
+                        ))
                     }
                     _ => None,
                 };

@@ -78,12 +78,49 @@ export const ALL_COMPONENT_DOCS = [
   },
   {
     kind: 'ui',
+    slug: 'editor',
+    name: 'Editor',
+    section: 'Primitives',
+    description:
+      'A retained native code editor with syntax coloring, line numbers, indentation, and both-axis scrolling.',
+    parts: [],
+    keyProps: ['Value', 'Language', 'LineNumbers', 'TabSize', 'ReadOnly', 'OnChange'],
+  },
+  {
+    kind: 'ui',
+    slug: 'code-block',
+    name: 'CodeBlock',
+    section: 'Primitives',
+    description:
+      'Selectable, caret-free source code with Tree-sitter coloring and virtualized logical rows.',
+    parts: [],
+    keyProps: ['Value', 'Language', 'LineNumbers', 'Wrap', 'SyntaxTheme'],
+  },
+  {
+    kind: 'ui',
+    slug: 'diff-view',
+    name: 'DiffView',
+    section: 'Layout & Data',
+    description:
+      'A virtualized split or unified file diff with synchronized rows and independent pane scrolling.',
+    parts: [],
+    keyProps: ['Patch', 'OldText', 'NewText', 'OldPath', 'NewPath', 'Options', 'Theme'],
+  },
+  {
+    kind: 'ui',
     slug: 'markdown',
     name: 'Markdown',
     section: 'Primitives',
     description: 'Renders retained Markdown, including an incremental mode for streaming content.',
     parts: [],
-    keyProps: ['Value', 'Streaming', 'BackgroundColor', 'Padding'],
+    keyProps: [
+      'Value',
+      'Streaming',
+      'CodeBlockComponent',
+      'CodeBlockMaxHeight',
+      'BackgroundColor',
+      'Padding',
+    ],
   },
   {
     kind: 'ui',
@@ -868,6 +905,9 @@ export function componentOutline(component: ComponentDoc): readonly DocsOutlineI
     ...(component.kind === 'ui' && DEMO_COMPONENTS.includes(component.slug) ? [{ id: 'preview', title: 'Preview' }] : []),
     { id: 'import', title: 'Import' },
     { id: 'usage', title: 'Usage' },
+    ...(['editor', 'code-block', 'diff-view'].includes(component.slug)
+      ? [{ id: 'syntax-highlighting', title: 'Syntax highlighting' } as const]
+      : []),
     ...(component.parts.length ? [{ id: 'anatomy', title: 'Anatomy' } as const] : []),
     { id: 'api-reference', title: 'API reference' },
   ]

@@ -102,41 +102,6 @@ func (style StyleBuilder) TransitionMaxFps(value any) StyleBuilder {
 	return style.configure(styleTransitionMaxFps(value))
 }
 
-// MarkdownCodeBackground sets the corresponding style property.
-func (style StyleBuilder) MarkdownCodeBackground(value any) StyleBuilder {
-	return style.configure(styleMarkdownCodeBackground(value))
-}
-
-// MarkdownBorderColor sets the corresponding style property.
-func (style StyleBuilder) MarkdownBorderColor(value any) StyleBuilder {
-	return style.configure(styleMarkdownBorderColor(value))
-}
-
-// MarkdownMutedColor sets the corresponding style property.
-func (style StyleBuilder) MarkdownMutedColor(value any) StyleBuilder {
-	return style.configure(styleMarkdownMutedColor(value))
-}
-
-// MarkdownLinkColor sets the corresponding style property.
-func (style StyleBuilder) MarkdownLinkColor(value any) StyleBuilder {
-	return style.configure(styleMarkdownLinkColor(value))
-}
-
-// MarkdownCodeTextColor sets the corresponding style property.
-func (style StyleBuilder) MarkdownCodeTextColor(value any) StyleBuilder {
-	return style.configure(styleMarkdownCodeTextColor(value))
-}
-
-// MarkdownBlockGap sets the corresponding style property.
-func (style StyleBuilder) MarkdownBlockGap(value any) StyleBuilder {
-	return style.configure(styleMarkdownBlockGap(value))
-}
-
-// MarkdownCodeFontSize sets the corresponding style property.
-func (style StyleBuilder) MarkdownCodeFontSize(value any) StyleBuilder {
-	return style.configure(styleMarkdownCodeFontSize(value))
-}
-
 // ScrollToEndRevision sets the corresponding style property.
 func (style StyleBuilder) ScrollToEndRevision(value any) StyleBuilder {
 	return style.configure(styleScrollToEndRevision(value))

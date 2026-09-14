@@ -1,5 +1,5 @@
 #!/usr/bin/env bun
-/** Build host, terminal, and updater images for each release target. */
+/** Build the host and optional extension images for each release target. */
 import { resolve } from "node:path";
 
 const root = resolve(import.meta.dir, "..");
@@ -21,4 +21,6 @@ for (const target of targets) {
   run(["bun", "packages/native/build.ts", "--target", target]);
   run(["bun", "packages/native/build.ts", "--extension", "terminal", "--target", target]);
   run(["bun", "packages/native/build.ts", "--extension", "updater", "--target", target]);
+  run(["bun", "packages/native/build.ts", "--extension", "editor", "--target", target]);
+  run(["bun", "packages/native/build.ts", "--extension", "markdown", "--target", target]);
 }

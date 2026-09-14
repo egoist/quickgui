@@ -1,8 +1,8 @@
-扩展可以是可复用组件的 TypeScript 包，也可以是应用可调用的原生库。先从 TypeScript 包开始。需要可选后端时再添加原生库。
+扩展可以提供普通 Solid 组件、保留状态的原生组件，或异步原生服务。Editor、Markdown 和 Terminal 是可选组件包，Updater 是可选服务。第三方包使用同一套 SDK，无需修改 `quickgui-host`。
 
 ## 选择扩展类型
 
-可复用的 Solid 组件使用普通 TypeScript 包。功能需要 Rust、Go 或 Zig 服务时，使用原生扩展。原生扩展加载到与应用相同的进程中。
+可复用的 Solid 界面使用普通 TypeScript 包。状态或渲染逻辑属于 Rust 时使用原生组件，异步操作使用原生服务。原生库在应用现有进程内运行并复用现有渲染器，不会再打包一份宿主。
 
 ## 创建扩展项目
 
@@ -32,9 +32,27 @@ export function PrimaryButton(props: JSX.NativeProps) {
 
 ## 组织原生扩展
 
-原生扩展交付 `quickgui.extension.json`、带版本的共享库，以及任何已声明的资源。清单命名服务、ABI、npm 包、版本和库。原生接口见 Go 的[编写扩展](/docs/go/extensions)指南，以及 [`native-extension` 示例](https://github.com/egoist/quickgui/tree/main/examples/native-extension)。
+一个组合扩展可以同时是 Go 模块和 npm 包。Rust 放在 `src/`，TypeScript 放在 `js/`，构建产物放在 `lib/<platform>-<arch>/`。根目录的清单声明包名、独立版本、ABI 和库名称。参见 [Go 扩展指南](/docs/go/extensions)及内置的 [`extensions/`](https://github.com/egoist/quickgui/tree/main/extensions) 包。
+
+```text
+Cargo.toml
+go.mod
+badge.go
+package.json
+quickgui.extension.json
+src/
+  lib.rs
+js/
+  index.ts
+lib/
+  darwin-arm64/libquickgui_acme_badge.dylib
+```
 
 ## 声明依赖
+
+```sh
+bun add @quickgui/extension-terminal
+```
 
 ```ts
 import { defineConfig } from "@quickgui/cli";
@@ -47,11 +65,29 @@ export default defineConfig({
 });
 ```
 
-把对应的 npm 包添加到应用依赖。自定义扩展可以使用诸如 `@acme/extension-echo` 这样的作用域名称。
+自定义扩展可以使用诸如 `@acme/extension-echo` 这样的作用域名称。
 
 ## 实现原生接口
 
-在原生库中实现 `invoke` 和 `shutdown`。返回前先复制借用的输入，把事件限定在所属会话内，并在会话停止时释放工作者。
+原生**组件**实现 `create`、`update`、`render`、`event` 和 `destroy`。Rust 作者使用 [`quickgui-extension-sdk`](https://github.com/egoist/quickgui/tree/main/crates/quickgui-extension-sdk) 的 `Component`、`ComponentFactory` 和 `ComponentRuntime`，SDK 不依赖渲染器。返回稳定键的基础节点，只请求可见虚拟行，后台任务完成时只唤醒所属实例，销毁时释放状态和唤醒句柄。
+
+TypeScript 绑定挂载已注册的组件并传入响应式属性：
+
+```ts
+import { ExtensionComponent } from "@quickgui/solid";
+
+export function Badge(props: { label: string }) {
+  return ExtensionComponent({
+    package: "acme-badge",
+    component: "badge",
+    get properties() { return { label: props.label }; },
+  });
+}
+```
+
+`onEvent(kind, value, event)` 接收组件输出，类型化公共 API 由绑定负责。宿主不会解释包专有的属性。
+
+原生**服务**则实现 `invoke` 和 `shutdown`。返回前复制要保留的借用输入，把事件限定在各自会话内，会话停止时释放工作线程。
 
 ## 自动注册
 
@@ -59,7 +95,7 @@ CLI 会打包已声明的扩展。应用在启动时加载它们，因此组件�
 
 ## 构建与打包产物
 
-原生实现变化后请重建原生库，然后再重建应用。清单中列出的资源会复制到库旁边。
+原生实现变化后重建原生库，再重建应用。清单中的资源会复制到库旁边。npm 包导出 `js/index.ts`。`@quickgui/*` 和 Solid 放在 `peerDependencies`，开发副本放在 `devDependencies`，不要再打包一份 QuickGUI 运行时。扩展 README 只保留构建说明，用户指南放在网站上。
 
 ## 测试与分发
 
@@ -67,7 +103,7 @@ CLI 会打包已声明的扩展。应用在启动时加载它们，因此组件�
 import { ExtensionSession, invokeExtension } from "@quickgui/native";
 
 const result = await invokeExtension("acme-service", "lookup", { key: "example" });
-const session = new ExtensionSession("acme-service", {}, event => console.log(event));
+const session = new ExtensionSession("acme-service", {}, (event) => console.log(event));
 await session.ready;
 await session.request("refresh", null);
 await session.close();

@@ -7,6 +7,8 @@ struct VertexInput {
     @location(4) content_type_with_srgb: u32,
     @location(5) depth: f32,
     @location(6) opacity: f32,
+    @location(7) mask_bounds: vec4<f32>,
+    @location(8) mask_radii: vec4<f32>,
 }
 
 struct VertexOutput {
@@ -16,6 +18,9 @@ struct VertexOutput {
     @location(2) @interpolate(flat) content_type: u32,
     @location(3) @interpolate(flat) opacity: f32,
     @location(4) @interpolate(flat) color_mode: u32,
+    @location(5) pixel_position: vec2<f32>,
+    @location(6) @interpolate(flat) mask_bounds: vec4<f32>,
+    @location(7) @interpolate(flat) mask_radii: vec4<f32>,
 };
 
 struct Params {
@@ -63,6 +68,9 @@ fn vs_main(in_vert: VertexInput) -> VertexOutput {
     pos = pos + vec2<i32>(corner_offset);
 
     var vert_output: VertexOutput;
+    vert_output.pixel_position = vec2<f32>(pos);
+    vert_output.mask_bounds = in_vert.mask_bounds;
+    vert_output.mask_radii = in_vert.mask_radii;
 
     vert_output.position = vec4<f32>(
         2.0 * vec2<f32>(pos) / vec2<f32>(params.screen_resolution) - 1.0,
@@ -119,10 +127,21 @@ fn vs_main(in_vert: VertexInput) -> VertexOutput {
 
 @fragment
 fn fs_main(in_frag: VertexOutput) -> @location(0) vec4<f32> {
+    var opacity = in_frag.opacity;
+    if in_frag.mask_bounds.z > 0.0 && in_frag.mask_bounds.w > 0.0 {
+        let p = in_frag.pixel_position - in_frag.mask_bounds.xy;
+        let half_size = in_frag.mask_bounds.zw * 0.5;
+        let top_radius = select(in_frag.mask_radii.x, in_frag.mask_radii.y, p.x > half_size.x);
+        let bottom_radius = select(in_frag.mask_radii.w, in_frag.mask_radii.z, p.x > half_size.x);
+        let radius = min(select(top_radius, bottom_radius, p.y > half_size.y), min(half_size.x, half_size.y));
+        let q = abs(p - half_size) - half_size + vec2<f32>(radius);
+        let distance = length(max(q, vec2<f32>(0.0))) + min(max(q.x, q.y), 0.0) - radius;
+        opacity *= clamp(0.5 - distance / max(fwidth(distance), 0.0001), 0.0, 1.0);
+    }
     switch in_frag.content_type {
         case 0u: {
             let sampled = textureSampleLevel(color_atlas_texture, atlas_sampler, in_frag.uv, 0.0);
-            return vec4<f32>(sampled.rgb, sampled.a * in_frag.opacity);
+            return vec4<f32>(sampled.rgb, sampled.a * opacity);
         }
         case 1u: {
             var coverage = textureSampleLevel(mask_atlas_texture, atlas_sampler, in_frag.uv, 0.0).x;
@@ -133,7 +152,7 @@ fn fs_main(in_frag: VertexOutput) -> @location(0) vec4<f32> {
                 in_frag.color.rgb,
                 in_frag.color.a
                     * coverage
-                    * in_frag.opacity,
+                    * opacity,
             );
         }
         default: {

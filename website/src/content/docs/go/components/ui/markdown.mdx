@@ -2,10 +2,14 @@ Renders retained Markdown, including an incremental mode for streaming content.
 
 ## Import
 
-Import `ui` from `github.com/egoist/quickgui/go/ui`.
+```sh
+go get github.com/egoist/quickgui/extensions/markdown github.com/egoist/quickgui/extensions/editor
+```
 
 ```go
 import (
+	"github.com/egoist/quickgui/extensions/editor"
+	"github.com/egoist/quickgui/extensions/markdown"
 	"github.com/egoist/quickgui/go/ui"
 )
 ```
@@ -13,15 +17,21 @@ import (
 ## Usage
 
 ```go
-func MarkdownExample(source func() string, streaming func() bool) *ui.Element {
-	return ui.Markdown().Value(source()).Streaming(streaming).Width("100%")
+func MarkdownExample(source string, streaming bool) *ui.Element {
+	return markdown.View(markdown.Props{
+		Value: source,
+		Streaming: streaming,
+		CodeBlockComponent: editor.HighlightedCodeBlock,
+	}).Width("100%")
 }
 ```
 
 ## Key props
 
-| Prop | Purpose |
-| --- | --- |
-| `Value` | Markdown source to shape and paint. |
-| `Streaming` | Uses incremental Markdown reconciliation for appended content. |
-| `ui.Style().BackgroundColor(...)`, `ui.Style().Padding(...)`, `ui.Style().Hover(...)` | QuickGUI layout, paint, typography, and interaction-state styles. |
+| Prop                                                                                  | Purpose                                                                               |
+| ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| `Value`                                                                               | Markdown source to shape and paint.                                                   |
+| `Streaming`                                                                           | Uses incremental Markdown reconciliation for appended content.                        |
+| `CodeBlockComponent`                                                                  | Set to `HighlightedCodeBlock` to render parsed fences with retained CodeBlock models. |
+| `CodeBlockMaxHeight`                                                                  | Limits one embedded CodeBlock before it scrolls.                                      |
+| `ui.Style().BackgroundColor(...)`, `ui.Style().Padding(...)`, `ui.Style().Hover(...)` | QuickGUI layout, paint, typography, and interaction-state styles.                     |

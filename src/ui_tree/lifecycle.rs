@@ -155,6 +155,7 @@ impl UiTree {
         let mut source_order = 0;
         collect_inspector_nodes(
             root,
+            &self.taffy,
             None,
             0,
             PaintLayerKey::default(),

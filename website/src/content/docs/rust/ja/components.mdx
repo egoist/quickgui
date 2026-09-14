@@ -18,7 +18,7 @@ impl View for Greeting {
 
 ## プリミティブ
 
-`div`、`text`、`button`、`text_input`、`text_area`、`Markdown`、`img`、`svg`、`custom_shader`、`VirtualList` が基本の部品です。`submit_button` はいちばん近い `form` を送信します。`Terminal` はクレート機能を有効にすると使えます。
+`div`、`text`、`button`、`text_input`、`text_area`、`img`、`svg`、`custom_shader`、`VirtualList` が基本の部品です。`submit_button` はいちばん近い `form` を送信します。[Markdown](/docs/rust/components/markdown) は `features = ["markdown"]`、[Editor](/docs/rust/components/editor)、[CodeBlock](/docs/rust/components/code-block)、[DiffView](/docs/rust/components/diff-view) は `features = ["editor"]` で利用でき、Terminal も任意機能です。
 
 ## 複合コンポーネント
 

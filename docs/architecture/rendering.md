@@ -177,6 +177,15 @@ a 12-point invisible hit track, a 4-point revealed thumb, and an 8-point hover/c
 topmost eligible track captures both thumb and track presses, keeps capture outside its bounds, and
 cannot click through to content. Scroll motion reveals it; leaving or releasing schedules one hide
 deadline. Pointer motion that does not cross a hover boundary schedules no redraw.
+Overflow clips descendants to the padding box, inside the border. Painting, geometry-only hit
+testing, and inspector traversal share that boundary, so scrolled content cannot overwrite a pane's
+divider or receive pointer events through it. Sticky positioning uses the same padding-box viewport.
+Rounded parent backgrounds do not implicitly mask descendants. Edge-reaching gutter backgrounds
+use matching inset radii; virtual row backgrounds anchor those radii to the stationary scroll
+viewport. Scrolling code clips separately from its frozen gutter. Explicit rounded text masks
+are carried in glyph instances and evaluated after rasterization, without reshaping or allocating
+offscreen surfaces. Solid highlight and selection fragments reuse rounded quads with rectangular
+slice clips. This keeps the corners intact without adding a blank content inset.
 
 Fixed-height `VirtualList` is an O(1) range calculator for very large data sets; it never allocates
 in `visible_rows()` and mounts only viewport rows plus configured overscan. A viewport bound with

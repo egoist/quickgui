@@ -8,9 +8,8 @@ export type NativeElementName =
   | "button"
   | "input"
   | "textarea"
-  | "markdown"
   | "virtual-list"
-  | "terminal"
+  | "extension"
   | "svg"
   | "image"
   | "shader"
@@ -36,7 +35,6 @@ export type NativeEventType =
   | "input"
   | "submit"
   | "dismiss"
-  | "terminal"
   | "pointer"
   | "presentationchange"
   | "menuselect"
@@ -160,12 +158,10 @@ function nativeNodeTag(name: NativeElementName): NativeNodeTag {
     case "input":
     case "textarea":
       return NativeNodeTag.Input;
-    case "markdown":
-      return NativeNodeTag.Markdown;
     case "virtual-list":
       return NativeNodeTag.VirtualList;
-    case "terminal":
-      return NativeNodeTag.Terminal;
+    case "extension":
+      return NativeNodeTag.Extension;
     case "svg":
       return NativeNodeTag.Svg;
     case "image":
@@ -269,8 +265,7 @@ export function setNativeEventListener(
     setNativeProperty(node, PropertyCode.SubmitListener, node.listeners.has("submit"));
   } else if (type === "dismiss") {
     setNativeProperty(node, PropertyCode.DismissListener, node.listeners.has("dismiss"));
-  } else if (type === "terminal") {
-    setNativeProperty(node, PropertyCode.TerminalStatusListener, node.listeners.has("terminal"));
+
   } else if (type === "pointer") {
     setNativeProperty(node, PropertyCode.PointerListener, node.listeners.has("pointer"));
   } else if (inputListenerProperties.has(type)) {

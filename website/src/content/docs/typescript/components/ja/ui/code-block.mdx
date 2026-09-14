@@ -1,0 +1,49 @@
+Tree-sitter カラーリングと論理行の仮想化を備えた、選択可能でキャレットのないコード表示です。
+
+既定では見た目のスタイルを持ちません。文字と行番号の色は継承され、背景、枠線、角丸、余白、構文・差分の配色は追加されません。外観はアプリ側で明示的に指定します。
+
+## インポート
+
+```sh
+bun add @quickgui/extension-editor
+```
+
+```tsx
+import { CodeBlock } from "@quickgui/extension-editor";
+```
+
+```ts
+// quickgui.config.ts
+extensions: ["@quickgui/extension-editor"]
+```
+
+## 使い方
+
+```tsx
+<CodeBlock
+  value={"export function answer(): number { return 42; }\n"}
+  language="typescript"
+  lineNumbers
+  wrap={false}
+  style={{ width: "100%", height: 280 }}
+/>
+```
+
+## シンタックスハイライト
+
+`language` は同梱の Tree-sitter 文法とハイライトクエリを選択します。キャプチャは `syntaxTheme` を通して前景色だけの範囲へ変換されるため、ハイライトはレイアウトを変えません。Rust コアはソースまたは言語が変わったときに解析し、スクロール時は論理行をマウントして事前計算済みの範囲を生成するだけです。解析は最大 2 MiB、32 KiB を超える単一行は通常色のまま、キャプチャ数にも上限があります。
+
+## 主なプロパティ
+
+| プロパティ         | 説明                                                           |
+| ------------------ | -------------------------------------------------------------- |
+| `value`            | UTF-8 ソース文字列またはリアクティブ式です。                   |
+| `language`         | `"typescript"`、`"rust"`、`"go"` などの同梱文法です。          |
+| `lineNumbers`      | 左端に固定された選択不可の論理行ガターを表示します。           |
+| `wrap`             | 横スクロールの代わりに長い行を折り返します。                   |
+| `gutterBackground` | 行番号ガターの背景色を上書きします。                           |
+| `gutterColor`      | 行番号の前景色を上書きします。                                 |
+| `syntaxTheme`      | 共有される 8 種類の Tree-sitter キャプチャ色を上書きします。   |
+| `style`            | 保持型コードブロックの QuickGUI レイアウトと描画スタイルです。 |
+
+CodeBlock は選択できますが、入力リスナー、キャレット、IME 状態、Undo スタック、フォーカスリングはありません。ユーザーがソースを編集する場合は Editor を使ってください。

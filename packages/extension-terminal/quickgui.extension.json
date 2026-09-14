@@ -1,8 +1,0 @@
-{
-  "schema": 1,
-  "name": "terminal",
-  "abi": 1,
-  "package": "@quickgui/extension-terminal",
-  "version": "0.1.4-next.4",
-  "library": "quickgui_terminal"
-}

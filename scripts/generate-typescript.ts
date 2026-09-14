@@ -21,7 +21,7 @@ const pascal = (name: string) =>
     .join("")
     .replaceAll("SwiftUi", "SwiftUI")
     .replaceAll("QuickGui", "QuickGUI");
-const limits = ["MAX_BATCH_BYTES", "MAX_MUTATIONS", "MAX_NODES", "MAX_STRING_BYTES"].map((name) => {
+const limits = ["MAX_BATCH_BYTES", "MAX_MUTATIONS", "MAX_NODES", "MAX_STRING_BYTES", "MAX_EXTENSION_PROPS_BYTES"].map((name) => {
   const expression = new RegExp(`const ${name}: usize = ([0-9_ *]+);`).exec(host)?.[1];
   if (!expression) throw new Error(`Missing ${name}`);
   const value = expression

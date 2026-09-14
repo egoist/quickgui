@@ -24,13 +24,19 @@ function Example() {
 
 ## Primitives
 
-`View`, `Text`, `Button`, `Input`, `TextArea`, `Markdown`, `Image`, `Svg`, `Shader`, and `VirtualList` are the building blocks. `TextInput` is the same as `Input`. `Terminal` is available when you add the terminal package.
+`View`, `Text`, `Button`, `Input`, `TextArea`, `Image`, `Svg`, `Shader`, and `VirtualList` are the building blocks. `TextInput` is the same as `Input`. `Terminal` is available when you add the terminal package.
+
+`bun add @quickgui/extension-editor` adds [Editor](/docs/typescript/components/editor), [CodeBlock](/docs/typescript/components/code-block), and [DiffView](/docs/typescript/components/diff-view).
+
+`bun add @quickgui/extension-markdown` adds [Markdown](/docs/typescript/components/markdown).
 
 ## Compound components
 
 ```tsx
 <Checkbox.Root checked={checked()} onCheckedChange={setChecked}>
-  <Checkbox.Indicator><Text>✓</Text></Checkbox.Indicator>
+  <Checkbox.Indicator>
+    <Text>✓</Text>
+  </Checkbox.Indicator>
   <Text>Remember this device</Text>
 </Checkbox.Root>
 ```
@@ -43,7 +49,7 @@ Pass the current value and a change callback, or use `defaultValue`, `defaultChe
 
 ```tsx
 const [name, setName] = createSignal("");
-<Input value={name()} onInput={event => setName(event.value ?? "")} />
+<Input value={name()} onInput={(event) => setName(event.value ?? "")} />;
 ```
 
 ## Component families

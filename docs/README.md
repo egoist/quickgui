@@ -19,6 +19,7 @@ The [architecture index](architecture/README.md) routes to focused notes:
 
 ## Tooling
 
+- [Editor, CodeBlock, and diff view](editor-and-diffs.md)
 - [TypeScript toolchain](typescript.md)
 - [Go toolchain](go.md)
 - [CLI and packaging](cli.md)

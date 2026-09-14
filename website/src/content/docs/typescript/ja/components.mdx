@@ -24,13 +24,19 @@ function Example() {
 
 ## プリミティブ
 
-`View`、`Text`、`Button`、`Input`、`TextArea`、`Markdown`、`Image`、`Svg`、`Shader`、`VirtualList` が基本の部品です。`TextInput` は `Input` と同じです。`Terminal` は terminal パッケージを追加すると使えます。
+`View`、`Text`、`Button`、`Input`、`TextArea`、`Image`、`Svg`、`Shader`、`VirtualList` が基本の部品です。`TextInput` は `Input` と同じです。`Terminal` は terminal パッケージを追加すると使えます。
+
+`bun add @quickgui/extension-editor` で [Editor](/docs/typescript/components/editor)、[CodeBlock](/docs/typescript/components/code-block)、[DiffView](/docs/typescript/components/diff-view) を追加できます。
+
+`bun add @quickgui/extension-markdown` で [Markdown](/docs/typescript/components/markdown) を追加できます。
 
 ## 複合コンポーネント
 
 ```tsx
 <Checkbox.Root checked={checked()} onCheckedChange={setChecked}>
-  <Checkbox.Indicator><Text>✓</Text></Checkbox.Indicator>
+  <Checkbox.Indicator>
+    <Text>✓</Text>
+  </Checkbox.Indicator>
   <Text>Remember this device</Text>
 </Checkbox.Root>
 ```
@@ -43,7 +49,7 @@ function Example() {
 
 ```tsx
 const [name, setName] = createSignal("");
-<Input value={name()} onInput={event => setName(event.value ?? "")} />
+<Input value={name()} onInput={(event) => setName(event.value ?? "")} />;
 ```
 
 ## コンポーネントの種類

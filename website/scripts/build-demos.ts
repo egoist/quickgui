@@ -1,7 +1,7 @@
 import { buildDemoSources } from "./build-demo-sources";
 import { ensureWasmBindgen } from "./wasm-bindgen";
 import { createHash } from "node:crypto";
-import { mkdir, readFile, writeFile, cp, rm, readdir, } from "node:fs/promises";
+import { mkdir, readFile, writeFile, cp, rm, readdir } from "node:fs/promises";
 import { resolve } from "node:path";
 
 const root = resolve(import.meta.dir, "../..");
@@ -10,9 +10,36 @@ async function writeChanged(path: string, content: string) {
     await writeFile(path, content);
   }
 }
-async function run(args: string[]) {
-  const child = Bun.spawn(args, { cwd: root, stdout: "inherit", stderr: "inherit" });
+async function run(args: string[], env: Record<string, string | undefined> = {}) {
+  const child = Bun.spawn(args, {
+    cwd: root,
+    env: { ...process.env, ...env },
+    stdout: "inherit",
+    stderr: "inherit",
+  });
   if (await child.exited) throw new Error(`Command failed: ${args.join(" ")}`);
+}
+
+function macosRustToolEnvironment(): Record<string, string | undefined> {
+  if (process.platform !== "darwin") return {};
+  const result = Bun.spawnSync(["rustc", "--print", "sysroot"], {
+    cwd: root,
+    stdout: "pipe",
+    stderr: "pipe",
+  });
+  if (result.exitCode !== 0) {
+    throw new Error(`Could not locate the Rust sysroot: ${result.stderr.toString().trim()}`);
+  }
+  const llvmDirectory = resolve(result.stdout.toString().trim(), "lib");
+  return {
+    // Compiler cache wrappers may discard the dynamic-library path before rustc launches the
+    // toolchain's dynamically linked rust-lld. Keep this size-optimized WASM link deterministic.
+    CARGO_BUILD_RUSTC_WRAPPER: "",
+    RUSTC_WRAPPER: "",
+    DYLD_LIBRARY_PATH: [llvmDirectory, process.env.DYLD_LIBRARY_PATH]
+      .filter((entry): entry is string => Boolean(entry))
+      .join(":"),
+  };
 }
 const source = await readFile(resolve(root, "crates/quickgui-docs-demo/src/lib.rs"), "utf8");
 const ids = [
@@ -24,18 +51,20 @@ await writeChanged(
 );
 if (process.argv.includes("--catalog-only")) process.exit(0);
 const wasmBindgen = await ensureWasmBindgen(root);
-await rm("public/demos", { recursive: true })
-await run([
-  "cargo",
-  "build",
-  "--locked",
-  "-p",
-  "quickgui-docs-demo",
-  "--target",
-  "wasm32-unknown-unknown",
-  "--profile",
-  "docs-wasm",
-]);
+await run(
+  [
+    "cargo",
+    "build",
+    "--locked",
+    "-p",
+    "quickgui-docs-demo",
+    "--target",
+    "wasm32-unknown-unknown",
+    "--profile",
+    "docs-wasm",
+  ],
+  macosRustToolEnvironment(),
+);
 const wasm = resolve(root, "target/wasm32-unknown-unknown/docs-wasm/quickgui_docs_demo.wasm");
 const hash = createHash("sha256")
   .update(await readFile(wasm))

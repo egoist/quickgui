@@ -24,13 +24,19 @@ function Example() {
 
 ## 基础组件
 
-`View`、`Text`、`Button`、`Input`、`TextArea`、`Markdown`、`Image`、`Svg`、`Shader` 和 `VirtualList` 是基础构件。`TextInput` 与 `Input` 相同。添加终端包后可以使用 `Terminal`。
+`View`、`Text`、`Button`、`Input`、`TextArea`、`Image`、`Svg`、`Shader` 和 `VirtualList` 是基础构件。`TextInput` 与 `Input` 相同。添加终端包后可以使用 `Terminal`。
+
+运行 `bun add @quickgui/extension-editor` 可添加 [Editor](/docs/typescript/components/editor)、[CodeBlock](/docs/typescript/components/code-block) 和 [DiffView](/docs/typescript/components/diff-view)。
+
+运行 `bun add @quickgui/extension-markdown` 可添加 [Markdown](/docs/typescript/components/markdown)。
 
 ## 复合组件
 
 ```tsx
 <Checkbox.Root checked={checked()} onCheckedChange={setChecked}>
-  <Checkbox.Indicator><Text>✓</Text></Checkbox.Indicator>
+  <Checkbox.Indicator>
+    <Text>✓</Text>
+  </Checkbox.Indicator>
   <Text>Remember this device</Text>
 </Checkbox.Root>
 ```
@@ -43,7 +49,7 @@ function Example() {
 
 ```tsx
 const [name, setName] = createSignal("");
-<Input value={name()} onInput={event => setName(event.value ?? "")} />
+<Input value={name()} onInput={(event) => setName(event.value ?? "")} />;
 ```
 
 ## 组件类别

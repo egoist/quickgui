@@ -7,9 +7,9 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/egoist/quickgui/extensions/terminal"
 	"github.com/egoist/quickgui/go/native"
 	"github.com/egoist/quickgui/go/reactive"
-	"github.com/egoist/quickgui/go/terminal"
 )
 
 type space struct{ ID, Name, Path string }

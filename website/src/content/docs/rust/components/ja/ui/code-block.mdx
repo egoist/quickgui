@@ -1,0 +1,43 @@
+Tree-sitter カラーリングと論理行の仮想化を備えた、選択可能でキャレットのないコード表示です。
+
+既定では見た目のスタイルを持ちません。文字と行番号の色は継承され、背景、枠線、角丸、余白、構文・差分の配色は追加されません。外観はアプリ側で明示的に指定します。
+
+## インポート
+
+QuickGUI の任意の `editor` crate feature を有効にし、保持型コードブロックの型をインポートします。
+
+```rust
+use quickgui::{CodeBlock, CodeBlockStyle, SyntaxLanguage};
+```
+
+## 使い方
+
+```rust
+let code = CodeBlock::with_text("pub fn answer() -> u8 { 42 }\n")
+    .with_language(SyntaxLanguage::Rust)
+    .with_style(CodeBlockStyle::default().line_numbers(true));
+
+code.element("example-code").h(280.0)
+```
+
+## シンタックスハイライト
+
+`SyntaxLanguage` は同梱の Tree-sitter 文法とハイライトクエリを選択します。キャプチャは 8 種類の安定した `SyntaxTheme` クラスへ平坦化され、前景色だけの `HighlightStyle` 範囲として適用されるため、色はテキスト寸法を変えません。解析はソースまたは言語が変わったときに行い、スクロール時は行をマウントして対応する `StyledText` を遅延生成するだけです。解析は最大 2 MiB、32 KiB を超える単一行は通常色のまま、キャプチャ数にも上限があります。
+
+## 主なプロパティ
+
+| プロパティ                     | 説明                                                                           |
+| ------------------------------ | ------------------------------------------------------------------------------ |
+| `CodeBlock::with_text`         | 上限付きの保持型ソースモデルを作成します。                                     |
+| `set_text`                     | ソースが変わったときに内容を置き換え、論理スクロール位置をリセットします。     |
+| `set_language`                 | 同梱の Tree-sitter 文法を選択します。                                          |
+| `CodeBlockStyle::line_numbers` | 左端に固定された選択不可の論理行ガターを表示します。                           |
+| `CodeBlockStyle::word_wrap`    | 長い行を折り返し、横スクロールを無効にします。                                 |
+| `CodeBlockStyle::syntax_theme` | 共有される 8 種類の Tree-sitter キャプチャ色を上書きします。                   |
+| `element`                      | 安定した要素 ID で、選択可能かつキャレットのない仮想化サーフェスを構築します。 |
+
+<Note>
+  `quickgui` 依存関係に `features = ["editor"]`
+  を追加してください。仮想スクロールの測定値と遅延生成した行を安定させるため、ソースごとに 1 つの
+  CodeBlock モデルを保持します。
+</Note>

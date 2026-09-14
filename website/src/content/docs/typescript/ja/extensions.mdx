@@ -1,8 +1,8 @@
-拡張は、再利用できるコンポーネントの TypeScript パッケージか、アプリから呼び出せるネイティブライブラリです。まずは TypeScript パッケージから始めます。オプションのバックエンドが必要なときにネイティブライブラリを追加します。
+拡張は、通常の Solid コンポーネント、状態を保持するネイティブコンポーネント、非同期ネイティブサービスを提供できます。Editor、Markdown、Terminal は任意のコンポーネントパッケージ、Updater は任意のサービスです。第三者のパッケージも同じ SDK を使い、`quickgui-host` の変更は不要です。
 
 ## 拡張の種類を選ぶ
 
-再利用する Solid コンポーネントには、通常の TypeScript パッケージを使います。機能に Rust、Go、Zig のサービスが必要なときはネイティブ拡張を使います。ネイティブ拡張はアプリと同じプロセスに読み込まれます。
+再利用可能な Solid UI には通常の TypeScript パッケージを使います。Rust が状態や描画ロジックを所有する場合はネイティブコンポーネント、非同期処理にはネイティブサービスを使います。ネイティブライブラリはアプリの既存プロセスとレンダラーを使い、別のホストを同梱しません。
 
 ## 拡張プロジェクトを作成する
 
@@ -32,9 +32,27 @@ export function PrimaryButton(props: JSX.NativeProps) {
 
 ## ネイティブ拡張の構成
 
-ネイティブ拡張は `quickgui.extension.json`、バージョン付き共有ライブラリ、宣言したリソースを同梱します。マニフェストはサービス、ABI、npm パッケージ、バージョン、ライブラリの名前を指定します。ネイティブ契約については Go の[拡張の作成](/docs/go/extensions)ガイドと、[`native-extension` の例](https://github.com/egoist/quickgui/tree/main/examples/native-extension)を参照してください。
+複合拡張は Go モジュールと npm パッケージを兼ねられます。Rust は `src/`、TypeScript は `js/`、ビルド成果物は `lib/<platform>-<arch>/` に置きます。ルートのマニフェストに名前、独立したバージョン、ABI、ライブラリ名を記述します。[Go の作成ガイド](/docs/go/extensions)と組み込みの [`extensions/`](https://github.com/egoist/quickgui/tree/main/extensions) パッケージも参照してください。
+
+```text
+Cargo.toml
+go.mod
+badge.go
+package.json
+quickgui.extension.json
+src/
+  lib.rs
+js/
+  index.ts
+lib/
+  darwin-arm64/libquickgui_acme_badge.dylib
+```
 
 ## 依存関係の宣言
+
+```sh
+bun add @quickgui/extension-terminal
+```
 
 ```ts
 import { defineConfig } from "@quickgui/cli";
@@ -47,11 +65,29 @@ export default defineConfig({
 });
 ```
 
-対応する npm パッケージをアプリケーションの依存関係に追加します。独自の拡張では `@acme/extension-echo` のようなスコープ付きの名前を使えます。
+独自の拡張では `@acme/extension-echo` のようなスコープ付きの名前を使えます。
 
 ## ネイティブインターフェースを実装する
 
-ネイティブライブラリで `invoke` と `shutdown` を実装します。返す前に借用した入力をコピーし、イベントはそれぞれのセッションに限定し、セッションが止まったらワーカーを解放します。
+ネイティブ**コンポーネント**は `create`、`update`、`render`、`event`、`destroy` を実装します。Rust ではレンダラーに依存しない [`quickgui-extension-sdk`](https://github.com/egoist/quickgui/tree/main/crates/quickgui-extension-sdk) の `Component`、`ComponentFactory`、`ComponentRuntime` を使います。安定したキーのプリミティブを返し、仮想リストは表示行だけを要求します。バックグラウンド処理が完了したら所有インスタンスだけを起こし、破棄時に状態と wake ハンドルを解放します。
+
+TypeScript バインディングは登録済みコンポーネントをマウントし、リアクティブなプロパティを渡します：
+
+```ts
+import { ExtensionComponent } from "@quickgui/solid";
+
+export function Badge(props: { label: string }) {
+  return ExtensionComponent({
+    package: "acme-badge",
+    component: "badge",
+    get properties() { return { label: props.label }; },
+  });
+}
+```
+
+`onEvent(kind, value, event)` がコンポーネントの出力を受け取ります。型付き公開 API はバインディングが所有し、ホストはパッケージ固有のプロパティを解釈しません。
+
+ネイティブ**サービス**は代わりに `invoke` と `shutdown` を実装します。保持する借用入力は戻る前にコピーし、イベントをセッションに限定し、停止時にワーカーを解放してください。
 
 ## 自動登録
 
@@ -59,7 +95,7 @@ CLI は宣言された拡張をバンドルします。アプリは起動時に�
 
 ## 成果物のビルドとパッケージ化
 
-実装が変わったらネイティブライブラリを再ビルドし、そのあとアプリを再ビルドします。マニフェストに列挙したリソースは、ライブラリの隣にコピーされます。
+実装が変わったらネイティブライブラリを再ビルドし、その後アプリを再ビルドします。マニフェスト内のリソースはライブラリの隣にコピーされます。npm パッケージは `js/index.ts` を公開します。`@quickgui/*` と Solid は `peerDependencies`、開発用コピーは `devDependencies` に置き、別の QuickGUI ランタイムを同梱しないでください。README はビルド手順だけにし、利用ガイドはウェブサイトに置きます。
 
 ## テストと配布
 
@@ -67,7 +103,7 @@ CLI は宣言された拡張をバンドルします。アプリは起動時に�
 import { ExtensionSession, invokeExtension } from "@quickgui/native";
 
 const result = await invokeExtension("acme-service", "lookup", { key: "example" });
-const session = new ExtensionSession("acme-service", {}, event => console.log(event));
+const session = new ExtensionSession("acme-service", {}, (event) => console.log(event));
 await session.ready;
 await session.request("refresh", null);
 await session.close();

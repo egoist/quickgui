@@ -1,0 +1,56 @@
+A virtualized split or unified file diff with synchronized rows and independent pane scrolling.
+
+Unstyled by default: text and line-number colors inherit, and the component adds no background, border, rounding, padding, or syntax/diff palette. Supply application styles and explicit colors to opt into an appearance.
+
+## Import
+
+```sh
+bun add @quickgui/extension-editor
+```
+
+```tsx
+import { DiffView } from "@quickgui/extension-editor";
+```
+
+```ts
+// quickgui.config.ts
+extensions: ["@quickgui/extension-editor"]
+```
+
+## Usage
+
+```tsx
+<DiffView
+  oldPath="before.ts"
+  newPath="after.ts"
+  oldText={"export const answer = 41;\n"}
+  newText={"export const answer = 42;\n"}
+  options={{
+    layout: "split",
+    indicators: "bars",
+    lineNumbers: true,
+    language: "typescript",
+  }}
+  style={{ width: "100%", height: 420 }}
+/>
+```
+
+## Syntax highlighting
+
+DiffView uses the same bundled Tree-sitter grammars as Editor. When its document, language, or syntax palette changes, the Rust core parses each visible old/new file lane once and assigns capture fragments to logical rows. Styled text is materialized and cached only when a row is mounted, with inline addition/deletion emphasis merged at non-overlapping byte boundaries. Scrolling never invokes the parser.
+
+## Key props
+
+| Prop                  | Purpose                                                                    |
+| --------------------- | -------------------------------------------------------------------------- |
+| `oldText` / `newText` | Complete controlled source pair.                                           |
+| `oldPath` / `newPath` | File labels and language-inference paths.                                  |
+| `patch`               | Captured Git or ordinary unified patch; use it instead of the source pair. |
+| `options.layout`      | `"split"` or `"unified"`.                                                  |
+| `options.indicators`  | `"bars"`, `"classic"`, or `"none"`.                                        |
+| `options.wrap`        | Wraps long lines instead of enabling horizontal scrolling.                 |
+| `options.backgrounds` | Enables addition and deletion line backgrounds.                            |
+| `theme`               | Overrides diff, gutter, hunk, and inline-change colors.                    |
+| `syntaxTheme`         | Overrides lexical token colors.                                            |
+
+Split panes retain independent horizontal offsets and one synchronized vertical offset. Only visible rows plus bounded overscan are mounted.

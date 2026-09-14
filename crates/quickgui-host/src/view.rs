@@ -6,10 +6,9 @@ pub(super) struct NativeView {
     pub(super) handles: Option<Rc<RefCell<HashMap<WindowHandle, u32>>>>,
     pub(super) tree: Rc<RefCell<NativeTree>>,
     pub(super) events: EventQueue,
-    pub(super) markdown: Rc<RefCell<HashMap<u32, Markdown>>>,
+    pub(super) extensions: Rc<RefCell<HashMap<u32, NativeExtensionState>>>,
     pub(super) svgs: Rc<RefCell<HashMap<u32, NativeSvgState>>>,
     pub(super) lists: Rc<RefCell<HashMap<u32, NativeListState>>>,
-    pub(super) terminals: Rc<RefCell<HashMap<u32, NativeTerminalState>>>,
     /// Retained decoded image sources keyed by their declaring node.
     pub(super) images: Rc<RefCell<HashMap<u32, NativeImageState>>>,
     /// Retained decoded raster backgrounds keyed by their declaring node.
@@ -288,10 +287,9 @@ impl NativeView {
 }
 
 pub(super) struct NativeElementStates<'a> {
-    pub(super) markdown: &'a mut HashMap<u32, Markdown>,
+    pub(super) extensions: &'a mut HashMap<u32, NativeExtensionState>,
     pub(super) svgs: &'a mut HashMap<u32, NativeSvgState>,
     pub(super) lists: &'a mut HashMap<u32, NativeListState>,
-    pub(super) terminals: &'a mut HashMap<u32, NativeTerminalState>,
     /// Derived component-part element identities already mounted in this render pass.
     ///
     /// Nodes without a `part` property keep their unique node-derived identity and never touch
@@ -1066,11 +1064,11 @@ impl NativeView {
             self.components.sync(&tree, window, &self.events);
         }
         let components = &mut self.components;
-        let mut markdown = self.markdown.borrow_mut();
-        markdown.retain(|id, _| {
+        let mut extensions = self.extensions.borrow_mut();
+        extensions.retain(|id, _| {
             tree.nodes
                 .get(id)
-                .is_some_and(|node| node.tag == NodeTag::Markdown)
+                .is_some_and(|node| node.tag == NodeTag::Extension)
         });
         let mut svgs = self.svgs.borrow_mut();
         svgs.retain(|id, _| {
@@ -1083,12 +1081,6 @@ impl NativeView {
             tree.nodes
                 .get(id)
                 .is_some_and(|node| node.tag == NodeTag::VirtualList)
-        });
-        let mut terminals = self.terminals.borrow_mut();
-        terminals.retain(|id, _| {
-            tree.nodes
-                .get(id)
-                .is_some_and(|node| node.tag == NodeTag::Terminal)
         });
         let mut images = self.images.borrow_mut();
         images.retain(|id, _| {
@@ -1133,10 +1125,9 @@ impl NativeView {
         if let Some(node) = tree.nodes.get(&ROOT_NODE) {
             let mut part_ids = HashSet::new();
             let mut states = NativeElementStates {
-                markdown: &mut markdown,
+                extensions: &mut extensions,
                 svgs: &mut svgs,
                 lists: &mut lists,
-                terminals: &mut terminals,
                 part_ids: &mut part_ids,
                 portals: Vec::new(),
                 images: &mut images,
@@ -1342,31 +1333,95 @@ fn build_element_inner(
             }
             input
         }
-        NodeTag::Markdown => {
-            let mut markdown_style = MarkdownStyle::default();
-            markdown_style.text_color = node.color(property::COLOR);
-            markdown_style.font_size = node
-                .number(property::FONT_SIZE)
-                .unwrap_or(markdown_style.font_size);
-            markdown_style.line_height = node
-                .number(property::LINE_HEIGHT)
-                .unwrap_or(markdown_style.line_height);
-            markdown_style.code_background = node.color(property::MARKDOWN_CODE_BACKGROUND);
-            markdown_style.border_color = node.color(property::MARKDOWN_BORDER_COLOR);
-            markdown_style.muted_color = node.color(property::MARKDOWN_MUTED_COLOR);
-            markdown_style.link_color = node.color(property::MARKDOWN_LINK_COLOR);
-            markdown_style.code_text_color = node.color(property::MARKDOWN_CODE_TEXT_COLOR);
-            markdown_style.block_gap = node
-                .number(property::MARKDOWN_BLOCK_GAP)
-                .unwrap_or(markdown_style.block_gap);
-            markdown_style.code_font_size = node
-                .number(property::MARKDOWN_CODE_FONT_SIZE)
-                .unwrap_or(markdown_style.code_font_size);
-            let state = states.markdown.entry(id).or_default();
-            state.set_streaming(node.boolean(property::STREAMING).unwrap_or(false));
-            state.set_style(markdown_style);
-            state.set_text(node.string(property::VALUE).unwrap_or_default());
-            state.element(element_id)
+        NodeTag::Extension => {
+            let package = node.string(property::EXTENSION_PACKAGE).unwrap_or_default();
+            let name = node
+                .string(property::EXTENSION_COMPONENT)
+                .unwrap_or_default();
+            let props = node.string(property::EXTENSION_PROPS).unwrap_or("{}");
+            let result = (|| -> Result<Element, String> {
+                let mut props: serde_json::Value =
+                    serde_json::from_str(props).map_err(|error| error.to_string())?;
+                // Standard root styles are available to every component package, including
+                // bindings whose reusable style builder is opaque to application code.
+                if let Some(properties) = props.as_object_mut() {
+                    let style = properties
+                        .entry("style")
+                        .or_insert_with(|| serde_json::json!({}));
+                    if !style.is_object() {
+                        *style = serde_json::json!({});
+                    }
+                    for (key, name) in [
+                        (property::FONT_SIZE, "fontSize"),
+                        (property::LINE_HEIGHT, "lineHeight"),
+                        (property::FONT_FAMILY, "fontFamily"),
+                        (property::COLOR, "color"),
+                        (property::BACKGROUND_COLOR, "backgroundColor"),
+                        (property::BORDER_COLOR, "borderColor"),
+                        (property::BORDER_WIDTH, "borderWidth"),
+                        (property::BORDER_RADIUS, "borderRadius"),
+                        (property::PADDING, "padding"),
+                        (property::PADDING_TOP, "paddingTop"),
+                        (property::PADDING_RIGHT, "paddingRight"),
+                        (property::PADDING_BOTTOM, "paddingBottom"),
+                        (property::PADDING_LEFT, "paddingLeft"),
+                    ] {
+                        if let Some(value) = node.property(key) {
+                            style[name] = match value {
+                                PropertyValue::Number(value) => serde_json::json!(value),
+                                PropertyValue::Color(value) => serde_json::json!(value),
+                                PropertyValue::String(value) => serde_json::json!(value.as_ref()),
+                                PropertyValue::Bool(value) => serde_json::json!(value),
+                            };
+                        }
+                    }
+                }
+                if states
+                    .extensions
+                    .get(&id)
+                    .is_none_or(|state| state.package != package || state.name != name)
+                {
+                    let events = Rc::clone(events);
+                    let component = quickgui::ExtensionComponent::new(
+                        package,
+                        name,
+                        props.clone(),
+                        element_id,
+                        cx.window_invalidator(),
+                        move |kind, value| {
+                            enqueue_event(
+                                &events,
+                                QueuedEvent {
+                                    kind: "componentchange",
+                                    window,
+                                    target: id,
+                                    value: Some(
+                                        serde_json::json!({"kind":kind,"value":value})
+                                            .to_string()
+                                            .into(),
+                                    ),
+                                },
+                            );
+                        },
+                    )?;
+                    states.extensions.insert(
+                        id,
+                        NativeExtensionState {
+                            package: package.into(),
+                            name: name.into(),
+                            component,
+                        },
+                    );
+                }
+                let component = &states.extensions.get(&id).unwrap().component;
+                component.set_props(&props)?;
+                component.element(cx)
+            })();
+            result.unwrap_or_else(|error| {
+                div()
+                    .child(text(error))
+                    .text_color(Color::rgb8(248, 113, 113))
+            })
         }
         NodeTag::Image => {
             let source = node.string(property::VALUE).unwrap_or_default();
@@ -1396,76 +1451,6 @@ fn build_element_inner(
             state.element()
         }
         NodeTag::VirtualList => div(),
-        NodeTag::Terminal => {
-            let state = states
-                .terminals
-                .entry(id)
-                .or_insert_with(|| NativeTerminalState::new(node, cx));
-            state.sync(node, cx);
-            let terminal = state.terminal.clone();
-            if let Some(terminal) = terminal {
-                let snapshot = terminal.snapshot();
-                if node
-                    .boolean(property::TERMINAL_STATUS_LISTENER)
-                    .unwrap_or(false)
-                {
-                    let value = terminal_event_json(&snapshot);
-                    if state.last_event.as_deref() != Some(value.as_str()) {
-                        state.last_event = Some(Arc::from(value.as_str()));
-                        enqueue_event(
-                            events,
-                            QueuedEvent {
-                                kind: "terminal",
-                                window,
-                                target: id,
-                                value: Some(value.into()),
-                            },
-                        );
-                    }
-                } else {
-                    state.last_event = None;
-                }
-                terminal.element(
-                    element_id,
-                    TerminalStyle {
-                        font_family: node
-                            .string(property::FONT_FAMILY)
-                            .and_then(native_font_family)
-                            .unwrap_or(quickgui::FontFamily::Monospace),
-                        font_size: node.number(property::FONT_SIZE).unwrap_or(13.0),
-                        line_height: node.number(property::LINE_HEIGHT).unwrap_or(18.0),
-                        font_thicken: node
-                            .boolean(property::TERMINAL_FONT_THICKEN)
-                            .unwrap_or(false),
-                        padding_top: terminal_padding(node, property::PADDING_TOP),
-                        padding_right: terminal_padding(node, property::PADDING_RIGHT),
-                        padding_bottom: terminal_padding(node, property::PADDING_BOTTOM),
-                        padding_left: terminal_padding(node, property::PADDING_LEFT),
-                        padding_color: match node.string(property::TERMINAL_PADDING_COLOR) {
-                            Some("extend") => TerminalPaddingColor::Extend,
-                            _ => TerminalPaddingColor::Background,
-                        },
-                        foreground: node.color(property::COLOR),
-                        background: node.color(property::BACKGROUND_COLOR),
-                        theme: native_terminal_theme(node),
-                        ..TerminalStyle::default()
-                    },
-                    cx,
-                )
-            } else {
-                div()
-                    .size_full()
-                    .bg(Color::rgb8(20, 20, 20))
-                    .text_color(Color::rgb8(248, 113, 113))
-                    .font_family(quickgui::FontFamily::Monospace)
-                    .text_sm()
-                    .p_4()
-                    .child(text(format!(
-                        "QuickGUI terminal error\n\n{}",
-                        state.error().unwrap_or("unknown terminal error")
-                    )))
-            }
-        }
         NodeTag::SwiftUiHost => {
             #[cfg(target_os = "macos")]
             {
@@ -1815,11 +1800,10 @@ fn build_element_inner(
         NodeTag::Text
         | NodeTag::Sentinel
         | NodeTag::Input
-        | NodeTag::Markdown
         | NodeTag::Svg
         | NodeTag::Image
         | NodeTag::Shader
-        | NodeTag::Terminal => {}
+        | NodeTag::Extension => {}
         NodeTag::SwiftUiHost
         | NodeTag::SwiftUiButton
         | NodeTag::SwiftUiSlider
@@ -1845,6 +1829,12 @@ fn build_element_inner(
         }
     }
     Some(element)
+}
+
+pub(super) struct NativeExtensionState {
+    package: String,
+    name: String,
+    component: quickgui::ExtensionComponent,
 }
 
 /// Keep an ordinary child in place, or lift a viewport portal out to mount under the window root.
@@ -1903,42 +1893,6 @@ pub(super) fn enqueue_event(events: &EventQueue, event: QueuedEvent) {
     if first {
         HOST.wake();
     }
-}
-
-pub(super) fn terminal_event_json(snapshot: &quickgui::TerminalSnapshot) -> String {
-    let mut event = serde_json::json!({
-        "status": snapshot.status.kind(),
-        "title": snapshot.title.as_ref(),
-        "workingDirectory": snapshot.working_directory.as_ref(),
-    });
-    let object = event
-        .as_object_mut()
-        .expect("terminal event JSON starts as an object");
-    match &snapshot.status {
-        TerminalStatus::Starting => {}
-        TerminalStatus::Running { process_id } => {
-            object.insert("processId".to_owned(), serde_json::json!(process_id));
-        }
-        TerminalStatus::Exited { exit_code, signal } => {
-            object.insert("exitCode".to_owned(), serde_json::json!(exit_code));
-            object.insert("signal".to_owned(), serde_json::json!(signal.as_deref()));
-        }
-        TerminalStatus::Failed { message } => {
-            object.insert("message".to_owned(), serde_json::json!(message.as_ref()));
-        }
-    }
-    if let Some(agent) = &snapshot.agent {
-        object.insert("agent".to_owned(), serde_json::json!(agent.kind.as_ref()));
-        object.insert(
-            "agentStatus".to_owned(),
-            serde_json::json!(agent.status.kind()),
-        );
-        object.insert(
-            "agentProcessId".to_owned(),
-            serde_json::json!(agent.process_id),
-        );
-    }
-    event.to_string()
 }
 
 pub(super) fn pointer_event_json(event: &quickgui::PointerEvent) -> String {
@@ -2802,10 +2756,9 @@ pub(super) fn apply_properties(mut element: Element, node: &NativeNode) -> Eleme
     let padding_right = node.number(property::PADDING_RIGHT).unwrap_or(padding);
     let padding_bottom = node.number(property::PADDING_BOTTOM).unwrap_or(padding);
     let padding_left = node.number(property::PADDING_LEFT).unwrap_or(padding);
-    if node.tag != NodeTag::Terminal
-        && [padding_top, padding_right, padding_bottom, padding_left]
-            .iter()
-            .any(|value| *value != 0.0)
+    if [padding_top, padding_right, padding_bottom, padding_left]
+        .iter()
+        .any(|value| *value != 0.0)
     {
         element = element.padding(padding_top, padding_right, padding_bottom, padding_left);
     }
@@ -3112,12 +3065,6 @@ pub(super) fn apply_properties(mut element: Element, node: &NativeNode) -> Eleme
     element
 }
 
-pub(super) fn terminal_padding(node: &NativeNode, side: u16) -> f32 {
-    node.number(side)
-        .or_else(|| node.number(property::PADDING))
-        .unwrap_or(0.0)
-}
-
 pub(super) enum DimensionKind {
     Width,
     Height,
@@ -3187,21 +3134,6 @@ pub(super) fn native_font_family(value: &str) -> Option<quickgui::FontFamily> {
         }
         _ => None,
     }
-}
-
-pub(super) fn native_terminal_theme(node: &NativeNode) -> Option<TerminalTheme> {
-    let encoded = node.string(property::TERMINAL_PALETTE)?;
-    let packed = serde_json::from_str::<Vec<u32>>(encoded).ok()?;
-    let packed: [u32; TERMINAL_ANSI_COLOR_COUNT] = packed.try_into().ok()?;
-    let ansi = packed.map(unpack_color);
-    let foreground = node.color(property::COLOR)?;
-    let background = node.color(property::BACKGROUND_COLOR)?;
-    Some(
-        TerminalTheme::new(foreground, background, ansi).cursor(
-            node.color(property::TERMINAL_CURSOR_COLOR)
-                .unwrap_or(foreground),
-        ),
-    )
 }
 
 pub(super) fn font_weight(value: Option<&PropertyValue>) -> Option<FontWeight> {

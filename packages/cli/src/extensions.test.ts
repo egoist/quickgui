@@ -167,13 +167,13 @@ test("installed third-party packages resolve without core checkout integration",
   );
 });
 
-test("a stale resolved package does not hide a later matching checkout artifact", async () => {
+test("a source checkout takes precedence over a matching cached package artifact", async () => {
   const root = temporary();
   delete process.env.QUICKGUI_EXTENSION_DIR;
   const requested = {
     ...terminal,
     version: JSON.parse(
-      readFileSync(new URL("../../extension-terminal/package.json", import.meta.url), "utf8"),
+      readFileSync(new URL("../../../extensions/terminal/package.json", import.meta.url), "utf8"),
     ).version as string,
   };
   const stale = join(root, "node_modules/@quickgui/extension-terminal");
@@ -183,12 +183,12 @@ test("a stale resolved package does not hide a later matching checkout artifact"
     join(stale, "package.json"),
     JSON.stringify({
       name: requested.package,
-      version: "0.0.1",
+      version: requested.version,
       exports: { "./package.json": "./package.json" },
     }),
   );
   writeFileSync(join(staleStage, extensionLibraryName(requested, "darwin-arm64")), "stale");
-  const checkout = join(import.meta.dir, "..", "..", "extension-terminal");
+  const checkout = join(import.meta.dir, "..", "..", "..", "extensions", "terminal");
   const checkoutStage = join(checkout, "lib/darwin-arm64");
   const checkoutLibrary = join(checkoutStage, extensionLibraryName(requested, "darwin-arm64"));
   const previous = existsSync(checkoutLibrary) ? readFileSync(checkoutLibrary) : undefined;

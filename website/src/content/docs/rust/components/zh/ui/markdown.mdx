@@ -2,10 +2,12 @@
 
 ## 导入
 
-从 `quickgui` 导入 `Markdown`。
+```sh
+cargo add quickgui --features markdown
+```
 
 ```rust
-use quickgui::*;
+use quickgui::Markdown;
 ```
 
 ## 用法
@@ -17,7 +19,9 @@ markdown.element("note").w(290.0)
 
 ## 主要属性
 
-| 属性 | 说明 |
-| --- | --- |
-| `value` | 用于排版和绘制的 Markdown 源文本。 |
-| `streaming` | 对追加内容使用增量 Markdown 协调。 |
+| 属性                                   | 说明                                                    |
+| -------------------------------------- | ------------------------------------------------------- |
+| `value`                                | 用于排版和绘制的 Markdown 源文本。                      |
+| `streaming`                            | 对追加内容使用增量 Markdown 协调。                      |
+| `element_with_code_blocks`             | 使用调用方提供的 Rust 组件工厂替换已解析的代码块。      |
+| `element_with_highlighted_code_blocks` | 同时启用 `editor` feature 时使用保留式 CodeBlock 模型。 |

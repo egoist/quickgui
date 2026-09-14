@@ -2,10 +2,12 @@
 
 ## 导入
 
-从 `@quickgui/solid` 导入 `Terminal`。
+```sh
+bun add @quickgui/extension-terminal
+```
 
 ```tsx
-import { Terminal } from "@quickgui/solid";
+import { Terminal } from "@quickgui/extension-terminal";
 ```
 
 ## 用法
@@ -30,4 +32,4 @@ import { Terminal } from "@quickgui/solid";
 | `onStatus` | 报告终端进程的生命周期变化。 |
 
 
-<Note>Terminal requires the optional `@quickgui/extension-terminal` package and `extensions: ["terminal"]` in the TypeScript project configuration.</Note>
+<Note>Terminal requires the optional `@quickgui/extension-terminal` package and `extensions: ["@quickgui/extension-terminal"]` in the TypeScript project configuration.</Note>

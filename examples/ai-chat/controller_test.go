@@ -127,7 +127,7 @@ func TestMessageCardsStayKeyedWhileOnlyResponseChanges(t *testing.T) {
 		var list *native.Node
 		var walk func(*native.Node)
 		walk = func(node *native.Node) {
-			if node.Tag == protocol.TagMarkdown {
+			if node.Tag == protocol.TagExtension {
 				markdown = append(markdown, node)
 			}
 			if node.Tag == protocol.TagVirtualList {

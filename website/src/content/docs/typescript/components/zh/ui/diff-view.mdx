@@ -1,0 +1,56 @@
+虚拟化的分栏或统一文件差异视图，行同步且面板可独立横向滚动。
+
+组件默认不带视觉样式：文本和行号继承颜色，不添加背景、边框、圆角、内边距或语法／差异配色。外观由应用显式提供样式与颜色。
+
+## 导入
+
+```sh
+bun add @quickgui/extension-editor
+```
+
+```tsx
+import { DiffView } from "@quickgui/extension-editor";
+```
+
+```ts
+// quickgui.config.ts
+extensions: ["@quickgui/extension-editor"]
+```
+
+## 用法
+
+```tsx
+<DiffView
+  oldPath="before.ts"
+  newPath="after.ts"
+  oldText={"export const answer = 41;\n"}
+  newText={"export const answer = 42;\n"}
+  options={{
+    layout: "split",
+    indicators: "bars",
+    lineNumbers: true,
+    language: "typescript",
+  }}
+  style={{ width: "100%", height: 420 }}
+/>
+```
+
+## 语法高亮
+
+DiffView 使用与 Editor 相同的内置 Tree-sitter 语法。文档、语言或语法调色板变化时，Rust 核心会分别解析每个可见文件的新旧行序列，并把捕获片段分配给逻辑行。样式文本仅在行挂载时创建并缓存，再按互不重叠的字节边界合并行内新增/删除强调。滚动不会调用解析器。
+
+## 主要属性
+
+| 属性                  | 说明                                            |
+| --------------------- | ----------------------------------------------- |
+| `oldText` / `newText` | 完整的受控源码对。                              |
+| `oldPath` / `newPath` | 文件标签及语言推断路径。                        |
+| `patch`               | 已捕获的 Git 或普通统一补丁；使用它代替源码对。 |
+| `options.layout`      | `"split"` 或 `"unified"`。                      |
+| `options.indicators`  | `"bars"`、`"classic"` 或 `"none"`。             |
+| `options.wrap`        | 对长行换行，而不是启用横向滚动。                |
+| `options.backgrounds` | 启用新增行与删除行背景。                        |
+| `theme`               | 覆盖差异、行号栏、区块及行内变化颜色。          |
+| `syntaxTheme`         | 覆盖 Tree-sitter 捕获颜色。                     |
+
+分栏面板各自保留横向偏移，并共享一个同步的纵向偏移。只挂载可见行及受限的预渲染行。

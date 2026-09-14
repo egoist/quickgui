@@ -1,4 +1,4 @@
-Import `github.com/egoist/quickgui/go/updater` to include automatic updates. Apps that do not import it do not ship the updater.
+Import `github.com/egoist/quickgui/extensions/updater` to include automatic updates. Apps that do not import it do not ship the updater.
 
 ## Configuration
 
@@ -32,7 +32,7 @@ import (
 	"log"
 
 	"github.com/egoist/quickgui/go/native"
-	"github.com/egoist/quickgui/go/updater"
+	"github.com/egoist/quickgui/extensions/updater"
 )
 
 var updates *updater.Updater

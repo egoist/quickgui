@@ -39,7 +39,6 @@ import {
   Field,
   Fieldset,
   Input,
-  Markdown,
   Menu,
   Menubar,
   NavigationMenu,
@@ -68,7 +67,6 @@ import {
   Tree,
   SystemPopover,
   Svg,
-  Terminal,
   Text,
   TextArea,
   View,
@@ -88,7 +86,6 @@ import {
   mouseEventFromEvent,
   wheelEventFromEvent,
   setProp,
-  terminalStatusFromEvent,
   type MenuSelectDetails,
 } from "../src/index.ts";
 
@@ -415,67 +412,6 @@ describe("Solid universal host", () => {
     expect(icon.properties.get(PropertyCode.Color)).toBeTypeOf("number");
   });
 
-  test("declaratively configures a core-owned PTY terminal and decodes status events", () => {
-    let status = "";
-    const terminal = createComponent(Terminal, {
-      program: "/bin/zsh",
-      args: ["-l"],
-      cwd: "/tmp",
-      env: { QUICKGUI_TERMINAL_TEST: "1" },
-      scrollback: 20_000,
-      terminalCursorColor: "#0969da",
-      terminalPaddingColor: "extend",
-      fontThicken: true,
-      terminalPalette: [
-        "#24292f",
-        "#cf222e",
-        "#116329",
-        "#4d2d00",
-        "#0969da",
-        "#8250df",
-        "#1b7c83",
-        "#6e7781",
-        "#57606a",
-        "#a40e26",
-        "#1a7f37",
-        "#633c01",
-        "#218bff",
-        "#a475f9",
-        "#3192aa",
-        "#8c959f",
-      ],
-      style: { fontFamily: "JetBrainsMono Nerd Font Mono" },
-      onStatus: (event) => {
-        status = terminalStatusFromEvent(event).status;
-      },
-    });
-
-    expect(terminal.tag).toBe(NativeNodeTag.Terminal);
-    expect(terminal.properties.get(PropertyCode.TerminalProgram)).toBe("/bin/zsh");
-    expect(terminal.properties.get(PropertyCode.TerminalArguments)).toBe('["-l"]');
-    expect(terminal.properties.get(PropertyCode.TerminalWorkingDirectory)).toBe("/tmp");
-    expect(terminal.properties.get(PropertyCode.TerminalEnvironment)).toBe(
-      '{"QUICKGUI_TERMINAL_TEST":"1"}',
-    );
-    expect(terminal.properties.get(PropertyCode.TerminalScrollback)).toBe(20_000);
-    expect(terminal.properties.get(PropertyCode.TerminalStatusListener)).toBe(true);
-    expect(terminal.properties.get(PropertyCode.FontFamily)).toBe("JetBrainsMono Nerd Font Mono");
-    expect(terminal.properties.get(PropertyCode.TerminalCursorColor)).toBeTypeOf("number");
-    expect(terminal.properties.get(PropertyCode.TerminalPaddingColor)).toBe("extend");
-    expect(terminal.properties.get(PropertyCode.TerminalFontThicken)).toBe(true);
-    expect(
-      JSON.parse(terminal.properties.get(PropertyCode.TerminalPalette) as string),
-    ).toHaveLength(16);
-
-    terminal.listeners.get("terminal")!(
-      new QuickGuiEvent(
-        "terminal",
-        terminal,
-        '{"status":"running","title":"zsh","workingDirectory":"/tmp","processId":42}',
-      ),
-    );
-    expect(status).toBe("running");
-  });
 
   test("bridges the Rust-core captured pointer stream", () => {
     let delta = 0;
@@ -495,18 +431,6 @@ describe("Solid universal host", () => {
       ),
     );
     expect(delta).toBe(60);
-  });
-
-  test("retains Markdown source and streaming presentation properties", () => {
-    const markdown = createComponent(Markdown, {
-      content: "# Hello",
-      streaming: true,
-      style: { markdownLinkColor: "#60a5fa" },
-    });
-
-    expect(markdown.properties.get(PropertyCode.Value)).toBe("# Hello");
-    expect(markdown.properties.get(PropertyCode.Streaming)).toBe(true);
-    expect(markdown.properties.get(PropertyCode.MarkdownLinkColor)).toBeTypeOf("number");
   });
 
   test("creates unstyled variable lists with native windowing properties", () => {

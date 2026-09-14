@@ -1317,8 +1317,9 @@ fn display_none_deactivates_the_complete_mounted_subtree() {
     tree.hovered_scrollbar = Some(subtree);
     tree.scrollbar_drag = Some(ScrollbarDrag {
         id: subtree,
-        pointer_origin_y: 0.0,
-        scroll_origin_y: 0.0,
+        axis: ScrollbarAxis::Vertical,
+        pointer_origin: 0.0,
+        scroll_origin: 0.0,
     });
 
     tree.set_root(

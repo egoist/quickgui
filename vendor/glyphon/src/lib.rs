@@ -61,6 +61,8 @@ pub(crate) struct GlyphToRender {
     content_type_with_srgb: [u16; 2],
     depth: f32,
     opacity: f32,
+    mask_bounds: [f32; 4],
+    mask_radii: [f32; 4],
 }
 
 /// The screen resolution to use when rendering text.
@@ -105,6 +107,14 @@ impl Default for TextBounds {
     }
 }
 
+/// An optional rounded text mask, in physical pixels. Bounds are x, y, width, height;
+/// radii are top-left, top-right, bottom-right, bottom-left.
+#[derive(Clone, Copy, Debug)]
+pub struct TextMask {
+    pub bounds: [f32; 4],
+    pub radii: [f32; 4],
+}
+
 /// A text area containing text to be rendered along with its overflow behavior.
 #[derive(Clone)]
 pub struct TextArea<'a> {
@@ -125,6 +135,8 @@ pub struct TextArea<'a> {
     ///
     /// This changes only uploaded glyph vertices and does not invalidate shaping or layout.
     pub opacity: f32,
+    /// Additional rounded clipping, independent of shaping and rectangular bounds.
+    pub mask: Option<TextMask>,
     /// Additional custom glyphs to render.
     pub custom_glyphs: &'a [CustomGlyph],
 }

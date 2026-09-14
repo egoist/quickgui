@@ -1,6 +1,8 @@
 package main
 
 import (
+	"github.com/egoist/quickgui/extensions/editor"
+	"github.com/egoist/quickgui/extensions/markdown"
 	"github.com/egoist/quickgui/go/native"
 	"github.com/egoist/quickgui/go/ui"
 	"log"
@@ -301,23 +303,17 @@ func messageCard(message func() ChatMessage) *ui.Element {
 				FontSize(12).
 				FontWeight(700).
 				TextColor("#93c5fd"),
-			ui.Markdown().
-				Width("100%").
-				FontSize(14).
-				LineHeight(22).
-				TextColor("#e2e8f0").
-				MarkdownLinkColor("#93c5fd").
-				MarkdownCodeTextColor("#c4b5fd").
-				MarkdownCodeBackground("#0b1020").
-				MarkdownBorderColor("#475569").
-				MarkdownMutedColor("#94a3b8").
-				Streaming(message().Streaming).
-				Value(func() string {
+			markdown.View(markdown.Props{
+				Value: func() string {
 					if message().Streaming && message().Content == "" {
 						return "_Thinking…_"
 					}
 					return message().Content
-				}),
+				},
+				Streaming:          message().Streaming,
+				CodeBlockComponent: editor.HighlightedCodeBlock,
+				Theme:              markdown.Theme{LinkColor: "#93c5fd", CodeColor: "#c4b5fd", CodeBackground: "#0b1020", CodeBorderColor: "#475569", MutedColor: "#94a3b8"},
+			}).Width("100%").FontSize(14).LineHeight(22).TextColor("#e2e8f0"),
 			ui.Show(
 				message().Failed,
 				func() *ui.Element {

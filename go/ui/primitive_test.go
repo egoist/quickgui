@@ -14,7 +14,7 @@ import (
 // conditional removal. A protocol event with no public prop is a parity failure.
 func TestEveryNativeEventHasAConditionalPrimitiveHandler(t *testing.T) {
 	names := []string{
-		"Click", "MouseEnter", "MouseLeave", "Input", "Submit", "Dismiss", "Status", "Pointer",
+		"Click", "MouseEnter", "MouseLeave", "Input", "Submit", "Dismiss", "Pointer",
 		"PresentationChange", "Select", "KeyDown", "KeyUp", "MouseDown", "MouseUp", "MouseMove",
 		"DoubleClick", "Wheel", "ContextMenu", "Pinch", "Rotate", "SmartMagnify", "Pressure",
 		"Focus", "Blur", "Action", "DragStart", "DragEnd", "Drop", "FilesDropped", "ComponentChange", "Commit",

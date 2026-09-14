@@ -900,11 +900,15 @@ fn collect_inspector_text(element: &Element, output: &mut String, truncated: &mu
     }
 }
 
-pub(crate) fn child_clip(element: &Element, parent_clip: Rect, bounds: Rect) -> Option<Rect> {
+pub(crate) fn child_clip(
+    element: &Element,
+    parent_clip: Rect,
+    padding_bounds: Rect,
+) -> Option<Rect> {
     let clips_children = element.layout.overflow.x != taffy::Overflow::Visible
         || element.layout.overflow.y != taffy::Overflow::Visible;
     if clips_children {
-        parent_clip.intersection(bounds)
+        parent_clip.intersection(padding_bounds)
     } else {
         Some(parent_clip)
     }

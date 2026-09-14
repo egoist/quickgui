@@ -1,4 +1,4 @@
-扩展可以是可复用组件的 Go 包，也可以是 Go 包加上应用可调用的原生库。先从 Go 包开始。只有需要可选后端时才添加原生库，例如终端和[更新器](/docs/go/updater)包。
+扩展可以提供普通 Go 组件、保留状态的原生组件，或异步原生服务。Editor、Markdown 和 Terminal 是可选的原生组件包，Updater 是可选服务。它们使用同一套公开注册接口；第三方扩展无需修改 `quickgui-host`。
 
 ## 选择扩展类型
 
@@ -6,7 +6,7 @@
 | --- | --- |
 | 组件或应用逻辑 | 一个 Go 模块 |
 | 原生服务或可选后端 | Go 包、清单，以及原生库 |
-| 由原生数据驱动的界面 | 原生服务加上 Go 组件 |
+| 保留状态的原生界面 | 组件 SDK 库和 Go 绑定 |
 
 使用者导入你的 Go 包。CLI 会找到清单并打包匹配的原生产物。
 
@@ -36,9 +36,9 @@ package notice
 
 import "github.com/egoist/quickgui/go/ui"
 
-func Notice(message func() string, styles ...ui.StyleBuilder) *ui.Element {
+func Notice(message string, styles ...ui.StyleBuilder) *ui.Element {
 	return ui.Text(
-		message(),
+		message,
 	).
 		Padding(12).
 		BackgroundColor("#eff6ff").
@@ -53,23 +53,23 @@ func Notice(message func() string, styles ...ui.StyleBuilder) *ui.Element {
 
 ## 组织原生扩展
 
-[`native-extension` 示例](https://github.com/egoist/quickgui/tree/main/examples/native-extension) 把 Go 包和小型 C 库配对。它针对 [`quickgui_extension.h`](https://github.com/egoist/quickgui/blob/main/include/quickgui_extension.h) 构建。
+[`extensions/`](https://github.com/egoist/quickgui/tree/main/extensions) 中的每个内置扩展同时是 Go 模块和 npm 包。Rust 放在 `src/`，TypeScript 绑定放在 `js/`。自己的组合包也可以采用这一结构：
 
 ```text
+Cargo.toml
 go.mod
-echo/
-  echo.go
-  quickgui.extension.json
-native/
-  quickgui_extension.h
-  echo.c
-artifacts/
-  package.json
-  lib/darwin-arm64/libquickgui_acme_echo.dylib
-build-extension.ts
+badge.go
+package.json
+quickgui.extension.json
+src/
+  lib.rs
+js/
+  index.ts
+lib/
+  darwin-arm64/libquickgui_acme_badge.dylib
 ```
 
-C、C++、Rust 以及其他导出 C ABI 的语言都可以实现扩展。Rust 扩展可以内置 [`extension_api.rs`](https://github.com/egoist/quickgui/blob/main/src/extension_api.rs)，并构建 `cdylib`，无需链接 QuickGUI 本身。
+C、C++、Rust 以及其他支持 C ABI 的语言都可以实现扩展。Rust 组件库依赖 [`quickgui-extension-sdk`](https://github.com/egoist/quickgui/tree/main/crates/quickgui-extension-sdk)，不依赖渲染器或 `quickgui-host`。实现 `Component` 和 `ComponentFactory`，由 `ComponentRuntime` 提供生命周期函数表。扩展自行定义包名、组件名、属性和发布版本。
 
 ## 声明依赖
 
@@ -121,7 +121,32 @@ CLI 通过 `go list -deps` 发现清单。清单和 `RequireExtension` 都需要
 
 ## 实现原生接口
 
-导出带 C 链接的 `quickgui_extension_v1`。它返回描述符，包含名称、版本、ABI 版本 `1`，以及含两个函数（`invoke` 和 `shutdown`）的表。在保留借用的请求字节之前先复制它们，尽快返回，稍后再回复。
+以 C 链接导出 `quickgui_extension_v1`。描述符包含扩展名称、独立版本、ABI 版本 `1` 和通用函数表。**组件**表包含 `create`、`update`、`render`、`event` 和 `destroy`；**服务**表包含 `invoke` 和 `shutdown`。
+
+组件保留不透明实例并返回 SDK 的基础节点树。稳定的节点键保留焦点、选择和滚动状态；虚拟列表只请求可见行及预加载行。输入返回所属扩展，扩展发出的事件传给 Go 绑定。一个实例的调用在原生 UI 线程串行执行。耗时任务放到工作线程，数据变化时只唤醒该实例。属性相同时返回未变化，销毁时释放状态和唤醒句柄。
+
+Go 包装可以挂载任意已注册组件：
+
+```go
+package badge
+
+import (
+	"github.com/egoist/quickgui/go/host"
+	"github.com/egoist/quickgui/go/ui"
+)
+
+func init() { host.RequireExtension("acme-badge", "1.0.0") }
+
+func View(label string) *ui.Element {
+	return ui.ExtensionComponent("acme-badge", "badge", map[string]any{
+		"label": label,
+	}, ui.Props{})
+}
+```
+
+[独立编译的 C 计数器](https://github.com/egoist/quickgui/blob/main/tests/fixtures/native_component.c) 包含完整的组件描述符和生命周期实现。组件帧限制为 16 MiB，前端属性 JSON 限制为 12 MiB。
+
+对于**服务**，保留借用的请求字节前先复制，尽快返回，稍后回复。
 
 | 请求 | 扩展要做的事 |
 | --- | --- |
@@ -139,16 +164,18 @@ CLI 通过 `go list -deps` 发现清单。清单和 `RequireExtension` 都需要
 
 ## 构建与打包产物
 
-为每个支持的宿主构建原生库，并放到 `artifacts/lib/<platform>-<arch>/` 下。把该文件夹作为 npm 包发布，其 `version` 与清单一致。
+为每个支持的宿主构建原生库，并放到 `lib/<platform>-<arch>/` 下。把该文件夹作为 npm 包发布，其 `version` 与清单一致。
 
 ```json
 {
   "name": "@acme/extension-echo",
   "version": "1.0.0",
-  "files": ["lib", "README.md"],
-  "exports": { "./package.json": "./package.json" }
+  "files": ["js", "lib", "quickgui.extension.json", "README.md"],
+  "exports": { ".": "./js/index.ts", "./package.json": "./package.json" }
 }
 ```
+
+npm 包包含 TypeScript 绑定时，导出 `js/index.ts`。把 `@quickgui/*` 运行时包和 Solid 声明为 peer dependencies，开发副本放在 `devDependencies`，不要放进运行时 `dependencies`。扩展 README 只保留构建说明，用户指南放在网站上。
 
 辅助文件放在库旁边。在清单的 `resources` 对象中按 `darwin`、`linux` 或 `windows` 声明它们的基本名称。
 

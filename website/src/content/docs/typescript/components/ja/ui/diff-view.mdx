@@ -1,0 +1,56 @@
+行を同期しつつ各ペインを個別に横スクロールできる、仮想化された分割／統合ファイル差分ビューです。
+
+既定では見た目のスタイルを持ちません。文字と行番号の色は継承され、背景、枠線、角丸、余白、構文・差分の配色は追加されません。外観はアプリ側で明示的に指定します。
+
+## インポート
+
+```sh
+bun add @quickgui/extension-editor
+```
+
+```tsx
+import { DiffView } from "@quickgui/extension-editor";
+```
+
+```ts
+// quickgui.config.ts
+extensions: ["@quickgui/extension-editor"]
+```
+
+## 使い方
+
+```tsx
+<DiffView
+  oldPath="before.ts"
+  newPath="after.ts"
+  oldText={"export const answer = 41;\n"}
+  newText={"export const answer = 42;\n"}
+  options={{
+    layout: "split",
+    indicators: "bars",
+    lineNumbers: true,
+    language: "typescript",
+  }}
+  style={{ width: "100%", height: 420 }}
+/>
+```
+
+## シンタックスハイライト
+
+DiffView は Editor と同じ同梱 Tree-sitter 文法を使います。ドキュメント、言語、構文配色が変わると、Rust コアは表示対象となる各ファイルの新旧行シーケンスを一度ずつ解析し、キャプチャ断片を論理行へ割り当てます。スタイル付きテキストは行のマウント時にだけ生成してキャッシュし、重ならないバイト境界で行内の追加／削除強調を統合します。スクロール時にパーサーは動きません。
+
+## 主なプロパティ
+
+| プロパティ            | 説明                                                                           |
+| --------------------- | ------------------------------------------------------------------------------ |
+| `oldText` / `newText` | 完全な制御ソースの組です。                                                     |
+| `oldPath` / `newPath` | ファイルラベルと構文言語推論用のパスです。                                     |
+| `patch`               | 取得済みの Git または通常の unified patch です。ソースの組の代わりに使います。 |
+| `options.layout`      | `"split"` または `"unified"`。                                                 |
+| `options.indicators`  | `"bars"`、`"classic"`、`"none"`。                                              |
+| `options.wrap`        | 横スクロールの代わりに長い行を折り返します。                                   |
+| `options.backgrounds` | 追加行と削除行の背景を有効にします。                                           |
+| `theme`               | 差分、ガター、ハンク、行内変更の色を上書きします。                             |
+| `syntaxTheme`         | Tree-sitter キャプチャの色を上書きします。                                     |
+
+分割ペインは個別の横オフセットと、同期された 1 つの縦オフセットを保持します。表示行と上限付きオーバースキャンだけをマウントします。

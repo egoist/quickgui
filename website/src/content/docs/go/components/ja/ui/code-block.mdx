@@ -1,0 +1,52 @@
+Tree-sitter カラーリングと論理行の仮想化を備えた、選択可能でキャレットのないコード表示です。
+
+既定では見た目のスタイルを持ちません。文字と行番号の色は継承され、背景、枠線、角丸、余白、構文・差分の配色は追加されません。外観はアプリ側で明示的に指定します。
+
+## インポート
+
+```sh
+go get github.com/egoist/quickgui/extensions/editor
+```
+
+```go
+import (
+	"github.com/egoist/quickgui/extensions/editor"
+	"github.com/egoist/quickgui/go/ui"
+)
+```
+
+## 使い方
+
+```go
+func CodeExample() *ui.Element {
+	return editor.CodeBlock(editor.CodeBlockProps{
+		Value:       "package main\n\nfunc main() {}\n",
+		Language:    "go",
+		LineNumbers: true,
+		Wrap:        false,
+		Props:       ui.Props{Style: ui.Style().Width("100%").Height(280)},
+	})
+}
+```
+
+## シンタックスハイライト
+
+`Language` は同梱の Tree-sitter 文法とハイライトクエリを選択します。キャプチャは `SyntaxTheme` を通して前景色だけの範囲へ変換されるため、ハイライトはレイアウトを変えません。Rust コアはソースまたは言語が変わったときに解析し、スクロール時は論理行をマウントして事前計算済みの範囲を生成するだけです。解析は最大 2 MiB、32 KiB を超える単一行は通常色のまま、キャプチャ数にも上限があります。
+
+## 主なプロパティ
+
+| プロパティ         | 説明                                                         |
+| ------------------ | ------------------------------------------------------------ |
+| `Value`            | UTF-8 ソース文字列またはリアクティブアクセサーです。         |
+| `Language`         | `"go"`、`"rust"`、`"typescript"` などの同梱文法名です。      |
+| `LineNumbers`      | 左端に固定された選択不可の論理行ガターを表示します。         |
+| `Wrap`             | 横スクロールの代わりに長い行を折り返します。                 |
+| `GutterBackground` | 行番号ガターの背景色を上書きします。                         |
+| `GutterColor`      | 行番号の前景色を上書きします。                               |
+| `SyntaxTheme`      | 共有される 8 種類の Tree-sitter キャプチャ色を上書きします。 |
+| `Props.Style`      | 保持型コードブロック要素のサイズとスタイルを設定します。     |
+
+<Note>
+  CodeBlock は選択できますが、入力リスナー、キャレット、IME 状態、Undo
+  スタック、フォーカスリングはありません。ユーザーがソースを編集する場合は Editor を使ってください。
+</Note>

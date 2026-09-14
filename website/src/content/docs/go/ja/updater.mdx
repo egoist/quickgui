@@ -1,4 +1,4 @@
-自動更新を含めるには `github.com/egoist/quickgui/go/updater` をインポートします。インポートしないアプリにはアップデーターは同梱されません。
+自動更新を含めるには `github.com/egoist/quickgui/extensions/updater` をインポートします。インポートしないアプリにはアップデーターは同梱されません。
 
 ## 設定
 
@@ -32,7 +32,7 @@ import (
 	"log"
 
 	"github.com/egoist/quickgui/go/native"
-	"github.com/egoist/quickgui/go/updater"
+	"github.com/egoist/quickgui/extensions/updater"
 )
 
 var updates *updater.Updater

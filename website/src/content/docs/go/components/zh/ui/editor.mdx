@@ -1,0 +1,55 @@
+保留式原生代码编辑器，支持语法着色、行号、缩进和双轴滚动。
+
+组件默认不带视觉样式：文本和行号继承颜色，不添加背景、边框、圆角、内边距或语法／差异配色。外观由应用显式提供样式与颜色。
+
+## 导入
+
+```sh
+go get github.com/egoist/quickgui/extensions/editor
+```
+
+```go
+import (
+	"github.com/egoist/quickgui/extensions/editor"
+	"github.com/egoist/quickgui/go/ui"
+)
+```
+
+## 用法
+
+```go
+func EditorExample() *ui.Element {
+	source, setSource := ui.CreateSignal("package main\n\nfunc main() {}\n")
+	return editor.Editor(editor.EditorProps{
+		Value:       source,
+		Language:    "go",
+		LineNumbers: true,
+		TabSize:     4,
+		OnChange:    setSource,
+		Props:       ui.Props{Style: ui.Style().Width("100%").Height(360)},
+	})
+}
+```
+
+## 语法高亮
+
+`Language` 选择内置的 Tree-sitter 语法和高亮查询。查询捕获结果通过 `SyntaxTheme` 映射为八种只影响前景色的绘制类别，因此颜色不会改变文本尺寸。源码或语言变化时重新解析受限文档；调色板变化只重新映射已有捕获，滚动不会执行语法分析。解析最多处理 2 MiB，超过 32 KiB 的单行保持普通颜色，捕获数量也有上限，且不需要语言服务器。
+
+## 主要属性
+
+| 属性           | 说明                                                        |
+| -------------- | ----------------------------------------------------------- |
+| `Value`        | 受控 UTF-8 源码字符串或访问器；将 `OnChange` 写回同一状态。 |
+| `Language`     | 语法语言名称，例如 `"go"`、`"rust"` 或 `"typescript"`。     |
+| `LineNumbers`  | 显示或隐藏仅绘制的逻辑行号栏。                              |
+| `TabSize`      | 缩进宽度，由 Rust 核心限制范围。                            |
+| `InsertSpaces` | 插入空格而不是制表符。                                      |
+| `AutoIndent`   | 新建行时沿用当前缩进。                                      |
+| `ReadOnly`     | 保留选择与滚动，同时拒绝编辑。                              |
+| `SyntaxTheme`  | 覆盖 Tree-sitter 捕获颜色。                                 |
+| `OnChange`     | 接受编辑后报告完整且受限的源码。                            |
+| `Props.Style`  | 设置保留式编辑器元素的尺寸与样式。                          |
+
+<Note>
+Editor、CodeBlock 和 DiffView 由独立的 editor 扩展提供，不会打包进 quickgui-host。
+</Note>

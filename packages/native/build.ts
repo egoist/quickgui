@@ -9,7 +9,7 @@ const repoRoot = resolve(packageRoot, "..", "..");
 const debug = process.argv.includes("--debug");
 const extensionIndex = process.argv.indexOf("--extension");
 const extension = extensionIndex < 0 ? undefined : process.argv[extensionIndex + 1];
-if (extensionIndex >= 0 && extension !== "terminal" && extension !== "updater")
+if (extensionIndex >= 0 && !["terminal", "updater", "editor", "markdown"].includes(extension ?? ""))
   throw new Error(`Unknown native extension: ${extension ?? "(missing)"}`);
 
 const hostArchitecture =
@@ -112,7 +112,7 @@ const name =
 const library = join(targetDir, ...(selected === undefined ? [] : [selected.triple]), profile, name);
 if (!existsSync(library)) throw new Error(`Expected the shared library at ${library}`);
 const stage = join(
-  extension ? resolve(packageRoot, "..", `extension-${extension}`) : packageRoot,
+  extension ? resolve(repoRoot, "extensions", extension) : packageRoot,
   "lib",
   target,
 );

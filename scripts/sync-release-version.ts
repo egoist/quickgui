@@ -185,8 +185,11 @@ const cargoPackages: [string, string][] = [
   ["Cargo.toml", "quickgui"],
   ["crates/quickgui-system/Cargo.toml", "quickgui-system"],
   ["crates/quickgui-host/Cargo.toml", "quickgui-host"],
-  ["crates/quickgui-terminal/Cargo.toml", "quickgui-terminal"],
-  ["crates/quickgui-updater/Cargo.toml", "quickgui-updater"],
+  ["crates/quickgui-extension-sdk/Cargo.toml", "quickgui-extension-sdk"],
+  ["extensions/editor/Cargo.toml", "quickgui-editor"],
+  ["extensions/markdown/Cargo.toml", "quickgui-markdown"],
+  ["extensions/terminal/Cargo.toml", "quickgui-terminal"],
+  ["extensions/updater/Cargo.toml", "quickgui-updater"],
   ["vendor/winit/Cargo.toml", "quickgui-winit"],
   ["vendor/winit/Cargo.toml.orig", "quickgui-winit"],
   ["vendor/accesskit_winit/Cargo.toml", "quickgui-accesskit-winit"],
@@ -203,6 +206,18 @@ for (const dependencyName of ["accesskit_winit", "glyphon", "winit"]) {
   replaceInlineCargoDependency("Cargo.toml", dependencyName);
 }
 replaceInlineCargoDependency("Cargo.toml", "quickgui-system", 2);
+replaceInlineCargoDependency("Cargo.toml", "quickgui-extension-sdk");
+for (const name of ["editor", "markdown", "terminal", "updater"]) {
+  replaceInlineCargoDependency(`extensions/${name}/Cargo.toml`, "quickgui-extension-sdk");
+  edit(`extensions/${name}/go.mod`, contents => contents.replace(
+    /(github\.com\/egoist\/quickgui\/go v)[^\s]+/g,
+    (_match, prefix) => `${prefix}${version}`,
+  ));
+  edit(`extensions/${name}/${name}.go`, contents => contents.replace(
+    /(host\.RequireExtension\("[a-z]+", ")[^"]+("\))/g,
+    (_match, prefix, suffix) => `${prefix}${version}${suffix}`,
+  ));
+}
 replaceInlineCargoDependency("vendor/accesskit_winit/Cargo.toml.orig", "winit");
 replaceCargoSectionVersion("vendor/accesskit_winit/Cargo.toml", "dependencies.winit");
 replaceCargoSectionVersion("vendor/accesskit_winit/Cargo.toml", "dev-dependencies.winit");
@@ -213,8 +228,10 @@ replaceInlineCargoDependency("tests/downstream_smoke/Cargo.toml", "quickgui");
 for (const [relativePath, packageName] of [
   ["packages/native/package.json", "@quickgui/native"],
   ["packages/solid/package.json", "@quickgui/solid"],
-  ["packages/extension-terminal/package.json", "@quickgui/extension-terminal"],
-  ["packages/extension-updater/package.json", "@quickgui/extension-updater"],
+  ["extensions/terminal/package.json", "@quickgui/extension-terminal"],
+  ["extensions/updater/package.json", "@quickgui/extension-updater"],
+  ["extensions/editor/package.json", "@quickgui/extension-editor"],
+  ["extensions/markdown/package.json", "@quickgui/extension-markdown"],
   ["packages/cli/package.json", "@quickgui/cli"],
 ] as const) {
   replaceJsonPackageVersion(relativePath, packageName);
@@ -276,10 +293,9 @@ edit("packages/cli/templates/rust/Cargo.toml.tmpl", (contents) =>
   ),
 );
 
-for (const extension of ["terminal", "updater"]) {
+for (const extension of ["terminal", "updater", "editor", "markdown"]) {
   for (const path of [
-    `go/${extension}/quickgui.extension.json`,
-    `packages/extension-${extension}/quickgui.extension.json`,
+    `extensions/${extension}/quickgui.extension.json`,
   ]) {
     edit(path, (contents) =>
       replaceMatches(
@@ -297,7 +313,7 @@ for (const directory of readdirSync(join(repositoryRoot, "examples"))) {
   if (existsSync(join(repositoryRoot, relativePath))) {
     edit(relativePath, (contents) =>
       contents.replace(
-        /(github\.com\/egoist\/quickgui\/go v)[^\s]+/,
+        /(github\.com\/egoist\/quickgui\/(?:go|extensions\/[a-z]+) v)[^\s]+/g,
         (_match, prefix) => `${prefix}${version}`,
       ),
     );
@@ -312,6 +328,9 @@ for (const packageName of [
   "quickgui-glyphon",
   "quickgui-system",
   "quickgui-host",
+  "quickgui-extension-sdk",
+  "quickgui-editor",
+  "quickgui-markdown",
   "quickgui-terminal",
   "quickgui-updater",
 ] as const) {
@@ -332,8 +351,10 @@ for (const packageName of [
 for (const [workspacePath, packageName] of [
   ["packages/native", "@quickgui/native"],
   ["packages/solid", "@quickgui/solid"],
-  ["packages/extension-terminal", "@quickgui/extension-terminal"],
-  ["packages/extension-updater", "@quickgui/extension-updater"],
+  ["extensions/terminal", "@quickgui/extension-terminal"],
+  ["extensions/updater", "@quickgui/extension-updater"],
+  ["extensions/editor", "@quickgui/extension-editor"],
+  ["extensions/markdown", "@quickgui/extension-markdown"],
   ["packages/cli", "@quickgui/cli"],
 ] as const) {
   replaceBunWorkspaceVersion("bun.lock", workspacePath, packageName);

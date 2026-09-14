@@ -232,6 +232,7 @@ impl TextRenderer {
                         metadata: glyph.metadata,
                         cache_key,
                         opacity: text_area.opacity,
+                        mask: text_area.mask,
                     },
                     bounds,
                     |_system, rasterize_custom_glyph| -> Option<GetGlyphImageResult> {
@@ -304,6 +305,7 @@ impl TextRenderer {
                             cache_key: GlyphonCacheKey::Text(cache_key),
                             scale_factor: text_area.scale,
                             opacity: text_area.opacity,
+                            mask: text_area.mask,
                         },
                         bounds,
                         |system, _rasterize_custom_glyph| -> Option<GetGlyphImageResult> {
@@ -503,6 +505,7 @@ struct GlyphMetadata {
     metadata: usize,
     cache_key: GlyphonCacheKey,
     opacity: f32,
+    mask: Option<crate::TextMask>,
 }
 
 #[derive(Clone, Copy)]
@@ -694,6 +697,8 @@ where
     let depth = metadata_to_depth(metadata.metadata);
 
     Ok(Some(GlyphToRender {
+        mask_bounds: metadata.mask.map_or([0.0; 4], |mask| mask.bounds),
+        mask_radii: metadata.mask.map_or([0.0; 4], |mask| mask.radii),
         pos: [x, y],
         dim: [width as u16, height as u16],
         uv: [atlas_x, atlas_y],

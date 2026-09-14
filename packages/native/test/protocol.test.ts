@@ -76,13 +76,15 @@ describe("binary mutation protocol", () => {
   });
 
   test("encodes native controls, SwiftUI reverse hosts, overlays, terminals, SVGs, paint, and pointer capture under the current protocol", () => {
-    expect(PROTOCOL_VERSION).toBe(32);
+    expect(PROTOCOL_VERSION).toBe(36);
     const batch = new MutationBatch();
     batch.createElement(1, NativeNodeTag.Input);
     batch.setProperty(1, PropertyCode.Value, "hello");
     batch.setProperty(1, PropertyCode.Password, true);
-    batch.createElement(2, NativeNodeTag.Markdown);
-    batch.setProperty(2, PropertyCode.Streaming, true);
+    batch.createElement(2, NativeNodeTag.Extension);
+    batch.setProperty(2, PropertyCode.ExtensionPackage, "third-party");
+    batch.setProperty(2, PropertyCode.ExtensionComponent, "document");
+    batch.setProperty(2, PropertyCode.ExtensionProps, JSON.stringify({ streaming: true }));
     batch.setProperty(2, PropertyCode.ScrollToEndRevision, 3);
     batch.createElement(3, NativeNodeTag.VirtualList);
     batch.setProperty(3, PropertyCode.EstimatedItemHeight, 180);
@@ -104,22 +106,11 @@ describe("binary mutation protocol", () => {
       PropertyCode.BoxShadow,
       '[{"offsetX":0,"offsetY":8,"blurRadius":24,"spreadRadius":-8,"color":4278190080,"inset":false}]',
     );
-    batch.createElement(5, NativeNodeTag.Terminal);
-    batch.setProperty(5, PropertyCode.TerminalProgram, "/bin/zsh");
-    batch.setProperty(5, PropertyCode.TerminalArguments, JSON.stringify(["-l"]));
-    batch.setProperty(5, PropertyCode.TerminalWorkingDirectory, "/tmp");
-    batch.setProperty(
-      5,
-      PropertyCode.TerminalEnvironment,
-      JSON.stringify({ TERM: "xterm-256color" }),
-    );
-    batch.setProperty(5, PropertyCode.TerminalScrollback, 20_000);
-    batch.setProperty(5, PropertyCode.TerminalStatusListener, true);
+    batch.createElement(5, NativeNodeTag.Extension);
+    batch.setProperty(5, PropertyCode.ExtensionPackage, "acme");
+    batch.setProperty(5, PropertyCode.ExtensionComponent, "console");
+    batch.setProperty(5, PropertyCode.ExtensionProps, JSON.stringify({ program: "/bin/zsh", arguments: ["-l"], environment: { TERM: "xterm-256color" } }));
     batch.setProperty(5, PropertyCode.FontFamily, "JetBrainsMono Nerd Font Mono");
-    batch.setProperty(5, PropertyCode.TerminalPalette, "[1,2,3]");
-    batch.setProperty(5, PropertyCode.TerminalCursorColor, 0xffda6909, true);
-    batch.setProperty(5, PropertyCode.TerminalPaddingColor, "extend");
-    batch.setProperty(5, PropertyCode.TerminalFontThicken, true);
     batch.setProperty(1, PropertyCode.HoverBackgroundColor, 0xff332211, true);
     batch.setProperty(1, PropertyCode.HoverColor, 0xffeeeeee, true);
     batch.setProperty(1, PropertyCode.ActiveBackgroundColor, 0xff221100, true);
@@ -213,7 +204,7 @@ describe("binary mutation protocol", () => {
     batch.setProperty(21, PropertyCode.SwiftUIGaugeMinimumValueLabel, "0%");
     batch.setProperty(21, PropertyCode.SwiftUIGaugeMaximumValueLabel, "100%");
     batch.setProperty(21, PropertyCode.SwiftUIGaugeStyle, "accessoryLinearCapacity");
-    expect(batch.mutationCount).toBe(116);
+    expect(batch.mutationCount).toBe(111);
     expect(batch.finish().byteLength).toBeGreaterThan(10);
   });
 
@@ -371,6 +362,7 @@ describe("binary mutation protocol", () => {
     expect(NativePart.Toggle).toBe("toggle");
     expect(NativeNodeTag.Image).toBe(16);
     expect(NativeNodeTag.Shader).toBe(17);
+    expect(NativeNodeTag.Extension).toBe(30);
     expect(MAX_KEYMAP_JSON_BYTES).toBe(64 * 1024);
     expect(MAX_DRAG_JSON_BYTES).toBe(64 * 1024);
     expect(NativePart.Slider).toBe("slider");

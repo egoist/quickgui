@@ -91,7 +91,7 @@ func findExtensionLibrary(name, corePath string) (string, error) {
 	}
 	// Source checkouts stage independently built extensions in their own packages.
 	for i := 0; i < 8; i++ {
-		path := filepath.Join(directory, "packages", "native-"+name, "lib", StageTarget(), file)
+		path := filepath.Join(directory, "extensions", name, "lib", StageTarget(), file)
 		if fileExists(path) {
 			return path, nil
 		}

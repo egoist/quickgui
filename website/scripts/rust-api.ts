@@ -49,9 +49,20 @@ const INPUT = ["on_input", "placeholder", "child"] as const;
 const UI: Record<string, Target> = {
   view: { file: "src/element.rs", fn: "div", element: [...STYLE, "child", "on_click", "id"] },
   text: { file: "src/element.rs", fn: "text", element: ["text_color", "child"] },
-  button: { file: "src/element.rs", fn: "button", element: [...CLICK, "h", "px", "bg", "rounded", "hover"] },
+  button: {
+    file: "src/element.rs",
+    fn: "button",
+    element: [...CLICK, "h", "px", "bg", "rounded", "hover"],
+  },
   input: { file: "src/element.rs", fn: "text_input", element: [...INPUT] },
   "text-area": { file: "src/element.rs", fn: "text_area", element: [...INPUT] },
+  editor: { file: "src/editor.rs", type: "Editor" },
+  "code-block": { file: "src/code_block.rs", type: "CodeBlock" },
+  "diff-view": {
+    file: "src/diff_view.rs",
+    type: "DiffView",
+    extraTypes: [{ file: "src/diff_view.rs", type: "DiffDocument" }],
+  },
   markdown: { file: "src/markdown/mod.rs", type: "Markdown" },
   image: { file: "src/image.rs", type: "Image", extraFns: [{ file: "src/element.rs", fn: "img" }] },
   svg: { file: "src/svg.rs", type: "Svg", extraFns: [{ file: "src/element.rs", fn: "svg" }] },
@@ -66,14 +77,38 @@ const UI: Record<string, Target> = {
     element: ["virtual_scroll", "children"],
   },
   terminal: { file: "src/terminal/api.rs", type: "Terminal" },
-  checkbox: { file: "src/selection_control.rs", type: "Checkbox", extraFns: [{ file: "src/selection_control.rs", fn: "checkbox" }] },
+  checkbox: {
+    file: "src/selection_control.rs",
+    type: "Checkbox",
+    extraFns: [{ file: "src/selection_control.rs", fn: "checkbox" }],
+  },
   "checkbox-group": { file: "src/checkbox_group.rs", type: "CheckboxGroup" },
-  radio: { file: "src/selection_control.rs", type: "Radio", extraFns: [{ file: "src/selection_control.rs", fn: "radio" }] },
-  "radio-group": { file: "src/selection_control.rs", type: "RadioGroup", extraFns: [{ file: "src/selection_control.rs", fn: "radio_group" }] },
-  switch: { file: "src/selection_control.rs", type: "Switch", extraFns: [{ file: "src/selection_control.rs", fn: "switch" }] },
-  toggle: { file: "src/toggle.rs", type: "Toggle", extraFns: [{ file: "src/toggle.rs", fn: "toggle" }] },
+  radio: {
+    file: "src/selection_control.rs",
+    type: "Radio",
+    extraFns: [{ file: "src/selection_control.rs", fn: "radio" }],
+  },
+  "radio-group": {
+    file: "src/selection_control.rs",
+    type: "RadioGroup",
+    extraFns: [{ file: "src/selection_control.rs", fn: "radio_group" }],
+  },
+  switch: {
+    file: "src/selection_control.rs",
+    type: "Switch",
+    extraFns: [{ file: "src/selection_control.rs", fn: "switch" }],
+  },
+  toggle: {
+    file: "src/toggle.rs",
+    type: "Toggle",
+    extraFns: [{ file: "src/toggle.rs", fn: "toggle" }],
+  },
   "toggle-group": { file: "src/toggle.rs", type: "ToggleGroup" },
-  slider: { file: "src/slider.rs", type: "Slider", extraTypes: [{ file: "src/slider.rs", type: "SliderThumb" }] },
+  slider: {
+    file: "src/slider.rs",
+    type: "Slider",
+    extraTypes: [{ file: "src/slider.rs", type: "SliderThumb" }],
+  },
   "number-field": { file: "src/number_field.rs", type: "NumberField" },
   select: { file: "src/select.rs", type: "SelectState" },
   combobox: { file: "src/constrained_combobox.rs", type: "ComboboxState" },
@@ -85,16 +120,32 @@ const UI: Record<string, Target> = {
   calendar: { file: "src/calendar.rs", type: "Calendar" },
   "otp-field": { file: "src/otp_field.rs", type: "OtpField" },
   tabs: { file: "src/tabs.rs", type: "Tabs" },
-  accordion: { file: "src/disclosure.rs", type: "Accordion", extraTypes: [{ file: "src/disclosure.rs", type: "AccordionItem" }] },
+  accordion: {
+    file: "src/disclosure.rs",
+    type: "Accordion",
+    extraTypes: [{ file: "src/disclosure.rs", type: "AccordionItem" }],
+  },
   collapsible: { file: "src/disclosure.rs", type: "Collapsible" },
   splitter: { file: "src/splitter.rs", type: "Splitter" },
   "scroll-area": { file: "src/scroll_area.rs", type: "ScrollArea" },
   table: { file: "src/table.rs", type: "TableState" },
   tree: { file: "src/tree.rs", type: "TreeState" },
   separator: { file: "src/separator.rs", fn: "separator", type: "Separator" },
-  avatar: { file: "src/avatar.rs", type: "Avatar", extraFns: [{ file: "src/avatar.rs", fn: "avatar" }] },
-  progress: { file: "src/progress.rs", type: "Progress", extraFns: [{ file: "src/progress.rs", fn: "progress" }] },
-  meter: { file: "src/progress.rs", type: "Meter", extraFns: [{ file: "src/progress.rs", fn: "meter" }] },
+  avatar: {
+    file: "src/avatar.rs",
+    type: "Avatar",
+    extraFns: [{ file: "src/avatar.rs", fn: "avatar" }],
+  },
+  progress: {
+    file: "src/progress.rs",
+    type: "Progress",
+    extraFns: [{ file: "src/progress.rs", fn: "progress" }],
+  },
+  meter: {
+    file: "src/progress.rs",
+    type: "Meter",
+    extraFns: [{ file: "src/progress.rs", fn: "meter" }],
+  },
   toolbar: { file: "src/toolbar.rs", type: "Toolbar" },
   popover: { file: "src/popover_component.rs", type: "Popover" },
   "system-popover": { file: "src/popover_component.rs", type: "SystemPopover" },
@@ -102,13 +153,21 @@ const UI: Record<string, Target> = {
   "alert-dialog": { file: "src/dialog.rs", type: "Dialog", ctor: "alert" },
   tooltip: { file: "src/tooltip.rs", type: "Tooltip" },
   "preview-card": { file: "src/preview_card.rs", type: "PreviewCard" },
-  toast: { file: "src/toast.rs", type: "Toast", extraFns: [{ file: "src/toast.rs", fn: "toast_viewport" }] },
+  toast: {
+    file: "src/toast.rs",
+    type: "Toast",
+    extraFns: [{ file: "src/toast.rs", fn: "toast_viewport" }],
+  },
   menu: { file: "src/popover_menu.rs", type: "PopoverMenu" },
   "popover-menu": { file: "src/popover_menu.rs", type: "PopoverMenu" },
   "context-menu": { file: "src/context_menu.rs", type: "ContextMenuState" },
   menubar: { file: "src/menubar.rs", type: "Menubar" },
   "navigation-menu": { file: "src/navigation_menu.rs", type: "NavigationMenu" },
-  router: { file: "src/router.rs", type: "Router", extraTypes: [{ file: "src/router.rs", type: "RouteDefinition" }] },
+  router: {
+    file: "src/router.rs",
+    type: "Router",
+    extraTypes: [{ file: "src/router.rs", type: "RouteDefinition" }],
+  },
 };
 
 const SWIFT: Record<string, Target> = {
@@ -328,7 +387,9 @@ function typeSections(
 ): ApiSection[] {
   const fns = extractImplFns(file, typeName);
   const ctor = constructorFn(fns, preferred);
-  const parts = fns.filter((fn) => fn !== ctor && /-> (?:Element|Option<Element>)(?:\s|$)/.test(fn.signature));
+  const parts = fns.filter(
+    (fn) => fn !== ctor && /-> (?:Element|Option<Element>)(?:\s|$)/.test(fn.signature),
+  );
   const rest = fns.filter((fn) => fn !== ctor && !parts.includes(fn));
   const primary = toSection(typeName, ctor, uniqueEntries([...rest.map(toEntry), ...extra]));
   const partSections = parts.map((fn) => toSection(`${typeName}::${fn.name}`, fn, []));
@@ -354,6 +415,7 @@ export function rustApi(component: ComponentDoc): ApiSection[] {
     const fn = extractFn(extra.file, extra.fn);
     sections.push(toSection(extra.fn, fn, []));
   }
-  if (sections.length === 0) throw new Error(`No Rust API sections: ${component.kind}/${component.slug}`);
+  if (sections.length === 0)
+    throw new Error(`No Rust API sections: ${component.kind}/${component.slug}`);
   return sections;
 }

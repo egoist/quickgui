@@ -7,6 +7,7 @@ import {
   MAX_BATCH_BYTES,
   MAX_MUTATIONS,
   MAX_STRING_BYTES,
+  MAX_EXTENSION_PROPS_BYTES,
 } from "./protocol.generated.ts";
 export { PROTOCOL_VERSION, PropertyCode, NativeNodeTag } from "./protocol.generated.ts";
 export const ROOT_NODE_ID = 0;
@@ -460,7 +461,7 @@ export class MutationBatch {
       }
     } else {
       this.#u8(4);
-      this.#string(value);
+      this.#string(value, property === PropertyCode.ExtensionProps ? MAX_EXTENSION_PROPS_BYTES : MAX_STRING_BYTES);
     }
   }
 
@@ -545,9 +546,9 @@ export class MutationBatch {
     this.#length += 4;
   }
 
-  #string(value: string): void {
+  #string(value: string, limit = MAX_STRING_BYTES): void {
     const bytes = encoder.encode(value);
-    if (bytes.length > MAX_STRING_BYTES)
+    if (bytes.length > limit)
       throw new RangeError("QuickGUI string exceeds its native byte bound");
     this.#u32(bytes.length);
     this.#ensure(bytes.length);

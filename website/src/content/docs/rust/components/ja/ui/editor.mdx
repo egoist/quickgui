@@ -1,0 +1,51 @@
+シンタックスカラー、行番号、インデント、両軸スクロールに対応した保持型ネイティブコードエディターです。
+
+既定では見た目のスタイルを持ちません。文字と行番号の色は継承され、背景、枠線、角丸、余白、構文・差分の配色は追加されません。外観はアプリ側で明示的に指定します。
+
+## インポート
+
+QuickGUI の任意の `editor` crate feature を有効にし、保持型エディターの型をインポートします。
+
+```rust
+use quickgui::{Editor, IntoElement, SyntaxLanguage, View, ViewContext};
+```
+
+## 使い方
+
+```rust
+struct EditorExample {
+    editor: Editor,
+}
+
+impl View for EditorExample {
+    fn render(&mut self, cx: &mut ViewContext<'_, Self>) -> impl IntoElement {
+        let changed = cx.input_listener("source", |view, value, cx| {
+            if view.editor.set_text(value).changed {
+                cx.invalidate();
+            }
+        });
+        self.editor.element("source").on_input(changed)
+    }
+}
+```
+
+## シンタックスハイライト
+
+`SyntaxLanguage` は同梱の Tree-sitter 文法とハイライトクエリを選択します。クエリのキャプチャは 8 種類の安定した `SyntaxTheme` クラスへ平坦化され、前景色だけの `HighlightStyle` 範囲として適用されるため、色はテキスト寸法を変えません。ソースまたは言語が変わると上限付きドキュメントを再解析し、配色変更では保持済みキャプチャだけを再マッピングします。スクロール時に構文処理は行いません。解析は最大 2 MiB、32 KiB を超える単一行は通常色のまま、キャプチャ数にも上限があります。これは構造的な構文強調であり、言語サーバーのセマンティックトークンではありません。
+
+## 主なプロパティ
+
+| プロパティ          | 説明                                                                                   |
+| ------------------- | -------------------------------------------------------------------------------------- |
+| `Editor::with_text` | 保持型の制御ソースモデルを作成します。                                                 |
+| `set_text`          | 入力コールバックの値を反映し、必要な場合だけ構文範囲を更新します。                     |
+| `set_language`      | 同梱の Tree-sitter 文法を選択します。                                                  |
+| `TextInputIndentation`    | タブ、空白、自動インデント、読み取り専用動作を設定します。                             |
+| `EditorStyle`       | タイポグラフィ、折り返し、配色、ガター、アクティブ行、任意のフォーカス枠を設定します。 |
+| `element`           | 安定した要素 ID でネイティブエディターリーフを構築します。                             |
+
+<Note>
+  `quickgui` 依存関係に `features = ["editor"]`
+  を追加してください。入力、選択、Undo、スクロール状態の識別を保つため、開いたドキュメントごとに 1
+  つの Editor モデルを保持します。
+</Note>

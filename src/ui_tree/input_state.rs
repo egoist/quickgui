@@ -238,9 +238,12 @@ pub(super) fn sync_virtual_scrolls(
             .max(0.0);
         let next = virtual_scroll.handle.offset().clamp(0.0, max_offset);
         virtual_scroll.handle.set_offset_silent(next);
-        let previous = offsets.insert(element.runtime_id, Vector::new(0.0, next));
-        if previous.is_some_and(|previous| previous.y != next) {
+        let offset = offsets.entry(element.runtime_id).or_default();
+        let previous_y = offset.y;
+        offset.y = next;
+        if previous_y != next {
             let state = scrollbar_states.entry(element.runtime_id).or_default();
+            state.axis = ScrollbarAxis::Vertical;
             if !state.hovered && !state.dragging {
                 state.visible_until = now.checked_add(SCROLLBAR_AUTO_HIDE_DELAY);
             }

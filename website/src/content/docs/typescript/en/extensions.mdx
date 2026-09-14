@@ -1,8 +1,8 @@
-An extension is either a TypeScript package of reusable components, or a native library your app can call. Start with a TypeScript package. Add a native library when you need an optional backend.
+Extensions can provide ordinary Solid components, retained native components, or asynchronous native services. Editor, Markdown, and Terminal are optional component packages; Updater is an optional service. Third-party packages use the same SDK without changing `quickgui-host`.
 
 ## Choose an extension type
 
-Use an ordinary TypeScript package for reusable Solid components. Use a native extension when a feature needs a Rust, Go, or Zig service. Native extensions load into the same process as the app.
+Use an ordinary TypeScript package for reusable Solid UI. Use a native component when its state or rendering logic belongs in Rust, or a native service for asynchronous operations. Native libraries run in the application's existing process and use its renderer; they do not bundle another host.
 
 ## Create an extension project
 
@@ -32,9 +32,27 @@ Publish the package and add it as an application dependency.
 
 ## Lay out a native extension
 
-A native extension ships `quickgui.extension.json`, a versioned shared library, and any declared resources. The manifest names the service, ABI, npm package, version, and library. See the Go [Authoring Extensions](/docs/go/extensions) guide for the native contract and the [`native-extension` example](https://github.com/egoist/quickgui/tree/main/examples/native-extension).
+A combined extension can be both a Go module and an npm package. Put Rust in `src/`, TypeScript in `js/`, and built libraries in `lib/<platform>-<arch>/`. The root manifest names your package, independent version, ABI, and library. See the [Go authoring guide](/docs/go/extensions) and the first-party [`extensions/`](https://github.com/egoist/quickgui/tree/main/extensions) packages.
+
+```text
+Cargo.toml
+go.mod
+badge.go
+package.json
+quickgui.extension.json
+src/
+  lib.rs
+js/
+  index.ts
+lib/
+  darwin-arm64/libquickgui_acme_badge.dylib
+```
 
 ## Declare dependencies
+
+```sh
+bun add @quickgui/extension-terminal
+```
 
 ```ts
 import { defineConfig } from "@quickgui/cli";
@@ -47,11 +65,29 @@ export default defineConfig({
 });
 ```
 
-Add the matching npm package to application dependencies. Custom extensions may use a scoped name such as `@acme/extension-echo`.
+Custom extensions may use a scoped name such as `@acme/extension-echo`.
 
 ## Implement the native contract
 
-Implement `invoke` and `shutdown` in the native library. Copy borrowed input before returning, keep events scoped to their sessions, and release workers when a session stops.
+Native **components** implement `create`, `update`, `render`, `event`, and `destroy`. Rust authors use `Component`, `ComponentFactory`, and `ComponentRuntime` from [`quickgui-extension-sdk`](https://github.com/egoist/quickgui/tree/main/crates/quickgui-extension-sdk), which has no renderer dependency. Render stable keyed primitives, request only visible virtual rows, and wake only the owning instance when background work completes. Release state and wake handles when it is destroyed.
+
+A TypeScript binding mounts the registered component and supplies reactive properties:
+
+```ts
+import { ExtensionComponent } from "@quickgui/solid";
+
+export function Badge(props: { label: string }) {
+  return ExtensionComponent({
+    package: "acme-badge",
+    component: "badge",
+    get properties() { return { label: props.label }; },
+  });
+}
+```
+
+`onEvent(kind, value, event)` receives the component's output; the binding owns its typed public API. The host never interprets package-specific properties.
+
+Native **services** instead implement `invoke` and `shutdown`. Copy borrowed input before returning, keep events scoped to their sessions, and release workers when a session stops.
 
 ## Automatic registration
 
@@ -59,7 +95,7 @@ The CLI bundles declared extensions. The app loads them at startup, so component
 
 ## Build and package artifacts
 
-Rebuild the native library when its implementation changes, then rebuild the app. Resources listed in the manifest are copied next to the library.
+Rebuild the native library when its implementation changes, then rebuild the app. Resources listed in the manifest are copied next to the library. Export `js/index.ts` from the npm package. Keep `@quickgui/*` and Solid in `peerDependencies`, with development copies in `devDependencies`; do not bundle another QuickGUI runtime. Extension READMEs contain build instructions only; the user guide belongs on the website.
 
 ## Test and distribute
 
@@ -67,7 +103,7 @@ Rebuild the native library when its implementation changes, then rebuild the app
 import { ExtensionSession, invokeExtension } from "@quickgui/native";
 
 const result = await invokeExtension("acme-service", "lookup", { key: "example" });
-const session = new ExtensionSession("acme-service", {}, event => console.log(event));
+const session = new ExtensionSession("acme-service", {}, (event) => console.log(event));
 await session.ready;
 await session.request("refresh", null);
 await session.close();

@@ -50,7 +50,7 @@ From this repository, run `bun run build:native` once to stage the Rust library 
 
 ## Optional native extensions
 
-Import `github.com/egoist/quickgui/go/terminal` to use `terminal.View(terminal.Props{…})`. The core UI package does not import the terminal backend. The CLI examines the actual Go dependency graph, including transitive imports, target files, and build tags, then bundles the required extension libraries beside the core library.
+Import `github.com/egoist/quickgui/extensions/terminal` to use `terminal.View(terminal.Props{…})`. The core UI package does not import the terminal backend. The CLI examines the actual Go dependency graph, including transitive imports, target files, and build tags, then bundles the required extension libraries beside the core library.
 
 Terminal uses the separate `@quickgui/extension-terminal` package. The CLI uses an installed package or downloads the exact SDK-matched version on first use, verifies its SHA-512 integrity, and caches it. Apps without that import neither download nor bundle it. Ordinary Go edits reuse these prebuilt artifacts; no native build or feature-combination matrix is needed.
 

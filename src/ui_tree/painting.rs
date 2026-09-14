@@ -1,5 +1,14 @@
 use super::*;
 
+fn inset_corners(corners: Corners, border: Insets) -> Corners {
+    Corners::new(
+        (corners.top_left - border.left.max(border.top)).max(0.0),
+        (corners.top_right - border.right.max(border.top)).max(0.0),
+        (corners.bottom_right - border.right.max(border.bottom)).max(0.0),
+        (corners.bottom_left - border.left.max(border.bottom)).max(0.0),
+    )
+}
+
 /// Paint an element's raster background above its fill and behind its children.
 ///
 /// Tiles are generated only for the visible intersection of the element and its clip, and the
@@ -81,6 +90,129 @@ pub(super) fn push_background_image(
             );
         }
     }
+}
+
+#[cfg(feature = "text-input-decorations")]
+const EDITOR_GUTTER_TEXT_SALT: u64 = 0x6564_6974_6775_7474;
+
+#[cfg(feature = "text-input-decorations")]
+#[allow(clippy::too_many_arguments)]
+fn paint_editor_line_numbers<R: TextLayoutEngine>(
+    scene: &mut Scene,
+    layer: PaintLayerKey,
+    renderer: &mut R,
+    text_id: TextId,
+    content: &Arc<str>,
+    style: &TextStyle,
+    highlights: Option<&Arc<[TextHighlight]>>,
+    text_width: f32,
+    scale_factor: f32,
+    scroll_y: f32,
+    text_viewport: Rect,
+    gutter_width: f32,
+    gutter_clip: Rect,
+    line_starts: &[usize],
+    caret: usize,
+    editor: crate::TextInputGutter,
+) {
+    if line_starts.is_empty() || text_viewport.height <= 0.0 {
+        return;
+    }
+    let line_y = |line: usize, renderer: &mut R| {
+        if content.is_empty() || line == 0 && line_starts[line] == 0 {
+            if line == 0 {
+                return 0.0;
+            }
+        }
+        renderer
+            .text_caret_position_with_highlights(
+                text_id,
+                content,
+                style,
+                highlights,
+                text_width,
+                scale_factor,
+                line_starts[line],
+            )
+            .y
+    };
+    let visible_top = (scroll_y + gutter_clip.y - text_viewport.y).max(0.0);
+    let visible_bottom = (scroll_y + gutter_clip.bottom() - text_viewport.y).max(visible_top);
+    let mut first = if style.wrap == TextWrap::None {
+        (visible_top / style.line_height).floor().max(0.0) as usize
+    } else {
+        let mut low = 0;
+        let mut high = line_starts.len();
+        while low < high {
+            let middle = low + (high - low) / 2;
+            if line_y(middle, renderer) + style.line_height < visible_top {
+                low = middle + 1;
+            } else {
+                high = middle;
+            }
+        }
+        low
+    };
+    first = first.saturating_sub(1).min(line_starts.len() - 1);
+    let active_line = line_starts
+        .partition_point(|start| *start <= caret)
+        .saturating_sub(1);
+    let gutter_right = text_viewport.x - editor.content_padding_left;
+    let max_bottom = visible_bottom;
+    for line in first..line_starts.len() {
+        let y = if style.wrap == TextWrap::None {
+            line as f32 * style.line_height
+        } else {
+            line_y(line, renderer)
+        };
+        if y > max_bottom {
+            break;
+        }
+        if y + style.line_height < visible_top {
+            continue;
+        }
+        let label: Arc<str> = Arc::from((line + 1).to_string());
+        let mut number_style = style.clone();
+        number_style.color = if line == active_line {
+            editor.gutter_active_foreground.or(editor.gutter_foreground)
+        } else {
+            editor.gutter_foreground
+        }
+        .unwrap_or(style.color);
+        number_style.wrap = TextWrap::None;
+        number_style.align = TextAlign::Start;
+        number_style.text_overflow = None;
+        number_style.line_clamp = None;
+        let number_id = text_id.derived(EDITOR_GUTTER_TEXT_SALT ^ line as u64);
+        let measured = renderer.measure_text(number_id, &label, &number_style, None, scale_factor);
+        let x = (gutter_right - editor.gutter_padding_right - measured.width)
+            .max(gutter_right - gutter_width + editor.gutter_padding_left);
+        scene.push_text_in(
+            layer,
+            TextRun::new(
+                number_id,
+                label,
+                Rect::new(
+                    x,
+                    text_viewport.y + y - scroll_y,
+                    measured.width,
+                    style.line_height,
+                ),
+                number_style,
+            )
+            .clip(gutter_clip),
+        );
+    }
+}
+
+#[cfg(feature = "text-input-decorations")]
+fn decimal_digits(mut value: usize) -> usize {
+    let mut digits = 1;
+    while value >= 10 {
+        value /= 10;
+        digits += 1;
+    }
+    digits
 }
 
 /// The transform an element declares for this frame, and the fraction of its box it acts around.
@@ -279,6 +411,7 @@ pub(super) fn paint_selectable_text(
     highlights: Option<&Arc<[TextHighlight]>>,
     bounds: Rect,
     parent_clip: Rect,
+    rounded_clip: Option<(Rect, Corners)>,
     layer: PaintLayerKey,
     order: PaintOrder,
     scale_factor: f32,
@@ -333,7 +466,8 @@ pub(super) fn paint_selectable_text(
                 ),
                 static_selection_color(),
             )
-            .clip(clip),
+            .clip(clip)
+            .with_rounded_clip(rounded_clip),
         );
     }
 }
@@ -360,6 +494,7 @@ fn element_paint_layer(element: &Element, parent: PaintLayerKey) -> PaintLayerKe
 #[allow(clippy::too_many_arguments)]
 pub(super) fn collect_inspector_nodes(
     element: &Element,
+    taffy: &TaffyTree<MeasureContext>,
     parent: Option<ElementId>,
     depth: usize,
     parent_layer: PaintLayerKey,
@@ -413,12 +548,17 @@ pub(super) fn collect_inspector_nodes(
         accessibility,
     });
 
-    let Some(child_clip) = crate::inspector::child_clip(element, clip, bounds) else {
+    let padding_bounds = element
+        .taffy_node
+        .and_then(|node| taffy.layout(node).ok())
+        .map_or(bounds, |layout| padding_box(bounds, layout));
+    let Some(child_clip) = crate::inspector::child_clip(element, clip, padding_bounds) else {
         return;
     };
     for child in &element.children {
         collect_inspector_nodes(
             child,
+            taffy,
             Some(element.runtime_id),
             depth.saturating_add(1),
             layer,
@@ -617,6 +757,15 @@ pub(super) fn collect_layout_hit_regions(
     } else {
         parent_clip
     };
+    let Some(effective_parent_clip) = element
+        .visual
+        .scroll_clip_insets
+        .map_or(Some(effective_parent_clip), |insets| {
+            effective_parent_clip.intersection(parent_origin.scroll_viewport.inset(insets))
+        })
+    else {
+        return Ok(());
+    };
     if element.children.is_empty()
         && effective_parent_clip.intersection(bounds).is_none()
         && effective_parent_clip.intersection(hit_bounds).is_none()
@@ -646,7 +795,7 @@ pub(super) fn collect_layout_hit_regions(
     let clips_children = element.layout.overflow.x != Overflow::Visible
         || element.layout.overflow.y != Overflow::Visible;
     let child_clip = if clips_children {
-        let Some(clip) = parent_clip.intersection(bounds) else {
+        let Some(clip) = parent_clip.intersection(padding_box(bounds, layout)) else {
             return Ok(());
         };
         clip
@@ -1169,6 +1318,15 @@ fn paint_element_contents(
     } else {
         parent_clip
     };
+    let Some(effective_parent_clip) = element
+        .visual
+        .scroll_clip_insets
+        .map_or(Some(effective_parent_clip), |insets| {
+            effective_parent_clip.intersection(parent_origin.scroll_viewport.inset(insets))
+        })
+    else {
+        return Ok(());
+    };
     if element.children.is_empty()
         && effective_parent_clip.intersection(bounds).is_none()
         && effective_parent_clip.intersection(hit_bounds).is_none()
@@ -1183,11 +1341,7 @@ fn paint_element_contents(
         source: *source_order,
     };
     *source_order = (*source_order).saturating_add(1);
-    let parent_clip = if element.portal {
-        viewport
-    } else {
-        parent_clip
-    };
+    let parent_clip = effective_parent_clip;
 
     let previous_opacity = scene.multiply_opacity(opacity);
     // Explicit per-corner radii replace the single transitionable radius.
@@ -1230,13 +1384,31 @@ fn paint_element_contents(
         element.visual.filters.color_matrix()
     };
     push_element_shadows(scene, layer, bounds, corners, parent_clip, shadows, false);
-    if fill.a > 0.0
+    let mut background_fill = fill;
+    if let Some(radii) = element.visual.scroll_background_corners
+        && target_gradient.is_none()
+        && fill.a > 0.0
+    {
+        // A virtual row has square geometry, but its background can meet a fixed
+        // rounded viewport. Paint that inset shape through this row's visible slice.
+        // The ordinary rectangle clip still handles overflow and the row's borders.
+        if let Some(clip) = parent_clip.intersection(bounds) {
+            scene.push_quad_in(
+                layer,
+                Quad::new(parent_origin.scroll_viewport, fill)
+                    .corner_radii(radii)
+                    .clip(clip),
+            );
+        }
+        background_fill = Color::TRANSPARENT;
+    }
+    if background_fill.a > 0.0
         || target_gradient.is_some()
         || (border.a > 0.0 && has_visible_border(border_widths))
     {
         scene.push_edge_quad_in(
             layer,
-            EdgeQuad::new(bounds, fill)
+            EdgeQuad::new(bounds, background_fill)
                 .corner_radii(corners)
                 .background(target_gradient)
                 .border(border_widths, border)
@@ -1299,6 +1471,10 @@ fn paint_element_contents(
     }
 
     let mut text_input_scroll = None;
+    let rounded_text_clip = element
+        .visual
+        .scroll_clip_corners
+        .map(|corners| (parent_origin.scroll_viewport, corners));
     match &element.kind {
         ElementKind::Text(content) => {
             let mut style = element.resolved_typography.clone();
@@ -1334,6 +1510,7 @@ fn paint_element_contents(
                 None,
                 text_bounds,
                 text_clip,
+                rounded_text_clip,
                 layer,
                 order,
                 scale_factor,
@@ -1352,7 +1529,8 @@ fn paint_element_contents(
                     text_bounds,
                     style,
                 )
-                .clip(text_clip),
+                .clip(text_clip)
+                .with_rounded_clip(rounded_text_clip),
             );
             if let Some(decorations) = decorations {
                 for decoration in decorations {
@@ -1401,7 +1579,8 @@ fn paint_element_contents(
                             ),
                             background.color,
                         )
-                        .clip(clip),
+                        .clip(clip)
+                        .with_rounded_clip(rounded_text_clip),
                     );
                 }
                 paint_selectable_text(
@@ -1412,6 +1591,7 @@ fn paint_element_contents(
                     Some(&highlights),
                     text_bounds,
                     text_clip,
+                    rounded_text_clip,
                     layer,
                     order,
                     scale_factor,
@@ -1426,7 +1606,8 @@ fn paint_element_contents(
                     layer,
                     TextRun::new(text_id, styled.content().clone(), text_bounds, style)
                         .with_highlights(highlights)
-                        .clip(text_clip),
+                        .clip(text_clip)
+                        .with_rounded_clip(rounded_text_clip),
                 );
                 for decoration in geometry.decorations {
                     push_text_paint_rect(
@@ -1532,6 +1713,8 @@ fn paint_element_contents(
             }
         }
         ElementKind::TextInput(input) => {
+            let inner_bounds = bounds.inset(border_widths);
+            let rounded_text_clip = Some((inner_bounds, inset_corners(corners, border_widths)));
             let input_state = text_inputs.entry(element.runtime_id).or_insert_with(|| {
                 TextInputState::with_styling(
                     &input.value,
@@ -1544,20 +1727,121 @@ fn paint_element_contents(
             if let Some(color) = state_text_color {
                 style.color = color;
             }
-            let vertical_inset = if input.multiline {
-                10.0_f32.min(bounds.height * 0.5)
+            #[cfg(feature = "text-input-decorations")]
+            let line_starts = input.editor.map(|_| input_state.logical_line_starts());
+            #[cfg(feature = "text-input-decorations")]
+            let gutter_width = input
+                .editor
+                .filter(|editor| editor.line_numbers)
+                .map(|editor| {
+                    let line_count = line_starts.as_ref().map_or(1, |starts| starts.len());
+                    let digits = decimal_digits(line_count)
+                        .max(usize::from(editor.minimum_line_number_digits));
+                    editor.gutter_padding_left
+                        + editor.gutter_padding_right
+                        + digits as f32 * style.font_size * 0.62
+                })
+                .unwrap_or(0.0)
+                .min(inner_bounds.width.max(0.0));
+            #[cfg(not(feature = "text-input-decorations"))]
+            let gutter_width = 0.0;
+            #[cfg(feature = "text-input-decorations")]
+            let vertical_inset = if let Some(editor) = input.editor {
+                editor.content_padding_y.min(inner_bounds.height * 0.5)
+            } else if input.multiline {
+                10.0_f32.min(inner_bounds.height * 0.5)
             } else {
-                ((bounds.height - style.line_height) * 0.5).max(0.0)
+                ((inner_bounds.height - style.line_height) * 0.5).max(0.0)
             };
-            let text_viewport = bounds.inset(Insets {
-                top: vertical_inset,
-                right: 12.0,
-                bottom: vertical_inset,
-                left: 12.0,
+            #[cfg(not(feature = "text-input-decorations"))]
+            let vertical_inset = if input.multiline {
+                10.0_f32.min(inner_bounds.height * 0.5)
+            } else {
+                ((inner_bounds.height - style.line_height) * 0.5).max(0.0)
+            };
+            #[cfg(feature = "text-input-decorations")]
+            let (right_inset, left_inset) = input.editor.map_or((12.0, 12.0), |editor| {
+                (editor.content_padding_right, editor.content_padding_left)
             });
+            #[cfg(not(feature = "text-input-decorations"))]
+            let (right_inset, left_inset) = (12.0, 12.0);
+            let text_viewport = inner_bounds.inset(Insets {
+                top: vertical_inset,
+                right: right_inset,
+                bottom: vertical_inset,
+                left: left_inset + gutter_width,
+            });
+            // Insets belong to the document, not to its clipping viewport. They
+            // provide spacing at rest and scroll away with the text, like CodeBlock.
+            #[cfg(feature = "text-input-decorations")]
+            let paint_viewport = input.editor.map_or(text_viewport, |_| {
+                Rect::new(
+                    inner_bounds.x + gutter_width,
+                    inner_bounds.y,
+                    (inner_bounds.width - gutter_width).max(0.0),
+                    inner_bounds.height,
+                )
+            });
+            #[cfg(not(feature = "text-input-decorations"))]
+            let paint_viewport = text_viewport;
+            #[cfg(feature = "text-input-decorations")]
+            if let Some(editor) = input.editor
+                && gutter_width > 0.0
+                && let Some(gutter_clip) = parent_clip.intersection(Rect::new(
+                    inner_bounds.x,
+                    inner_bounds.y,
+                    gutter_width,
+                    inner_bounds.height,
+                ))
+            {
+                scene.push_quad_in(
+                    layer,
+                    // The input's rounded frame does not mask later paint. Use its
+                    // inset shape for the gutter, clipped to the fixed left lane.
+                    Quad::new(inner_bounds, editor.gutter_background)
+                        .corner_radii(inset_corners(corners, border_widths))
+                        .clip(gutter_clip),
+                );
+                scene.push_quad_in(
+                    layer,
+                    Quad::new(
+                        Rect::new(
+                            inner_bounds.x + gutter_width - 1.0,
+                            inner_bounds.y,
+                            1.0,
+                            inner_bounds.height,
+                        ),
+                        editor.gutter_border,
+                    )
+                    .clip(gutter_clip),
+                );
+                if rebuild_geometry {
+                    hit_regions.push(HitRegion {
+                        id: element.runtime_id,
+                        bounds: gutter_clip,
+                        clip: gutter_clip,
+                        clickable: false,
+                        pointer_listener: false,
+                        drag_source: false,
+                        drop_target: false,
+                        focusable: false,
+                        cursor_style: Some(CursorStyle::Arrow),
+                        cursor_states: CursorStateStyles::default(),
+                        stateful: false,
+                        blocks_pointer: false,
+                        app_region: element.app_region,
+                        order: PaintOrder {
+                            layer,
+                            source: *source_order,
+                        },
+                        transform: hit_transform,
+                    });
+                    *source_order = (*source_order).saturating_add(1);
+                }
+            }
             if text_viewport.width > 0.0
                 && text_viewport.height > 0.0
-                && let Some(text_clip) = parent_clip.intersection(text_viewport)
+                && let Some(text_clip) = parent_clip.intersection(paint_viewport)
             {
                 let source_content = input_state.shared_text();
                 let password = input
@@ -1623,7 +1907,7 @@ fn paint_element_contents(
                 scroll.x = scroll.x.clamp(0.0, max_scroll.x);
                 scroll.y = scroll.y.clamp(0.0, max_scroll.y);
                 let scroll_before_caret = scroll;
-                if is_focused {
+                if is_focused && input_state.caret_reveal_required() {
                     scroll = scroll_to_reveal_caret(
                         Size::new(text_viewport.width, text_viewport.height),
                         caret,
@@ -1635,6 +1919,7 @@ fn paint_element_contents(
                 scroll_offsets.insert(element.runtime_id, scroll);
                 if scroll != scroll_before_caret {
                     let scrollbar_state = scrollbar_states.entry(element.runtime_id).or_default();
+                    scrollbar_state.axis = ScrollbarAxis::for_change(scroll_before_caret, scroll);
                     if !scrollbar_state.hovered && !scrollbar_state.dragging {
                         scrollbar_state.visible_until =
                             paint_time.checked_add(SCROLLBAR_AUTO_HIDE_DELAY);
@@ -1648,6 +1933,30 @@ fn paint_element_contents(
                     (style.line_height - caret_inset * 2.0).max(1.0),
                 );
 
+                #[cfg(feature = "text-input-decorations")]
+                if let Some(editor) = input.editor
+                    && editor.active_line_background.a > 0.0
+                    && let Some(active_clip) = parent_clip.intersection(inner_bounds)
+                {
+                    scene.push_quad_in(
+                        layer,
+                        Quad::new(
+                            Rect::new(
+                                inner_bounds.x,
+                                text_viewport.y + caret.y - scroll.y,
+                                inner_bounds.width,
+                                style.line_height,
+                            ),
+                            editor.active_line_background,
+                        )
+                        .clip(active_clip)
+                        .with_rounded_clip(rounded_text_clip),
+                    );
+                }
+
+                let visible_top = (scroll.y + text_clip.y - text_viewport.y).max(0.0);
+                let visible_bottom =
+                    (scroll.y + text_clip.bottom() - text_viewport.y).max(visible_top);
                 let mut decorations = Vec::new();
                 if !content.is_empty() && (highlights.is_some() || style.has_decorations()) {
                     let geometry = renderer.text_geometry(
@@ -1657,7 +1966,7 @@ fn paint_element_contents(
                         highlights.as_ref(),
                         text_viewport.width,
                         scale_factor,
-                        scroll.y..scroll.y + text_viewport.height,
+                        visible_top..visible_bottom,
                     );
                     for background in geometry.backgrounds {
                         scene.push_quad_in(
@@ -1671,7 +1980,8 @@ fn paint_element_contents(
                                 ),
                                 background.color,
                             )
-                            .clip(text_clip),
+                            .clip(text_clip)
+                            .with_rounded_clip(rounded_text_clip),
                         );
                     }
                     decorations = geometry.decorations;
@@ -1686,7 +1996,7 @@ fn paint_element_contents(
                         highlights.as_ref(),
                         text_viewport.width,
                         scale_factor,
-                        scroll.y..scroll.y + text_viewport.height,
+                        visible_top..visible_bottom,
                         display_index(selection.start),
                         display_index(selection.end),
                     ) {
@@ -1701,7 +2011,8 @@ fn paint_element_contents(
                                 ),
                                 Color::rgba8(48, 120, 196, 105),
                             )
-                            .clip(text_clip),
+                            .clip(text_clip)
+                            .with_rounded_clip(rounded_text_clip),
                         );
                     }
                 }
@@ -1711,7 +2022,9 @@ fn paint_element_contents(
                     if input_state.caret_visible_at(paint_time) {
                         scene.push_quad_in(
                             layer,
-                            Quad::new(caret_bounds, style.color).clip(text_clip),
+                            Quad::new(caret_bounds, style.color)
+                                .clip(text_clip)
+                                .with_rounded_clip(rounded_text_clip),
                         );
                     }
                 } else {
@@ -1728,7 +2041,7 @@ fn paint_element_contents(
                         highlights.as_ref(),
                         text_viewport.width,
                         scale_factor,
-                        scroll.y..scroll.y + text_viewport.height,
+                        visible_top..visible_bottom,
                         display_index(marked.start),
                         display_index(marked.end),
                     ) {
@@ -1743,7 +2056,8 @@ fn paint_element_contents(
                                 ),
                                 style.color,
                             )
-                            .clip(text_clip),
+                            .clip(text_clip)
+                            .with_rounded_clip(rounded_text_clip),
                         );
                     }
                 }
@@ -1756,14 +2070,10 @@ fn paint_element_contents(
                     } else {
                         (content.clone(), style.clone())
                     };
-                let text_bounds = Rect::new(
-                    text_viewport.x - scroll.x,
-                    text_viewport.y - scroll.y,
-                    text_viewport.width,
-                    content_size.height.max(text_viewport.height),
-                );
-                let mut text_run =
-                    TextRun::new(text_id, display_text, text_bounds, display_style).clip(text_clip);
+                let text_bounds = text_input_run_bounds(text_viewport, content_size, scroll);
+                let mut text_run = TextRun::new(text_id, display_text, text_bounds, display_style)
+                    .clip(text_clip)
+                    .with_rounded_clip(rounded_text_clip);
                 if let Some(highlights) = &highlights {
                     text_run = text_run.with_highlights(highlights.clone());
                 }
@@ -1775,6 +2085,36 @@ fn paint_element_contents(
                         decoration,
                         Point::new(text_viewport.x - scroll.x, text_viewport.y - scroll.y),
                         text_clip,
+                    );
+                }
+                #[cfg(feature = "text-input-decorations")]
+                if let (Some(editor), Some(line_starts)) = (input.editor, line_starts.as_ref())
+                    && editor.line_numbers
+                    && gutter_width > 0.0
+                    && let Some(gutter_clip) = parent_clip.intersection(Rect::new(
+                        inner_bounds.x,
+                        inner_bounds.y,
+                        gutter_width,
+                        inner_bounds.height,
+                    ))
+                {
+                    paint_editor_line_numbers(
+                        scene,
+                        layer,
+                        renderer,
+                        text_id,
+                        &content,
+                        &style,
+                        highlights.as_ref(),
+                        text_viewport.width,
+                        scale_factor,
+                        scroll.y,
+                        text_viewport,
+                        gutter_width,
+                        gutter_clip,
+                        line_starts,
+                        input_state.caret(),
+                        editor,
                     );
                 }
                 text_input_regions.push(TextInputRegion {
@@ -1789,12 +2129,15 @@ fn paint_element_contents(
                     max_scroll,
                     caret_bounds,
                 });
-                if input.multiline && max_scroll.y > 0.0 {
-                    let scrollbar_bounds = Rect::new(
-                        bounds.x,
-                        text_viewport.y,
-                        bounds.width,
-                        text_viewport.height,
+                if input.multiline && (max_scroll.x > 0.0 || max_scroll.y > 0.0) {
+                    let scrollbar_bounds = horizontal_scrollbar_inset_bounds(
+                        Rect::new(
+                            inner_bounds.x,
+                            paint_viewport.y,
+                            inner_bounds.width,
+                            paint_viewport.height,
+                        ),
+                        gutter_width,
                     );
                     text_input_scroll = Some((
                         bounds,
@@ -1837,7 +2180,10 @@ fn paint_element_contents(
     let clips_children = element.layout.overflow.x != Overflow::Visible
         || element.layout.overflow.y != Overflow::Visible;
     let child_clip = if clips_children {
-        match parent_clip.intersection(bounds) {
+        // Overflow belongs to the padding box, not the border box. In particular,
+        // horizontally scrolled glyphs must not paint into a split pane's divider.
+        // Keep this identical to the geometry-only hit-test traversal above.
+        match parent_clip.intersection(padding_box(bounds, layout)) {
             Some(clip) => clip,
             None => {
                 if let Some(group) = group {
@@ -1851,31 +2197,41 @@ fn paint_element_contents(
         parent_clip
     };
 
-    let is_scrollable = !matches!(&element.kind, ElementKind::TextInput(_))
-        && (element.layout.overflow.x == Overflow::Scroll
-            || element.layout.overflow.y == Overflow::Scroll);
+    let is_text_input = matches!(&element.kind, ElementKind::TextInput(_));
+    let scrolls_x = !is_text_input && element.layout.overflow.x == Overflow::Scroll;
+    let scrolls_y = !is_text_input && element.layout.overflow.y == Overflow::Scroll;
+    let is_scrollable = scrolls_x || scrolls_y;
+    let ordinary_max_offset = Vector::new(
+        if scrolls_x {
+            (layout.content_size.width - layout.size.width).max(0.0)
+        } else {
+            0.0
+        },
+        if scrolls_y {
+            (layout.content_size.height - layout.size.height).max(0.0)
+        } else {
+            0.0
+        },
+    );
     let mut scroll = Vector::ZERO;
     let mut scroll_max_offset = None;
-    if is_scrollable {
-        let max_offset = Vector::new(
-            (layout.content_size.width - layout.size.width).max(0.0),
-            (layout.content_size.height - layout.size.height).max(0.0),
-        );
-        let offset = scroll_offsets.entry(element.runtime_id).or_default();
-        offset.x = offset.x.clamp(0.0, max_offset.x);
-        offset.y = offset.y.clamp(0.0, max_offset.y);
-        scroll = *offset;
-        scroll_max_offset = Some(max_offset);
-    } else if let Some(virtual_scroll) = &element.virtual_scroll {
+    if let Some(virtual_scroll) = &element.virtual_scroll {
         let max_offset_y = virtual_scroll
             .handle
             .max_offset(virtual_scroll.max_offset_y)
             .max(0.0);
         let offset = scroll_offsets.entry(element.runtime_id).or_default();
-        offset.x = 0.0;
+        offset.x = offset.x.clamp(0.0, ordinary_max_offset.x);
         offset.y = virtual_scroll.handle.offset().clamp(0.0, max_offset_y);
+        scroll.x = offset.x;
         scroll.y =
             virtual_scroll.handle.presented_offset(offset.y) - virtual_scroll.mount.layout_offset_y;
+    } else if is_scrollable {
+        let offset = scroll_offsets.entry(element.runtime_id).or_default();
+        offset.x = offset.x.clamp(0.0, ordinary_max_offset.x);
+        offset.y = offset.y.clamp(0.0, ordinary_max_offset.y);
+        scroll = *offset;
+        scroll_max_offset = Some(ordinary_max_offset);
     }
 
     let mut child_origin = child_frame(
@@ -1883,7 +2239,7 @@ fn paint_element_contents(
         layout,
         bounds,
         scroll,
-        scroll_max_offset.is_some(),
+        is_scrollable || element.virtual_scroll.is_some(),
         parent_origin,
     );
     child_origin.transform = group_transform;
@@ -1953,6 +2309,7 @@ fn paint_element_contents(
             clip: text_clip,
             max_offset,
             virtual_scroll: false,
+            vertical_scrollbar: true,
             order,
             scrollbar_order,
         };
@@ -1970,22 +2327,33 @@ fn paint_element_contents(
                 .unwrap_or_default(),
             paint_time,
         );
+        paint_horizontal_scrollbar(
+            scene,
+            layer,
+            region,
+            text_scroll.x,
+            scrollbar_states
+                .get(&region.id)
+                .copied()
+                .unwrap_or_default(),
+            paint_time,
+        );
     }
 
-    let vertical_scroll = if let Some(max_offset) = scroll_max_offset {
-        Some((max_offset, scroll.y, false))
-    } else if let Some(virtual_scroll) = &element.virtual_scroll {
+    let vertical_scroll = if let Some(virtual_scroll) = &element.virtual_scroll {
         let max_offset = Vector::new(
-            0.0,
+            ordinary_max_offset.x,
             virtual_scroll
                 .handle
                 .max_offset(virtual_scroll.max_offset_y)
                 .max(0.0),
         );
         let offset = scroll_offsets.entry(element.runtime_id).or_default();
-        offset.x = 0.0;
+        offset.x = offset.x.clamp(0.0, max_offset.x);
         offset.y = offset.y.clamp(0.0, max_offset.y);
         Some((max_offset, offset.y, true))
+    } else if let Some(max_offset) = scroll_max_offset {
+        Some((max_offset, scroll.y, false))
     } else {
         None
     };
@@ -1999,14 +2367,18 @@ fn paint_element_contents(
             source: *source_order,
         };
         *source_order = (*source_order).saturating_add(1);
+        let scrollbar_left_inset = element
+            .horizontal_scrollbar_left_inset
+            .clamp(0.0, bounds.width.max(0.0));
         let region = ScrollRegion {
             id: element.runtime_id,
             rtl: element.resolved_direction.is_rtl(),
             bounds,
-            scrollbar_bounds: bounds,
+            scrollbar_bounds: horizontal_scrollbar_inset_bounds(bounds, scrollbar_left_inset),
             clip: child_clip,
             max_offset,
             virtual_scroll,
+            vertical_scrollbar: !element.vertical_scrollbar_hidden,
             order,
             scrollbar_order,
         };
@@ -2018,6 +2390,17 @@ fn paint_element_contents(
             layer,
             region,
             scroll_offset_y,
+            scrollbar_states
+                .get(&region.id)
+                .copied()
+                .unwrap_or_default(),
+            paint_time,
+        );
+        paint_horizontal_scrollbar(
+            scene,
+            layer,
+            region,
+            scroll.x,
             scrollbar_states
                 .get(&region.id)
                 .copied()
@@ -2071,6 +2454,19 @@ pub(super) fn push_text_paint_rect(
     }
 }
 
+pub(super) fn text_input_run_bounds(
+    text_viewport: Rect,
+    content_size: Size,
+    scroll: Vector,
+) -> Rect {
+    Rect::new(
+        text_viewport.x - scroll.x,
+        text_viewport.y - scroll.y,
+        content_size.width.max(text_viewport.width),
+        content_size.height.max(text_viewport.height),
+    )
+}
+
 pub(super) fn effective_cursor_style(
     element: &Element,
     selectable_text: bool,
@@ -2102,13 +2498,13 @@ pub(super) fn paint_vertical_scrollbar(
     state: ScrollbarState,
     now: Instant,
 ) {
-    if !state.visible(now) {
+    if !region.vertical_scrollbar || !state.visible(ScrollbarAxis::Vertical, now) {
         return;
     }
     let Some(scrollbar) = vertical_scrollbar_geometry(region, scroll_offset_y) else {
         return;
     };
-    let expanded = state.hovered || state.dragging;
+    let expanded = state.expanded(ScrollbarAxis::Vertical);
     let width = if expanded { 8.0 } else { 4.0 };
     let alpha = if expanded { 210 } else { 150 };
     scene.push_quad_in(
@@ -2127,10 +2523,43 @@ pub(super) fn paint_vertical_scrollbar(
     );
 }
 
+pub(super) fn paint_horizontal_scrollbar(
+    scene: &mut Scene,
+    layer: PaintLayerKey,
+    region: ScrollRegion,
+    scroll_offset_x: f32,
+    state: ScrollbarState,
+    now: Instant,
+) {
+    if !state.visible(ScrollbarAxis::Horizontal, now) {
+        return;
+    }
+    let Some(scrollbar) = horizontal_scrollbar_geometry(region, scroll_offset_x) else {
+        return;
+    };
+    let expanded = state.expanded(ScrollbarAxis::Horizontal);
+    let height = if expanded { 8.0 } else { 4.0 };
+    let alpha = if expanded { 210 } else { 150 };
+    scene.push_quad_in(
+        layer,
+        Quad::new(
+            Rect::new(
+                scrollbar.thumb.x + 2.0,
+                region.scrollbar_bounds.bottom() - 2.0 - height,
+                (scrollbar.thumb.width - 4.0).max(4.0),
+                height,
+            ),
+            Color::rgba8(142, 147, 160, alpha),
+        )
+        .radius(height * 0.5)
+        .clip(region.clip),
+    );
+}
+
 pub(super) fn vertical_scrollbar_geometry(
     region: ScrollRegion,
     scroll_offset_y: f32,
-) -> Option<VerticalScrollbarGeometry> {
+) -> Option<ScrollbarGeometry> {
     let bounds = region.scrollbar_bounds;
     let viewport_height = bounds.height;
     if region.max_offset.y <= 0.0 || viewport_height <= 0.0 {
@@ -2143,7 +2572,7 @@ pub(super) fn vertical_scrollbar_geometry(
     let travel = viewport_height - thumb_height;
     let thumb_y =
         bounds.y + travel * (scroll_offset_y.clamp(0.0, region.max_offset.y) / region.max_offset.y);
-    Some(VerticalScrollbarGeometry {
+    Some(ScrollbarGeometry {
         track: Rect::new(
             (bounds.right() - 12.0).max(bounds.x),
             bounds.y,
@@ -2158,4 +2587,62 @@ pub(super) fn vertical_scrollbar_geometry(
         ),
         travel,
     })
+}
+
+pub(super) fn scrollbar_geometry(
+    region: ScrollRegion,
+    axis: ScrollbarAxis,
+    scroll_offset: f32,
+) -> Option<ScrollbarGeometry> {
+    match axis {
+        ScrollbarAxis::Horizontal => horizontal_scrollbar_geometry(region, scroll_offset),
+        ScrollbarAxis::Vertical => vertical_scrollbar_geometry(region, scroll_offset),
+    }
+}
+
+pub(super) fn horizontal_scrollbar_geometry(
+    region: ScrollRegion,
+    scroll_offset_x: f32,
+) -> Option<ScrollbarGeometry> {
+    let bounds = region.scrollbar_bounds;
+    let viewport_width = bounds.width;
+    if region.max_offset.x <= 0.0 || viewport_width <= 0.0 {
+        return None;
+    }
+    let content_width = viewport_width + region.max_offset.x;
+    let thumb_width = (viewport_width * viewport_width / content_width)
+        .max(24.0)
+        .min(viewport_width);
+    let travel = viewport_width - thumb_width;
+    let thumb_x =
+        bounds.x + travel * (scroll_offset_x.clamp(0.0, region.max_offset.x) / region.max_offset.x);
+    Some(ScrollbarGeometry {
+        track: Rect::new(
+            bounds.x,
+            (bounds.bottom() - 12.0).max(bounds.y),
+            viewport_width,
+            bounds.height.min(12.0),
+        ),
+        thumb: Rect::new(
+            thumb_x,
+            (bounds.bottom() - 12.0).max(bounds.y),
+            thumb_width,
+            bounds.height.min(12.0),
+        ),
+        travel,
+    })
+}
+
+pub(super) fn horizontal_scrollbar_inset_bounds(bounds: Rect, left_inset: f32) -> Rect {
+    let left_inset = if left_inset.is_finite() {
+        left_inset.clamp(0.0, bounds.width.max(0.0))
+    } else {
+        0.0
+    };
+    Rect::new(
+        bounds.x + left_inset,
+        bounds.y,
+        bounds.width - left_inset,
+        bounds.height,
+    )
 }

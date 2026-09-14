@@ -1,0 +1,48 @@
+行を同期しつつ各ペインを個別に横スクロールできる、仮想化された分割／統合ファイル差分ビューです。
+
+既定では見た目のスタイルを持ちません。文字と行番号の色は継承され、背景、枠線、角丸、余白、構文・差分の配色は追加されません。外観はアプリ側で明示的に指定します。
+
+## インポート
+
+QuickGUI の任意の `editor` crate feature を有効にし、差分モデルと表示用の型をインポートします。
+
+```rust
+use quickgui::{DiffLayout, DiffView, DiffViewStyle, IntoElement, SyntaxLanguage};
+```
+
+## 使い方
+
+```rust
+let diff = DiffView::from_texts(
+    "before.rs",
+    "pub const ANSWER: u8 = 41;\n",
+    "after.rs",
+    "pub const ANSWER: u8 = 42;\n",
+)
+.with_style(
+    DiffViewStyle::default()
+        .layout(DiffLayout::Split)
+        .language(Some(SyntaxLanguage::Rust)),
+);
+
+diff.element("source-diff")
+```
+
+## シンタックスハイライト
+
+DiffView は Editor と同じ同梱 Tree-sitter 文法を使います。ドキュメント、言語、構文配色が変わると、表示対象となる各ファイルの新旧行シーケンスを一度ずつ解析し、キャプチャ断片を論理行へ割り当てます。各 `RenderSide` はマウント時にだけ `StyledText` を遅延生成してキャッシュし、重ならないバイト境界で行内の追加／削除強調を統合します。スクロール時にパーサーは動きません。
+
+## 主なプロパティ
+
+| プロパティ                  | 説明                                                                       |
+| --------------------------- | -------------------------------------------------------------------------- |
+| `DiffView::from_texts`      | 2 つの完全なメモリ内ソースから上限付きヒストグラム差分を計算します。       |
+| `DiffView::from_patch`      | Git を呼び出さず、取得済みの Git または通常の unified patch を解析します。 |
+| `DiffViewStyle::layout`     | 分割表示または統合表示を選択します。                                       |
+| `DiffViewStyle::indicators` | バー、従来の `+`/`−`、またはインジケーターなしを選択します。               |
+| `DiffViewStyle::word_wrap`  | 横スクロールの代わりに長い行を折り返します。                               |
+| `DiffTheme`                 | 行、ガター、ハンク、ヘッダー、行内変更の色を設定します。                   |
+| `set_document`              | ビューとリスト状態を保ったまま、不変の差分モデルを置き換えます。           |
+| `element`                   | 安定した要素 ID で仮想化差分サーフェスを構築します。                       |
+
+分割ペインは個別の横オフセットと、同期された 1 つの縦オフセットを保持します。`ListState` は表示行と上限付きオーバースキャンだけをマウントします。

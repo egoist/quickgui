@@ -1,0 +1,41 @@
+[package]
+name = "quickgui-editor"
+version = "0.1.4-next.4"
+edition = "2024"
+rust-version = "1.90"
+description = "Editor, CodeBlock and DiffView native component extension"
+license = "MIT OR Apache-2.0"
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+default = ["editor"]
+editor = []
+
+[dependencies]
+quickgui-extension-sdk = { path = "../../crates/quickgui-extension-sdk", version = "=0.1.4-next.4" }
+serde_json = "1.0"
+imara-diff = { version = "0.2.0" }
+tree-sitter-bash = { version = "0.25.1" }
+tree-sitter-cpp = { version = "0.23.4" }
+tree-sitter-css = { version = "0.25.0" }
+tree-sitter-go = { version = "0.25.0" }
+tree-sitter-highlight = { version = "0.27.0" }
+tree-sitter-html = { version = "0.23.2" }
+tree-sitter-java = { version = "0.23.5" }
+tree-sitter-javascript = { version = "0.25.0" }
+tree-sitter-json = { version = "0.24.8" }
+tree-sitter-markdown = { package = "tree-sitter-md-025", version = "0.5.6" }
+tree-sitter-python = { version = "0.25.0" }
+tree-sitter-ruby = { version = "0.23.1" }
+tree-sitter-rust = { version = "0.24.2" }
+tree-sitter-sequel = { version = "0.3.11" }
+tree-sitter-swift = { version = "0.7.3" }
+tree-sitter-toml-ng = { version = "0.7.0" }
+tree-sitter-typescript = { version = "0.23.2" }
+tree-sitter-yaml = { version = "0.7.2" }
+
+[dev-dependencies]
+quickgui = { path = "../..", default-features = false, features = ["test-support", "text-input-decorations"] }

@@ -239,6 +239,27 @@ impl Element {
         self
     }
 
+    /// Round a solid row background at the fixed scroll viewport's edges, not at
+    /// the moving row's edges. This does not add padding or clip descendant text.
+    pub(crate) fn scroll_background_corners(mut self, radii: [f32; 4]) -> Self {
+        self.visual.scroll_background_corners =
+            Some(Corners::new(radii[0], radii[1], radii[2], radii[3]).sanitized());
+        self
+    }
+
+    /// Keep a scrolling cell's paint and hit area out of a frozen leading column.
+    pub(crate) fn scroll_clip(mut self, insets: [f32; 4], radii: [f32; 4]) -> Self {
+        self.visual.scroll_clip_insets = Some(Insets {
+            top: insets[0].max(0.0),
+            right: insets[1].max(0.0),
+            bottom: insets[2].max(0.0),
+            left: insets[3].max(0.0),
+        });
+        self.visual.scroll_clip_corners =
+            Some(Corners::new(radii[0], radii[1], radii[2], radii[3]).sanitized());
+        self
+    }
+
     /// Round each corner independently.
     ///
     /// Per-corner radii replace the single [`Element::rounded`] value. They are paint-only and,
@@ -1038,6 +1059,7 @@ impl Element {
             max_offset_y: list.max_scroll_offset(),
             measurement_revision: 0,
             mount: list.scroll_mount(),
+            report_viewport: true,
         });
         self
     }
@@ -1057,6 +1079,21 @@ impl Element {
             max_offset_y,
             measurement_revision,
             mount,
+            report_viewport: true,
+        });
+        self
+    }
+
+    /// Mirror a variable list's paint-time offset without becoming another measurement source.
+    pub(crate) fn variable_virtual_scroll_mirror(mut self, list: &ListState) -> Self {
+        self.layout.overflow.y = Overflow::Hidden;
+        let (handle, max_offset_y, measurement_revision, mount) = list.scroll_binding();
+        self.virtual_scroll = Some(VirtualScrollStyle {
+            handle,
+            max_offset_y,
+            measurement_revision,
+            mount,
+            report_viewport: false,
         });
         self
     }

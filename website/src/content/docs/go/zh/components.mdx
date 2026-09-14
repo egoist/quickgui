@@ -55,6 +55,10 @@ func CardComponent(title string, children ...any) *ui.Element {
 
 `View`、`Text`、`Button` 和 `Input` 覆盖大多数布局和文本。在同一个元素上链式调用样式、属性和事件。
 
+可选的 `extensions/editor` 软件包提供 Rust 核心的 [Editor](/docs/go/components/editor)、[CodeBlock](/docs/go/components/code-block) 与 [DiffView](/docs/go/components/diff-view)，无需 CGO 或另一份原生库。
+
+可选的 `extensions/markdown` 软件包提供保留式 [Markdown](/docs/go/components/markdown)，包括流式协调和 CodeBlock 渲染。
+
 ```go
 func ButtonExample(save func()) *ui.Element {
 	return ui.Button().Child("Save changes").

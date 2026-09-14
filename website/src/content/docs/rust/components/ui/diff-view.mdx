@@ -1,0 +1,48 @@
+A virtualized split or unified file diff with synchronized rows and independent pane scrolling.
+
+Unstyled by default: text and line-number colors inherit, and the component adds no background, border, rounding, padding, or syntax/diff palette. Supply application styles and explicit colors to opt into an appearance.
+
+## Import
+
+Enable QuickGUI's opt-in `editor` crate feature and import the diff model and presentation types.
+
+```rust
+use quickgui::{DiffLayout, DiffView, DiffViewStyle, IntoElement, SyntaxLanguage};
+```
+
+## Usage
+
+```rust
+let diff = DiffView::from_texts(
+    "before.rs",
+    "pub const ANSWER: u8 = 41;\n",
+    "after.rs",
+    "pub const ANSWER: u8 = 42;\n",
+)
+.with_style(
+    DiffViewStyle::default()
+        .layout(DiffLayout::Split)
+        .language(Some(SyntaxLanguage::Rust)),
+);
+
+diff.element("source-diff")
+```
+
+## Syntax highlighting
+
+DiffView uses the same bundled Tree-sitter grammars as Editor. When its document, language, or syntax palette changes, it parses each visible old/new file lane once and assigns capture fragments to logical rows. Each `RenderSide` then builds and caches its `StyledText` lazily when mounted, merging inline addition/deletion emphasis at non-overlapping byte boundaries. Scrolling never invokes the parser.
+
+## Key props
+
+| Prop                        | Purpose                                                                    |
+| --------------------------- | -------------------------------------------------------------------------- |
+| `DiffView::from_texts`      | Computes a bounded histogram diff from two complete in-memory sources.     |
+| `DiffView::from_patch`      | Parses a captured Git or ordinary unified patch without invoking Git.      |
+| `DiffViewStyle::layout`     | Selects split or unified presentation.                                     |
+| `DiffViewStyle::indicators` | Selects bars, classic `+`/`−`, or no indicators.                           |
+| `DiffViewStyle::word_wrap`  | Wraps long lines instead of enabling horizontal scrolling.                 |
+| `DiffTheme`                 | Configures line, gutter, hunk, header, and inline-change colors.           |
+| `set_document`              | Replaces the immutable diff model while retaining the view and list state. |
+| `element`                   | Builds the virtualized diff surface for a stable element ID.               |
+
+Split panes retain independent horizontal offsets and one synchronized vertical offset. The `ListState` mounts only visible rows plus bounded overscan.

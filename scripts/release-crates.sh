@@ -92,6 +92,7 @@ wait_for_crate() {
 }
 
 crate_names=(
+  quickgui-extension-sdk
   quickgui-winit
   quickgui-accesskit-winit
   quickgui-cosmic-text
@@ -100,6 +101,7 @@ crate_names=(
   quickgui
 )
 crate_manifests=(
+  crates/quickgui-extension-sdk/Cargo.toml
   vendor/winit/Cargo.toml
   vendor/accesskit_winit/Cargo.toml
   vendor/cosmic_text/Cargo.toml

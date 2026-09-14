@@ -2,10 +2,12 @@
 
 ## インポート
 
-`quickgui` から `Markdown` をインポートします。
+```sh
+cargo add quickgui --features markdown
+```
 
 ```rust
-use quickgui::*;
+use quickgui::Markdown;
 ```
 
 ## 使い方
@@ -17,7 +19,9 @@ markdown.element("note").w(290.0)
 
 ## 主なプロパティ
 
-| プロパティ | 説明 |
-| --- | --- |
-| `value` | 組版・描画する Markdown ソースです。 |
-| `streaming` | 追記された内容に Markdown の差分更新を使います。 |
+| プロパティ                             | 説明                                                                                 |
+| -------------------------------------- | ------------------------------------------------------------------------------------ |
+| `value`                                | 組版・描画する Markdown ソースです。                                                 |
+| `streaming`                            | 追記された内容に Markdown の差分更新を使います。                                     |
+| `element_with_code_blocks`             | 解析済みコードブロックを呼び出し側の Rust コンポーネントファクトリーで置き換えます。 |
+| `element_with_highlighted_code_blocks` | `editor` feature も有効な場合に保持型 CodeBlock モデルを使います。                   |

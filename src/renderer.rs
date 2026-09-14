@@ -1774,6 +1774,7 @@ struct VisibleText {
     bounds: TextBounds,
     color: glyphon::Color,
     opacity: f32,
+    mask: Option<glyphon::TextMask>,
 }
 
 struct TextBatch {

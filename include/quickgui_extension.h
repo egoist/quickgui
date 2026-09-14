@@ -1,6 +1,6 @@
-/* QuickGUI service extension ABI v1. No renderer, host, or C++ runtime dependency.
+/* QuickGUI extension ABI v1. No renderer, host, or C++ runtime dependency.
  * This header may be vendored into an independently built extension package.
- * Keep layouts in sync with src/extension_api.rs. */
+ * Keep layouts in sync with crates/quickgui-extension-sdk/src/abi.rs. */
 #ifndef QUICKGUI_EXTENSION_H
 #define QUICKGUI_EXTENSION_H
 
@@ -19,6 +19,8 @@ extern "C" {
 
 #define QUICKGUI_EXTENSION_ABI_V1 1
 #define QUICKGUI_EXTENSION_SERVICE 2
+#define QUICKGUI_EXTENSION_COMPONENT 3
+#define QUICKGUI_COMPONENT_MAX_PAYLOAD (16 * 1024 * 1024)
 #define QUICKGUI_EXTENSION_MAX_PAYLOAD (64 * 1024)
 #define QUICKGUI_EXTENSION_REPLY 0
 #define QUICKGUI_EXTENSION_ERROR 1
@@ -49,6 +51,25 @@ typedef struct QuickGuiServiceApi {
                    QuickGuiServiceSink sink);
     void (*shutdown)(void);
 } QuickGuiServiceApi;
+
+/* Component instances transfer ownership of wake at create, including failure paths. Calls on
+ * each instance run serially on the UI thread. Request/reply bytes are borrowed only during the
+ * call, and a reply is made at most once, synchronously. Rendered nodes use the SDK's generic
+ * primitive schema; component names, props, state, and behavior belong to the package. */
+typedef struct QuickGuiWake {
+    void *context;
+    void (*wake)(void *context);
+    void (*release)(void *context);
+} QuickGuiWake;
+typedef void (*QuickGuiReply)(void *context, QuickGuiBytes payload);
+typedef struct QuickGuiComponentApi {
+    void *(*create)(QuickGuiBytes component, QuickGuiBytes props, QuickGuiWake wake,
+                    void *context, QuickGuiReply reply);
+    int32_t (*update)(void *instance, QuickGuiBytes props);
+    int32_t (*render)(void *instance, QuickGuiBytes request, void *context, QuickGuiReply reply);
+    int32_t (*event)(void *instance, QuickGuiBytes event, void *context, QuickGuiReply reply);
+    void (*destroy)(void *instance);
+} QuickGuiComponentApi;
 
 /* All fields and the pointed-to table remain valid until process exit.
  * version is the extension's own exact release, not the core's release. */

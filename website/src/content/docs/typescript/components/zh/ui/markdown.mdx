@@ -2,24 +2,33 @@
 
 ## 导入
 
-从 `@quickgui/solid` 导入 `Markdown`。
+```sh
+bun add @quickgui/extension-markdown @quickgui/extension-editor
+```
 
 ```tsx
-import { Markdown } from "@quickgui/solid";
+import { Markdown } from "@quickgui/extension-markdown";
+import { HighlightedCodeBlock } from "@quickgui/extension-editor";
+```
+
+```ts
+// quickgui.config.ts
+extensions: ["@quickgui/extension-markdown","@quickgui/extension-editor"]
 ```
 
 ## 用法
 
 ```tsx
-<Markdown content={message()} streaming={isStreaming()} />
+<Markdown content={message()} streaming={isStreaming()} codeBlockComponent={HighlightedCodeBlock} />
 ```
 
 ## 主要属性
 
-| 属性 | 说明 |
-| --- | --- |
-| `content` | 用于排版和绘制的 Markdown 源文本。 |
-| `source` | 组件所需的文件系统路径、数据 URL、SVG 文档或着色器源码。 |
-| `streaming` | 对追加内容使用增量 Markdown 协调。 |
-| `style` | QuickGUI 的布局、绘制、排版和交互状态样式。 |
-
+| 属性                 | 说明                                                                 |
+| -------------------- | -------------------------------------------------------------------- |
+| `content`            | 用于排版和绘制的 Markdown 源文本。                                   |
+| `source`             | 组件所需的文件系统路径、数据 URL、SVG 文档或着色器源码。             |
+| `streaming`          | 对追加内容使用增量 Markdown 协调。                                   |
+| `codeBlockComponent` | 使用 `HighlightedCodeBlock`，通过保留式 CodeBlock 模型渲染已解析的代码围栏。 |
+| `codeBlockMaxHeight` | 限制单个嵌入 CodeBlock 在开始滚动前的高度。                          |
+| `style`              | QuickGUI 的布局、绘制、排版和交互状态样式。                          |

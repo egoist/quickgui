@@ -2,10 +2,14 @@
 
 ## インポート
 
-`github.com/egoist/quickgui/go/ui` から `ui` をインポートします。
+```sh
+go get github.com/egoist/quickgui/extensions/markdown github.com/egoist/quickgui/extensions/editor
+```
 
 ```go
 import (
+	"github.com/egoist/quickgui/extensions/editor"
+	"github.com/egoist/quickgui/extensions/markdown"
 	"github.com/egoist/quickgui/go/ui"
 )
 ```
@@ -13,15 +17,21 @@ import (
 ## 使い方
 
 ```go
-func MarkdownExample(source func() string, streaming func() bool) *ui.Element {
-	return ui.Markdown().Value(source()).Streaming(streaming).Width("100%")
+func MarkdownExample(source string, streaming bool) *ui.Element {
+	return markdown.View(markdown.Props{
+		Value: source,
+		Streaming: streaming,
+		CodeBlockComponent: editor.HighlightedCodeBlock,
+	}).Width("100%")
 }
 ```
 
 ## 主なプロパティ
 
-| プロパティ | 説明 |
-| --- | --- |
-| `Value` | 組版・描画する Markdown ソースです。 |
-| `Streaming` | 追記された内容に Markdown の差分更新を使います。 |
-| `ui.Style().BackgroundColor(...)`, `ui.Style().Padding(...)`, `ui.Style().Hover(...)` | QuickGUI のレイアウト、描画、タイポグラフィ、インタラクション状態のスタイルです。 |
+| プロパティ                                                                            | 説明                                                                                     |
+| ------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `Value`                                                                               | 組版・描画する Markdown ソースです。                                                     |
+| `Streaming`                                                                           | 追記された内容に Markdown の差分更新を使います。                                         |
+| `CodeBlockComponent`                                                                  | `HighlightedCodeBlock` にすると、解析済みフェンスを保持型 CodeBlock モデルで描画します。 |
+| `CodeBlockMaxHeight`                                                                  | 埋め込み CodeBlock 1 個がスクロールを始めるまでの最大高さです。                          |
+| `ui.Style().BackgroundColor(...)`, `ui.Style().Padding(...)`, `ui.Style().Hover(...)` | QuickGUI のレイアウト、描画、タイポグラフィ、インタラクション状態のスタイルです。        |

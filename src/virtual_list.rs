@@ -80,6 +80,14 @@ impl VirtualScrollMount {
 }
 
 impl VirtualScrollHandle {
+    pub(crate) fn shares_state(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Fixed(left), Self::Fixed(right)) => Arc::ptr_eq(left, right),
+            (Self::Variable(left), Self::Variable(right)) => Rc::ptr_eq(&left.0, &right.0),
+            _ => false,
+        }
+    }
+
     pub(crate) fn offset(&self) -> f32 {
         match self {
             Self::Fixed(offset) => f32::from_bits(offset.load(Ordering::Relaxed)),
@@ -859,6 +867,22 @@ impl ListState {
         self.0.borrow().metrics.estimate
     }
 
+    /// Replace the offscreen height estimate while retaining the logical scroll anchor.
+    pub fn set_estimated_item_height(&self, estimate: f32) {
+        assert!(estimate.is_finite() && estimate > 0.0);
+        let mut state = self.0.borrow_mut();
+        let estimate = estimate.clamp(LIST_MEASUREMENT_EPSILON, MAX_LIST_ITEM_HEIGHT);
+        if state.metrics.estimate == estimate {
+            return;
+        }
+        let anchor = state.capture_anchor();
+        let count = state.metrics.len;
+        state.metrics = HeightMetrics::new(count, estimate);
+        state.generation = state.generation.wrapping_add(1);
+        state.restore_anchor(anchor);
+        state.bump_measurement_revision();
+    }
+
     pub fn viewport_size(&self) -> Size {
         self.0.borrow().viewport
     }
@@ -1192,6 +1216,52 @@ impl ListState {
 
         div()
             .id(list_internal_element_id(id, 0, 0x434f_4c55))
+            .absolute()
+            .top(origin)
+            .left(0.0)
+            .w_full()
+            .flex_col()
+            .children(children)
+    }
+
+    /// Build a second, unmeasured column for the range most recently mounted by
+    /// [`Self::render_rows`].
+    ///
+    /// This is reserved for paired, no-wrap views whose columns have identical explicit row
+    /// heights. The primary column remains the sole source of height measurements while both
+    /// columns use the same virtual origin and scroll handle.
+    pub(crate) fn render_mirrored_rows<E>(
+        &self,
+        id_salt: u64,
+        mut render: impl FnMut(usize) -> E,
+    ) -> Element
+    where
+        E: IntoElement,
+    {
+        let (id, start, end, origin) = {
+            let state = self.0.borrow();
+            let mounted = state.mounted_range.clone().unwrap_or(0..0);
+            let start = mounted.start.min(state.metrics.len);
+            let end = mounted.end.max(start).min(state.metrics.len);
+            (
+                state.id,
+                start,
+                end,
+                state.content_origin_at(start, state.presented_offset(state.scroll_offset)),
+            )
+        };
+
+        let mut children = Vec::with_capacity(end - start);
+        for index in start..end {
+            let mut child = render(index).into_element().flex_none().w_full();
+            if child.explicit_id.is_none() {
+                child.explicit_id = Some(list_internal_element_id(id, index, id_salt));
+            }
+            children.push(child);
+        }
+
+        div()
+            .id(list_internal_element_id(id, 0, id_salt))
             .absolute()
             .top(origin)
             .left(0.0)

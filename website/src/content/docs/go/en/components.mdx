@@ -55,6 +55,10 @@ func CardComponent(title string, children ...any) *ui.Element {
 
 `View`, `Text`, `Button`, and `Input` cover most layout and text. Chain styles, properties, and handlers on the same element.
 
+The optional `extensions/editor` package adds the Rust-core [Editor](/docs/go/components/editor), [CodeBlock](/docs/go/components/code-block), and [DiffView](/docs/go/components/diff-view) surfaces without CGO or another native library.
+
+The optional `extensions/markdown` package adds retained [Markdown](/docs/go/components/markdown), including streaming reconciliation and CodeBlock rendering.
+
 ```go
 func ButtonExample(save func()) *ui.Element {
 	return ui.Button().Child("Save changes").

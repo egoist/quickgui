@@ -1,0 +1,42 @@
+可选择、无插入光标的代码视图，支持 Tree-sitter 着色和逻辑行虚拟化。
+
+组件默认不带视觉样式：文本和行号继承颜色，不添加背景、边框、圆角、内边距或语法／差异配色。外观由应用显式提供样式与颜色。
+
+## 导入
+
+启用 QuickGUI 可选的 `editor` crate feature，并导入保留式代码块类型。
+
+```rust
+use quickgui::{CodeBlock, CodeBlockStyle, SyntaxLanguage};
+```
+
+## 用法
+
+```rust
+let code = CodeBlock::with_text("pub fn answer() -> u8 { 42 }\n")
+    .with_language(SyntaxLanguage::Rust)
+    .with_style(CodeBlockStyle::default().line_numbers(true));
+
+code.element("example-code").h(280.0)
+```
+
+## 语法高亮
+
+`SyntaxLanguage` 选择内置的 Tree-sitter 语法和高亮查询。捕获结果会归并为八种稳定的 `SyntaxTheme` 类别，并以只影响前景色的 `HighlightStyle` 区间应用，因此颜色不会改变文本尺寸。源码或语言变化时才解析；滚动只挂载可见行并延迟创建对应的 `StyledText`。解析最多处理 2 MiB，超过 32 KiB 的单行保持普通颜色，捕获数量也有上限。
+
+## 主要属性
+
+| 属性                           | 说明                                                 |
+| ------------------------------ | ---------------------------------------------------- |
+| `CodeBlock::with_text`         | 创建保留式、受限的源码模型。                         |
+| `set_text`                     | 源码变化时替换内容并重置逻辑滚动位置。               |
+| `set_language`                 | 选择一个内置 Tree-sitter 语法。                      |
+| `CodeBlockStyle::line_numbers` | 显示固定在左侧且不可选择的逻辑行号栏。               |
+| `CodeBlockStyle::word_wrap`    | 对长行换行并停用横向滚动。                           |
+| `CodeBlockStyle::syntax_theme` | 覆盖八种共享 Tree-sitter 捕获颜色。                  |
+| `element`                      | 使用稳定元素 ID 构建可选择、无插入光标的虚拟化表面。 |
+
+<Note>
+  在 `quickgui` 依赖中添加 `features = ["editor"]`。每份源码保留一个 CodeBlock
+  模型，使虚拟滚动测量和延迟创建的行保持稳定。
+</Note>

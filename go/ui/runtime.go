@@ -21,7 +21,6 @@ type Props struct {
 	OnInput                 func(*native.Event)
 	OnSubmit                func(*native.Event)
 	OnDismiss               func(*native.Event)
-	OnStatus                func(*native.Event)
 	OnPointer               func(*native.Event)
 	OnPresentationChange    func(*native.Event)
 	OnSelect                func(*native.Event)
@@ -62,7 +61,6 @@ type Props struct {
 	HitSlopLeft             any
 	Ref                     func(*native.Node)
 	Password                any
-	Streaming               any
 	EstimatedItemHeight     any
 	Overscan                any
 	OverscanPixels          any
@@ -110,9 +108,6 @@ func applyPropValues(node *native.Node, props Props) {
 	}
 	if props.Password != nil {
 		bindExplicitBool(node, protocol.Password, props.Password)
-	}
-	if props.Streaming != nil {
-		bindExplicitBool(node, protocol.Streaming, props.Streaming)
 	}
 	if props.EstimatedItemHeight != nil {
 		bindNumber(node, protocol.EstimatedItemHeight, props.EstimatedItemHeight)

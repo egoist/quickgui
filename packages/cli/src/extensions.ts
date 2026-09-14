@@ -247,13 +247,15 @@ export async function resolveExtension(
     return explicit;
   }
   const candidates: string[] = [];
+  // A source checkout must use its staged build before Bun's global package cache. Cache
+  // metadata can match the release while its prebuilt library predates local native changes.
+  if (manifest.package === `@quickgui/extension-${manifest.name}`)
+    candidates.push(resolve(import.meta.dir, "..", "..", "..", "extensions", manifest.name));
   try {
     candidates.push(dirname(Bun.resolveSync(`${manifest.package}/package.json`, projectRoot)));
   } catch {
     /* optional package */
   }
-  if (manifest.package === `@quickgui/extension-${manifest.name}`)
-    candidates.push(resolve(import.meta.dir, "..", "..", `extension-${manifest.name}`));
   let foundVersion: string | undefined;
   for (const directory of candidates) {
     const metadata = join(directory, "package.json");

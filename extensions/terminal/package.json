@@ -1,0 +1,44 @@
+{
+  "name": "@quickgui/extension-terminal",
+  "version": "0.1.4-next.4",
+  "description": "Optional native terminal with Go and TypeScript bindings for QuickGUI",
+  "license": "MIT OR Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/egoist/quickgui.git",
+    "directory": "extensions/terminal"
+  },
+  "files": [
+    "js",
+    "lib",
+    "README.md",
+    "quickgui.extension.json"
+  ],
+  "os": [
+    "darwin",
+    "linux",
+    "win32"
+  ],
+  "type": "module",
+  "scripts": {
+    "build": "bun ../../packages/native/build.ts --extension terminal"
+  },
+  "exports": {
+    ".": "./js/index.ts",
+    "./package.json": "./package.json",
+    "./quickgui.extension.json": "./quickgui.extension.json"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "peerDependencies": {
+    "@quickgui/native": "workspace:*",
+    "@quickgui/solid": "workspace:*",
+    "solid-js": "2.0.0-rc.8"
+  },
+  "devDependencies": {
+    "@quickgui/native": "workspace:*",
+    "@quickgui/solid": "workspace:*",
+    "solid-js": "2.0.0-rc.8"
+  }
+}

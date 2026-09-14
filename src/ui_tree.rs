@@ -410,6 +410,8 @@ struct ScrollRegion {
     max_offset: Vector,
     /// Whether changing this offset must update a bound virtual list and rebuild the view.
     virtual_scroll: bool,
+    /// Whether this region paints and accepts the built-in vertical overlay thumb.
+    vertical_scrollbar: bool,
     order: PaintOrder,
     scrollbar_order: PaintOrder,
 }
@@ -433,8 +435,9 @@ impl RetainedVirtualScroll {
 #[derive(Clone, Copy, Debug)]
 struct ScrollbarDrag {
     id: ElementId,
-    pointer_origin_y: f32,
-    scroll_origin_y: f32,
+    axis: ScrollbarAxis,
+    pointer_origin: f32,
+    scroll_origin: f32,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
@@ -442,19 +445,69 @@ struct ScrollbarState {
     hovered: bool,
     dragging: bool,
     visible_until: Option<Instant>,
+    axis: ScrollbarAxis,
 }
 
 impl ScrollbarState {
-    fn visible(self, now: Instant) -> bool {
+    fn visible(self, axis: ScrollbarAxis, now: Instant) -> bool {
+        self.axis == axis
+            && (self.hovered
+                || self.dragging
+                || self.visible_until.is_some_and(|deadline| deadline > now))
+    }
+
+    fn visible_any(self, now: Instant) -> bool {
         self.hovered || self.dragging || self.visible_until.is_some_and(|deadline| deadline > now)
+    }
+
+    fn expanded(self, axis: ScrollbarAxis) -> bool {
+        self.axis == axis && (self.hovered || self.dragging)
     }
 }
 
 #[derive(Clone, Copy, Debug)]
-struct VerticalScrollbarGeometry {
+struct ScrollbarGeometry {
     track: Rect,
     thumb: Rect,
     travel: f32,
+}
+
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+enum ScrollbarAxis {
+    Horizontal,
+    #[default]
+    Vertical,
+}
+
+impl ScrollbarAxis {
+    fn for_change(previous: Vector, next: Vector) -> Self {
+        if (next.x - previous.x).abs() > (next.y - previous.y).abs() {
+            Self::Horizontal
+        } else {
+            Self::Vertical
+        }
+    }
+
+    fn component(self, vector: Vector) -> f32 {
+        match self {
+            Self::Horizontal => vector.x,
+            Self::Vertical => vector.y,
+        }
+    }
+
+    fn point(self, point: Point) -> f32 {
+        match self {
+            Self::Horizontal => point.x,
+            Self::Vertical => point.y,
+        }
+    }
+
+    fn set_component(self, vector: &mut Vector, value: f32) {
+        match self {
+            Self::Horizontal => vector.x = value,
+            Self::Vertical => vector.y = value,
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]

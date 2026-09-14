@@ -18,7 +18,7 @@ Child views can also be functions that return `Element` when they have no state 
 
 ## Primitives
 
-`div`, `text`, `button`, `text_input`, `text_area`, `Markdown`, `img`, `svg`, `custom_shader`, and `VirtualList` are the building blocks. `submit_button` submits the nearest `form`. `Terminal` is available behind a crate feature.
+`div`, `text`, `button`, `text_input`, `text_area`, `img`, `svg`, `custom_shader`, and `VirtualList` are the building blocks. `submit_button` submits the nearest `form`. [Markdown](/docs/rust/components/markdown) uses `features = ["markdown"]`; [Editor](/docs/rust/components/editor), [CodeBlock](/docs/rust/components/code-block), and [DiffView](/docs/rust/components/diff-view) use `features = ["editor"]`; Terminal is also optional.
 
 ## Compound components
 

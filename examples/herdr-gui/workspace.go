@@ -1,8 +1,8 @@
 package main
 
 import (
+	"github.com/egoist/quickgui/extensions/terminal"
 	"github.com/egoist/quickgui/go/native"
-	"github.com/egoist/quickgui/go/terminal"
 	"github.com/egoist/quickgui/go/ui"
 )
 

@@ -204,9 +204,11 @@ jobs:
             packages/native/lib/linux-arm64/libquickgui_host.so \
             packages/native/lib/linux-x64/libquickgui_host.so \
             packages/native/lib/windows-x64/quickgui_host.dll \
-            packages/extension-terminal/lib/darwin-arm64/libquickgui_terminal.dylib \
-            packages/extension-terminal/lib/windows-x64/quickgui_terminal.dll \
-            packages/extension-updater/lib/windows-x64/quickgui_updater.dll
+            extensions/terminal/lib/darwin-arm64/libquickgui_terminal.dylib \
+            extensions/terminal/lib/windows-x64/quickgui_terminal.dll \
+            extensions/updater/lib/windows-x64/quickgui_updater.dll \
+            extensions/editor/lib/windows-x64/quickgui_editor.dll \
+            extensions/markdown/lib/windows-x64/quickgui_markdown.dll
           do
             if [[ ! -f $path ]]; then
               echo "missing $path" >&2
@@ -241,24 +243,26 @@ jobs:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
           QUICKGUI_RELEASE_ALLOW_DIRTY: 1
         run: scripts/release-crates.sh --publish
-      - name: Publish Go module tag
+      - name: Publish Go module tags
         env:
           RELEASE_SHA: ${{ steps.source.outputs.sha }}
           RELEASE_VERSION: ${{ steps.release.outputs.version }}
         run: |
-          go_tag="go/v$RELEASE_VERSION"
-          if git ls-remote --exit-code --tags origin "refs/tags/$go_tag" >/dev/null 2>&1; then
-            git fetch origin "refs/tags/$go_tag:refs/tags/$go_tag"
-            existing=$(git rev-list -n 1 "$go_tag")
-            if [[ $existing == "$RELEASE_SHA" ]]; then
-              echo "Go module tag $go_tag already points at $RELEASE_SHA"
+          for module in go extensions/editor extensions/markdown extensions/terminal extensions/updater; do
+            go_tag="$module/v$RELEASE_VERSION"
+            if git ls-remote --exit-code --tags origin "refs/tags/$go_tag" >/dev/null 2>&1; then
+              git fetch origin "refs/tags/$go_tag:refs/tags/$go_tag"
+              existing=$(git rev-list -n 1 "$go_tag")
+              if [[ $existing == "$RELEASE_SHA" ]]; then
+                echo "Go module tag $go_tag already points at $RELEASE_SHA"
+              else
+                echo "Go module tag $go_tag already published at $existing; leaving it in place"
+              fi
             else
-              echo "Go module tag $go_tag already published at $existing; leaving it in place"
+              git tag "$go_tag" "$RELEASE_SHA"
+              git push origin "refs/tags/$go_tag"
             fi
-          else
-            git tag "$go_tag" "$RELEASE_SHA"
-            git push origin "refs/tags/$go_tag"
-          fi
+          done
       - name: Publish npm packages
         run: bun scripts/release-npm.ts --publish target/npm-release
       - name: Verify public registry installs

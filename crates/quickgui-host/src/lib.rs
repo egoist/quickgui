@@ -22,14 +22,12 @@ use quickgui::{
     Element, ElementId, Field, Fieldset, FollowMode, FontWeight, GridTrack, Image, Insets,
     IntoElement, LayoutBoundsHandle, ListAlignment, ListState, MAX_BOX_SHADOWS_PER_ELEMENT,
     MAX_GROUP_STYLES_PER_ELEMENT, MAX_SLIDER_THUMBS, MAX_SPLITTER_PANES, MAX_TOGGLE_GROUP_ITEMS,
-    MAX_TOOLBAR_ITEMS, MacOsVibrancy, MacOsVisualEffectState, Markdown, MarkdownStyle, Meter,
-    PerformanceProfile, Point, PointerPhase, Popover, PopoverKind, PopoverMenu,
-    PopoverMenuActivation, PopoverMenuItem, PopoverMenuItemKind, PopoverMenuItemState, Progress,
-    QuitMode, Radio, RadioGroup, Slider, SliderOrientation, SliderState, Splitter,
-    SplitterOrientation, SplitterState, StateAccessor, Svg, Switch, SystemPopover,
-    TERMINAL_ANSI_COLOR_COUNT, Tab, Tabs, TaskbarProgressState, Terminal, TerminalOptions,
-    TerminalPaddingColor, TerminalStatus, TerminalStyle, TerminalTheme, TextAlign, TitleBarStyle,
-    Toggle, ToggleGroup, ToggleGroupItem, ToggleGroupState, ToggleState, Toolbar, ToolbarItem,
+    MAX_TOOLBAR_ITEMS, MacOsVibrancy, MacOsVisualEffectState, Meter, PerformanceProfile, Point,
+    PointerPhase, Popover, PopoverKind, PopoverMenu, PopoverMenuActivation, PopoverMenuItem,
+    PopoverMenuItemKind, PopoverMenuItemState, Progress, QuitMode, Radio, RadioGroup, Slider,
+    SliderOrientation, SliderState, Splitter, SplitterOrientation, SplitterState, StateAccessor,
+    Svg, Switch, SystemPopover, Tab, Tabs, TaskbarProgressState, TextAlign, TitleBarStyle, Toggle,
+    ToggleGroup, ToggleGroupItem, ToggleGroupState, ToggleState, Toolbar, ToolbarItem,
     ToolbarOrientation, ToolbarState, Tooltip, Transition, TransitionProperties, View, ViewContext,
     WindowAppearance, WindowBackgroundAppearance, WindowHandle, WindowKind, WindowOptions, button,
     div, svg as svg_element, text, text_area, text_input,
@@ -90,7 +88,7 @@ use dialog::{
 };
 
 const PROTOCOL_MAGIC: &[u8; 4] = b"QGMB";
-const PROTOCOL_VERSION: u16 = 32;
+const PROTOCOL_VERSION: u16 = 36;
 const ROOT_NODE: u32 = 0;
 const ROOT_ELEMENT_ID: u64 = u64::MAX - 1;
 const MAX_BATCH_BYTES: usize = 16 * 1024 * 1024;
@@ -98,6 +96,7 @@ const MAX_MUTATIONS: usize = 131_072;
 const MAX_NODES: usize = 262_144;
 const MAX_TREE_DEPTH: usize = 512;
 const MAX_STRING_BYTES: usize = 1024 * 1024;
+const MAX_EXTENSION_PROPS_BYTES: usize = 12 * 1024 * 1024;
 const MAX_QUEUED_EVENTS: usize = 8_192;
 const MAX_HOST_COMMANDS: usize = 8_192;
 const MAX_WINDOWS: usize = 256;
@@ -178,14 +177,6 @@ mod property {
     pub const MULTILINE: u16 = 64;
     pub const INPUT_LISTENER: u16 = 65;
     pub const SUBMIT_LISTENER: u16 = 66;
-    pub const STREAMING: u16 = 67;
-    pub const MARKDOWN_CODE_BACKGROUND: u16 = 68;
-    pub const MARKDOWN_BORDER_COLOR: u16 = 69;
-    pub const MARKDOWN_MUTED_COLOR: u16 = 70;
-    pub const MARKDOWN_LINK_COLOR: u16 = 71;
-    pub const MARKDOWN_CODE_TEXT_COLOR: u16 = 72;
-    pub const MARKDOWN_BLOCK_GAP: u16 = 73;
-    pub const MARKDOWN_CODE_FONT_SIZE: u16 = 74;
     pub const SCROLL_TO_END_REVISION: u16 = 75;
     pub const PASSWORD: u16 = 76;
     pub const ESTIMATED_ITEM_HEIGHT: u16 = 77;
@@ -199,12 +190,6 @@ mod property {
     pub const DISMISS_ON_ESCAPE: u16 = 85;
     pub const DISMISS_ON_POINTER_OUTSIDE: u16 = 86;
     pub const DISMISS_LISTENER: u16 = 87;
-    pub const TERMINAL_PROGRAM: u16 = 88;
-    pub const TERMINAL_ARGUMENTS: u16 = 89;
-    pub const TERMINAL_WORKING_DIRECTORY: u16 = 90;
-    pub const TERMINAL_ENVIRONMENT: u16 = 91;
-    pub const TERMINAL_SCROLLBACK: u16 = 92;
-    pub const TERMINAL_STATUS_LISTENER: u16 = 93;
     pub const HOVER_BACKGROUND_COLOR: u16 = 94;
     pub const HOVER_COLOR: u16 = 95;
     pub const ACTIVE_BACKGROUND_COLOR: u16 = 96;
@@ -213,8 +198,6 @@ mod property {
     pub const POINTER_LISTENER: u16 = 99;
     pub const FOCUS_ON_POINTER: u16 = 100;
     pub const FONT_FAMILY: u16 = 101;
-    pub const TERMINAL_PALETTE: u16 = 102;
-    pub const TERMINAL_CURSOR_COLOR: u16 = 103;
     pub const HIT_SLOP: u16 = 104;
     pub const HIT_SLOP_TOP: u16 = 105;
     pub const HIT_SLOP_RIGHT: u16 = 106;
@@ -225,8 +208,6 @@ mod property {
     pub const RESTORE_PREVIOUS_FOCUS: u16 = 111;
     pub const AUTO_FOCUS: u16 = 112;
     pub const ACCESSIBILITY_MODAL: u16 = 113;
-    pub const TERMINAL_PADDING_COLOR: u16 = 114;
-    pub const TERMINAL_FONT_THICKEN: u16 = 115;
     pub const SWIFT_UI_SYSTEM_IMAGE: u16 = 116;
     pub const SWIFT_UI_BUTTON_STYLE: u16 = 117;
     pub const SWIFT_UI_CONTROL_SIZE: u16 = 118;
@@ -497,7 +478,11 @@ mod property {
     pub const SCROLL_SNAP_Y: u16 = 360;
     pub const OVERSCAN_PIXELS: u16 = 361;
     pub const ITEM_HEIGHTS: u16 = 362;
-    pub const LAST: u16 = ITEM_HEIGHTS;
+    // Package identity and opaque properties for any registered component extension.
+    pub const EXTENSION_PACKAGE: u16 = 407;
+    pub const EXTENSION_COMPONENT: u16 = 408;
+    pub const EXTENSION_PROPS: u16 = 409;
+    pub const LAST: u16 = EXTENSION_PROPS;
 }
 
 /// Base64 transport for optional byte payloads carried inside JSON options and results.

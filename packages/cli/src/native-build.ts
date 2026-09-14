@@ -130,7 +130,7 @@ export async function compileNativeApplication(options: NativeCompileOptions): P
     ).toString("base64url");
     if (!typescript) {
       const flagIndex = plan.argv.indexOf("-ldflags") + 1;
-      plan.argv[flagIndex] += " -X github.com/egoist/quickgui/go/updater.buildMetadata=" + metadata;
+      plan.argv[flagIndex] += " -X github.com/egoist/quickgui/extensions/updater.buildMetadata=" + metadata;
     }
   }
   const destination =

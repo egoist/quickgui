@@ -1,0 +1,47 @@
+{
+  "name": "@quickgui/extension-editor",
+  "version": "0.1.4-next.4",
+  "description": "Optional editor, code-block, and diff-view bindings for QuickGUI TypeScript applications",
+  "license": "MIT OR Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/egoist/quickgui.git",
+    "directory": "extensions/editor"
+  },
+  "files": [
+    "js",
+    "lib",
+    "quickgui.extension.json",
+    "README.md"
+  ],
+  "os": [
+    "darwin",
+    "linux",
+    "win32"
+  ],
+  "type": "module",
+  "scripts": {
+    "build": "bun ../../packages/native/build.ts --extension editor"
+  },
+  "exports": {
+    ".": "./js/index.ts",
+    "./quickgui.extension.json": "./quickgui.extension.json",
+    "./package.json": "./package.json"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "devDependencies": {
+    "@quickgui/native": "workspace:*",
+    "@quickgui/solid": "workspace:*",
+    "solid-js": "2.0.0-rc.8"
+  },
+  "peerDependencies": {
+    "@quickgui/native": "workspace:*",
+    "@quickgui/solid": "workspace:*",
+    "solid-js": "2.0.0-rc.8"
+  },
+  "engines": {
+    "bun": ">=1.4.0"
+  }
+}

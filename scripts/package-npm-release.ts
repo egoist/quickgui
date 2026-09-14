@@ -46,13 +46,17 @@ const packages = [
   { name: "native", library: "quickgui_host" },
   { name: "extension-terminal", library: "quickgui_terminal" },
   { name: "extension-updater", library: "quickgui_updater" },
+  { name: "extension-editor", library: "quickgui_editor" },
+  { name: "extension-markdown", library: "quickgui_markdown" },
   { name: "solid", library: undefined },
   { name: "cli", library: undefined },
 ];
 const archives: Record<string, string> = {};
 const checksums: string[] = [];
 for (const pkg of packages) {
-  const directory = join(root, "packages", pkg.name);
+  const directory = pkg.name.startsWith("extension-")
+    ? join(root, "extensions", pkg.name.slice("extension-".length))
+    : join(root, "packages", pkg.name);
   const expected = pkg.library ? expectedLibraries(pkg.library) : [];
   for (const entry of expected) {
     const binary = join(directory, entry.slice("package/".length));
@@ -76,8 +80,7 @@ for (const pkg of packages) {
   if (
     pkg.name === "cli" &&
     (manifest.dependencies?.["@quickgui/native"] !== version ||
-      manifest.dependencies?.["@quickgui/extension-terminal"] ||
-      manifest.dependencies?.["@quickgui/extension-updater"] ||
+      Object.keys(manifest.dependencies ?? {}).some((name) => name.startsWith("@quickgui/extension-")) ||
       manifest.bin?.quickgui !== "src/cli.ts")
   ) {
     throw new Error("CLI must depend only on the core native package; extensions are optional");
@@ -85,12 +88,14 @@ for (const pkg of packages) {
   const entries = run(["tar", "-tzf", archive]).trim().split("\n");
   if (pkg.name === "extension-updater") {
     if (
-      manifest.exports?.["."] !== "./src/index.ts" ||
-      !entries.includes("package/src/index.ts") ||
-      manifest.dependencies?.["@quickgui/native"] !== version
+      manifest.exports?.["."] !== "./js/index.ts" ||
+      !entries.includes("package/js/index.ts") ||
+      manifest.dependencies?.["@quickgui/native"] ||
+      manifest.peerDependencies?.["@quickgui/native"] !== version ||
+      manifest.devDependencies?.["@quickgui/native"] !== version
     )
       throw new Error(
-        "Updater package must include its TypeScript API and matching native core dependency",
+        "Updater package must include its TypeScript API and peer-only native core relationship",
       );
     for (const target of releasedNativeTargets) {
       const resource =
@@ -102,6 +107,24 @@ for (const pkg of packages) {
       if (!entries.includes(`package/lib/${target.stage}/${resource}`))
         throw new Error(`Missing ${target.stage} updater resources in updater package`);
     }
+  }
+  if (["extension-editor", "extension-markdown", "extension-terminal"].includes(pkg.name)) {
+    if (
+      manifest.exports?.["."] !== "./js/index.ts" ||
+      !entries.includes("package/js/index.ts") ||
+      manifest.dependencies?.["@quickgui/native"] ||
+      manifest.dependencies?.["@quickgui/solid"] ||
+      manifest.dependencies?.["solid-js"] ||
+      manifest.peerDependencies?.["@quickgui/native"] !== version ||
+      manifest.peerDependencies?.["@quickgui/solid"] !== version ||
+      manifest.devDependencies?.["@quickgui/native"] !== version ||
+      manifest.devDependencies?.["@quickgui/solid"] !== version ||
+      manifest.peerDependencies?.["solid-js"] !== "2.0.0-rc.8" ||
+      manifest.devDependencies?.["solid-js"] !== "2.0.0-rc.8"
+    )
+      throw new Error(
+        "Component extension must include its TypeScript API and peer-only QuickGUI relationships",
+      );
   }
   const binaries = entries.filter((entry) => /\.(dylib|dll|so)$/.test(entry));
   if (binaries.length !== expected.length || expected.some((entry) => !binaries.includes(entry))) {

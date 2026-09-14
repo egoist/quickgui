@@ -17,6 +17,13 @@ impl UiTree {
             .is_some_and(TextInputState::is_multiline)
     }
 
+    #[cfg(feature = "text-input-decorations")]
+    pub(crate) fn focused_editor_behavior(&self) -> Option<crate::TextInputIndentation> {
+        self.focused_text_input()
+            .and_then(|id| self.text_inputs.get(&id))
+            .and_then(TextInputState::editor_behavior)
+    }
+
     pub(crate) fn focused_text_input_is_invalid(&self) -> bool {
         self.focused_text_input()
             .is_some_and(|id| self.invalid_ids.contains(&id))
@@ -382,6 +389,23 @@ impl UiTree {
 
     pub fn input_insert_newline(&mut self) -> InputResult {
         self.edit_focused_input(TextInputState::insert_newline)
+    }
+
+    #[cfg(feature = "text-input-decorations")]
+    pub fn input_insert_editor_newline(
+        &mut self,
+        behavior: crate::TextInputIndentation,
+    ) -> InputResult {
+        self.edit_focused_input(|state| state.insert_editor_newline(behavior))
+    }
+
+    #[cfg(feature = "text-input-decorations")]
+    pub fn input_editor_tab(
+        &mut self,
+        outdent: bool,
+        behavior: crate::TextInputIndentation,
+    ) -> InputResult {
+        self.edit_focused_input(|state| state.editor_tab(outdent, behavior))
     }
 
     pub fn input_can_undo(&self) -> bool {

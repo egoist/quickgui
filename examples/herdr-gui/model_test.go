@@ -8,9 +8,9 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/egoist/quickgui/extensions/terminal"
 	"github.com/egoist/quickgui/go/native"
 	"github.com/egoist/quickgui/go/reactive"
-	"github.com/egoist/quickgui/go/terminal"
 )
 
 func testModel(t *testing.T, fn func(*model)) {

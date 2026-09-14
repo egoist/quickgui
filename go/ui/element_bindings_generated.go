@@ -50,268 +50,254 @@ func applyElementBinding(node *native.Node, props *Props, field elementBinding) 
 	case 19:
 		applyStyle(node, styleData{TransitionMaxFps: props.Style.style.TransitionMaxFps})
 	case 20:
-		applyStyle(node, styleData{MarkdownCodeBackground: props.Style.style.MarkdownCodeBackground})
-	case 21:
-		applyStyle(node, styleData{MarkdownBorderColor: props.Style.style.MarkdownBorderColor})
-	case 22:
-		applyStyle(node, styleData{MarkdownMutedColor: props.Style.style.MarkdownMutedColor})
-	case 23:
-		applyStyle(node, styleData{MarkdownLinkColor: props.Style.style.MarkdownLinkColor})
-	case 24:
-		applyStyle(node, styleData{MarkdownCodeTextColor: props.Style.style.MarkdownCodeTextColor})
-	case 25:
-		applyStyle(node, styleData{MarkdownBlockGap: props.Style.style.MarkdownBlockGap})
-	case 26:
-		applyStyle(node, styleData{MarkdownCodeFontSize: props.Style.style.MarkdownCodeFontSize})
-	case 27:
 		applyStyle(node, styleData{ScrollToEndRevision: props.Style.style.ScrollToEndRevision})
-	case 28:
+	case 21:
 		applyStyle(node, styleData{TextDecoration: props.Style.style.TextDecoration})
-	case 29:
+	case 22:
 		applyStyle(node, styleData{Invalid: props.Style.style.Invalid})
-	case 30:
+	case 23:
 		applyStyle(node, styleData{Dragging: props.Style.style.Dragging})
-	case 31:
+	case 24:
 		applyStyle(node, styleData{DragOver: props.Style.style.DragOver})
-	case 32:
+	case 25:
 		applyStyle(node, styleData{FocusWithin: props.Style.style.FocusWithin})
-	case 33:
+	case 26:
 		applyStyle(node, styleData{GroupActive: props.Style.style.GroupActive, groupActiveRules: props.Style.style.groupActiveRules})
-	case 35:
+	case 28:
 		applyStyle(node, styleData{GridTemplateColumns: props.Style.style.GridTemplateColumns})
-	case 36:
+	case 29:
 		applyStyle(node, styleData{GridTemplateRows: props.Style.style.GridTemplateRows})
-	case 37:
+	case 30:
 		applyStyle(node, styleData{GridAutoFlow: props.Style.style.GridAutoFlow})
-	case 38:
+	case 31:
 		applyStyle(node, styleData{GridColumnStart: props.Style.style.GridColumnStart})
-	case 39:
+	case 32:
 		applyStyle(node, styleData{GridColumnEnd: props.Style.style.GridColumnEnd})
-	case 40:
+	case 33:
 		applyStyle(node, styleData{GridColumnSpan: props.Style.style.GridColumnSpan})
-	case 41:
+	case 34:
 		applyStyle(node, styleData{GridRowStart: props.Style.style.GridRowStart})
-	case 42:
+	case 35:
 		applyStyle(node, styleData{GridRowEnd: props.Style.style.GridRowEnd})
-	case 43:
+	case 36:
 		applyStyle(node, styleData{GridRowSpan: props.Style.style.GridRowSpan})
-	case 44:
+	case 37:
 		applyStyle(node, styleData{PaddingStart: props.Style.style.PaddingStart})
-	case 45:
+	case 38:
 		applyStyle(node, styleData{PaddingEnd: props.Style.style.PaddingEnd})
-	case 46:
+	case 39:
 		applyStyle(node, styleData{MarginStart: props.Style.style.MarginStart})
-	case 47:
+	case 40:
 		applyStyle(node, styleData{MarginEnd: props.Style.style.MarginEnd})
-	case 48:
+	case 41:
 		applyStyle(node, styleData{BorderTopWidth: props.Style.style.BorderTopWidth})
-	case 49:
+	case 42:
 		applyStyle(node, styleData{BorderRightWidth: props.Style.style.BorderRightWidth})
-	case 50:
+	case 43:
 		applyStyle(node, styleData{BorderBottomWidth: props.Style.style.BorderBottomWidth})
-	case 51:
+	case 44:
 		applyStyle(node, styleData{BorderLeftWidth: props.Style.style.BorderLeftWidth})
-	case 52:
+	case 45:
 		applyStyle(node, styleData{BorderTopLeftRadius: props.Style.style.BorderTopLeftRadius})
-	case 53:
+	case 46:
 		applyStyle(node, styleData{BorderTopRightRadius: props.Style.style.BorderTopRightRadius})
-	case 54:
+	case 47:
 		applyStyle(node, styleData{BorderBottomLeftRadius: props.Style.style.BorderBottomLeftRadius})
-	case 55:
+	case 48:
 		applyStyle(node, styleData{BorderBottomRightRadius: props.Style.style.BorderBottomRightRadius})
-	case 56:
+	case 49:
 		applyStyle(node, styleData{BorderStyle: props.Style.style.BorderStyle})
-	case 57:
+	case 50:
 		applyStyle(node, styleData{BoxShadow: props.Style.style.BoxShadow})
-	case 58:
+	case 51:
 		applyStyle(node, styleData{TextShadow: props.Style.style.TextShadow})
-	case 59:
+	case 52:
 		applyStyle(node, styleData{TextDecorationLine: props.Style.style.TextDecorationLine})
-	case 60:
+	case 53:
 		applyStyle(node, styleData{TextDecorationColor: props.Style.style.TextDecorationColor})
-	case 61:
+	case 54:
 		applyStyle(node, styleData{TextDecorationStyle: props.Style.style.TextDecorationStyle})
-	case 62:
+	case 55:
 		applyStyle(node, styleData{TextDecorationThickness: props.Style.style.TextDecorationThickness})
-	case 63:
+	case 56:
 		applyStyle(node, styleData{WordSpacing: props.Style.style.WordSpacing})
-	case 64:
+	case 57:
 		applyStyle(node, styleData{WordBreak: props.Style.style.WordBreak})
-	case 65:
+	case 58:
 		applyStyle(node, styleData{OverflowWrap: props.Style.style.OverflowWrap})
-	case 66:
+	case 59:
 		applyStyle(node, styleData{Hyphens: props.Style.style.Hyphens})
-	case 67:
+	case 60:
 		applyStyle(node, styleData{TextDirection: props.Style.style.TextDirection})
-	case 68:
+	case 61:
 		applyStyle(node, styleData{Direction: props.Style.style.Direction})
-	case 69:
+	case 62:
 		applyStyle(node, styleData{BackgroundImage: props.Style.style.BackgroundImage})
-	case 70:
+	case 63:
 		applyStyle(node, styleData{BackgroundSize: props.Style.style.BackgroundSize})
-	case 71:
+	case 64:
 		applyStyle(node, styleData{BackgroundRepeat: props.Style.style.BackgroundRepeat})
-	case 72:
+	case 65:
 		applyStyle(node, styleData{BackgroundPosition: props.Style.style.BackgroundPosition})
-	case 73:
+	case 66:
 		applyStyle(node, styleData{Filter: props.Style.style.Filter})
-	case 74:
+	case 67:
 		applyStyle(node, styleData{BackdropFilter: props.Style.style.BackdropFilter})
-	case 75:
+	case 68:
 		applyStyle(node, styleData{MixBlendMode: props.Style.style.MixBlendMode})
-	case 76:
+	case 69:
 		applyStyle(node, styleData{Transition: props.Style.style.Transition})
-	case 77:
+	case 70:
 		applyStyle(node, styleData{ScrollSnapType: props.Style.style.ScrollSnapType})
-	case 78:
+	case 71:
 		applyStyle(node, styleData{ScrollSnapX: props.Style.style.ScrollSnapX})
-	case 79:
+	case 72:
 		applyStyle(node, styleData{ScrollSnapY: props.Style.style.ScrollSnapY})
-	case 80:
+	case 73:
 		applyStyle(node, styleData{ScrollSnapAlign: props.Style.style.ScrollSnapAlign})
-	case 81:
+	case 74:
 		applyStyle(node, styleData{ScrollSnapStop: props.Style.style.ScrollSnapStop})
-	case 82:
+	case 75:
 		applyStyle(node, styleData{Display: props.Style.style.Display})
-	case 83:
+	case 76:
 		applyStyle(node, styleData{Flex: props.Style.style.Flex})
-	case 84:
+	case 77:
 		applyStyle(node, styleData{FlexDirection: props.Style.style.FlexDirection})
-	case 85:
+	case 78:
 		applyStyle(node, styleData{FlexWrap: props.Style.style.FlexWrap})
-	case 86:
+	case 79:
 		applyStyle(node, styleData{FlexGrow: props.Style.style.FlexGrow})
-	case 87:
+	case 80:
 		applyStyle(node, styleData{FlexShrink: props.Style.style.FlexShrink})
-	case 88:
+	case 81:
 		applyStyle(node, styleData{FlexBasis: props.Style.style.FlexBasis})
-	case 89:
+	case 82:
 		applyStyle(node, styleData{AlignItems: props.Style.style.AlignItems})
-	case 90:
+	case 83:
 		applyStyle(node, styleData{AlignSelf: props.Style.style.AlignSelf})
-	case 91:
+	case 84:
 		applyStyle(node, styleData{JustifyContent: props.Style.style.JustifyContent})
-	case 92:
+	case 85:
 		applyStyle(node, styleData{AlignContent: props.Style.style.AlignContent})
-	case 93:
+	case 86:
 		applyStyle(node, styleData{Gap: props.Style.style.Gap})
-	case 94:
+	case 87:
 		applyStyle(node, styleData{ColumnGap: props.Style.style.ColumnGap})
-	case 95:
+	case 88:
 		applyStyle(node, styleData{RowGap: props.Style.style.RowGap})
-	case 96:
+	case 89:
 		applyStyle(node, styleData{Width: props.Style.style.Width})
-	case 97:
+	case 90:
 		applyStyle(node, styleData{Height: props.Style.style.Height})
-	case 98:
+	case 91:
 		applyStyle(node, styleData{MinWidth: props.Style.style.MinWidth})
-	case 99:
+	case 92:
 		applyStyle(node, styleData{MinHeight: props.Style.style.MinHeight})
-	case 100:
+	case 93:
 		applyStyle(node, styleData{MaxWidth: props.Style.style.MaxWidth})
-	case 101:
+	case 94:
 		applyStyle(node, styleData{MaxHeight: props.Style.style.MaxHeight})
-	case 102:
+	case 95:
 		applyStyle(node, styleData{Padding: props.Style.style.Padding})
-	case 103:
+	case 96:
 		applyStyle(node, styleData{PaddingTop: props.Style.style.PaddingTop})
-	case 104:
+	case 97:
 		applyStyle(node, styleData{PaddingRight: props.Style.style.PaddingRight})
-	case 105:
+	case 98:
 		applyStyle(node, styleData{PaddingBottom: props.Style.style.PaddingBottom})
-	case 106:
+	case 99:
 		applyStyle(node, styleData{PaddingLeft: props.Style.style.PaddingLeft})
-	case 107:
+	case 100:
 		applyStyle(node, styleData{Margin: props.Style.style.Margin})
-	case 108:
+	case 101:
 		applyStyle(node, styleData{MarginTop: props.Style.style.MarginTop})
-	case 109:
+	case 102:
 		applyStyle(node, styleData{MarginRight: props.Style.style.MarginRight})
-	case 110:
+	case 103:
 		applyStyle(node, styleData{MarginBottom: props.Style.style.MarginBottom})
-	case 111:
+	case 104:
 		applyStyle(node, styleData{MarginLeft: props.Style.style.MarginLeft})
-	case 112:
+	case 105:
 		applyStyle(node, styleData{BackgroundColor: props.Style.style.BackgroundColor})
-	case 113:
+	case 106:
 		applyStyle(node, styleData{TextColor: props.Style.style.TextColor})
-	case 114:
+	case 107:
 		applyStyle(node, styleData{Opacity: props.Style.style.Opacity})
-	case 115:
+	case 108:
 		applyStyle(node, styleData{BorderWidth: props.Style.style.BorderWidth})
-	case 116:
+	case 109:
 		applyStyle(node, styleData{BorderColor: props.Style.style.BorderColor})
-	case 117:
+	case 110:
 		applyStyle(node, styleData{BorderRadius: props.Style.style.BorderRadius})
-	case 118:
+	case 111:
 		applyStyle(node, styleData{FontSize: props.Style.style.FontSize})
-	case 119:
+	case 112:
 		applyStyle(node, styleData{FontFamily: props.Style.style.FontFamily})
-	case 120:
+	case 113:
 		applyStyle(node, styleData{FontWeight: props.Style.style.FontWeight})
-	case 121:
+	case 114:
 		applyStyle(node, styleData{LineHeight: props.Style.style.LineHeight})
-	case 122:
+	case 115:
 		applyStyle(node, styleData{TextAlign: props.Style.style.TextAlign})
-	case 123:
+	case 116:
 		applyStyle(node, styleData{Cursor: props.Style.style.Cursor})
-	case 124:
+	case 117:
 		applyStyle(node, styleData{AppRegion: props.Style.style.AppRegion})
-	case 125:
+	case 118:
 		applyStyle(node, styleData{UserSelect: props.Style.style.UserSelect})
-	case 126:
+	case 119:
 		applyStyle(node, styleData{Position: props.Style.style.Position})
-	case 127:
+	case 120:
 		applyStyle(node, styleData{Overflow: props.Style.style.Overflow})
-	case 128:
+	case 121:
 		applyStyle(node, styleData{OverflowX: props.Style.style.OverflowX})
-	case 129:
+	case 122:
 		applyStyle(node, styleData{OverflowY: props.Style.style.OverflowY})
-	case 130:
+	case 123:
 		applyStyle(node, styleData{Visibility: props.Style.style.Visibility})
-	case 131:
+	case 124:
 		applyStyle(node, styleData{LetterSpacing: props.Style.style.LetterSpacing})
-	case 132:
+	case 125:
 		applyStyle(node, styleData{TextTransform: props.Style.style.TextTransform})
-	case 133:
+	case 126:
 		applyStyle(node, styleData{LineClamp: props.Style.style.LineClamp})
-	case 134:
+	case 127:
 		applyStyle(node, styleData{WhiteSpace: props.Style.style.WhiteSpace})
-	case 135:
+	case 128:
 		applyStyle(node, styleData{TextOverflow: props.Style.style.TextOverflow})
-	case 136:
+	case 129:
 		applyStyle(node, styleData{Top: props.Style.style.Top})
-	case 137:
+	case 130:
 		applyStyle(node, styleData{Right: props.Style.style.Right})
-	case 138:
+	case 131:
 		applyStyle(node, styleData{Bottom: props.Style.style.Bottom})
-	case 139:
+	case 132:
 		applyStyle(node, styleData{Left: props.Style.style.Left})
-	case 140:
+	case 133:
 		applyStyle(node, styleData{Outline: props.Style.style.Outline})
-	case 141:
+	case 134:
 		applyStyle(node, styleData{OutlineWidth: props.Style.style.OutlineWidth})
-	case 142:
+	case 135:
 		applyStyle(node, styleData{OutlineColor: props.Style.style.OutlineColor})
-	case 143:
+	case 136:
 		applyStyle(node, styleData{OutlineOffset: props.Style.style.OutlineOffset})
-	case 144:
+	case 137:
 		applyStyle(node, styleData{OutlineStyle: props.Style.style.OutlineStyle})
-	case 145:
+	case 138:
 		applyStyle(node, styleData{Transform: props.Style.style.Transform})
-	case 146:
+	case 139:
 		applyStyle(node, styleData{TransformOrigin: props.Style.style.TransformOrigin})
-	case 147:
+	case 140:
 		applyStyle(node, styleData{Hover: props.Style.style.Hover})
-	case 148:
+	case 141:
 		applyStyle(node, styleData{Active: props.Style.style.Active})
-	case 149:
+	case 142:
 		applyStyle(node, styleData{Focus: props.Style.style.Focus})
-	case 150:
+	case 143:
 		applyStyle(node, styleData{Disabled: props.Style.style.Disabled})
-	case 151:
+	case 144:
 		applyStyle(node, styleData{Selected: props.Style.style.Selected})
-	case 152:
+	case 145:
 		applyStyle(node, styleData{GroupHover: props.Style.style.GroupHover, groupHoverRules: props.Style.style.groupHoverRules})
 	case propertyBindingOffset + 2:
 		setFluentListener(node, protocol.EventClick, props.OnClick)
@@ -326,146 +312,142 @@ func applyElementBinding(node *native.Node, props *Props, field elementBinding) 
 	case propertyBindingOffset + 7:
 		setFluentListener(node, protocol.EventDismiss, props.OnDismiss)
 	case propertyBindingOffset + 8:
-		setFluentListener(node, protocol.EventTerminal, props.OnStatus)
-	case propertyBindingOffset + 9:
 		setFluentListener(node, protocol.EventPointer, props.OnPointer)
-	case propertyBindingOffset + 10:
+	case propertyBindingOffset + 9:
 		setFluentListener(node, protocol.EventPresentation, props.OnPresentationChange)
-	case propertyBindingOffset + 11:
+	case propertyBindingOffset + 10:
 		setFluentListener(node, protocol.EventMenuSelect, props.OnSelect)
-	case propertyBindingOffset + 12:
+	case propertyBindingOffset + 11:
 		setFluentListener(node, protocol.EventKeyDown, props.OnKeyDown)
-	case propertyBindingOffset + 13:
+	case propertyBindingOffset + 12:
 		setFluentListener(node, protocol.EventKeyUp, props.OnKeyUp)
-	case propertyBindingOffset + 14:
+	case propertyBindingOffset + 13:
 		setFluentListener(node, protocol.EventMouseDown, props.OnMouseDown)
-	case propertyBindingOffset + 15:
+	case propertyBindingOffset + 14:
 		setFluentListener(node, protocol.EventMouseUp, props.OnMouseUp)
-	case propertyBindingOffset + 16:
+	case propertyBindingOffset + 15:
 		setFluentListener(node, protocol.EventMouseMove, props.OnMouseMove)
-	case propertyBindingOffset + 17:
+	case propertyBindingOffset + 16:
 		setFluentListener(node, protocol.EventDoubleClick, props.OnDoubleClick)
-	case propertyBindingOffset + 18:
+	case propertyBindingOffset + 17:
 		setFluentListener(node, protocol.EventWheel, props.OnWheel)
-	case propertyBindingOffset + 19:
+	case propertyBindingOffset + 18:
 		setFluentListener(node, protocol.EventContextMenu, props.OnContextMenu)
-	case propertyBindingOffset + 20:
+	case propertyBindingOffset + 19:
 		setFluentListener(node, protocol.EventPinch, props.OnPinch)
-	case propertyBindingOffset + 21:
+	case propertyBindingOffset + 20:
 		setFluentListener(node, protocol.EventRotate, props.OnRotate)
-	case propertyBindingOffset + 22:
+	case propertyBindingOffset + 21:
 		setFluentListener(node, protocol.EventSmartMagnify, props.OnSmartMagnify)
-	case propertyBindingOffset + 23:
+	case propertyBindingOffset + 22:
 		setFluentListener(node, protocol.EventPressure, props.OnPressure)
-	case propertyBindingOffset + 24:
+	case propertyBindingOffset + 23:
 		setFluentListener(node, protocol.EventFocus, props.OnFocus)
-	case propertyBindingOffset + 25:
+	case propertyBindingOffset + 24:
 		setFluentListener(node, protocol.EventBlur, props.OnBlur)
-	case propertyBindingOffset + 26:
+	case propertyBindingOffset + 25:
 		setFluentListener(node, protocol.EventAction, props.OnAction)
-	case propertyBindingOffset + 27:
+	case propertyBindingOffset + 26:
 		setFluentListener(node, protocol.EventDragStart, props.OnDragStart)
-	case propertyBindingOffset + 28:
+	case propertyBindingOffset + 27:
 		setFluentListener(node, protocol.EventDragEnd, props.OnDragEnd)
-	case propertyBindingOffset + 29:
+	case propertyBindingOffset + 28:
 		setFluentListener(node, protocol.EventDrop, props.OnDrop)
-	case propertyBindingOffset + 30:
+	case propertyBindingOffset + 29:
 		setFluentListener(node, protocol.EventFilesDropped, props.OnFilesDropped)
-	case propertyBindingOffset + 31:
+	case propertyBindingOffset + 30:
 		setFluentListener(node, protocol.EventComponentChange, props.OnComponentChange)
-	case propertyBindingOffset + 32:
+	case propertyBindingOffset + 31:
 		setFluentListener(node, protocol.EventCommit, props.OnCommit)
-	case propertyBindingOffset + 33:
+	case propertyBindingOffset + 32:
 		applyPropValues(node, Props{Disabled: props.Disabled})
-	case propertyBindingOffset + 34:
+	case propertyBindingOffset + 33:
 		applyPropValues(node, Props{Value: props.Value})
-	case propertyBindingOffset + 35:
+	case propertyBindingOffset + 34:
 		applyPropValues(node, Props{Placeholder: props.Placeholder})
-	case propertyBindingOffset + 36:
+	case propertyBindingOffset + 35:
 		applyPropValues(node, Props{Multiline: props.Multiline})
-	case propertyBindingOffset + 37:
+	case propertyBindingOffset + 36:
 		applyPropValues(node, Props{AriaLabel: props.AriaLabel})
-	case propertyBindingOffset + 38:
+	case propertyBindingOffset + 37:
 		applyPropValues(node, Props{Selected: props.Selected})
-	case propertyBindingOffset + 39:
+	case propertyBindingOffset + 38:
 		applyPropValues(node, Props{Group: props.Group})
-	case propertyBindingOffset + 40:
+	case propertyBindingOffset + 39:
 		applyPropValues(node, Props{FocusOnPointer: props.FocusOnPointer})
-	case propertyBindingOffset + 41:
+	case propertyBindingOffset + 40:
 		applyPropValues(node, Props{FocusableWhenDisabled: props.FocusableWhenDisabled})
-	case propertyBindingOffset + 42:
+	case propertyBindingOffset + 41:
 		applyPropValues(node, Props{HitSlop: props.HitSlop})
-	case propertyBindingOffset + 43:
+	case propertyBindingOffset + 42:
 		applyPropValues(node, Props{HitSlopTop: props.HitSlopTop})
-	case propertyBindingOffset + 44:
+	case propertyBindingOffset + 43:
 		applyPropValues(node, Props{HitSlopRight: props.HitSlopRight})
-	case propertyBindingOffset + 45:
+	case propertyBindingOffset + 44:
 		applyPropValues(node, Props{HitSlopBottom: props.HitSlopBottom})
-	case propertyBindingOffset + 46:
+	case propertyBindingOffset + 45:
 		applyPropValues(node, Props{HitSlopLeft: props.HitSlopLeft})
-	case propertyBindingOffset + 48:
+	case propertyBindingOffset + 47:
 		applyPropValues(node, Props{Password: props.Password})
-	case propertyBindingOffset + 49:
-		applyPropValues(node, Props{Streaming: props.Streaming})
-	case propertyBindingOffset + 50:
+	case propertyBindingOffset + 48:
 		applyPropValues(node, Props{EstimatedItemHeight: props.EstimatedItemHeight})
-	case propertyBindingOffset + 51:
+	case propertyBindingOffset + 49:
 		applyPropValues(node, Props{Overscan: props.Overscan})
-	case propertyBindingOffset + 52:
+	case propertyBindingOffset + 50:
 		applyPropValues(node, Props{OverscanPixels: props.OverscanPixels})
-	case propertyBindingOffset + 53:
+	case propertyBindingOffset + 51:
 		applyPropValues(node, Props{ItemHeights: props.ItemHeights})
-	case propertyBindingOffset + 54:
+	case propertyBindingOffset + 52:
 		applyPropValues(node, Props{ListAlignment: props.ListAlignment})
-	case propertyBindingOffset + 55:
+	case propertyBindingOffset + 53:
 		applyPropValues(node, Props{FollowMode: props.FollowMode})
-	case propertyBindingOffset + 56:
+	case propertyBindingOffset + 54:
 		applyPropValues(node, Props{ObjectFit: props.ObjectFit})
-	case propertyBindingOffset + 57:
+	case propertyBindingOffset + 55:
 		applyPropValues(node, Props{ShaderParameters: props.ShaderParameters})
-	case propertyBindingOffset + 58:
+	case propertyBindingOffset + 56:
 		applyPropValues(node, Props{Invalid: props.Invalid})
-	case propertyBindingOffset + 59:
+	case propertyBindingOffset + 57:
 		applyPropValues(node, Props{Role: props.Role})
-	case propertyBindingOffset + 60:
+	case propertyBindingOffset + 58:
 		applyPropValues(node, Props{TabIndex: props.TabIndex})
-	case propertyBindingOffset + 61:
+	case propertyBindingOffset + 59:
 		applyPropValues(node, Props{Overlay: props.Overlay})
-	case propertyBindingOffset + 62:
+	case propertyBindingOffset + 60:
 		applyPropValues(node, Props{FocusTrap: props.FocusTrap})
-	case propertyBindingOffset + 63:
+	case propertyBindingOffset + 61:
 		applyPropValues(node, Props{RestorePreviousFocus: props.RestorePreviousFocus})
-	case propertyBindingOffset + 64:
+	case propertyBindingOffset + 62:
 		applyPropValues(node, Props{AutoFocus: props.AutoFocus})
-	case propertyBindingOffset + 65:
+	case propertyBindingOffset + 63:
 		applyPropValues(node, Props{AriaModal: props.AriaModal})
-	case propertyBindingOffset + 66:
+	case propertyBindingOffset + 64:
 		applyPropValues(node, Props{DismissOnEscape: props.DismissOnEscape})
-	case propertyBindingOffset + 67:
+	case propertyBindingOffset + 65:
 		applyPropValues(node, Props{DismissOnPointerOutside: props.DismissOnPointerOutside})
-	case propertyBindingOffset + 68:
+	case propertyBindingOffset + 66:
 		applyPropValues(node, Props{TooltipText: props.TooltipText})
-	case propertyBindingOffset + 69:
+	case propertyBindingOffset + 67:
 		applyPropValues(node, Props{TooltipPlacement: props.TooltipPlacement})
-	case propertyBindingOffset + 70:
+	case propertyBindingOffset + 68:
 		applyPropValues(node, Props{TooltipDelay: props.TooltipDelay})
-	case propertyBindingOffset + 71:
+	case propertyBindingOffset + 69:
 		applyPropValues(node, Props{TooltipGap: props.TooltipGap})
-	case propertyBindingOffset + 72:
+	case propertyBindingOffset + 70:
 		applyPropValues(node, Props{TooltipViewportMargin: props.TooltipViewportMargin})
-	case propertyBindingOffset + 73:
+	case propertyBindingOffset + 71:
 		applyPropValues(node, Props{AnchorTarget: props.AnchorTarget})
-	case propertyBindingOffset + 74:
+	case propertyBindingOffset + 72:
 		applyPropValues(node, Props{AnchorPlacement: props.AnchorPlacement})
-	case propertyBindingOffset + 75:
+	case propertyBindingOffset + 73:
 		applyPropValues(node, Props{AnchorGap: props.AnchorGap})
-	case propertyBindingOffset + 76:
+	case propertyBindingOffset + 74:
 		applyPropValues(node, Props{ViewportMargin: props.ViewportMargin})
-	case propertyBindingOffset + 77:
+	case propertyBindingOffset + 75:
 		applyPropValues(node, Props{Keymap: props.Keymap})
-	case propertyBindingOffset + 78:
+	case propertyBindingOffset + 76:
 		applyPropValues(node, Props{Draggable: props.Draggable})
-	case propertyBindingOffset + 79:
+	case propertyBindingOffset + 77:
 		applyPropValues(node, Props{DropKinds: props.DropKinds})
 	}
 }

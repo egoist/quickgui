@@ -112,6 +112,18 @@ impl TextSystem {
                     color
                 };
                 let bounds = physical_text_bounds(clip, scale);
+                let mask = run.rounded_clip.map(|(bounds, corners)| glyphon::TextMask {
+                    bounds: [
+                        bounds.x * scale,
+                        bounds.y * scale,
+                        bounds.width * scale,
+                        bounds.height * scale,
+                    ],
+                    radii: corners
+                        .resolve(bounds.width, bounds.height)
+                        .as_array()
+                        .map(|radius| radius * scale),
+                });
                 let left = run.bounds.x * scale;
                 // Glyphon truncates Y when hinting. Round the origin first so a downward
                 // eased translation does not sit one pixel short until its exact endpoint.
@@ -134,6 +146,7 @@ impl TextSystem {
                             bounds,
                             color,
                             opacity: run.opacity,
+                            mask,
                         });
                         fragment_left += width;
                         fragment_reshaped |= was_reshaped;
@@ -157,6 +170,7 @@ impl TextSystem {
                         bounds,
                         color,
                         opacity: run.opacity,
+                        mask,
                     });
                     was_reshaped
                 };
@@ -221,6 +235,7 @@ impl TextSystem {
                 bounds: item.bounds,
                 default_color: item.color,
                 opacity: item.opacity,
+                mask: item.mask,
                 custom_glyphs: &[],
             });
             renderers[batch.renderer].prepare(

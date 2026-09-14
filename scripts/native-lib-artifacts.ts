@@ -1,25 +1,26 @@
 /** Stage and restore native library trees for the Release workflow artifacts. */
 
 import { cpSync, existsSync, mkdirSync, renameSync, statSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 
-export const nativeLibPackages = ["native", "extension-terminal", "extension-updater"] as const;
+export const nativeLibPackages = ["native", "extension-terminal", "extension-updater", "extension-editor", "extension-markdown"] as const;
 
 function isDirectory(path: string) {
   return existsSync(path) && statSync(path).isDirectory();
 }
 
 export function packageLibDir(root: string, name: (typeof nativeLibPackages)[number]) {
-  return join(root, "packages", name, "lib");
+  return name === "native" ? join(root, "packages", "native", "lib")
+    : join(root, "extensions", name.slice("extension-".length), "lib");
 }
 
-/** Copy package lib trees under `destination/packages/<name>/lib`. */
+/** Preserve the repository's package and extension paths inside the artifact wrapper. */
 export function stageNativeLibArtifacts(root: string, destination: string) {
   const destRoot = resolve(destination);
   for (const name of nativeLibPackages) {
     const source = packageLibDir(root, name);
     if (!isDirectory(source)) throw new Error(`missing ${source}`);
-    const dest = join(destRoot, "packages", name, "lib");
+    const dest = packageLibDir(destRoot, name);
     mkdirSync(dest, { recursive: true });
     cpSync(source, dest, { recursive: true, verbatimSymlinks: true });
   }
@@ -38,7 +39,7 @@ export function restoreNativeLibArtifacts(root: string) {
     if (isDirectory(dest)) continue;
     const stripped = join(root, name, "lib");
     if (!isDirectory(stripped)) continue;
-    mkdirSync(join(root, "packages", name), { recursive: true });
+    mkdirSync(dirname(dest), { recursive: true });
     renameSync(stripped, dest);
     restored.push(name);
   }

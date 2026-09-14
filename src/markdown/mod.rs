@@ -9,6 +9,9 @@ mod parser;
 
 use std::{collections::HashMap, sync::Arc};
 
+#[cfg(feature = "editor")]
+use std::collections::HashSet;
+
 use crate::{
     AccessibilityRole, Color, Element, ElementId, FontFamily, FontWeight, HighlightStyle,
     IntoElement, MAX_TEXT_HIGHLIGHTS, StyledText, TextAlign, div, text,
@@ -18,6 +21,9 @@ use parser::{IncrementalParser, TopBlock};
 pub use parser::{
     MarkdownBlock, MarkdownInlineRun, MarkdownInlineStyle, MarkdownListItem, MarkdownTableAlign,
 };
+
+#[cfg(feature = "editor")]
+use crate::{CodeBlock, CodeBlockStyle, SyntaxLanguage};
 
 /// Maximum UTF-8 source retained by one Markdown component.
 pub const MAX_MARKDOWN_SOURCE_BYTES: usize = 4 * 1024 * 1024;
@@ -132,6 +138,20 @@ pub struct MarkdownUpdate {
     pub truncated: bool,
 }
 
+/// One parsed fenced or indented code block handed to a custom Markdown renderer.
+///
+/// The renderer should use `element_id` for stable retained identity. `language` contains the
+/// optional fence info string and is `None` for an indented code block.
+#[derive(Clone, Copy, Debug)]
+pub struct MarkdownCodeBlock<'a> {
+    pub language: Option<&'a str>,
+    pub code: &'a str,
+    pub element_id: ElementId,
+}
+
+type CodeBlockRenderer<'renderer> =
+    dyn for<'source> FnMut(MarkdownCodeBlock<'source>) -> Element + 'renderer;
+
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 struct FlatKey {
     source_start: usize,
@@ -151,6 +171,8 @@ pub struct Markdown {
     style: MarkdownStyle,
     streaming: bool,
     truncated: bool,
+    #[cfg(feature = "editor")]
+    code_blocks: HashMap<ElementId, CodeBlock>,
 }
 
 impl Default for Markdown {
@@ -168,6 +190,8 @@ impl Markdown {
             style: MarkdownStyle::default(),
             streaming: false,
             truncated: false,
+            #[cfg(feature = "editor")]
+            code_blocks: HashMap::new(),
         }
     }
 
@@ -253,7 +277,74 @@ impl Markdown {
 
     /// Render the document as ordinary native QuickGUI elements.
     pub fn element(&mut self, id: impl Into<ElementId>) -> Element {
-        let root_id = id.into();
+        self.render_element(id.into(), None)
+    }
+
+    /// Render code blocks with a caller-supplied component factory.
+    ///
+    /// Parsing remains owned by this retained Markdown model; the callback only replaces the
+    /// element for each parsed code block. Keep any component state used by the callback in the
+    /// owning view and key it by [`MarkdownCodeBlock::element_id`].
+    pub fn element_with_code_blocks<R>(
+        &mut self,
+        id: impl Into<ElementId>,
+        mut renderer: R,
+    ) -> Element
+    where
+        R: for<'source> FnMut(MarkdownCodeBlock<'source>) -> Element,
+    {
+        self.render_element(id.into(), Some(&mut renderer))
+    }
+
+    /// Render parsed code blocks through retained [`CodeBlock`] components.
+    ///
+    /// This convenience is available when both `markdown` and `editor` are enabled. Each parsed
+    /// block keeps independent virtual-scroll state. `max_height` is sanitized to a finite value;
+    /// shorter blocks use their natural logical-line height.
+    #[cfg(feature = "editor")]
+    pub fn element_with_highlighted_code_blocks(
+        &mut self,
+        id: impl Into<ElementId>,
+        style: CodeBlockStyle,
+        max_height: f32,
+    ) -> Element {
+        let mut code_blocks = std::mem::take(&mut self.code_blocks);
+        let mut live = HashSet::new();
+        let max_height = if max_height.is_finite() {
+            max_height.clamp(40.0, 4_096.0)
+        } else {
+            320.0
+        };
+        let element = self.element_with_code_blocks(id, |request| {
+            live.insert(request.element_id);
+            let block = code_blocks
+                .entry(request.element_id)
+                .or_insert_with(|| CodeBlock::with_text(request.code));
+            block.set_text(request.code);
+            block.set_language(
+                request
+                    .language
+                    .and_then(SyntaxLanguage::from_name)
+                    .unwrap_or(SyntaxLanguage::PlainText),
+            );
+            block.set_style(style);
+            let style = block.style();
+            let natural_height =
+                block.line_count() as f32 * style.line_height + style.content_padding_y * 2.0 + 2.0;
+            block
+                .element(request.element_id)
+                .h(natural_height.min(max_height))
+        });
+        code_blocks.retain(|id, _| live.contains(id));
+        self.code_blocks = code_blocks;
+        element
+    }
+
+    fn render_element(
+        &mut self,
+        root_id: ElementId,
+        mut code_block_renderer: Option<&mut CodeBlockRenderer<'_>>,
+    ) -> Element {
         let mut root = div()
             .id(root_id)
             .w_full()
@@ -282,6 +373,7 @@ impl Markdown {
                 0,
                 style,
                 cache,
+                &mut code_block_renderer,
             ));
         }
         if let Some(tail) = &self.display_tail {
@@ -296,6 +388,7 @@ impl Markdown {
                     0,
                     style,
                     cache,
+                    &mut code_block_renderer,
                 ));
             }
         }
@@ -343,6 +436,7 @@ fn render_block(
     depth: usize,
     style: MarkdownStyle,
     cache: &mut HashMap<FlatKey, StyledText>,
+    code_block_renderer: &mut Option<&mut CodeBlockRenderer<'_>>,
 ) -> Element {
     let (id, block_slot) = allocate_id(root_id, top_index, depth, slot);
     match block {
@@ -376,6 +470,16 @@ fn render_block(
         }
         MarkdownBlock::CodeBlock { language, code } => {
             let (code_id, code_slot) = allocate_id(root_id, top_index, depth + 1, slot);
+            let language = language.as_deref().filter(|language| !language.is_empty());
+            let label_id = language.map(|_| allocate_id(root_id, top_index, depth + 1, slot).0);
+            if let Some(renderer) = code_block_renderer.as_deref_mut() {
+                return renderer(MarkdownCodeBlock {
+                    language,
+                    code,
+                    element_id: id,
+                })
+                .id(id);
+            }
             let code_key = FlatKey {
                 source_start,
                 top_index,
@@ -412,10 +516,9 @@ fn render_block(
                 container = container.border(1.0, border);
             }
             let mut children = Vec::with_capacity(2);
-            if let Some(language) = language.as_deref().filter(|language| !language.is_empty()) {
-                let (label_id, _) = allocate_id(root_id, top_index, depth + 1, slot);
+            if let Some(language) = language {
                 let mut label = text(Arc::<str>::from(language))
-                    .id(label_id)
+                    .id(label_id.expect("a non-empty code language allocated a label id"))
                     .text_size(11.0)
                     .line_height(14.0)
                     .font_semibold();
@@ -442,6 +545,7 @@ fn render_block(
                 depth + 1,
                 style,
                 cache,
+                code_block_renderer,
             )
             .flex_1()
             .min_w(0.0);
@@ -494,6 +598,7 @@ fn render_block(
                     depth + 1,
                     style,
                     cache,
+                    code_block_renderer,
                 )
                 .flex_1()
                 .min_w(0.0);
@@ -614,6 +719,7 @@ fn render_blocks(
     depth: usize,
     style: MarkdownStyle,
     cache: &mut HashMap<FlatKey, StyledText>,
+    code_block_renderer: &mut Option<&mut CodeBlockRenderer<'_>>,
 ) -> Element {
     let (id, _) = allocate_id(root_id, top_index, depth, slot);
     let children = blocks
@@ -628,6 +734,7 @@ fn render_blocks(
                 depth,
                 style,
                 cache,
+                code_block_renderer,
             )
         })
         .collect::<Vec<_>>();
@@ -778,7 +885,7 @@ fn finite_at_least(value: f32, minimum: f32, fallback: f32) -> f32 {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, not(quickgui_component_extension)))]
 mod tests {
     use super::*;
 
@@ -889,5 +996,45 @@ mod tests {
         assert!(markdown.set_style(MarkdownStyle::default().font_size(18.0)));
         assert!(markdown.flat_cache.is_empty());
         assert_eq!(markdown.block_count(), 1);
+    }
+
+    #[test]
+    fn custom_code_block_renderer_receives_parsed_fence_data_and_stable_id() {
+        let mut markdown = Markdown::with_text("before\n\n```rust\nfn main() {}\n```\n");
+        let mut rendered = Vec::new();
+        let element = markdown.element_with_code_blocks("custom-code", |block| {
+            rendered.push((
+                block.language.map(str::to_owned),
+                block.code.to_owned(),
+                block.element_id,
+            ));
+            div().child("custom code")
+        });
+        assert_eq!(rendered.len(), 1);
+        assert_eq!(rendered[0].0.as_deref(), Some("rust"));
+        assert_eq!(rendered[0].1, "fn main() {}");
+        assert_eq!(element.children.len(), 2);
+        assert_eq!(element.children[1].explicit_id, Some(rendered[0].2));
+    }
+
+    #[cfg(feature = "editor")]
+    #[test]
+    fn highlighted_code_blocks_retain_one_code_block_model_per_parsed_fence() {
+        let mut markdown = Markdown::with_text(
+            "```rust\nfn main() {}\n```\n\n```typescript\nconst answer = 42;\n```\n",
+        );
+        let element = markdown.element_with_highlighted_code_blocks(
+            "highlighted-code",
+            CodeBlockStyle::default().line_numbers(true),
+            240.0,
+        );
+        assert_eq!(element.children.len(), 2);
+        assert_eq!(markdown.code_blocks.len(), 2);
+        assert!(
+            markdown
+                .code_blocks
+                .values()
+                .all(|block| block.style().line_numbers)
+        );
     }
 }

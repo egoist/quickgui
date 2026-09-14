@@ -3,9 +3,9 @@ package main
 import (
 	"log"
 
+	"github.com/egoist/quickgui/extensions/updater"
 	"github.com/egoist/quickgui/go/native"
 	"github.com/egoist/quickgui/go/ui"
-	"github.com/egoist/quickgui/go/updater"
 )
 
 func main() {

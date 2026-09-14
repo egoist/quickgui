@@ -2,12 +2,14 @@ Embeds the retained Ghostty terminal surface and reports process lifecycle event
 
 ## Import
 
-Import the optional `terminal` package and `ui` for shared styles. The CLI detects this import, resolves the matching prebuilt `@quickgui/extension-terminal` library, and bundles it with your app. Apps that do not import `terminal` do not download or bundle the backend.
+```sh
+go get github.com/egoist/quickgui/extensions/terminal
+```
 
 ```go
 import (
 	"github.com/egoist/quickgui/go/native"
-	"github.com/egoist/quickgui/go/terminal"
+	"github.com/egoist/quickgui/extensions/terminal"
 	"github.com/egoist/quickgui/go/ui"
 )
 ```

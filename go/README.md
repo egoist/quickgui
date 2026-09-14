@@ -187,17 +187,17 @@ Native mutations enqueue commands; operations with a result take a completion
 callback rather than synchronously waiting for the main thread. Completion and
 event callbacks run on the Go application goroutine.
 
-| API | Capability |
-| --- | --- |
-| `App`, `Window` | Identity, paths, windows, lifecycle, menus, activation, relaunch |
-| `ShowAlertDialog`, `ShowOpenDialog`, `ShowSaveDialog`, `Shell` | System dialogs, file panels, opening/revealing paths and URLs |
-| `Clipboard` | Typed text, binary MIME data, images, files, and Find pasteboard |
-| `Screen`, `SystemPreferences`, `Appearance`, `Keyboard` | Display and platform snapshots |
-| `Notifications`, `GlobalShortcut`, `Tray` | Native notification, shortcut, and tray lifecycles |
-| `PowerMonitor`, `PowerAssertion`, `Permissions` | Power/idle state, sleep assertions, and explicit permissions |
-| `AutoStart`, `Protocol`, `DeepLink` | Startup registration and application links |
-| `SecureStorage` | Native credential storage |
-| `Updater`, `CrashReporter`, `Metrics` | Signed updates, core crash reports, and explicit metrics |
+| API                                                            | Capability                                                       |
+| -------------------------------------------------------------- | ---------------------------------------------------------------- |
+| `App`, `Window`                                                | Identity, paths, windows, lifecycle, menus, activation, relaunch |
+| `ShowAlertDialog`, `ShowOpenDialog`, `ShowSaveDialog`, `Shell` | System dialogs, file panels, opening/revealing paths and URLs    |
+| `Clipboard`                                                    | Typed text, binary MIME data, images, files, and Find pasteboard |
+| `Screen`, `SystemPreferences`, `Appearance`, `Keyboard`        | Display and platform snapshots                                   |
+| `Notifications`, `GlobalShortcut`, `Tray`                      | Native notification, shortcut, and tray lifecycles               |
+| `PowerMonitor`, `PowerAssertion`, `Permissions`                | Power/idle state, sleep assertions, and explicit permissions     |
+| `AutoStart`, `Protocol`, `DeepLink`                            | Startup registration and application links                       |
+| `SecureStorage`                                                | Native credential storage                                        |
+| `Updater`, `CrashReporter`, `Metrics`                          | Signed updates, core crash reports, and explicit metrics         |
 
 Check callback errors and retain/dispose subscription or resource handles for the
 duration they are needed. Capture the owning window during component creation if
@@ -210,9 +210,18 @@ documented in [clipboard](../docs/clipboard.md#go), [document windows](../docs/d
 
 Go 1.23 or newer and Bun are required for development. On macOS, packaging also uses Xcode Command Line Tools. Published native assets cover macOS arm64/x64, Linux arm64/x64, and Windows x64.
 
-Optional terminal support is imported from `github.com/egoist/quickgui/go/terminal` and rendered with `terminal.View(terminal.Props{…})`. The CLI bundles its separate prebuilt native extension only when the app imports that package. See the [extension guide](https://github.com/egoist/quickgui/blob/main/docs/architecture/extensions.md) for offline builds and source development.
+Optional terminal support is imported from `github.com/egoist/quickgui/extensions/terminal` and rendered with `terminal.View(terminal.Props{…})`. The CLI bundles its separate prebuilt native extension only when the app imports that package. See the [extension guide](https://github.com/egoist/quickgui/blob/main/docs/architecture/extensions.md) for offline builds and source development.
 
-Third-party native services register by name without core changes. Their Go package calls `host.RequireExtension("acme-echo", "1.0.0")` and ships a matching `quickgui.extension.json`; the native image implements the public service ABI and may have its own release cycle and npm scope. Use `native.InvokeExtension` for one-shot JSON requests or `native.OpenExtension` for sessions with events. `ExtensionSession.Request` returns a JSON result; `Command` exposes only an error. See the [standalone example](../examples/native-extension/) and [authoring guide](../website/src/content/docs/en/extensions.mdx).
+The opt-in `github.com/egoist/quickgui/extensions/editor` package exposes the Rust-core `Editor`,
+`CodeBlock`, and `DiffView` through a separate native extension, without CGO or a second renderer. It supports controlled and
+read-only source, Tree-sitter coloring, split/unified diffs, Pierre-style indicators, and reactive
+presentation properties. See the [editor, CodeBlock, and diff view guide](../docs/editor-and-diffs.md).
+
+The opt-in `github.com/egoist/quickgui/extensions/markdown` package exposes retained streaming Markdown.
+Set `CodeBlockComponent` to `editor.HighlightedCodeBlock` to render parsed fences through
+independently retained CodeBlock models. See the [Markdown guide](../docs/markdown.md).
+
+Third-party native components and services register by name without core changes. Their Go package calls `host.RequireExtension("acme-echo", "1.0.0")` and ships a matching `quickgui.extension.json`; the native image implements the public SDK and may have its own release cycle and npm scope. Use `ui.ExtensionComponent` for retained native components, `native.InvokeExtension` for one-shot JSON requests, or `native.OpenExtension` for sessions with events. See the [standalone example](../examples/native-extension/) and [authoring guide](../website/src/content/docs/go/en/extensions.mdx).
 
 From a source checkout, build the Rust library once:
 
@@ -235,4 +244,4 @@ A Go `replace` directive points each repository example at `../../go`. External 
 
 Run `bun run test:go` to check formatting, generated Rust protocol constants, the SDK, and every Go example through the view compiler with CGO disabled. Run `go -C go generate ./protocol` after changing Rust wire constants.
 
-Automatic updates are a separate opt-in import: `github.com/egoist/quickgui/go/updater`. Call `updater.Start` once per app, configure `[updates]` in `quickgui.toml`, and publish signed appcasts with the Bun CLI. See [automatic updates](https://github.com/egoist/quickgui/blob/main/docs/updater.md).
+Automatic updates are a separate opt-in import: `github.com/egoist/quickgui/extensions/updater`. Call `updater.Start` once per app, configure `[updates]` in `quickgui.toml`, and publish signed appcasts with the Bun CLI. See [automatic updates](https://github.com/egoist/quickgui/blob/main/docs/updater.md).

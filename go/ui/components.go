@@ -56,10 +56,6 @@ func TextArea() *Element {
 	return Input().Multiline(true)
 }
 
-func Markdown() *Element {
-	return newElement(protocol.TagMarkdown, nil)
-}
-
 func Image() *Element {
 	return newElement(protocol.TagImage, nil)
 }

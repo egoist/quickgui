@@ -139,9 +139,17 @@ function goApi(component: (typeof ALL_COMPONENT_DOCS)[number]): ApiSection[] {
   const name =
     component.slug === "terminal"
       ? "terminal.View"
-      : component.kind === "swift-ui"
-        ? `SwiftUI${component.name}`
-        : component.name;
+      : component.slug === "editor"
+        ? "editor.Editor"
+        : component.slug === "code-block"
+          ? "editor.CodeBlock"
+          : component.slug === "markdown"
+            ? "markdown.View"
+            : component.slug === "diff-view"
+              ? "editor.DiffView"
+              : component.kind === "swift-ui"
+                ? `SwiftUI${component.name}`
+                : component.name;
   const instanceParts = declarations.filter((d) => d.receiver === `*${name}Component`);
   const instanceConstructor = declarations.find((d) => !d.receiver && d.name === `New${name}`);
   if (instanceParts.length && instanceConstructor) {
@@ -168,9 +176,21 @@ function goApi(component: (typeof ALL_COMPONENT_DOCS)[number]): ApiSection[] {
       {
         name: "Element",
         signature: "part.Child(content).Style(style)",
-        description: "Every part returns a fluent element. Strings, numbers, elements, and deferred child factories compose directly.",
+        description:
+          "Every part returns a fluent element. Strings, numbers, elements, and deferred child factories compose directly.",
         source: declarations.find((d) => d.receiver === "*Element" && d.name === "Child")!.source,
-        entries: declarations.filter((d) => d.receiver === "*Element" && ["Child", "Children", "Style", "OnClick", "Ref"].includes(d.name)).map((d) => ({name:d.name,type:d.signature,description:d.description,source:d.source})),
+        entries: declarations
+          .filter(
+            (d) =>
+              d.receiver === "*Element" &&
+              ["Child", "Children", "Style", "OnClick", "Ref"].includes(d.name),
+          )
+          .map((d) => ({
+            name: d.name,
+            type: d.signature,
+            description: d.description,
+            source: d.source,
+          })),
       },
     ];
   }
@@ -210,7 +230,15 @@ function goApi(component: (typeof ALL_COMPONENT_DOCS)[number]): ApiSection[] {
     ...(component.slug === "button" ? ["FocusableWhenDisabled", "FocusOnPointer"] : []),
   ]);
   const entries = props
-    ? fields(name === "terminal.View" ? `terminal.${props}` : props)
+    ? fields(
+        name === "terminal.View"
+          ? `terminal.${props}`
+          : name.startsWith("editor.")
+            ? `editor.${props}`
+            : name.startsWith("markdown.")
+              ? `markdown.${props}`
+              : props,
+      )
     : declarations
         .filter((d) => d.receiver === "*Element" && wanted.has(d.name))
         .map((d) => ({
@@ -222,7 +250,7 @@ function goApi(component: (typeof ALL_COMPONENT_DOCS)[number]): ApiSection[] {
   return [
     {
       name,
-      signature: `${name === "terminal.View" ? "terminal" : "ui"}.${constructor.signature}`,
+      signature: `${name === "terminal.View" ? "terminal" : name.startsWith("editor.") ? "editor" : name.startsWith("markdown.") ? "markdown" : "ui"}.${constructor.signature}`,
       description: constructor.description,
       source: constructor.source,
       entries,

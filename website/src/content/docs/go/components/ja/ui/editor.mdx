@@ -1,0 +1,55 @@
+シンタックスカラー、行番号、インデント、両軸スクロールに対応した保持型ネイティブコードエディターです。
+
+既定では見た目のスタイルを持ちません。文字と行番号の色は継承され、背景、枠線、角丸、余白、構文・差分の配色は追加されません。外観はアプリ側で明示的に指定します。
+
+## インポート
+
+```sh
+go get github.com/egoist/quickgui/extensions/editor
+```
+
+```go
+import (
+	"github.com/egoist/quickgui/extensions/editor"
+	"github.com/egoist/quickgui/go/ui"
+)
+```
+
+## 使い方
+
+```go
+func EditorExample() *ui.Element {
+	source, setSource := ui.CreateSignal("package main\n\nfunc main() {}\n")
+	return editor.Editor(editor.EditorProps{
+		Value:       source,
+		Language:    "go",
+		LineNumbers: true,
+		TabSize:     4,
+		OnChange:    setSource,
+		Props:       ui.Props{Style: ui.Style().Width("100%").Height(360)},
+	})
+}
+```
+
+## シンタックスハイライト
+
+`Language` は同梱の Tree-sitter 文法とハイライトクエリを選択します。クエリのキャプチャは `SyntaxTheme` を通して 8 種類の前景色だけの描画クラスへ変換されるため、色はテキスト寸法を変えません。ソースまたは言語が変わると上限付きドキュメントを再解析し、配色変更では保持済みキャプチャだけを再マッピングします。スクロール時に構文処理は行いません。解析は最大 2 MiB、32 KiB を超える単一行は通常色のまま、キャプチャ数にも上限があり、言語サーバーは不要です。
+
+## 主なプロパティ
+
+| プロパティ     | 説明                                                                                   |
+| -------------- | -------------------------------------------------------------------------------------- |
+| `Value`        | 制御された UTF-8 ソース文字列またはアクセサーです。`OnChange` を同じ状態へ反映します。 |
+| `Language`     | `"go"`、`"rust"`、`"typescript"` などの構文言語名です。                                |
+| `LineNumbers`  | 描画のみで構成される論理行番号ガターを表示または非表示にします。                       |
+| `TabSize`      | Rust コアが範囲を制限するインデント幅です。                                            |
+| `InsertSpaces` | タブ文字の代わりに空白を挿入します。                                                   |
+| `AutoIndent`   | 改行時に現在のインデントを引き継ぎます。                                               |
+| `ReadOnly`     | 選択とスクロールを保ちながら編集を拒否します。                                         |
+| `SyntaxTheme`  | Tree-sitter キャプチャの色を上書きします。                                             |
+| `OnChange`     | 受理された編集後の、上限付き完全ソースを通知します。                                   |
+| `Props.Style`  | 保持型エディター要素のサイズとスタイルを指定します。                                   |
+
+<Note>
+Editor、CodeBlock、DiffView は独立した editor 拡張が提供し、quickgui-host には含まれません。
+</Note>

@@ -1,0 +1,55 @@
+A retained native code editor with syntax coloring, line numbers, indentation, and both-axis scrolling.
+
+Unstyled by default: text and line-number colors inherit, and the component adds no background, border, rounding, padding, or syntax/diff palette. Supply application styles and explicit colors to opt into an appearance.
+
+## Import
+
+```sh
+go get github.com/egoist/quickgui/extensions/editor
+```
+
+```go
+import (
+	"github.com/egoist/quickgui/extensions/editor"
+	"github.com/egoist/quickgui/go/ui"
+)
+```
+
+## Usage
+
+```go
+func EditorExample() *ui.Element {
+	source, setSource := ui.CreateSignal("package main\n\nfunc main() {}\n")
+	return editor.Editor(editor.EditorProps{
+		Value:       source,
+		Language:    "go",
+		LineNumbers: true,
+		TabSize:     4,
+		OnChange:    setSource,
+		Props:       ui.Props{Style: ui.Style().Width("100%").Height(360)},
+	})
+}
+```
+
+## Syntax highlighting
+
+`Language` selects a bundled Tree-sitter grammar and highlight query. Query captures map through `SyntaxTheme` to eight foreground-only paint classes, so color never changes text metrics. Source or language changes reparse the bounded document; palette changes only remap retained captures, and scrolling does no syntax work. Parsing is limited to 2 MiB, individual lines over 32 KiB stay plain, and the capture count is capped. This does not require a language server.
+
+## Key props
+
+| Prop           | Purpose                                                                               |
+| -------------- | ------------------------------------------------------------------------------------- |
+| `Value`        | Controlled UTF-8 source string or accessor. Commit `OnChange` back to the same state. |
+| `Language`     | Syntax language name such as `"go"`, `"rust"`, or `"typescript"`.                     |
+| `LineNumbers`  | Shows or hides the paint-only logical-line gutter.                                    |
+| `TabSize`      | Indentation width, clamped by the Rust core.                                          |
+| `InsertSpaces` | Inserts spaces instead of a tab character.                                            |
+| `AutoIndent`   | Carries the current indentation onto a new line.                                      |
+| `ReadOnly`     | Keeps selection and scrolling while rejecting edits.                                  |
+| `SyntaxTheme`  | Overrides Tree-sitter capture colors.                                                 |
+| `OnChange`     | Reports the complete bounded source after an accepted edit.                           |
+| `Props.Style`  | Sizes and styles the retained editor element.                                         |
+
+<Note>
+Editor, CodeBlock, and DiffView are supplied by the separate editor extension, not bundled into quickgui-host.
+</Note>

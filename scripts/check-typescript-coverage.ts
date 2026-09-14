@@ -4,11 +4,16 @@ import { readFileSync } from "node:fs";
 import { ALL_COMPONENT_DOCS } from "../website/src/lib/component-docs.ts";
 import * as ui from "../packages/solid/src/index.ts";
 import * as swift from "../packages/solid/src/swift-ui.ts";
+import * as editor from "../extensions/editor/js/index.ts";
+import * as markdown from "../extensions/markdown/js/index.ts";
+import * as terminal from "../extensions/terminal/js/index.ts";
+
+const extensionComponents = { ...editor, ...markdown, ...terminal } as Record<string, unknown>;
 
 for (const component of ALL_COMPONENT_DOCS) {
   const name = component.slug === "svg" ? "Svg" : component.name;
   const module = (component.kind === "ui" ? ui : swift) as Record<string, unknown>;
-  const value = module[name];
+  const value = extensionComponents[name] ?? module[name];
   if (typeof value !== "function" && typeof value !== "object")
     throw new Error(`Missing TypeScript component ${component.kind}/${name}`);
 }

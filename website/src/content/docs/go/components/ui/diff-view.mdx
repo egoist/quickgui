@@ -1,0 +1,56 @@
+A virtualized split or unified file diff with synchronized rows and independent pane scrolling.
+
+Unstyled by default: text and line-number colors inherit, and the component adds no background, border, rounding, padding, or syntax/diff palette. Supply application styles and explicit colors to opt into an appearance.
+
+## Import
+
+```sh
+go get github.com/egoist/quickgui/extensions/editor
+```
+
+```go
+import (
+	"github.com/egoist/quickgui/extensions/editor"
+	"github.com/egoist/quickgui/go/ui"
+)
+```
+
+## Usage
+
+```go
+func DiffViewExample() *ui.Element {
+	return editor.DiffView(editor.DiffViewProps{
+		OldPath: "before.go",
+		NewPath: "after.go",
+		OldText: "func answer() int { return 41 }\n",
+		NewText: "func answer() int { return 42 }\n",
+		Options: editor.DiffOptions{
+			Layout:      editor.DiffSplit,
+			Indicators:  editor.DiffBars,
+			LineNumbers: true,
+			Language:    "go",
+		},
+		Props: ui.Props{Style: ui.Style().Width("100%").Height(420)},
+	})
+}
+```
+
+## Syntax highlighting
+
+DiffView uses the same bundled Tree-sitter grammars as Editor. When its document, language, or syntax palette changes, the Rust core parses each visible old/new file lane once and assigns capture fragments to logical rows. Styled text is materialized and cached only when a row is mounted, with inline addition/deletion emphasis merged at non-overlapping byte boundaries. Scrolling never invokes the parser.
+
+## Key props
+
+| Prop                  | Purpose                                                                        |
+| --------------------- | ------------------------------------------------------------------------------ |
+| `OldText` / `NewText` | Complete controlled source pair. Values may be strings or accessors.           |
+| `OldPath` / `NewPath` | File labels and language-inference paths.                                      |
+| `Patch`               | Captured Git or ordinary unified patch; takes precedence over the source pair. |
+| `Options.Layout`      | `DiffSplit` or `DiffUnified`.                                                  |
+| `Options.Indicators`  | `DiffBars`, `DiffClassic`, or `DiffNone`.                                      |
+| `Options.Wrap`        | Wraps long lines instead of enabling horizontal scrolling.                     |
+| `Options.Backgrounds` | Enables addition and deletion line backgrounds.                                |
+| `Theme`               | Overrides diff, gutter, hunk, and inline-change colors.                        |
+| `SyntaxTheme`         | Overrides lexical token colors.                                                |
+
+Split panes retain independent horizontal offsets and one synchronized vertical offset. Only visible rows plus bounded overscan are mounted.

@@ -2,10 +2,12 @@ Renders retained Markdown, including an incremental mode for streaming content.
 
 ## Import
 
-Import `Markdown` from `quickgui`.
+```sh
+cargo add quickgui --features markdown
+```
 
 ```rust
-use quickgui::*;
+use quickgui::Markdown;
 ```
 
 ## Usage
@@ -17,7 +19,9 @@ markdown.element("note").w(290.0)
 
 ## Key props
 
-| Prop | Purpose |
-| --- | --- |
-| `value` | Markdown source to shape and paint. |
-| `streaming` | Uses incremental Markdown reconciliation for appended content. |
+| Prop                                   | Purpose                                                                    |
+| -------------------------------------- | -------------------------------------------------------------------------- |
+| `value`                                | Markdown source to shape and paint.                                        |
+| `streaming`                            | Uses incremental Markdown reconciliation for appended content.             |
+| `element_with_code_blocks`             | Replaces parsed code blocks with a caller-supplied Rust component factory. |
+| `element_with_highlighted_code_blocks` | Uses retained CodeBlock models when the `editor` feature is also enabled.  |

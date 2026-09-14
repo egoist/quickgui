@@ -56,30 +56,32 @@ try {
         cwd: app,
       }),
     ].length;
+  const componentPackages = ["editor", "markdown", "terminal", "updater"];
   if (
-    ["libquickgui_terminal.dylib", "libquickgui_updater.dylib", "Sparkle.framework/Sparkle"].some(
+    [...componentPackages.map((name) => `libquickgui_${name}.dylib`), "Sparkle.framework/Sparkle"].some(
       (resource) => bundled(resource) !== 0,
     )
   )
     throw new Error("Core-only registry app bundled an optional extension");
-  writeFileSync(
-    join(app, "terminal.go"),
-    'package main\nimport _ "github.com/egoist/quickgui/go/terminal"\n',
-  );
-  await run(["go", "mod", "tidy"], app);
-  await run(["bun", cli, "dev", "--project", app, "--once", "--no-launch"], npm);
-  if (bundled("libquickgui_terminal.dylib") !== 1)
-    throw new Error("Terminal import did not resolve the optional registry artifact");
-  writeFileSync(
-    join(app, "updater.go"),
-    'package main\nimport _ "github.com/egoist/quickgui/go/updater"\n',
-  );
-  await run(["go", "mod", "tidy"], app);
-  await run(["bun", cli, "dev", "--project", app, "--once", "--no-launch"], npm);
+  const selected = new Set<string>();
+  for (const name of componentPackages) {
+    const module = `github.com/egoist/quickgui/extensions/${name}`;
+    writeFileSync(join(app, `${name}.go`), `package main\nimport _ "${module}"\n`);
+    await run(["go", "get", `${module}@v${version}`], app);
+    await run(["go", "mod", "tidy"], app);
+    await run(["bun", cli, "dev", "--project", app, "--once", "--no-launch"], npm);
+    selected.add(name);
+    for (const candidate of componentPackages) {
+      if (bundled(`libquickgui_${candidate}.dylib`) !== Number(selected.has(candidate)))
+        throw new Error(`${name} import produced an incorrect ${candidate} library set`);
+    }
+  }
   if (
     [
       "libquickgui_terminal.dylib",
       "libquickgui_updater.dylib",
+      "libquickgui_editor.dylib",
+      "libquickgui_markdown.dylib",
       "Sparkle.framework/Versions/B/Sparkle",
     ].some((resource) => bundled(resource) !== 1)
   )

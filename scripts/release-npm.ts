@@ -75,7 +75,15 @@ if (publish) {
     throw new Error("GitHub OIDC or NODE_AUTH_TOKEN authentication is required");
 }
 
-for (const part of ["native", "extension-terminal", "extension-updater", "solid", "cli"]) {
+for (const part of [
+  "native",
+  "extension-terminal",
+  "extension-updater",
+  "solid",
+  "extension-editor",
+  "extension-markdown",
+  "cli",
+]) {
   const name = `@quickgui/${part}`;
   const archive = join(directory, `quickgui-${part}-${version}.tgz`);
   if (!existsSync(archive)) throw new Error(`Missing archive: ${archive}`);

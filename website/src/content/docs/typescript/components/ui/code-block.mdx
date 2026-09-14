@@ -1,0 +1,49 @@
+Selectable, caret-free source code with Tree-sitter coloring and virtualized logical rows.
+
+Unstyled by default: text and line-number colors inherit, and the component adds no background, border, rounding, padding, or syntax/diff palette. Supply application styles and explicit colors to opt into an appearance.
+
+## Import
+
+```sh
+bun add @quickgui/extension-editor
+```
+
+```tsx
+import { CodeBlock } from "@quickgui/extension-editor";
+```
+
+```ts
+// quickgui.config.ts
+extensions: ["@quickgui/extension-editor"]
+```
+
+## Usage
+
+```tsx
+<CodeBlock
+  value={"export function answer(): number { return 42; }\n"}
+  language="typescript"
+  lineNumbers
+  wrap={false}
+  style={{ width: "100%", height: 280 }}
+/>
+```
+
+## Syntax highlighting
+
+`language` selects a bundled Tree-sitter grammar and highlight query. Captures map through `syntaxTheme` to foreground-only spans, so highlighting does not change layout. The Rust core parses when source or language changes; scrolling only mounts logical rows and materializes their precomputed spans. Parsing is limited to 2 MiB, individual lines over 32 KiB stay plain, and the capture count is capped.
+
+## Key props
+
+| Prop               | Purpose                                                       |
+| ------------------ | ------------------------------------------------------------- |
+| `value`            | UTF-8 source string or reactive expression.                   |
+| `language`         | Bundled grammar such as `"typescript"`, `"rust"`, or `"go"`.  |
+| `lineNumbers`      | Shows a sticky, non-selectable logical-line gutter.           |
+| `wrap`             | Wraps long lines instead of enabling horizontal scrolling.    |
+| `gutterBackground` | Overrides the line-number gutter background.                  |
+| `gutterColor`      | Overrides line-number foreground color.                       |
+| `syntaxTheme`      | Overrides the eight shared Tree-sitter capture colors.        |
+| `style`            | QuickGUI layout and paint styles for the retained code block. |
+
+CodeBlock is selectable but has no input listener, caret, IME state, undo stack, or focus ring. Use Editor when the user should modify the source.

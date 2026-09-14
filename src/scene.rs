@@ -1516,6 +1516,21 @@ pub struct Quad {
 }
 
 impl Quad {
+    /// Paint a solid rectangular fragment through an explicitly supplied rounded surface.
+    /// Reuses the ordinary rounded-quad shader; no offscreen texture is needed.
+    pub(crate) fn with_rounded_clip(mut self, mask: Option<(Rect, Corners)>) -> Self {
+        if let Some((bounds, corners)) = mask.filter(|(_, corners)| !corners.is_zero()) {
+            let clip = self
+                .clip
+                .unwrap_or(self.rect)
+                .intersection(self.rect)
+                .and_then(|clip| clip.intersection(bounds));
+            self.rect = bounds;
+            self.radius = corners;
+            self.clip = Some(clip.unwrap_or(Rect::new(0.0, 0.0, 0.0, 0.0)));
+        }
+        self
+    }
     pub fn new(rect: Rect, fill: Color) -> Self {
         Self {
             rect,
@@ -2030,6 +2045,7 @@ pub struct TextRun {
     pub style: TextStyle,
     pub opacity: f32,
     pub clip: Option<Rect>,
+    pub(crate) rounded_clip: Option<(Rect, Corners)>,
     pub(crate) highlights: Option<Arc<[TextHighlight]>>,
 }
 
@@ -2042,6 +2058,7 @@ impl TextRun {
             style,
             opacity: 1.0,
             clip: None,
+            rounded_clip: None,
             highlights: None,
         }
     }
@@ -2053,6 +2070,11 @@ impl TextRun {
 
     pub fn opacity(mut self, opacity: f32) -> Self {
         self.opacity = sanitize_opacity(opacity);
+        self
+    }
+
+    pub(crate) fn with_rounded_clip(mut self, mask: Option<(Rect, Corners)>) -> Self {
+        self.rounded_clip = mask.filter(|(_, corners)| !corners.is_zero());
         self
     }
 

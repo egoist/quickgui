@@ -1,4 +1,4 @@
-拡張は、再利用可能なコンポーネントの Go パッケージか、アプリが呼べるサービスのための Go パッケージとネイティブライブラリの組み合わせです。まずは Go パッケージから始めてください。オプションのバックエンドが必要なときだけネイティブライブラリを追加します。terminal と [自動更新](/docs/go/updater) のパッケージがその例です。
+拡張は、通常の Go コンポーネント、状態を保持するネイティブコンポーネント、非同期ネイティブサービスを提供できます。Editor、Markdown、Terminal は任意のネイティブコンポーネント、Updater は任意のサービスです。すべて同じ公開登録インターフェースを使い、第三者の拡張も `quickgui-host` の変更を必要としません。
 
 ## 拡張の種類を選ぶ
 
@@ -6,7 +6,7 @@
 | --- | --- |
 | コンポーネントまたはアプリケーションロジック | Go モジュール |
 | ネイティブサービスまたはオプションのバックエンド | Go パッケージ、マニフェスト、ネイティブライブラリ |
-| ネイティブデータを使う UI | ネイティブサービスと Go コンポーネント |
+| 状態を保持するネイティブ UI | コンポーネント SDK ライブラリと Go バインディング |
 
 利用者はあなたの Go パッケージをインポートします。CLI はマニフェストを見つけ、対応するネイティブ成果物を同梱します。
 
@@ -36,9 +36,9 @@ package notice
 
 import "github.com/egoist/quickgui/go/ui"
 
-func Notice(message func() string, styles ...ui.StyleBuilder) *ui.Element {
+func Notice(message string, styles ...ui.StyleBuilder) *ui.Element {
 	return ui.Text(
-		message(),
+		message,
 	).
 		Padding(12).
 		BackgroundColor("#eff6ff").
@@ -53,23 +53,23 @@ Go のバージョンタグで公開します。利用者は `go get` で追加�
 
 ## ネイティブ拡張の構成
 
-[`native-extension` の例](https://github.com/egoist/quickgui/tree/main/examples/native-extension) は Go パッケージと小さな C ライブラリを対にします。[`quickgui_extension.h`](https://github.com/egoist/quickgui/blob/main/include/quickgui_extension.h) に対してビルドします。
+[`extensions/`](https://github.com/egoist/quickgui/tree/main/extensions) の各組み込み拡張は Go モジュールと npm パッケージを兼ねます。Rust は `src/`、TypeScript バインディングは `js/` に置きます。独自の複合パッケージにも同じ構成を使えます：
 
 ```text
+Cargo.toml
 go.mod
-echo/
-  echo.go
-  quickgui.extension.json
-native/
-  quickgui_extension.h
-  echo.c
-artifacts/
-  package.json
-  lib/darwin-arm64/libquickgui_acme_echo.dylib
-build-extension.ts
+badge.go
+package.json
+quickgui.extension.json
+src/
+  lib.rs
+js/
+  index.ts
+lib/
+  darwin-arm64/libquickgui_acme_badge.dylib
 ```
 
-C、C++、Rust、および C ABI をエクスポートする他の言語で拡張を実装できます。Rust の拡張は [`extension_api.rs`](https://github.com/egoist/quickgui/blob/main/src/extension_api.rs) を取り込み、QuickGUI 自体をリンクせずに `cdylib` をビルドできます。
+C、C++、Rust など C ABI を公開できる言語で実装できます。Rust のコンポーネントライブラリは、レンダラーや `quickgui-host` ではなく [`quickgui-extension-sdk`](https://github.com/egoist/quickgui/tree/main/crates/quickgui-extension-sdk) に依存します。`Component` と `ComponentFactory` を実装すると、`ComponentRuntime` がライフサイクルの関数表を提供します。名前、コンポーネント名、プロパティ、リリースバージョンは拡張が定義します。
 
 ## 依存関係の宣言
 
@@ -121,7 +121,32 @@ CLI は `go list -deps` でマニフェストを見つけます。マニフェ�
 
 ## ネイティブインターフェースを実装する
 
-C リンケージで `quickgui_extension_v1` をエクスポートします。名前、バージョン、ABI バージョン `1`、2 関数のテーブル（`invoke` と `shutdown`）を持つディスクリプタを返します。借用したリクエストのバイト列は保持する前にコピーし、すぐに戻り、あとから応答してください。
+名前、独立したバージョン、ABI バージョン `1`、汎用関数表を持つディスクリプタを、C リンケージの `quickgui_extension_v1` から返します。**コンポーネント**表は `create`、`update`、`render`、`event`、`destroy`、**サービス**表は `invoke`、`shutdown` です。
+
+コンポーネントは不透明なインスタンスを保持し、SDK のプリミティブツリーを返します。安定したノードキーでフォーカス、選択、スクロールを保持し、仮想リストは表示行とオーバースキャンだけを要求します。入力は拡張に戻り、出力イベントは Go バインディングへ渡ります。インスタンスへの呼び出しはネイティブ UI スレッド上で直列に実行されます。重い処理はワーカーに移し、データが変わったときだけそのインスタンスを起こします。同じプロパティには変更なしを返し、破棄時に状態と wake ハンドルを解放してください。
+
+Go ラッパーから任意の登録済みコンポーネントをマウントできます：
+
+```go
+package badge
+
+import (
+	"github.com/egoist/quickgui/go/host"
+	"github.com/egoist/quickgui/go/ui"
+)
+
+func init() { host.RequireExtension("acme-badge", "1.0.0") }
+
+func View(label string) *ui.Element {
+	return ui.ExtensionComponent("acme-badge", "badge", map[string]any{
+		"label": label,
+	}, ui.Props{})
+}
+```
+
+[独立してコンパイルされる C カウンター](https://github.com/egoist/quickgui/blob/main/tests/fixtures/native_component.c) に完全なディスクリプタとライフサイクル実装があります。コンポーネントフレームは 16 MiB、フロントエンドのプロパティ JSON は 12 MiB が上限です。
+
+**サービス**では、借用したリクエストを保持する前にコピーし、すぐに戻って後から応答します。
 
 | リクエスト | 拡張が行うこと |
 | --- | --- |
@@ -139,16 +164,18 @@ C リンケージで `quickgui_extension_v1` をエクスポートします。�
 
 ## 成果物のビルドとパッケージ化
 
-サポートする各ホスト向けにネイティブライブラリをビルドし、`artifacts/lib/<platform>-<arch>/` に配置します。そのフォルダーを、マニフェストと同じ `version` の npm パッケージとして公開します。
+サポートする各ホスト向けにネイティブライブラリをビルドし、`lib/<platform>-<arch>/` に配置します。そのフォルダーを、マニフェストと同じ `version` の npm パッケージとして公開します。
 
 ```json
 {
   "name": "@acme/extension-echo",
   "version": "1.0.0",
-  "files": ["lib", "README.md"],
-  "exports": { "./package.json": "./package.json" }
+  "files": ["js", "lib", "quickgui.extension.json", "README.md"],
+  "exports": { ".": "./js/index.ts", "./package.json": "./package.json" }
 }
 ```
+
+TypeScript バインディングを含む npm パッケージは `js/index.ts` を公開します。`@quickgui/*` ランタイムと Solid は peer dependencies にし、開発用コピーは `devDependencies` に置き、実行時の `dependencies` には含めません。README はビルド手順だけにし、利用ガイドはウェブサイトに置きます。
 
 ヘルパーファイルはライブラリの隣に置きます。ベース名はマニフェストの `resources` オブジェクトに、`darwin`、`linux`、`windows` をキーにして宣言します。
 

@@ -212,7 +212,7 @@ documented in [clipboard](clipboard.md#go), [document windows](document-windows.
 
 Go 1.23 or newer and Bun are required for development. On macOS, packaging also uses Xcode Command Line Tools. Published native assets cover macOS arm64/x64, Linux arm64/x64, and Windows x64.
 
-Optional terminal support is imported from `github.com/egoist/quickgui/go/terminal` and rendered with `terminal.View(terminal.Props{…})`. The CLI bundles its separate prebuilt native extension only when the app imports that package. See the [extension guide](https://github.com/egoist/quickgui/blob/main/docs/architecture/extensions.md) for offline builds and source development.
+Optional terminal support is imported from `github.com/egoist/quickgui/extensions/terminal` and rendered with `terminal.View(terminal.Props{…})`. The CLI bundles its separate prebuilt native extension only when the app imports that package. See the [extension guide](https://github.com/egoist/quickgui/blob/main/docs/architecture/extensions.md) for offline builds and source development.
 
 From a source checkout, build the Rust library once:
 
@@ -235,4 +235,4 @@ A Go `replace` directive points each repository example at `../../go`. External 
 
 Run `bun run test:go` to check formatting, generated Rust protocol constants, the SDK, and every Go example with CGO disabled. Run `go -C go generate ./protocol` after changing Rust wire constants.
 
-Automatic updates are a separate opt-in import: `github.com/egoist/quickgui/go/updater`. Call `updater.Start` once per app, configure `[updates]` in `quickgui.toml`, and publish signed appcasts with the Bun CLI. See [automatic updates](https://github.com/egoist/quickgui/blob/main/docs/updater.md).
+Automatic updates are a separate opt-in import: `github.com/egoist/quickgui/extensions/updater`. Call `updater.Start` once per app, configure `[updates]` in `quickgui.toml`, and publish signed appcasts with the Bun CLI. See [automatic updates](https://github.com/egoist/quickgui/blob/main/docs/updater.md).

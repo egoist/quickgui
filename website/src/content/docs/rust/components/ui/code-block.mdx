@@ -1,0 +1,42 @@
+Selectable, caret-free source code with Tree-sitter coloring and virtualized logical rows.
+
+Unstyled by default: text and line-number colors inherit, and the component adds no background, border, rounding, padding, or syntax/diff palette. Supply application styles and explicit colors to opt into an appearance.
+
+## Import
+
+Enable QuickGUI's opt-in `editor` crate feature and import the retained code-block types.
+
+```rust
+use quickgui::{CodeBlock, CodeBlockStyle, SyntaxLanguage};
+```
+
+## Usage
+
+```rust
+let code = CodeBlock::with_text("pub fn answer() -> u8 { 42 }\n")
+    .with_language(SyntaxLanguage::Rust)
+    .with_style(CodeBlockStyle::default().line_numbers(true));
+
+code.element("example-code").h(280.0)
+```
+
+## Syntax highlighting
+
+`SyntaxLanguage` selects a bundled Tree-sitter grammar and its highlight query. Captures are flattened into eight stable `SyntaxTheme` classes and applied as foreground-only `HighlightStyle` spans, so color does not change text metrics. Parsing happens when source or language changes; scrolling only mounts rows and lazily creates their `StyledText`. Parsing is limited to 2 MiB, individual lines over 32 KiB stay plain, and the capture count is capped.
+
+## Key props
+
+| Prop                           | Purpose                                                                      |
+| ------------------------------ | ---------------------------------------------------------------------------- |
+| `CodeBlock::with_text`         | Creates the retained bounded source model.                                   |
+| `set_text`                     | Replaces source and resets the logical scroll position when it changed.      |
+| `set_language`                 | Selects a bundled Tree-sitter grammar.                                       |
+| `CodeBlockStyle::line_numbers` | Shows a sticky, non-selectable logical-line gutter.                          |
+| `CodeBlockStyle::word_wrap`    | Wraps long lines and disables horizontal scrolling.                          |
+| `CodeBlockStyle::syntax_theme` | Overrides the eight shared Tree-sitter capture colors.                       |
+| `element`                      | Builds a selectable, caret-free virtualized surface for a stable element ID. |
+
+<Note>
+  Add `features = ["editor"]` to the `quickgui` dependency. Retain one CodeBlock model per source so
+  virtual-scroll measurements and lazily materialized rows stay stable.
+</Note>

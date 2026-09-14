@@ -89,6 +89,12 @@
         "typescript": "7.0.2",
       },
     },
+    "examples/extensions": {
+      "name": "quickgui-example-extensions",
+      "devDependencies": {
+        "@quickgui/cli": "workspace:*",
+      },
+    },
     "examples/file-dialog": {
       "name": "quickgui-file-dialog-example",
       "devDependencies": {
@@ -168,6 +174,58 @@
         "@quickgui/cli": "workspace:*",
       },
     },
+    "extensions/editor": {
+      "name": "@quickgui/extension-editor",
+      "version": "0.1.4-next.4",
+      "devDependencies": {
+        "@quickgui/native": "workspace:*",
+        "@quickgui/solid": "workspace:*",
+        "solid-js": "2.0.0-rc.8",
+      },
+      "peerDependencies": {
+        "@quickgui/native": "workspace:*",
+        "@quickgui/solid": "workspace:*",
+        "solid-js": "2.0.0-rc.8",
+      },
+    },
+    "extensions/markdown": {
+      "name": "@quickgui/extension-markdown",
+      "version": "0.1.4-next.4",
+      "devDependencies": {
+        "@quickgui/native": "workspace:*",
+        "@quickgui/solid": "workspace:*",
+        "solid-js": "2.0.0-rc.8",
+      },
+      "peerDependencies": {
+        "@quickgui/native": "workspace:*",
+        "@quickgui/solid": "workspace:*",
+        "solid-js": "2.0.0-rc.8",
+      },
+    },
+    "extensions/terminal": {
+      "name": "@quickgui/extension-terminal",
+      "version": "0.1.4-next.4",
+      "devDependencies": {
+        "@quickgui/native": "workspace:*",
+        "@quickgui/solid": "workspace:*",
+        "solid-js": "2.0.0-rc.8",
+      },
+      "peerDependencies": {
+        "@quickgui/native": "workspace:*",
+        "@quickgui/solid": "workspace:*",
+        "solid-js": "2.0.0-rc.8",
+      },
+    },
+    "extensions/updater": {
+      "name": "@quickgui/extension-updater",
+      "version": "0.1.4-next.4",
+      "devDependencies": {
+        "@quickgui/native": "workspace:*",
+      },
+      "peerDependencies": {
+        "@quickgui/native": "workspace:*",
+      },
+    },
     "packages/cli": {
       "name": "@quickgui/cli",
       "version": "0.1.4-next.4",
@@ -178,17 +236,6 @@
         "@clack/prompts": "^1.8.0",
         "@quickgui/native": "workspace:*",
         "@solidjs/compiler": "2.0.0-rc.8",
-      },
-    },
-    "packages/extension-terminal": {
-      "name": "@quickgui/extension-terminal",
-      "version": "0.1.4-next.4",
-    },
-    "packages/extension-updater": {
-      "name": "@quickgui/extension-updater",
-      "version": "0.1.4-next.4",
-      "dependencies": {
-        "@quickgui/native": "workspace:*",
       },
     },
     "packages/native": {
@@ -516,9 +563,13 @@
 
     "@quickgui/cli": ["@quickgui/cli@workspace:packages/cli"],
 
-    "@quickgui/extension-terminal": ["@quickgui/extension-terminal@workspace:packages/extension-terminal"],
+    "@quickgui/extension-editor": ["@quickgui/extension-editor@workspace:extensions/editor"],
 
-    "@quickgui/extension-updater": ["@quickgui/extension-updater@workspace:packages/extension-updater"],
+    "@quickgui/extension-markdown": ["@quickgui/extension-markdown@workspace:extensions/markdown"],
+
+    "@quickgui/extension-terminal": ["@quickgui/extension-terminal@workspace:extensions/terminal"],
+
+    "@quickgui/extension-updater": ["@quickgui/extension-updater@workspace:extensions/updater"],
 
     "@quickgui/native": ["@quickgui/native@workspace:packages/native"],
 
@@ -1239,6 +1290,8 @@
     "quickgui-counter-example": ["quickgui-counter-example@workspace:examples/counter"],
 
     "quickgui-counter-typescript": ["quickgui-counter-typescript@workspace:examples/counter-typescript"],
+
+    "quickgui-example-extensions": ["quickgui-example-extensions@workspace:examples/extensions"],
 
     "quickgui-file-dialog-example": ["quickgui-file-dialog-example@workspace:examples/file-dialog"],
 

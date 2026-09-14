@@ -2,24 +2,33 @@
 
 ## インポート
 
-`@quickgui/solid` から `Markdown` をインポートします。
+```sh
+bun add @quickgui/extension-markdown @quickgui/extension-editor
+```
 
 ```tsx
-import { Markdown } from "@quickgui/solid";
+import { Markdown } from "@quickgui/extension-markdown";
+import { HighlightedCodeBlock } from "@quickgui/extension-editor";
+```
+
+```ts
+// quickgui.config.ts
+extensions: ["@quickgui/extension-markdown","@quickgui/extension-editor"]
 ```
 
 ## 使い方
 
 ```tsx
-<Markdown content={message()} streaming={isStreaming()} />
+<Markdown content={message()} streaming={isStreaming()} codeBlockComponent={HighlightedCodeBlock} />
 ```
 
 ## 主なプロパティ
 
-| プロパティ | 説明 |
-| --- | --- |
-| `content` | 組版・描画する Markdown ソースです。 |
-| `source` | コンポーネントが受け取るファイルパス、データ URL、SVG ドキュメント、またはシェーダーソースです。 |
-| `streaming` | 追記された内容に Markdown の差分更新を使います。 |
-| `style` | QuickGUI のレイアウト、描画、タイポグラフィ、インタラクション状態のスタイルです。 |
-
+| プロパティ           | 説明                                                                                             |
+| -------------------- | ------------------------------------------------------------------------------------------------ |
+| `content`            | 組版・描画する Markdown ソースです。                                                             |
+| `source`             | コンポーネントが受け取るファイルパス、データ URL、SVG ドキュメント、またはシェーダーソースです。 |
+| `streaming`          | 追記された内容に Markdown の差分更新を使います。                                                 |
+| `codeBlockComponent` | `HighlightedCodeBlock` を指定すると、解析済みフェンスを保持型 CodeBlock モデルで描画します。             |
+| `codeBlockMaxHeight` | 埋め込み CodeBlock 1 個がスクロールを始めるまでの最大高さです。                                  |
+| `style`              | QuickGUI のレイアウト、描画、タイポグラフィ、インタラクション状態のスタイルです。                |

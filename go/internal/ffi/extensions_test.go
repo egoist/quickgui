@@ -31,6 +31,28 @@ func TestExtensionLibrarySmoke(t *testing.T) {
 	}
 }
 
+func TestIndependentComponentLibrarySmoke(t *testing.T) {
+	core, provider := os.Getenv("QUICKGUI_TEST_CORE"), os.Getenv("QUICKGUI_TEST_COMPONENT")
+	if core == "" || provider == "" {
+		t.Skip("component images not supplied")
+	}
+	library, err := Load(core, protocol.Version)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := library.LoadExtension("acme-counter", provider, "7.2.0"); err == nil {
+		t.Fatal("wrong component version was accepted")
+	}
+	if err := library.LoadExtension("unrelated", provider, "7.2.1"); err == nil {
+		t.Fatal("wrong component identity was accepted")
+	}
+	for i := 0; i < 2; i++ {
+		if err := library.LoadExtension("acme-counter", provider, "7.2.1"); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
 func TestIndependentServiceLibrarySmoke(t *testing.T) {
 	core, provider := os.Getenv("QUICKGUI_TEST_CORE"), os.Getenv("QUICKGUI_TEST_SERVICE")
 	if core == "" || provider == "" {

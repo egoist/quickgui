@@ -69,6 +69,9 @@ type PropertyEntry = {
 };
 
 const properties: Record<string, PropertyEntry> = {
+  extensionPackage: { code: PropertyCode.ExtensionPackage },
+  extensionComponent: { code: PropertyCode.ExtensionComponent },
+  extensionProps: { code: PropertyCode.ExtensionProps },
   display: { code: PropertyCode.Display },
   flexDirection: { code: PropertyCode.FlexDirection },
   flexWrap: { code: PropertyCode.FlexWrap },
@@ -155,20 +158,6 @@ const properties: Record<string, PropertyEntry> = {
   source: { code: PropertyCode.Value },
   placeholder: { code: PropertyCode.Placeholder },
   multiline: { code: PropertyCode.Multiline },
-  streaming: { code: PropertyCode.Streaming },
-  markdownCodeBackground: {
-    code: PropertyCode.MarkdownCodeBackground,
-    color: true,
-  },
-  markdownBorderColor: { code: PropertyCode.MarkdownBorderColor, color: true },
-  markdownMutedColor: { code: PropertyCode.MarkdownMutedColor, color: true },
-  markdownLinkColor: { code: PropertyCode.MarkdownLinkColor, color: true },
-  markdownCodeTextColor: {
-    code: PropertyCode.MarkdownCodeTextColor,
-    color: true,
-  },
-  markdownBlockGap: { code: PropertyCode.MarkdownBlockGap },
-  markdownCodeFontSize: { code: PropertyCode.MarkdownCodeFontSize },
   scrollToEndRevision: { code: PropertyCode.ScrollToEndRevision },
   estimatedItemHeight: { code: PropertyCode.EstimatedItemHeight },
   overscan: { code: PropertyCode.Overscan },
@@ -186,17 +175,6 @@ const properties: Record<string, PropertyEntry> = {
   restorePreviousFocus: { code: PropertyCode.RestorePreviousFocus },
   autoFocus: { code: PropertyCode.AutoFocus },
   ariaModal: { code: PropertyCode.AccessibilityModal },
-  program: { code: PropertyCode.TerminalProgram },
-  command: { code: PropertyCode.TerminalProgram },
-  workingDirectory: { code: PropertyCode.TerminalWorkingDirectory },
-  cwd: { code: PropertyCode.TerminalWorkingDirectory },
-  scrollback: { code: PropertyCode.TerminalScrollback },
-  terminalCursorColor: {
-    code: PropertyCode.TerminalCursorColor,
-    color: true,
-  },
-  terminalPaddingColor: { code: PropertyCode.TerminalPaddingColor },
-  fontThicken: { code: PropertyCode.TerminalFontThicken },
   label: { code: PropertyCode.Value },
   systemImage: { code: PropertyCode.SwiftUISystemImage },
   buttonStyle: { code: PropertyCode.SwiftUIButtonStyle },
@@ -579,12 +557,6 @@ const colorProperties = new Set([
   PropertyCode.OutlineColor,
   PropertyCode.FocusBackgroundColor,
   PropertyCode.FocusColor,
-  PropertyCode.MarkdownCodeBackground,
-  PropertyCode.MarkdownBorderColor,
-  PropertyCode.MarkdownMutedColor,
-  PropertyCode.MarkdownLinkColor,
-  PropertyCode.MarkdownCodeTextColor,
-  PropertyCode.TerminalCursorColor,
 ]);
 
 type StylePropertyState = {
@@ -704,30 +676,6 @@ function applyProperty(
   }
   if (name === "aria-label") name = "ariaLabel";
   if (name === "aria-modal") name = "ariaModal";
-  if (name === "arguments" || name === "args") {
-    setNativeProperty(
-      node,
-      PropertyCode.TerminalArguments,
-      value === null || value === undefined ? null : encodeTerminalArguments(value),
-    );
-    return;
-  }
-  if (name === "environment" || name === "env") {
-    setNativeProperty(
-      node,
-      PropertyCode.TerminalEnvironment,
-      value === null || value === undefined ? null : encodeTerminalEnvironment(value),
-    );
-    return;
-  }
-  if (name === "terminalPalette") {
-    setNativeProperty(
-      node,
-      PropertyCode.TerminalPalette,
-      value === null || value === undefined ? null : encodeTerminalPalette(value),
-    );
-    return;
-  }
   if (name === "type") {
     setNativeProperty(node, PropertyCode.Password, value === "password");
     return;
@@ -1711,7 +1659,6 @@ function eventName(
   | "input"
   | "submit"
   | "dismiss"
-  | "terminal"
   | "pointer"
   | "presentationchange"
   | "menuselect"
@@ -1756,10 +1703,6 @@ function eventName(
     case "ondismiss":
     case "on:dismiss":
       return "dismiss";
-    case "onstatus":
-    case "onterminal":
-    case "on:terminal":
-      return "terminal";
     case "onpointer":
     case "on:pointer":
       return "pointer";
@@ -1831,33 +1774,6 @@ function eventName(
   }
 }
 
-function encodeTerminalArguments(value: unknown): string {
-  if (!Array.isArray(value) || value.some((argument) => typeof argument !== "string")) {
-    throw new TypeError("QuickGUI terminal arguments must be an array of strings");
-  }
-  return JSON.stringify(value);
-}
-
-function encodeTerminalEnvironment(value: unknown): string {
-  if (
-    !isRecord(value) ||
-    Object.entries(value).some(([key, item]) => key.length === 0 || typeof item !== "string")
-  ) {
-    throw new TypeError("QuickGUI terminal environment must contain string keys and values");
-  }
-  return JSON.stringify(value);
-}
-
-function encodeTerminalPalette(value: unknown): string {
-  if (
-    !Array.isArray(value) ||
-    value.length !== 16 ||
-    value.some((color) => typeof color !== "string" && typeof color !== "number")
-  ) {
-    throw new TypeError("QuickGUI terminalPalette must contain exactly 16 colors");
-  }
-  return JSON.stringify(value.map((color) => parseColor(color)));
-}
 
 function encodeSwiftUiModifiers(value: unknown): string | null {
   if (value === null || value === undefined) return null;
@@ -1963,9 +1879,8 @@ const universal = createUniversalRenderer<NativeNode>({
         "button",
         "input",
         "textarea",
-        "markdown",
         "virtual-list",
-        "terminal",
+        "extension",
         "svg",
         "image",
         "shader",
@@ -2044,13 +1959,6 @@ export function TextArea(props: JSX.InputProps): NativeNode {
   return node;
 }
 
-/** Retained, incremental native Markdown document. */
-export function Markdown(props: JSX.MarkdownProps): NativeNode {
-  const node = universal.createElement("markdown");
-  universal.spread(node, props);
-  return node;
-}
-
 /** Unstyled variable-height list; only visible child blocks are mounted by QuickGUI core. */
 export function VirtualList(props: JSX.VirtualListProps): NativeNode {
   const node = universal.createElement("virtual-list");
@@ -2058,12 +1966,28 @@ export function VirtualList(props: JSX.VirtualListProps): NativeNode {
   return node;
 }
 
-/** Real PTY terminal rendered by QuickGUI core through libghostty-vt. */
-export function Terminal(props: JSX.TerminalProps): NativeNode {
-  const node = universal.createElement("terminal");
-  universal.spread(node, props);
+export interface ExtensionComponentProps extends Omit<JSX.NativeProps, "children" | "onComponentChange"> {
+  package: string;
+  component: string;
+  properties: unknown;
+  onEvent?: (kind: string, value: unknown, event: QuickGuiEvent) => void;
+}
+
+/** Mount any package-owned native component through the shared extension ABI. */
+export function ExtensionComponent(props: ExtensionComponentProps): NativeNode {
+  const node = universal.createElement("extension");
+  universal.spread(node, universal.mergeProps(omit(props, "package", "component", "properties", "onEvent"), {
+    get extensionPackage() { return props.package; },
+    get extensionComponent() { return props.component; },
+    get extensionProps() { return JSON.stringify(props.properties); },
+    onComponentChange(event: QuickGuiEvent) {
+      const payload = JSON.parse(event.value ?? "{}");
+      props.onEvent?.(payload.kind, payload.value, event);
+    },
+  }) as object);
   return node;
 }
+
 
 /** Parsed-once retained SVG mask tinted by the inherited `color` style. */
 export function Svg(props: JSX.SvgProps): NativeNode {
@@ -2072,45 +1996,6 @@ export function Svg(props: JSX.SvgProps): NativeNode {
   return node;
 }
 
-export type TerminalStatusKind = "starting" | "running" | "exited" | "failed";
-
-export interface TerminalStatusEvent {
-  status: TerminalStatusKind;
-  title: string;
-  workingDirectory: string | null;
-  processId?: number;
-  exitCode?: number | null;
-  signal?: string | null;
-  message?: string;
-  agent?: string;
-  agentStatus?: "idle" | "working" | "blocked";
-  agentProcessId?: number;
-}
-
-export type TerminalPalette = readonly [
-  number | string,
-  number | string,
-  number | string,
-  number | string,
-  number | string,
-  number | string,
-  number | string,
-  number | string,
-  number | string,
-  number | string,
-  number | string,
-  number | string,
-  number | string,
-  number | string,
-  number | string,
-  number | string,
-];
-
-/** Decode the structured payload delivered to a terminal's `onStatus` listener. */
-export function terminalStatusFromEvent(event: QuickGuiEvent): TerminalStatusEvent {
-  if (!event.value) throw new TypeError("QuickGUI terminal status event has no payload");
-  return JSON.parse(event.value) as TerminalStatusEvent;
-}
 
 export type PointerPhase = "down" | "move" | "up" | "cancel";
 
@@ -8925,13 +8810,6 @@ export namespace JSX {
     /** Repaint cadence ceiling while the transition runs. */
     transitionMaxFps?: number;
     objectFit?: "fill" | "contain" | "cover" | "scale-down" | "none";
-    markdownCodeBackground?: number | string;
-    markdownBorderColor?: number | string;
-    markdownMutedColor?: number | string;
-    markdownLinkColor?: number | string;
-    markdownCodeTextColor?: number | string;
-    markdownBlockGap?: number;
-    markdownCodeFontSize?: number;
     scrollToEndRevision?: number;
 
     /** Extra advance after every glyph cluster, clamped by the core to +/-256 logical pixels. */
@@ -9279,12 +9157,6 @@ export namespace JSX {
     multiline?: boolean;
   }
 
-  export interface MarkdownProps extends NativeProps {
-    content?: string;
-    source?: string;
-    streaming?: boolean;
-  }
-
   export interface VirtualListProps extends NativeProps {
     estimatedItemHeight?: number;
     overscan?: number;
@@ -9294,27 +9166,6 @@ export namespace JSX {
     followMode?: "normal" | "tail";
   }
 
-  export interface TerminalProps extends NativeProps {
-    /** Executable to launch. Omit to use the user's default shell. */
-    program?: string;
-    command?: string;
-    arguments?: readonly string[];
-    args?: readonly string[];
-    workingDirectory?: string;
-    cwd?: string;
-    environment?: Readonly<Record<string, string>>;
-    env?: Readonly<Record<string, string>>;
-    scrollback?: number;
-    /** Standard black-through-white colors followed by their eight bright variants. */
-    terminalPalette?: TerminalPalette;
-    terminalCursorColor?: number | string;
-    /** Paint grid padding with the default background or extend edge-cell backgrounds into it. */
-    terminalPaddingColor?: "background" | "extend";
-    /** Optically thicken terminal glyph stems without selecting another font weight. */
-    fontThicken?: boolean;
-    onStatus?: EventHandler;
-    onTerminal?: EventHandler;
-  }
 
   export interface SvgProps extends NativeProps {
     /** Complete inline SVG document. External resources are ignored by the Rust core. */
@@ -10392,9 +10243,7 @@ export namespace JSX {
     button: NativeProps;
     input: InputProps;
     textarea: InputProps;
-    markdown: MarkdownProps;
     "virtual-list": VirtualListProps;
-    terminal: TerminalProps;
     svg: SvgProps;
     image: ImageProps;
     shader: ShaderProps;

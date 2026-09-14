@@ -2,24 +2,33 @@ Renders retained Markdown, including an incremental mode for streaming content.
 
 ## Import
 
-Import `Markdown` from `@quickgui/solid`.
+```sh
+bun add @quickgui/extension-markdown @quickgui/extension-editor
+```
 
 ```tsx
-import { Markdown } from "@quickgui/solid";
+import { Markdown } from "@quickgui/extension-markdown";
+import { HighlightedCodeBlock } from "@quickgui/extension-editor";
+```
+
+```ts
+// quickgui.config.ts
+extensions: ["@quickgui/extension-markdown","@quickgui/extension-editor"]
 ```
 
 ## Usage
 
 ```tsx
-<Markdown content={message()} streaming={isStreaming()} />
+<Markdown content={message()} streaming={isStreaming()} codeBlockComponent={HighlightedCodeBlock} />
 ```
 
 ## Key props
 
-| Prop | Purpose |
-| --- | --- |
-| `content` | Markdown source to shape and paint. |
-| `source` | Filesystem path, data URL, SVG document, or shader source expected by the component. |
-| `streaming` | Uses incremental Markdown reconciliation for appended content. |
-| `style` | QuickGUI layout, paint, typography, and interaction-state styles. |
-
+| Prop                 | Purpose                                                                              |
+| -------------------- | ------------------------------------------------------------------------------------ |
+| `content`            | Markdown source to shape and paint.                                                  |
+| `source`             | Filesystem path, data URL, SVG document, or shader source expected by the component. |
+| `streaming`          | Uses incremental Markdown reconciliation for appended content.                       |
+| `codeBlockComponent` | Use `HighlightedCodeBlock` to render parsed fences with retained CodeBlock models.           |
+| `codeBlockMaxHeight` | Limits one embedded CodeBlock before it scrolls.                                     |
+| `style`              | QuickGUI layout, paint, typography, and interaction-state styles.                    |

@@ -34,13 +34,6 @@ type styleData struct {
 	TransitionDuration       any
 	TransitionEasing         any
 	TransitionMaxFps         any
-	MarkdownCodeBackground   any
-	MarkdownBorderColor      any
-	MarkdownMutedColor       any
-	MarkdownLinkColor        any
-	MarkdownCodeTextColor    any
-	MarkdownBlockGap         any
-	MarkdownCodeFontSize     any
 	ScrollToEndRevision      any
 	TextDecoration           string
 	Invalid                  *styleData
@@ -328,27 +321,6 @@ func mergeStyle(target *styleData, source styleData) {
 	}
 	if source.TransitionMaxFps != nil {
 		target.TransitionMaxFps = source.TransitionMaxFps
-	}
-	if source.MarkdownCodeBackground != nil {
-		target.MarkdownCodeBackground = source.MarkdownCodeBackground
-	}
-	if source.MarkdownBorderColor != nil {
-		target.MarkdownBorderColor = source.MarkdownBorderColor
-	}
-	if source.MarkdownMutedColor != nil {
-		target.MarkdownMutedColor = source.MarkdownMutedColor
-	}
-	if source.MarkdownLinkColor != nil {
-		target.MarkdownLinkColor = source.MarkdownLinkColor
-	}
-	if source.MarkdownCodeTextColor != nil {
-		target.MarkdownCodeTextColor = source.MarkdownCodeTextColor
-	}
-	if source.MarkdownBlockGap != nil {
-		target.MarkdownBlockGap = source.MarkdownBlockGap
-	}
-	if source.MarkdownCodeFontSize != nil {
-		target.MarkdownCodeFontSize = source.MarkdownCodeFontSize
 	}
 	if source.ScrollToEndRevision != nil {
 		target.ScrollToEndRevision = source.ScrollToEndRevision
@@ -758,27 +730,6 @@ func applyStyle(node *native.Node, style styleData) {
 	}
 	if style.BorderEndWidth != nil {
 		setLength(node, protocol.BorderEndWidth, style.BorderEndWidth)
-	}
-	if style.MarkdownCodeBackground != nil {
-		setColor(node, protocol.MarkdownCodeBackground, style.MarkdownCodeBackground)
-	}
-	if style.MarkdownBorderColor != nil {
-		setColor(node, protocol.MarkdownBorderColor, style.MarkdownBorderColor)
-	}
-	if style.MarkdownMutedColor != nil {
-		setColor(node, protocol.MarkdownMutedColor, style.MarkdownMutedColor)
-	}
-	if style.MarkdownLinkColor != nil {
-		setColor(node, protocol.MarkdownLinkColor, style.MarkdownLinkColor)
-	}
-	if style.MarkdownCodeTextColor != nil {
-		setColor(node, protocol.MarkdownCodeTextColor, style.MarkdownCodeTextColor)
-	}
-	if style.MarkdownBlockGap != nil {
-		setNumber(node, protocol.MarkdownBlockGap, style.MarkdownBlockGap)
-	}
-	if style.MarkdownCodeFontSize != nil {
-		setNumber(node, protocol.MarkdownCodeFontSize, style.MarkdownCodeFontSize)
 	}
 	if style.ScrollToEndRevision != nil {
 		setNumber(node, protocol.ScrollToEndRevision, style.ScrollToEndRevision)

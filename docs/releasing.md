@@ -93,7 +93,7 @@ that can publish these six crates and store it as the `CARGO_REGISTRY_TOKEN` Git
 - `quickgui-system`
 - `quickgui`
 
-For each npm package (`@quickgui/native`, `@quickgui/extension-terminal`, `@quickgui/extension-updater`, `@quickgui/solid`, and `@quickgui/cli`), add an
+For each npm package (`@quickgui/native`, `@quickgui/extension-terminal`, `@quickgui/extension-updater`, `@quickgui/solid`, `@quickgui/extension-editor`, `@quickgui/extension-markdown`, and `@quickgui/cli`), add an
 [npm Trusted Publisher](https://docs.npmjs.com/trusted-publishers/) with GitHub owner `egoist`,
 repository `quickgui`, workflow filename `release.yml`, and no environment. Allow `npm publish`.
 npm requires Node 22.14 or newer and npm 11.5.1 or newer for OIDC; the workflow uses Node 24 and
@@ -101,11 +101,11 @@ verifies the npm CLI before publication. No `NPM_TOKEN` secret is required.
 
 Creating the workflow does not create the npm registry-side trust records. A missing or misspelled
 record makes npm authentication fail with a 404 on `PUT` even when the package already exists.
-Each of the five packages needs that Trusted Publisher record before OIDC can publish it. From
+Each package needs that Trusted Publisher record before OIDC can publish it. From
 an npm login with 2FA:
 
 ```console
-for name in native extension-terminal extension-updater solid cli; do
+for name in native extension-terminal extension-updater solid extension-editor extension-markdown cli; do
   npm trust github "@quickgui/$name" --file release.yml --repo egoist/quickgui
 done
 ```
@@ -152,7 +152,7 @@ and continues when that tag already exists, so a later npm-only recovery can kee
 Go module bytes unchanged.
 The repository must be readable by Go consumers; a tag alone does not grant access to a private repository.
 
-It then publishes npm packages in the order `@quickgui/native`, `@quickgui/extension-terminal`, `@quickgui/extension-updater`, `@quickgui/solid`, and `@quickgui/cli`.
+It then publishes npm packages in the order `@quickgui/native`, `@quickgui/extension-terminal`, `@quickgui/extension-updater`, `@quickgui/solid`, `@quickgui/extension-editor`, `@quickgui/extension-markdown`, and `@quickgui/cli`.
 npm 11 refuses a prerelease without `--tag`, so every version is published with `--tag latest`.
 A rerun skips a version that is already on the registry instead of republishing or moving
 dist-tags; OIDC cannot run `npm dist-tag`.

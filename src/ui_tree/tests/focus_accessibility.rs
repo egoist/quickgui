@@ -1238,6 +1238,7 @@ fn scrollbars_reveal_on_scroll_then_hide_with_one_deadline() {
         clip: bounds,
         max_offset: Vector::new(0.0, 900.0),
         virtual_scroll: false,
+        vertical_scrollbar: true,
         order: PaintOrder {
             layer: PaintLayerKey::default(),
             source: 0,

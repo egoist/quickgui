@@ -104,41 +104,6 @@ func styleTransitionMaxFps(value any) styleOption {
 	return func(style *styleData) { style.TransitionMaxFps = value }
 }
 
-// MarkdownCodeBackground sets the corresponding style property.
-func styleMarkdownCodeBackground(value any) styleOption {
-	return func(style *styleData) { style.MarkdownCodeBackground = value }
-}
-
-// MarkdownBorderColor sets the corresponding style property.
-func styleMarkdownBorderColor(value any) styleOption {
-	return func(style *styleData) { style.MarkdownBorderColor = value }
-}
-
-// MarkdownMutedColor sets the corresponding style property.
-func styleMarkdownMutedColor(value any) styleOption {
-	return func(style *styleData) { style.MarkdownMutedColor = value }
-}
-
-// MarkdownLinkColor sets the corresponding style property.
-func styleMarkdownLinkColor(value any) styleOption {
-	return func(style *styleData) { style.MarkdownLinkColor = value }
-}
-
-// MarkdownCodeTextColor sets the corresponding style property.
-func styleMarkdownCodeTextColor(value any) styleOption {
-	return func(style *styleData) { style.MarkdownCodeTextColor = value }
-}
-
-// MarkdownBlockGap sets the corresponding style property.
-func styleMarkdownBlockGap(value any) styleOption {
-	return func(style *styleData) { style.MarkdownBlockGap = value }
-}
-
-// MarkdownCodeFontSize sets the corresponding style property.
-func styleMarkdownCodeFontSize(value any) styleOption {
-	return func(style *styleData) { style.MarkdownCodeFontSize = value }
-}
-
 // ScrollToEndRevision sets the corresponding style property.
 func styleScrollToEndRevision(value any) styleOption {
 	return func(style *styleData) { style.ScrollToEndRevision = value }
@@ -833,11 +798,6 @@ func OnDismiss(value func(*native.Event)) Option {
 	return propertyOption(func(props *Props) { props.OnDismiss = value })
 }
 
-// OnStatus configures the corresponding node property.
-func OnStatus(value func(*native.Event)) Option {
-	return propertyOption(func(props *Props) { props.OnStatus = value })
-}
-
 // OnPointer configures the corresponding node property.
 func OnPointer(value func(*native.Event)) Option {
 	return propertyOption(func(props *Props) { props.OnPointer = value })
@@ -1036,11 +996,6 @@ func Ref(value func(*native.Node)) Option {
 // Password configures the corresponding node property.
 func Password(value any) Option {
 	return propertyOption(func(props *Props) { props.Password = value })
-}
-
-// Streaming configures the corresponding node property.
-func Streaming(value any) Option {
-	return propertyOption(func(props *Props) { props.Streaming = value })
 }
 
 // EstimatedItemHeight configures the corresponding node property.

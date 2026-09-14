@@ -238,6 +238,11 @@ impl Runtime {
             .window
             .as_ref()
             .is_some_and(|window| window.ui.focused_text_input_is_multiline());
+        #[cfg(feature = "text-input-decorations")]
+        let editor_behavior = self
+            .window
+            .as_ref()
+            .and_then(|window| window.ui.focused_editor_behavior());
         if matches!(key, Key::Enter)
             && !multiline
             && !repeat
@@ -331,10 +336,26 @@ impl Runtime {
                 .as_mut()
                 .map(|window| window.ui.input_backspace()),
             Key::Delete => self.window.as_mut().map(|window| window.ui.input_delete()),
-            Key::Enter if multiline => self
-                .window
-                .as_mut()
-                .map(|window| window.ui.input_insert_newline()),
+            Key::Enter if multiline => self.window.as_mut().map(|window| {
+                #[cfg(feature = "text-input-decorations")]
+                {
+                    match editor_behavior {
+                        Some(behavior) => window.ui.input_insert_editor_newline(behavior),
+                        None => window.ui.input_insert_newline(),
+                    }
+                }
+                #[cfg(not(feature = "text-input-decorations"))]
+                {
+                    window.ui.input_insert_newline()
+                }
+            }),
+            #[cfg(feature = "text-input-decorations")]
+            Key::Tab if editor_behavior.is_some() => self.window.as_mut().map(|window| {
+                window.ui.input_editor_tab(
+                    modifiers.contains(Modifiers::SHIFT),
+                    editor_behavior.expect("editor behavior was checked"),
+                )
+            }),
             Key::Character(value)
                 if cfg!(target_os = "macos")
                     && modifiers.contains(Modifiers::CONTROL)

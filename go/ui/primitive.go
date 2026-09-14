@@ -20,7 +20,6 @@ func primitiveListeners(props Props) []primitiveListener {
 		{protocol.EventInput, props.OnInput},
 		{protocol.EventSubmit, props.OnSubmit},
 		{protocol.EventDismiss, props.OnDismiss},
-		{protocol.EventTerminal, props.OnStatus},
 		{protocol.EventPointer, props.OnPointer},
 		{protocol.EventPresentation, props.OnPresentationChange},
 		{protocol.EventMenuSelect, props.OnSelect},

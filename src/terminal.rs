@@ -1,10 +1,8 @@
 //! A retained, PTY-backed terminal component powered by libghostty-vt.
 
-#[cfg(not(quickgui_terminal_extension))]
 #[path = "terminal/graphics.rs"]
 mod graphics;
 
-#[cfg(not(quickgui_terminal_extension))]
 use self::graphics::{CellMetrics, paint_block, paint_padding_extension};
 #[cfg(any(feature = "terminal", quickgui_terminal_extension))]
 use crate::terminal_process::DetectedAgentProcess;
@@ -66,16 +64,11 @@ use std::{
 };
 #[path = "terminal/data.rs"]
 mod data;
+#[cfg(any(feature = "terminal", quickgui_terminal_extension))]
+use crate::static_selection_color;
 use data::EdgeBackgrounds;
 #[cfg(any(feature = "terminal", quickgui_terminal_extension))]
 use data::is_block_element;
-#[cfg(not(any(feature = "terminal", quickgui_terminal_extension)))]
-#[path = "terminal/extension.rs"]
-mod extension;
-#[cfg(any(feature = "terminal", quickgui_terminal_extension))]
-use crate::static_selection_color;
-#[cfg(not(any(feature = "terminal", quickgui_terminal_extension)))]
-use extension::{GhosttyKeyAction, GhosttySelectionGeometry};
 /// Maximum UTF-8 bytes accepted for a program, argument, environment entry, or working directory.
 pub const MAX_TERMINAL_STRING_BYTES: usize = 32 * 1024;
 /// Maximum arguments retained by one terminal process declaration.
@@ -514,8 +507,6 @@ struct TerminalInner {
     theme: Mutex<Option<TerminalTheme>>,
     #[cfg(any(feature = "terminal", quickgui_terminal_extension))]
     shutdown: Arc<AtomicBool>,
-    #[cfg(not(any(feature = "terminal", quickgui_terminal_extension)))]
-    session: extension::Session,
 }
 
 #[cfg(not(quickgui_terminal_extension))]
@@ -606,8 +597,8 @@ impl Drop for TerminalInner {
 #[path = "terminal/api.rs"]
 mod api;
 #[cfg(quickgui_terminal_extension)]
-#[path = "terminal/extension_backend.rs"]
-pub(crate) mod extension_backend;
+#[path = "../extensions/terminal/src/component.rs"]
+pub(crate) mod component;
 #[cfg(not(quickgui_terminal_extension))]
 #[path = "terminal/render.rs"]
 mod render;

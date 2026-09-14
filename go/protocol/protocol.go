@@ -27,31 +27,30 @@ const (
 	EventInput           = 4
 	EventSubmit          = 5
 	EventDismiss         = 6
-	EventTerminal        = 7
-	EventPointer         = 8
-	EventPresentation    = 9
-	EventMenuSelect      = 10
-	EventKeyDown         = 11
-	EventKeyUp           = 12
-	EventMouseDown       = 13
-	EventMouseUp         = 14
-	EventMouseMove       = 15
-	EventDoubleClick     = 16
-	EventWheel           = 17
-	EventContextMenu     = 18
-	EventPinch           = 19
-	EventRotate          = 20
-	EventSmartMagnify    = 21
-	EventPressure        = 22
-	EventFocus           = 23
-	EventBlur            = 24
-	EventAction          = 25
-	EventDragStart       = 26
-	EventDragEnd         = 27
-	EventDrop            = 28
-	EventFilesDropped    = 29
-	EventComponentChange = 30
-	EventCommit          = 31
+	EventPointer         = 7
+	EventPresentation    = 8
+	EventMenuSelect      = 9
+	EventKeyDown         = 10
+	EventKeyUp           = 11
+	EventMouseDown       = 12
+	EventMouseUp         = 13
+	EventMouseMove       = 14
+	EventDoubleClick     = 15
+	EventWheel           = 16
+	EventContextMenu     = 17
+	EventPinch           = 18
+	EventRotate          = 19
+	EventSmartMagnify    = 20
+	EventPressure        = 21
+	EventFocus           = 22
+	EventBlur            = 23
+	EventAction          = 24
+	EventDragStart       = 25
+	EventDragEnd         = 26
+	EventDrop            = 27
+	EventFilesDropped    = 28
+	EventComponentChange = 29
+	EventCommit          = 30
 )
 
 // EventTypeFromKind maps one native event kind onto its numeric type, or 0.
@@ -69,8 +68,6 @@ func EventTypeFromKind(kind string) int {
 		return EventSubmit
 	case "dismiss":
 		return EventDismiss
-	case "terminal":
-		return EventTerminal
 	case "pointer":
 		return EventPointer
 	case "presentationchange":
@@ -137,8 +134,6 @@ func ListenerPropertyFor(eventType int) uint16 {
 		return SubmitListener
 	case EventDismiss:
 		return DismissListener
-	case EventTerminal:
-		return TerminalStatusListener
 	case EventPointer:
 		return PointerListener
 	case EventPresentation:

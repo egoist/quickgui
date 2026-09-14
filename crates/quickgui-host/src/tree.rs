@@ -8,9 +8,7 @@ pub(super) enum NodeTag {
     Text,
     Sentinel,
     Input,
-    Markdown,
     VirtualList,
-    Terminal,
     Svg,
     SwiftUiHost,
     SwiftUiButton,
@@ -29,6 +27,7 @@ pub(super) enum NodeTag {
     SwiftUiDatePicker,
     SwiftUiColorPicker,
     SwiftUiGauge,
+    Extension,
 }
 
 impl NodeTag {
@@ -39,9 +38,7 @@ impl NodeTag {
             3 => Ok(Self::Text),
             4 => Ok(Self::Sentinel),
             5 => Ok(Self::Input),
-            6 => Ok(Self::Markdown),
             7 => Ok(Self::VirtualList),
-            8 => Ok(Self::Terminal),
             9 => Ok(Self::Svg),
             10 => Ok(Self::SwiftUiHost),
             11 => Ok(Self::SwiftUiButton),
@@ -60,6 +57,7 @@ impl NodeTag {
             24 => Ok(Self::SwiftUiDatePicker),
             25 => Ok(Self::SwiftUiColorPicker),
             26 => Ok(Self::SwiftUiGauge),
+            30 => Ok(Self::Extension),
             _ => Err(ProtocolError::new(format!("unknown node tag {value}"))),
         }
     }
@@ -556,12 +554,11 @@ pub(super) fn native_scope_identity(tree: &NativeTree, id: u32) -> bool {
                 | NodeTag::Text
                 | NodeTag::Sentinel
                 | NodeTag::Input
-                | NodeTag::Markdown
                 | NodeTag::VirtualList
-                | NodeTag::Terminal
                 | NodeTag::Svg
                 | NodeTag::Image
                 | NodeTag::Shader
+                | NodeTag::Extension
         ) {
             return false;
         }
@@ -696,10 +693,14 @@ impl<'a> Reader<'a> {
     }
 
     pub(super) fn string(&mut self) -> std::result::Result<Arc<str>, ProtocolError> {
+        self.bounded_string(MAX_STRING_BYTES)
+    }
+
+    fn bounded_string(&mut self, limit: usize) -> std::result::Result<Arc<str>, ProtocolError> {
         let length = self.u32()? as usize;
-        if length > MAX_STRING_BYTES {
+        if length > limit {
             return Err(ProtocolError::new(format!(
-                "strings cannot exceed {MAX_STRING_BYTES} bytes"
+                "strings cannot exceed {limit} bytes"
             )));
         }
         let value = std::str::from_utf8(self.take(length)?)
@@ -768,7 +769,13 @@ pub(super) fn decode_batch(bytes: &[u8]) -> std::result::Result<Vec<Mutation>, P
                     })),
                     2 => Some(PropertyValue::Number(reader.f32()?)),
                     3 => Some(PropertyValue::Color(reader.u32()?)),
-                    4 => Some(PropertyValue::String(reader.string()?)),
+                    4 => Some(PropertyValue::String(reader.bounded_string(
+                        if key == property::EXTENSION_PROPS {
+                            MAX_EXTENSION_PROPS_BYTES
+                        } else {
+                            MAX_STRING_BYTES
+                        },
+                    )?)),
                     value => {
                         return Err(ProtocolError::new(format!(
                             "unknown property value tag {value}"
@@ -925,65 +932,6 @@ pub(super) struct NativeListState {
     has_item_heights: bool,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub(super) struct NativeTerminalConfig {
-    pub(super) options: TerminalOptions,
-}
-
-impl NativeTerminalConfig {
-    pub(super) fn from_node(node: &NativeNode) -> std::result::Result<Self, String> {
-        let arguments = node
-            .string(property::TERMINAL_ARGUMENTS)
-            .map(|value| {
-                serde_json::from_str::<Vec<String>>(value)
-                    .map_err(|error| format!("invalid terminal arguments: {error}"))
-            })
-            .transpose()?
-            .unwrap_or_default()
-            .into_iter()
-            .map(Into::into)
-            .collect();
-        let environment = node
-            .string(property::TERMINAL_ENVIRONMENT)
-            .map(|value| {
-                serde_json::from_str::<BTreeMap<String, String>>(value)
-                    .map_err(|error| format!("invalid terminal environment: {error}"))
-            })
-            .transpose()?
-            .unwrap_or_default()
-            .into_iter()
-            .map(|(key, value)| (key.into(), value.into()))
-            .collect();
-        let max_scrollback = node
-            .number(property::TERMINAL_SCROLLBACK)
-            .unwrap_or(10_000.0)
-            .max(0.0) as usize;
-        Ok(Self {
-            options: TerminalOptions {
-                program: node
-                    .string(property::TERMINAL_PROGRAM)
-                    .filter(|program| !program.is_empty())
-                    .map(Into::into),
-                arguments,
-                working_directory: node
-                    .string(property::TERMINAL_WORKING_DIRECTORY)
-                    .filter(|directory| !directory.is_empty())
-                    .map(PathBuf::from),
-                environment,
-                max_scrollback,
-                ..TerminalOptions::default()
-            },
-        })
-    }
-}
-
-pub(super) struct NativeTerminalState {
-    pub(super) config: std::result::Result<NativeTerminalConfig, Arc<str>>,
-    pub(super) terminal: Option<Terminal>,
-    pub(super) spawn_error: Option<Arc<str>>,
-    pub(super) last_event: Option<Arc<str>>,
-}
-
 pub(super) struct NativeSvgState {
     pub(super) source: Arc<str>,
     pub(super) parsed: std::result::Result<Svg, Arc<str>>,
@@ -1006,42 +954,6 @@ impl NativeSvgState {
         match &self.parsed {
             Ok(svg) => svg_element(svg),
             Err(_) => div().hidden(),
-        }
-    }
-}
-
-impl NativeTerminalState {
-    pub(super) fn new(node: &NativeNode, cx: &ViewContext<'_, NativeView>) -> Self {
-        let config = NativeTerminalConfig::from_node(node).map_err(Arc::from);
-        let (terminal, spawn_error) = match &config {
-            Ok(config) => match Terminal::spawn(config.options.clone(), cx.window_invalidator()) {
-                Ok(terminal) => (Some(terminal), None),
-                Err(error) => (None, Some(Arc::from(error.to_string()))),
-            },
-            Err(_) => (None, None),
-        };
-        Self {
-            config,
-            terminal,
-            spawn_error,
-            last_event: None,
-        }
-    }
-
-    pub(super) fn sync(&mut self, node: &NativeNode, cx: &ViewContext<'_, NativeView>) {
-        let next = NativeTerminalConfig::from_node(node).map_err(Arc::from);
-        if self.config == next {
-            return;
-        }
-        *self = Self::new(node, cx);
-    }
-
-    pub(super) fn error(&self) -> Option<&str> {
-        match (&self.config, &self.terminal, &self.spawn_error) {
-            (Err(error), _, _) => Some(error),
-            (Ok(_), None, Some(error)) => Some(error),
-            (Ok(_), None, None) => Some("could not start terminal session"),
-            (Ok(_), Some(_), _) => None,
         }
     }
 }

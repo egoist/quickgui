@@ -233,6 +233,9 @@ const COMPONENT_DESCRIPTION_TRANSLATIONS: Record<TranslatedLocale, Record<string
     'ui/button': '可访问的按压目标，可自行设置样式并组合文本或其他内容。',
     'ui/input': '由核心管理的受控文本编辑器，支持原生键盘和文本服务。',
     'ui/text-area': '多行文本编辑基础组件，受控值约定与 Input 相同。',
+    'ui/editor': '保留式原生代码编辑器，支持语法着色、行号、缩进和双轴滚动。',
+    'ui/code-block': '可选择、无插入光标的代码视图，支持 Tree-sitter 着色和逻辑行虚拟化。',
+    'ui/diff-view': '虚拟化的分栏或统一文件差异视图，行同步且面板可独立横向滚动。',
     'ui/markdown': '以保留模式渲染 Markdown，并支持用于流式内容的增量模式。',
     'ui/image': '使用保留式图像资源显示文件系统路径、文件 URL 或 base64 数据 URL。',
     'ui/svg': '无需加载外部 SVG 资源即可渲染完整的内联 SVG 文档。',
@@ -308,6 +311,12 @@ const COMPONENT_DESCRIPTION_TRANSLATIONS: Record<TranslatedLocale, Record<string
     'ui/input':
       'ネイティブのキーボードとテキストサービスに対応した、コアが管理する制御テキストエディターです。',
     'ui/text-area': 'Input と同じ制御値の規約を持つ、複数行テキスト編集プリミティブです。',
+    'ui/editor':
+      'シンタックスカラー、行番号、インデント、両軸スクロールに対応した保持型ネイティブコードエディターです。',
+    'ui/code-block':
+      'Tree-sitter カラーリングと論理行の仮想化を備えた、選択可能でキャレットのないコード表示です。',
+    'ui/diff-view':
+      '行を同期しつつ各ペインを個別に横スクロールできる、仮想化された分割／統合ファイル差分ビューです。',
     'ui/markdown': '保持型の Markdown を描画し、ストリーミング内容向けの差分更新にも対応します。',
     'ui/image':
       'ファイルパス、ファイル URL、base64 データ URL を保持型の画像リソースとして表示します。',
@@ -460,10 +469,19 @@ export function localizedComponentOutline(
   locale: Locale,
 ): readonly DocsOutlineItem[] {
   const labels = COMPONENT_DOC_LABELS[locale]
+  const syntaxHighlighting =
+    locale === 'zh'
+      ? '语法高亮'
+      : locale === 'ja'
+        ? 'シンタックスハイライト'
+        : 'Syntax highlighting'
   return [
     ...(component.kind === 'ui' && DEMO_COMPONENTS.includes(component.slug) ? [{ id: 'preview', title: locale === 'zh' ? '预览' : locale === 'ja' ? 'プレビュー' : 'Preview' }] : []),
     { id: labels.import.toLowerCase(), title: labels.import },
     { id: labels.usage.toLowerCase(), title: labels.usage },
+    ...(['editor', 'code-block', 'diff-view'].includes(component.slug)
+      ? [{ id: syntaxHighlighting.toLowerCase(), title: syntaxHighlighting } as const]
+      : []),
     ...(component.parts.length
       ? [{ id: labels.anatomy.toLowerCase(), title: labels.anatomy } as const]
       : []),

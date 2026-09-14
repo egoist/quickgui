@@ -157,6 +157,7 @@ use crate::macos_menu::{MacMenuHost, MacMenuItemState};
 pub(crate) enum RuntimeEvent {
     ExternalCommandsReady,
     InvalidateWindow(WindowHandle),
+    InvalidateElement(WindowHandle, ElementId),
     Accessibility(AccessibilityEvent),
     ImageLoaded(WindowHandle, ImageLoadCompletion),
     BackgroundCompleted(BackgroundCompletion),
@@ -335,6 +336,15 @@ pub struct WindowInvalidator {
 }
 
 impl WindowInvalidator {
+    /// Wake and redeclare one retained embedding scope. Missing scopes use the ordinary fallback.
+    pub fn invalidate_element(&self, element: ElementId) -> bool {
+        self.runtime.as_ref().is_some_and(|(proxy, window)| {
+            proxy
+                .send_event(RuntimeEvent::InvalidateElement(*window, element))
+                .is_ok()
+        })
+    }
+
     /// Wake the application and rebuild this window, returning `false` after the event loop closes.
     pub fn invalidate(&self) -> bool {
         self.runtime.as_ref().is_some_and(|(proxy, window)| {

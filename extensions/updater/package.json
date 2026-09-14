@@ -1,0 +1,44 @@
+{
+  "name": "@quickgui/extension-updater",
+  "version": "0.1.4-next.4",
+  "description": "Optional Sparkle-compatible automatic updater for QuickGUI",
+  "license": "MIT OR Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/egoist/quickgui.git",
+    "directory": "extensions/updater"
+  },
+  "files": [
+    "js",
+    "lib/*/*.dylib",
+    "lib/*/*.so",
+    "lib/*/*.dll",
+    "lib/*/*.qgr",
+    "lib/*/quickgui-updater-helper*",
+    "README.md",
+    "quickgui.extension.json"
+  ],
+  "os": [
+    "darwin",
+    "linux",
+    "win32"
+  ],
+  "type": "module",
+  "scripts": {
+    "build": "bun ../../packages/native/build.ts --extension updater"
+  },
+  "exports": {
+    ".": "./js/index.ts",
+    "./package.json": "./package.json",
+    "./quickgui.extension.json": "./quickgui.extension.json"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "devDependencies": {
+    "@quickgui/native": "workspace:*"
+  },
+  "peerDependencies": {
+    "@quickgui/native": "workspace:*"
+  }
+}

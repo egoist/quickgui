@@ -1,0 +1,55 @@
+A retained native code editor with syntax coloring, line numbers, indentation, and both-axis scrolling.
+
+Unstyled by default: text and line-number colors inherit, and the component adds no background, border, rounding, padding, or syntax/diff palette. Supply application styles and explicit colors to opt into an appearance.
+
+## Import
+
+```sh
+bun add @quickgui/extension-editor
+```
+
+```tsx
+import { createSignal } from "solid-js";
+import { Editor } from "@quickgui/extension-editor";
+```
+
+```ts
+// quickgui.config.ts
+extensions: ["@quickgui/extension-editor"]
+```
+
+## Usage
+
+```tsx
+const [source, setSource] = createSignal("export function answer() { return 42; }\n");
+
+<Editor
+  value={source()}
+  language="typescript"
+  lineNumbers
+  tabSize={2}
+  onInput={(event) => setSource(event.value ?? "")}
+  style={{ width: "100%", height: 360 }}
+/>;
+```
+
+## Syntax highlighting
+
+`language` selects a bundled Tree-sitter grammar and highlight query. Query captures map through `syntaxTheme` to eight foreground-only paint classes, so color never changes text metrics. Source or language changes reparse the bounded document; palette changes only remap retained captures, and scrolling does no syntax work. Parsing is limited to 2 MiB, individual lines over 32 KiB stay plain, and the capture count is capped. This does not require a language server.
+
+## Key props
+
+| Prop           | Purpose                                                            |
+| -------------- | ------------------------------------------------------------------ |
+| `value`        | Controlled UTF-8 source. Commit `onInput` back to the same signal. |
+| `language`     | Syntax language such as `"typescript"`, `"rust"`, or `"go"`.       |
+| `lineNumbers`  | Shows or hides the paint-only logical-line gutter.                 |
+| `tabSize`      | Indentation width, clamped by the Rust core.                       |
+| `insertSpaces` | Inserts spaces instead of a tab character.                         |
+| `autoIndent`   | Carries the current indentation onto a new line.                   |
+| `readOnly`     | Keeps selection and scrolling while rejecting edits.               |
+| `syntaxTheme`  | Overrides Tree-sitter capture colors.                              |
+| `onInput`      | Reports the complete bounded source after an accepted edit.        |
+| `style`        | QuickGUI layout and paint styles for the retained editor.          |
+
+The native caret remains functional without styling. Active-line fills and focus borders are opt-in.

@@ -1,5 +1,16 @@
 # Third-party notices
 
+## Editor and diff design references
+
+The editor and diff components were designed with reference to Zed's editor/buffer-diff separation,
+Waku's compact GPUI editor gutter, and the Apache-2.0 `@pierre/diffs` public source and interaction
+model. QuickGUI's implementation is written against its own renderer, text input, retained tree,
+and virtual-list APIs; no Zed editor source is incorporated. The optional line diff uses
+`imara-diff`, Copyright Pascal Kuthe and licensed under Apache-2.0. Optional syntax highlighting
+uses Tree-sitter, `tree-sitter-highlight`, and the bundled Bash, C++, CSS, Go, HTML, Java,
+JavaScript, JSON, Markdown, Python, Ruby, Rust, SQL, Swift, TOML, TypeScript, and YAML grammar
+crates. Tree-sitter and those grammar crates are licensed under MIT.
+
 ## Zed GPUI macOS key-equivalent data
 
 `src/macos_key_equivalents.rs` adapts the finite keyboard-layout mapping data from Zed GPUI,

@@ -1721,7 +1721,9 @@ pub(super) fn report_variable_list_layout_measurements(
         .expect("layout nodes are assigned before list measurement");
     let layout = taffy.layout(node)?;
     let mut changed = false;
-    if let Some(virtual_scroll) = &element.virtual_scroll {
+    if let Some(virtual_scroll) = &element.virtual_scroll
+        && virtual_scroll.report_viewport
+    {
         changed |= virtual_scroll
             .handle
             .report_viewport(Size::new(layout.size.width, layout.size.height));

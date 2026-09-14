@@ -1,5 +1,143 @@
 use super::*;
 
+#[cfg(all(feature = "editor", target_os = "macos"))]
+#[test]
+fn editor_line_padding_scrolls_with_content_not_with_the_viewport_clip() {
+    let id = ElementId::named("padded-editor");
+    let editor = crate::Editor::with_text(&format!("{}\n", "wide code ".repeat(80)).repeat(80))
+        .with_style(
+            crate::EditorStyle::default().presentation(crate::TextInputGutter {
+                content_padding_left: 12.0,
+                content_padding_right: 12.0,
+                content_padding_y: 8.0,
+                ..Default::default()
+            }),
+        );
+    let mut tree = UiTree::new();
+    let fonts = crate::renderer::create_shared_font_system(&crate::Assets::default(), &[]).unwrap();
+    let mut renderer = pollster::block_on(crate::renderer::OffscreenRenderer::new(
+        crate::PerformanceProfile::Balanced,
+        fonts,
+    ))
+    .unwrap();
+    tree.set_root(
+        editor.element(id).size(300.0, 100.0),
+        Size::new(300.0, 100.0),
+        1.0,
+        &mut renderer,
+    )
+    .unwrap();
+    let mut scene = Scene::new();
+    tree.paint(&mut scene, &mut renderer).unwrap();
+    let before = tree
+        .text_input_regions
+        .iter()
+        .find(|region| region.id == id)
+        .unwrap()
+        .clone();
+    assert!((before.bounds.x - before.clip.x - 12.0).abs() < 0.001);
+    assert_eq!(before.bounds.y - before.clip.y, 8.0);
+    assert!((before.clip.right() - before.bounds.right() - 12.0).abs() < 0.001);
+    assert_eq!(before.clip.bottom() - before.bounds.bottom(), 8.0);
+    let point = Point::new(before.clip.x + 2.0, before.clip.y + 2.0);
+    assert!(
+        tree.scroll_at(Some(point), Vector::new(-40.0, -23.0), Instant::now())
+            .changed
+    );
+    scene.clear(Color::TRANSPARENT);
+    tree.paint(&mut scene, &mut renderer).unwrap();
+    let after = tree
+        .text_input_regions
+        .iter()
+        .find(|region| region.id == id)
+        .unwrap();
+    assert_eq!(after.clip, before.clip);
+    let run = scene
+        .text_runs()
+        .iter()
+        .find(|run| run.id == TextId::new(id.value()))
+        .unwrap();
+    assert_eq!(run.clip, Some(before.clip));
+    assert!((run.bounds.x - (before.bounds.x - 40.0)).abs() < 0.001);
+    assert_eq!(run.bounds.y, before.bounds.y - 23.0);
+    // Selecting text in the now-visible former inset must not spuriously auto-scroll.
+    let offset = tree.scroll_offsets[&id];
+    tree.selecting_input = Some(id);
+    tree.pointer_moved(point, &mut renderer);
+    assert_eq!(tree.scroll_offsets[&id], offset);
+}
+
+#[test]
+fn overflow_clips_scrolled_paint_and_hit_regions_inside_the_border() {
+    let pane = ElementId::named("bordered-scroll-pane");
+    let content = ElementId::named("scrolled-content");
+    let content_color = Color::rgb8(80, 180, 100);
+    let mut tree = UiTree::new();
+    let mut renderer = TestTextLayout;
+    tree.set_root(
+        div()
+            .id(pane)
+            .size(100.0, 80.0)
+            .border(3.0, Color::WHITE)
+            .padding(4.0, 4.0, 4.0, 4.0)
+            .overflow_scroll()
+            .child(
+                div()
+                    .id(content)
+                    .size(300.0, 160.0)
+                    .flex_none()
+                    .bg(content_color)
+                    .clickable()
+                    .child(text("scrolled text").no_wrap()),
+            ),
+        Size::new(100.0, 80.0),
+        1.0,
+        &mut renderer,
+    )
+    .unwrap();
+    tree.scroll_offsets.insert(pane, Vector::new(30.0, 20.0));
+    let expected = Rect::new(3.0, 3.0, 94.0, 74.0);
+    // The geometry-only hover pass must agree with the later paint pass.
+    tree.refresh_hover_after_layout(Some(Point::new(1.0, 40.0)))
+        .unwrap();
+    assert!(!tree.hovered.contains(&content));
+    assert_eq!(
+        tree.hit_regions
+            .iter()
+            .find(|hit| hit.id == content)
+            .unwrap()
+            .clip,
+        expected,
+    );
+    let mut scene = Scene::new();
+    tree.paint(&mut scene, &mut renderer).unwrap();
+    assert_eq!(
+        scene
+            .edge_quads()
+            .iter()
+            .find(|quad| quad.fill == content_color)
+            .unwrap()
+            .clip,
+        Some(expected),
+    );
+    assert!(scene.text_runs().iter().all(|run| {
+        run.clip.is_some_and(|clip| {
+            clip.x >= expected.x
+                && clip.y >= expected.y
+                && clip.right() <= expected.right()
+                && clip.bottom() <= expected.bottom()
+        })
+    }));
+    assert_eq!(
+        tree.hit_regions
+            .iter()
+            .find(|hit| hit.id == content)
+            .unwrap()
+            .clip,
+        expected,
+    );
+}
+
 #[test]
 fn nested_targeted_listeners_bubble_but_overlays_do_not_click_through() {
     let mut tree = UiTree::new();
@@ -368,6 +506,7 @@ fn virtual_scroll_uses_the_shared_reveal_hover_and_drag_path() {
         clip: bounds,
         max_offset: Vector::new(0.0, list.max_scroll_offset()),
         virtual_scroll: true,
+        vertical_scrollbar: true,
         order: PaintOrder {
             layer: PaintLayerKey::default(),
             source: 0,
@@ -700,6 +839,7 @@ fn overflow_and_virtual_sibling_scrollbars_keep_independent_native_state() {
         clip: bounds,
         max_offset: Vector::new(0.0, 900.0),
         virtual_scroll,
+        vertical_scrollbar: true,
         order: PaintOrder {
             layer: PaintLayerKey::default(),
             source,
@@ -815,6 +955,24 @@ fn single_line_input_never_exposes_vertical_scroll() {
 }
 
 #[test]
+fn no_wrap_text_input_keeps_the_tail_painted_at_the_horizontal_end() {
+    let viewport = Rect::new(48.0, 8.0, 120.0, 60.0);
+    let content = Size::new(840.0, 60.0);
+    let maximum = text_input_max_scroll(
+        content,
+        Size::new(viewport.width, viewport.height),
+        20.0,
+        true,
+    );
+    let bounds = text_input_run_bounds(viewport, content, maximum);
+
+    assert_eq!(maximum.x, 720.0);
+    assert_eq!(bounds.width, 840.0);
+    assert_eq!(bounds.right(), viewport.right());
+    assert!(bounds.intersection(viewport).is_some());
+}
+
+#[test]
 fn scrollbar_track_captures_drag_and_hover_without_click_through() {
     let mut tree = UiTree::new();
     let id = ElementId::new(8);
@@ -827,6 +985,7 @@ fn scrollbar_track_captures_drag_and_hover_without_click_through() {
         clip: bounds,
         max_offset: Vector::new(0.0, 900.0),
         virtual_scroll: false,
+        vertical_scrollbar: true,
         order: PaintOrder {
             layer: PaintLayerKey::default(),
             source: 0,
@@ -853,6 +1012,88 @@ fn scrollbar_track_captures_drag_and_hover_without_click_through() {
         tree.next_scrollbar_deadline()
             .expect("leaving the track schedules one hide"),
         now + SCROLLBAR_AUTO_HIDE_DELAY,
+    );
+}
+
+#[test]
+fn horizontal_scrollbar_track_captures_and_moves_only_the_inline_offset() {
+    let mut tree = UiTree::new();
+    let id = ElementId::new(81);
+    let bounds = Rect::new(0.0, 0.0, 100.0, 100.0);
+    tree.scroll_regions.push(ScrollRegion {
+        rtl: false,
+        id,
+        bounds,
+        scrollbar_bounds: bounds,
+        clip: bounds,
+        max_offset: Vector::new(900.0, 0.0),
+        virtual_scroll: false,
+        vertical_scrollbar: true,
+        order: PaintOrder {
+            layer: PaintLayerKey::default(),
+            source: 0,
+        },
+        scrollbar_order: PaintOrder {
+            layer: PaintLayerKey::default(),
+            source: 1,
+        },
+    });
+
+    let now = Instant::now();
+    let point = Point::new(50.0, 95.0);
+    assert!(tree.update_scrollbar_hover(Some(point), now));
+    assert_eq!(tree.begin_scrollbar_drag(Some(point)), Some(false));
+    assert_eq!(tree.scroll_offsets[&id], Vector::new(450.0, 0.0));
+    assert_eq!(tree.scrollbar_states[&id].axis, ScrollbarAxis::Horizontal);
+    assert!(tree.drag_scrollbar(Point::new(88.0, 95.0)).changed);
+    assert_eq!(tree.scroll_offsets[&id], Vector::new(900.0, 0.0));
+    assert!(tree.end_scrollbar_drag(now).changed);
+}
+
+#[cfg(feature = "editor")]
+#[test]
+fn editor_horizontal_scrollbar_track_starts_after_the_line_gutter() {
+    let editor_bounds = Rect::new(12.0, 8.0, 300.0, 100.0);
+    let gutter_width = 36.0;
+    let scrollbar_bounds = horizontal_scrollbar_inset_bounds(editor_bounds, gutter_width);
+    assert_eq!(scrollbar_bounds.x, editor_bounds.x + gutter_width);
+    assert_eq!(scrollbar_bounds.width, editor_bounds.width - gutter_width);
+    assert_eq!(scrollbar_bounds.right(), editor_bounds.right());
+}
+
+#[cfg(feature = "editor")]
+#[test]
+fn editor_line_gutter_uses_the_arrow_while_code_keeps_the_ibeam() {
+    let root = crate::Editor::with_text("fn main() {}\n")
+        .with_language(crate::SyntaxLanguage::Rust)
+        .element("cursor-editor")
+        .border(1.0, Color::WHITE)
+        .size(300.0, 100.0);
+    let mut tree = UiTree::new();
+    let mut renderer = TestTextLayout;
+    tree.set_root(root, Size::new(300.0, 100.0), 1.0, &mut renderer)
+        .unwrap();
+    tree.paint(&mut Scene::new(), &mut renderer).unwrap();
+
+    let gutter = tree
+        .hit_regions
+        .iter()
+        .find(|region| {
+            region.id == ElementId::named("cursor-editor")
+                && region.cursor_style == Some(CursorStyle::Arrow)
+        })
+        .expect("the editor gutter installs its own cursor region");
+    assert_eq!(gutter.bounds.y, 1.0);
+    assert_eq!(gutter.bounds.bottom(), 99.0);
+    assert_eq!(gutter.bounds.x, 1.0);
+
+    assert_eq!(
+        tree.cursor_style_at(Point::new(12.0, 30.0)),
+        Some(CursorStyle::Arrow)
+    );
+    assert_eq!(
+        tree.cursor_style_at(Point::new(100.0, 30.0)),
+        Some(CursorStyle::IBeam)
     );
 }
 
@@ -896,6 +1137,7 @@ fn topmost_no_drag_and_overlay_scrollbar_override_drag_region() {
         clip: bounds,
         max_offset: Vector::new(0.0, 900.0),
         virtual_scroll: false,
+        vertical_scrollbar: true,
         order: order(1),
         scrollbar_order: order(2),
     });

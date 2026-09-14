@@ -1105,6 +1105,8 @@ pub(crate) struct TextInputElement {
     pub multiline: bool,
     pub password: bool,
     pub constraints: InputConstraints,
+    #[cfg(feature = "text-input-decorations")]
+    pub editor: Option<crate::TextInputGutter>,
 }
 
 pub(crate) type InputFilterCallback = Arc<dyn Fn(&str) -> bool>;
@@ -1115,16 +1117,20 @@ pub(crate) struct InputConstraints {
     pub filter: Option<InputFilterCallback>,
     /// Per-input text checking overrides layered over the application policy.
     pub text_checking: TextCheckingOverrides,
+    #[cfg(feature = "text-input-decorations")]
+    pub editor: Option<crate::TextInputIndentation>,
 }
 
 impl fmt::Debug for InputConstraints {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        formatter
-            .debug_struct("InputConstraints")
+        let mut debug = formatter.debug_struct("InputConstraints");
+        debug
             .field("max_length", &self.max_length)
             .field("filter", &self.filter.as_ref().map(|_| "InputFilter(..)"))
-            .field("text_checking", &self.text_checking)
-            .finish()
+            .field("text_checking", &self.text_checking);
+        #[cfg(feature = "text-input-decorations")]
+        debug.field("editor", &self.editor);
+        debug.finish()
     }
 }
 
@@ -1334,6 +1340,11 @@ pub(crate) struct VisualStyle {
     pub radius: f32,
     /// Per-corner radii. When present they replace `radius` and are not transitioned.
     pub corner_radii: Option<Corners>,
+    /// Explicit radii for a solid background anchored to the nearest scroll viewport.
+    /// Used by virtual rows whose visible edge moves through the viewport's corners.
+    pub scroll_background_corners: Option<Corners>,
+    pub scroll_clip_insets: Option<Insets>,
+    pub scroll_clip_corners: Option<Corners>,
     pub outline: Option<Outline>,
     pub shadows: Option<Arc<[BoxShadow]>>,
     pub opacity: f32,
@@ -1366,6 +1377,9 @@ impl Default for VisualStyle {
             border_style: BorderStyle::Solid,
             radius: 0.0,
             corner_radii: None,
+            scroll_background_corners: None,
+            scroll_clip_insets: None,
+            scroll_clip_corners: None,
             outline: None,
             shadows: None,
             opacity: 1.0,
@@ -1916,6 +1930,7 @@ pub(crate) struct VirtualScrollStyle {
     pub max_offset_y: f32,
     pub measurement_revision: u64,
     pub mount: VirtualScrollMount,
+    pub report_viewport: bool,
 }
 
 pub(crate) type DropPredicateCallback = Arc<dyn Fn(&dyn Any) -> bool>;
@@ -2108,6 +2123,10 @@ pub struct Element {
     pub(crate) tooltip: Option<Tooltip>,
     pub(crate) app_region: Option<AppRegion>,
     pub(crate) virtual_scroll: Option<VirtualScrollStyle>,
+    /// Keep wheel/trackpad scrolling active while suppressing the built-in vertical overlay thumb.
+    pub(crate) vertical_scrollbar_hidden: bool,
+    /// Reserve a fixed left strip outside the horizontal overlay scrollbar track.
+    pub(crate) horizontal_scrollbar_left_inset: f32,
     pub(crate) scroll_to_end_revision: Option<u64>,
     pub(crate) layout_rounding: bool,
     pub(crate) list_item_measurement: Option<ListItemMeasurement>,
