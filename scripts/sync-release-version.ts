@@ -318,6 +318,17 @@ for (const packageName of [
   replaceCargoLockPackageVersion("Cargo.lock", packageName);
 }
 
+for (const packageName of [
+  "quickgui",
+  "quickgui-winit",
+  "quickgui-accesskit-winit",
+  "quickgui-cosmic-text",
+  "quickgui-glyphon",
+  "quickgui-system",
+] as const) {
+  replaceCargoLockPackageVersion("benchmarks/desktop/quickgui-rust/Cargo.lock", packageName);
+}
+
 for (const [workspacePath, packageName] of [
   ["packages/native", "@quickgui/native"],
   ["packages/solid", "@quickgui/solid"],

@@ -254,17 +254,22 @@ export async function resolveExtension(
   }
   if (manifest.package === `@quickgui/extension-${manifest.name}`)
     candidates.push(resolve(import.meta.dir, "..", "..", `extension-${manifest.name}`));
+  let foundVersion: string | undefined;
   for (const directory of candidates) {
     const metadata = join(directory, "package.json");
     const file = join(directory, "lib", target, filename);
     if (!existsSync(metadata) || !existsSync(file)) continue;
     const pkg = JSON.parse(readFileSync(metadata, "utf8"));
-    if (pkg.name !== manifest.package || pkg.version !== manifest.version)
-      throw new CliError(
-        `Extension ${manifest.name} requires ${manifest.package}@${manifest.version}; found ${pkg.version}`,
-      );
+    if (pkg.name !== manifest.package || pkg.version !== manifest.version) {
+      foundVersion = typeof pkg.version === "string" ? pkg.version : String(pkg.version);
+      continue;
+    }
     return file;
   }
+  if (foundVersion !== undefined)
+    throw new CliError(
+      `Extension ${manifest.name} requires ${manifest.package}@${manifest.version}; found ${foundVersion}`,
+    );
   return downloadExtension(manifest, target, filename);
 }
 

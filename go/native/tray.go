@@ -17,9 +17,11 @@ type TrayMenuItem struct {
 }
 
 type TrayIconOptions struct {
-	Icon            ImageSource
-	Tooltip         string
-	Title           string
+	Icon    ImageSource
+	Tooltip string
+	Title   string
+	// IconIsTemplate treats the artwork as a macOS template image. Prefer ImageSource.Template
+	// or a *Template.png filename when the flag should be omitted so the path can be inferred.
 	IconIsTemplate  bool
 	MenuOnLeftClick *bool
 	Visible         *bool
@@ -94,7 +96,7 @@ func (icon *TrayIcon) Update(options TrayIconOptions, done func(error)) {
 	menu := icon.encodeMenu(options.Menu, callbacks)
 	native := map[string]any{
 		"id": icon.ID, "menu": mustString(menu), "tooltip": options.Tooltip, "title": options.Title,
-		"iconIsTemplate": options.IconIsTemplate, "menuOnLeftClick": enabledOrTrue(options.MenuOnLeftClick), "visible": enabledOrTrue(options.Visible),
+		"menuOnLeftClick": enabledOrTrue(options.MenuOnLeftClick), "visible": enabledOrTrue(options.Visible),
 	}
 	if options.Icon.Path != "" {
 		native["iconPath"] = options.Icon.Path
@@ -110,6 +112,11 @@ func (icon *TrayIcon) Update(options TrayIconOptions, done func(error)) {
 		if options.Icon.Height != 0 {
 			native["height"] = options.Icon.Height
 		}
+	}
+	if options.Icon.Template != nil {
+		native["iconIsTemplate"] = *options.Icon.Template
+	} else if options.IconIsTemplate {
+		native["iconIsTemplate"] = true
 	}
 	icon.enqueue(trayOperation{
 		payload: mustString(map[string]any{"method": "set-tray-icon", "options": native}),

@@ -26,11 +26,9 @@ import {
   collectIconSizes,
   createIcns,
   createIco,
-  ICNS_ENTRIES,
-  ICO_SIZES,
   LINUX_ICON_SIZES,
+  PACKAGED_ICON_SIZES,
   readSourceIcon,
-  sipsResizeArguments,
 } from "./icons.ts";
 import { sharedMimeInfoXml } from "./documents.ts";
 import {
@@ -44,6 +42,7 @@ import {
   desktopEntry,
 } from "./linux.ts";
 import { writeAppcast } from "./appcast.ts";
+import { copyBesideExecutable, extraPayloadEntries } from "./resources.ts";
 import { makensisArguments, nsisScript, signToolArguments } from "./windows.ts";
 import {
   buildUpdateManifest,
@@ -79,24 +78,6 @@ export function findMinisignTool(): MinisignTool | undefined {
   return undefined;
 }
 
-/** Resize a square PNG with `sips`, which only exists on macOS. */
-function sipsResizer(
-  icon: string,
-  scratchDirectory: string,
-  run: (command: string[]) => void,
-): ((size: number) => Uint8Array | undefined) | undefined {
-  if (process.platform !== "darwin" || !toolPath("sips")) return undefined;
-  return (size: number) => {
-    const destination = join(scratchDirectory, `icon-${size}.png`);
-    try {
-      run(sipsResizeArguments(icon, destination, size));
-    } catch {
-      return undefined;
-    }
-    return existsSync(destination) ? new Uint8Array(readFileSync(destination)) : undefined;
-  };
-}
-
 export interface IconBuildResult {
   icns?: Uint8Array;
   ico?: Uint8Array;
@@ -106,27 +87,13 @@ export interface IconBuildResult {
 /**
  * Turn one configured square PNG into the containers each platform needs.
  *
- * Sizes come from `<icon>.iconset/icon_<n>x<n>.png` first, then the source itself, then `sips`.
- * Nothing is invented: a size with no source is simply absent from the container.
+ * Sizes come from `<icon>.iconset/icon_<n>x<n>.png` first, then the source itself, then
+ * `Bun.Image` on every host.
  */
-export function buildIcons(
-  icon: string,
-  scratchDirectory: string,
-  runSync: (command: string[]) => void,
-): IconBuildResult {
+export async function buildIcons(icon: string): Promise<IconBuildResult> {
   const source = readSourceIcon(icon);
-  mkdirSync(scratchDirectory, { recursive: true });
-  const resize = sipsResizer(icon, scratchDirectory, runSync);
-  const sizes = [
-    ...new Set([...ICNS_ENTRIES.map((entry) => entry.size), ...ICO_SIZES, ...LINUX_ICON_SIZES]),
-  ].sort((left, right) => left - right);
-  const png = collectIconSizes(icon, source, sizes, resize);
-  if (png.size === 0) {
-    throw new CliError(
-      `No usable icon sizes for ${icon}. Provide pre-sized PNGs in ${basename(icon, ".png")}.iconset/ ` +
-        "(icon_16x16.png … icon_1024x1024.png) or build on macOS where `sips` can resize.",
-    );
-  }
+  const png = await collectIconSizes(icon, source, PACKAGED_ICON_SIZES);
+  if (png.size === 0) throw new CliError(`No usable icon sizes for ${icon}`);
   const icns = safeContainer(() => createIcns(png));
   const ico = safeContainer(() => createIco(png));
   return { png, ...(icns ? { icns } : {}), ...(ico ? { ico } : {}) };
@@ -188,7 +155,7 @@ export async function packageLinux(input: LinuxPackagingInput): Promise<Packagin
     for (const library of input.libraries ?? [
       join(input.stagingRoot, sharedLibraryName(input.target)),
     ]) {
-      cpSync(library, join(appDir, "usr", "bin", basename(library)));
+      copyBesideExecutable(library, join(appDir, "usr", "bin"));
     }
     writeFileSync(join(appDir, `${config.executableName}.desktop`), entry);
     writeFileSync(join(appDir, "AppRun"), appRunScript(config.executableName));
@@ -225,11 +192,9 @@ export async function packageLinux(input: LinuxPackagingInput): Promise<Packagin
     const executable = new Uint8Array(readFileSync(input.executablePath));
     const data: TarEntry[] = [
       { path: paths.executable, data: executable, mode: 0o755 },
-      ...(input.libraries ?? [join(input.stagingRoot, sharedLibraryName(input.target))]).map(
-        (library) => ({
-          path: join(dirname(paths.executable), basename(library)),
-          data: new Uint8Array(readFileSync(library)),
-        }),
+      ...extraPayloadEntries(
+        input.libraries ?? [join(input.stagingRoot, sharedLibraryName(input.target))],
+        dirname(paths.executable),
       ),
       { path: paths.desktopEntry, data: new TextEncoder().encode(entry) },
       ...(mimeXml ? [{ path: paths.mimePackage, data: new TextEncoder().encode(mimeXml) }] : []),
@@ -248,14 +213,7 @@ export async function packageLinux(input: LinuxPackagingInput): Promise<Packagin
       installedSizeKilobytes:
         data.reduce((total, member) => total + (member.data?.byteLength ?? 0), 0) / 1024,
     });
-    const md5sums = debianMd5Sums(
-      data.map((member) => ({
-        path: member.path,
-        md5: new Bun.CryptoHasher("md5")
-          .update(Buffer.from(member.data ?? new Uint8Array()))
-          .digest("hex"),
-      })),
-    );
+    const md5sums = payloadMd5Sums(data);
     const debian = createDebianPackage({
       control,
       md5sums,
@@ -271,6 +229,20 @@ export async function packageLinux(input: LinuxPackagingInput): Promise<Packagin
   }
 
   return { artifacts, notes };
+}
+
+/** Hash file members for `md5sums`. Directory entries stay in `data.tar.gz` only. */
+export function payloadMd5Sums(data: readonly TarEntry[]): string {
+  return debianMd5Sums(
+    data
+      .filter((member) => member.type !== "directory")
+      .map((member) => ({
+        path: member.path,
+        md5: new Bun.CryptoHasher("md5")
+          .update(Buffer.from(member.data ?? new Uint8Array()))
+          .digest("hex"),
+      })),
+  );
 }
 
 export function debianPackageName(executableName: string): string {

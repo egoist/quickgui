@@ -538,6 +538,8 @@ pub struct NativeImageSource {
     pub path: Option<String>,
     pub width: Option<u32>,
     pub height: Option<u32>,
+    /// macOS template-image flag. When omitted, `*Template.png` paths are inferred.
+    pub template: Option<bool>,
 }
 
 #[derive(Clone, Default, Deserialize)]

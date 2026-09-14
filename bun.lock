@@ -170,7 +170,7 @@
     },
     "packages/cli": {
       "name": "@quickgui/cli",
-      "version": "0.1.4-next.2",
+      "version": "0.1.4-next.4",
       "bin": {
         "quickgui": "src/cli.ts",
       },
@@ -182,22 +182,22 @@
     },
     "packages/extension-terminal": {
       "name": "@quickgui/extension-terminal",
-      "version": "0.1.4-next.1",
+      "version": "0.1.4-next.4",
     },
     "packages/extension-updater": {
       "name": "@quickgui/extension-updater",
-      "version": "0.1.4-next.1",
+      "version": "0.1.4-next.4",
       "dependencies": {
         "@quickgui/native": "workspace:*",
       },
     },
     "packages/native": {
       "name": "@quickgui/native",
-      "version": "0.1.4-next.1",
+      "version": "0.1.4-next.4",
     },
     "packages/solid": {
       "name": "@quickgui/solid",
-      "version": "0.1.4-next.1",
+      "version": "0.1.4-next.4",
       "dependencies": {
         "@quickgui/native": "workspace:*",
         "@solidjs/universal": "2.0.0-rc.8",

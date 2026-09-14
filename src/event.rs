@@ -28,11 +28,12 @@ use crate::{
         SavePathResponse, ShareItem, ShellResponse, SystemNotification,
     },
     runtime::{
-        MAX_SYSTEM_WINDOW_TABS, WindowAppearance, WindowBackgroundAppearance, WindowCommand,
-        WindowCommandError, WindowRequest, validate_taskbar_overlay_description,
-        validate_taskbar_progress, validate_window_aspect_ratio, validate_window_bounds,
-        validate_window_document_path, validate_window_opacity, validate_window_position,
-        validate_window_size, validate_window_tabbing_identifier, validate_window_title,
+        MAX_SYSTEM_WINDOW_TABS, TrayIconOptions, WindowAppearance, WindowBackgroundAppearance,
+        WindowCommand, WindowCommandError, WindowRequest, validate_taskbar_overlay_description,
+        validate_taskbar_progress, validate_tray_options, validate_window_aspect_ratio,
+        validate_window_bounds, validate_window_document_path, validate_window_opacity,
+        validate_window_position, validate_window_size, validate_window_tabbing_identifier,
+        validate_window_title,
     },
 };
 
@@ -389,6 +390,30 @@ mod tests {
         assert!(matches!(
             cx.platform_requests[3],
             PlatformRequest::RequestNotificationPermission { .. }
+        ));
+    }
+
+    #[test]
+    fn tray_icon_requests_validate_before_they_are_retained() {
+        let icon = crate::TrayIconImage::from_rgba([255, 0, 0, 255], 1, 1).unwrap();
+        let mut cx = EventContext::default();
+        assert!(
+            cx.set_tray_icon(crate::TrayIconOptions::new(0, icon.clone()))
+                .is_err()
+        );
+        assert!(cx.platform_requests.is_empty());
+        assert!(
+            cx.set_tray_icon(crate::TrayIconOptions::new(1, icon))
+                .is_ok()
+        );
+        assert!(cx.remove_tray_icon(1).is_ok());
+        assert!(matches!(
+            cx.platform_requests[0],
+            PlatformRequest::SetTrayIcon(_)
+        ));
+        assert!(matches!(
+            cx.platform_requests[1],
+            PlatformRequest::RemoveTrayIcon(1)
         ));
     }
 

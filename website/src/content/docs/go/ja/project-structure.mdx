@@ -4,6 +4,8 @@ Go プロジェクトは、アプリケーションコードを Go モジュー�
 
 ```text
 my-app/
+├── resources/
+│   └── icon.png
 ├── main.go
 ├── go.mod
 ├── go.sum
@@ -51,7 +53,7 @@ entry = "."
 
 CLI は `quickgui.config.ts` より先に `quickgui.toml` を読みます。ファイルを指定するには `--config configs/dev.toml` を渡します。バージョン値は引用符で囲んでください。例: `version = "..."`。
 
-追加ファイルは `resources`、カスタムフォントは `fonts` で同梱します：
+アプリアイコンは `resources/icon.png` です。追加ファイルは `resources` に列挙できます。カスタムフォントは `fonts` で同梱します。[アプリアイコン](/docs/go/app-icon)と[バンドルするリソース](/docs/go/bundled-resources)を参照してください。
 
 ```ts
 export default defineConfig({
@@ -59,7 +61,6 @@ export default defineConfig({
   identifier: "com.example.my-app",
   entry: ".",
   fonts: ["assets/MyFont.ttf"],
-  resources: ["assets"],
 });
 ```
 

@@ -904,6 +904,46 @@ impl EventContext {
         self.push_platform_request(PlatformRequest::set_dock_icon(None))
     }
 
+    /// Create or replace a native tray / menu-bar extra icon.
+    pub fn set_tray_icon(&mut self, options: TrayIconOptions) -> Result<(), PlatformError> {
+        if !crate::DesktopIntegrationSupport::current().tray_icons {
+            return Err(PlatformError::Unsupported);
+        }
+        validate_tray_options(&options)?;
+        self.ensure_platform_capacity()?;
+        self.push_platform_request(PlatformRequest::set_tray_icon(options))
+    }
+
+    /// Remove one native tray icon. Removing an unknown id succeeds.
+    pub fn remove_tray_icon(&mut self, id: u32) -> Result<(), PlatformError> {
+        if !crate::DesktopIntegrationSupport::current().tray_icons {
+            return Err(PlatformError::Unsupported);
+        }
+        if id == 0 {
+            return Err(PlatformError::Platform(
+                "a tray icon id must be nonzero".into(),
+            ));
+        }
+        self.ensure_platform_capacity()?;
+        self.push_platform_request(PlatformRequest::remove_tray_icon(id))
+    }
+
+    /// Open a tray icon's context menu at the current cursor position.
+    ///
+    /// Linux StatusNotifierItem hosts own menu presentation and do not expose this operation.
+    pub fn show_tray_menu(&mut self, id: u32) -> Result<(), PlatformError> {
+        if !crate::DesktopIntegrationSupport::current().programmable_tray_popup {
+            return Err(PlatformError::Unsupported);
+        }
+        if id == 0 {
+            return Err(PlatformError::Platform(
+                "a tray icon id must be nonzero".into(),
+            ));
+        }
+        self.ensure_platform_capacity()?;
+        self.push_platform_request(PlatformRequest::show_tray_menu(id))
+    }
+
     /// Replace the macOS Dock context menu.
     pub fn set_dock_menu(&mut self, menu: Menu) -> Result<(), PlatformError> {
         if !crate::DesktopIntegrationSupport::current().dock_menus {

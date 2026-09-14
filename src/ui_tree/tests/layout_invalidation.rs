@@ -725,3 +725,43 @@ fn targeted_background_updates_keep_transition_playback() {
     assert_eq!(scene.edge_quads()[0].fill, Color::WHITE);
     assert!(!tree.style_transition_frame_requested());
 }
+
+#[test]
+fn root_layout_rounding_can_switch_without_losing_fractional_geometry() {
+    let mut tree = UiTree::new();
+    let declaration = |round| {
+        div()
+            .layout_rounding(round)
+            .size(100., 100.)
+            .items_center()
+            .justify_center()
+            .child(div().id("fractional").size(13., 13.))
+    };
+    set_root(&mut tree, declaration(false));
+    assert_eq!(
+        tree.taffy
+            .layout(tree.layout_nodes.nodes[&ElementId::from("fractional")])
+            .unwrap()
+            .location
+            .x,
+        43.5
+    );
+    set_root(&mut tree, declaration(true));
+    assert_eq!(
+        tree.taffy
+            .layout(tree.layout_nodes.nodes[&ElementId::from("fractional")])
+            .unwrap()
+            .location
+            .x,
+        44.
+    );
+    set_root(&mut tree, declaration(false));
+    assert_eq!(
+        tree.taffy
+            .layout(tree.layout_nodes.nodes[&ElementId::from("fractional")])
+            .unwrap()
+            .location
+            .x,
+        43.5
+    );
+}

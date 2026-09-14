@@ -1,7 +1,14 @@
 {
   "name": "@quickgui/solid",
-  "version": "0.1.4-next.1",
+  "version": "0.1.4-next.4",
   "description": "Solid 2 renderer for QuickGUI native desktop applications",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/egoist/quickgui.git",
+    "directory": "packages/solid"
+  },
+  "bugs": "https://github.com/egoist/quickgui/issues",
+  "homepage": "https://github.com/egoist/quickgui#readme",
   "license": "MIT OR Apache-2.0",
   "files": [
     "src",
@@ -9,7 +16,9 @@
     "!**/*.test.ts"
   ],
   "os": [
-    "darwin"
+    "darwin",
+    "linux",
+    "win32"
   ],
   "type": "module",
   "exports": {

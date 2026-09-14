@@ -6,6 +6,29 @@ import { join, resolve } from "node:path";
 const root = resolve(import.meta.dir, "..");
 const output = resolve(root, process.argv[2] ?? "target/npm-release");
 const version = JSON.parse(readFileSync(join(root, "package.json"), "utf8")).version as string;
+const releasedOs = ["darwin", "linux", "win32"] as const;
+const releasedNativeTargets = [
+  { stage: "darwin-arm64", platform: "darwin" },
+  { stage: "darwin-x64", platform: "darwin" },
+  { stage: "linux-arm64", platform: "linux" },
+  { stage: "linux-x64", platform: "linux" },
+  { stage: "windows-x64", platform: "windows" },
+] as const;
+
+function nativeLibraryName(
+  library: string,
+  platform: (typeof releasedNativeTargets)[number]["platform"],
+) {
+  if (platform === "darwin") return `lib${library}.dylib`;
+  if (platform === "windows") return `${library}.dll`;
+  return `lib${library}.so`;
+}
+
+function expectedLibraries(library: string) {
+  return releasedNativeTargets.map(
+    (target) => `package/lib/${target.stage}/${nativeLibraryName(library, target.platform)}`,
+  );
+}
 
 function run(argv: string[], cwd = root): string {
   const child = Bun.spawnSync(argv, { cwd, stdin: "ignore", stdout: "pipe", stderr: "pipe" });
@@ -30,13 +53,11 @@ const archives: Record<string, string> = {};
 const checksums: string[] = [];
 for (const pkg of packages) {
   const directory = join(root, "packages", pkg.name);
-  const expected = pkg.library
-    ? ["arm64", "x64"].map((arch) => `package/lib/darwin-${arch}/lib${pkg.library}.dylib`)
-    : [];
+  const expected = pkg.library ? expectedLibraries(pkg.library) : [];
   for (const entry of expected) {
     const binary = join(directory, entry.slice("package/".length));
     if (!existsSync(binary)) throw new Error(`Missing native binary: ${binary}`);
-    if (process.platform === "darwin")
+    if (process.platform === "darwin" && entry.includes("/darwin-"))
       run(["lipo", binary, "-verify_arch", entry.includes("arm64") ? "arm64" : "x86_64"]);
   }
   run(["bun", "pm", "pack", "--destination", output, "--quiet"], directory);
@@ -46,8 +67,9 @@ for (const pkg of packages) {
   if (
     manifest.name !== `@quickgui/${pkg.name}` ||
     manifest.version !== version ||
-    JSON.stringify(manifest.os) !== '["darwin"]' ||
-    manifest.publishConfig?.access !== "public"
+    JSON.stringify(manifest.os) !== JSON.stringify(releasedOs) ||
+    manifest.publishConfig?.access !== "public" ||
+    manifest.repository?.url !== "https://github.com/egoist/quickgui.git"
   ) {
     throw new Error(`Incorrect release metadata in ${filename}`);
   }
@@ -70,9 +92,16 @@ for (const pkg of packages) {
       throw new Error(
         "Updater package must include its TypeScript API and matching native core dependency",
       );
-    for (const arch of ["arm64", "x64"])
-      if (!entries.includes("package/lib/darwin-" + arch + "/Sparkle.framework.qgr"))
-        throw new Error("Missing Sparkle resources in updater package");
+    for (const target of releasedNativeTargets) {
+      const resource =
+        target.platform === "darwin"
+          ? "Sparkle.framework.qgr"
+          : target.platform === "windows"
+            ? "quickgui-updater-helper.exe"
+            : "quickgui-updater-helper";
+      if (!entries.includes(`package/lib/${target.stage}/${resource}`))
+        throw new Error(`Missing ${target.stage} updater resources in updater package`);
+    }
   }
   const binaries = entries.filter((entry) => /\.(dylib|dll|so)$/.test(entry));
   if (binaries.length !== expected.length || expected.some((entry) => !binaries.includes(entry))) {

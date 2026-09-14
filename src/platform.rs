@@ -19,7 +19,7 @@ use winit::event_loop::EventLoopProxy;
 
 #[cfg(target_os = "macos")]
 use crate::runtime::RuntimeEvent;
-use crate::{Image, Menu, WindowHandle};
+use crate::{Image, Menu, TrayIconOptions, WindowHandle};
 
 /// Maximum native platform operations one event callback may queue.
 pub const MAX_PLATFORM_REQUESTS_PER_EVENT: usize = 32;
@@ -1179,6 +1179,9 @@ pub(crate) enum PlatformRequest {
     SetDockBadge(Option<Arc<str>>),
     SetDockIcon(Option<Image>),
     SetDockMenu(Option<Menu>),
+    SetTrayIcon(TrayIconOptions),
+    RemoveTrayIcon(u32),
+    ShowTrayMenu(u32),
     AddRecentDocument(PathBuf),
     ClearRecentDocuments,
     ShowAboutPanel(AboutPanelOptions),
@@ -1594,6 +1597,18 @@ impl PlatformRequest {
         Self::SetDockIcon(icon)
     }
 
+    pub(crate) fn set_tray_icon(options: TrayIconOptions) -> Self {
+        Self::SetTrayIcon(options)
+    }
+
+    pub(crate) fn remove_tray_icon(id: u32) -> Self {
+        Self::RemoveTrayIcon(id)
+    }
+
+    pub(crate) fn show_tray_menu(id: u32) -> Self {
+        Self::ShowTrayMenu(id)
+    }
+
     pub(crate) fn set_dock_menu(menu: Option<Menu>) -> Result<Self, PlatformError> {
         if let Some(menu) = &menu {
             crate::menu::validate_menus(std::slice::from_ref(menu))
@@ -1663,6 +1678,9 @@ impl PlatformRequest {
             | Self::SetDockBadge(_)
             | Self::SetDockIcon(_)
             | Self::SetDockMenu(_)
+            | Self::SetTrayIcon(_)
+            | Self::RemoveTrayIcon(_)
+            | Self::ShowTrayMenu(_)
             | Self::AddRecentDocument(_)
             | Self::ClearRecentDocuments
             | Self::ShowAboutPanel(_)
@@ -1715,6 +1733,9 @@ impl PlatformRequest {
             | Self::SetDockBadge(_)
             | Self::SetDockIcon(_)
             | Self::SetDockMenu(_)
+            | Self::SetTrayIcon(_)
+            | Self::RemoveTrayIcon(_)
+            | Self::ShowTrayMenu(_)
             | Self::AddRecentDocument(_)
             | Self::ClearRecentDocuments
             | Self::ActivateApplication { .. }
@@ -1757,6 +1778,9 @@ impl PlatformRequest {
             | Self::SetDockBadge(_)
             | Self::SetDockIcon(_)
             | Self::SetDockMenu(_)
+            | Self::SetTrayIcon(_)
+            | Self::RemoveTrayIcon(_)
+            | Self::ShowTrayMenu(_)
             | Self::AddRecentDocument(_)
             | Self::ClearRecentDocuments
             | Self::ShowAboutPanel(_)
@@ -1815,6 +1839,9 @@ impl PlatformRequest {
             | Self::SetDockBadge(_)
             | Self::SetDockIcon(_)
             | Self::SetDockMenu(_)
+            | Self::SetTrayIcon(_)
+            | Self::RemoveTrayIcon(_)
+            | Self::ShowTrayMenu(_)
             | Self::AddRecentDocument(_)
             | Self::ClearRecentDocuments
             | Self::ActivateApplication { .. }

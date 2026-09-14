@@ -19,4 +19,4 @@ For Go, import `github.com/egoist/quickgui/go/updater`; the CLI resolves this pa
 
 macOS uses the bundled Sparkle 2.9.4 framework. Windows and Linux implement its signed appcast contract with a native installer helper. App/extension calls use the existing in-process bridge: Bun FFI for TypeScript and purego for Go. The helper runs separately only to install after the app releases its executable and libraries.
 
-Build from the repository with `bun packages/native/build.ts --extension updater`. Current npm release artifacts cover macOS arm64 and x64; other platforms build from source on their target hosts. Configure, sign, and publish updates using the [updater guide](https://github.com/egoist/quickgui/blob/master/docs/updater.md).
+Build from the repository with `bun packages/native/build.ts --extension updater`. npm release artifacts cover macOS arm64/x64, Linux arm64/x64, and Windows x64. Configure, sign, and publish updates using the [updater guide](https://github.com/egoist/quickgui/blob/master/docs/updater.md).

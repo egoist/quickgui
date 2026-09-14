@@ -156,7 +156,11 @@ impl View for MenubarGallery {
             .px(8.0)
             .bg(palette.bar)
             .border(1.0, palette.border);
-        for index in 0..self.menubar.menu_count() {
+        for (index, title) in MENU_TITLES
+            .iter()
+            .enumerate()
+            .take(self.menubar.menu_count())
+        {
             let item = bar.item(self.menubar, index).expect("a declared menu");
             let open = item.is_open();
             let element = item.item_with(
@@ -172,7 +176,7 @@ impl View for MenubarGallery {
                         Color::TRANSPARENT
                     })
                     .hover(move |hover| hover.bg(palette.open))
-                    .child(text(MENU_TITLES[index]).text_sm()),
+                    .child(text(*title).text_sm()),
             );
             bar_row = bar_row.child(item.key_with(cx, element, Self::menubar));
         }

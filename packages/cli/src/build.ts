@@ -8,10 +8,9 @@ import {
   renameSync,
   rmSync,
   statSync,
-  symlinkSync,
   writeFileSync,
 } from "node:fs";
-import { basename, dirname, extname, join, relative, resolve } from "node:path";
+import { basename, extname, join, relative, resolve } from "node:path";
 
 import {
   languageLabel,
@@ -26,6 +25,7 @@ import {
   macTypeDeclarationsPlist,
   type ResolvedDocumentType,
 } from "./packaging/documents.ts";
+import { createDmgArguments } from "./packaging/dmg.ts";
 import {
   masCodesignArguments,
   masEntitlementsTemplate,
@@ -35,11 +35,13 @@ import {
 } from "./packaging/mas.ts";
 import {
   buildIcons,
+  debianPackageName,
   packageLinux,
   packageWindows,
   writeUpdateManifest,
   type IconBuildResult,
 } from "./packaging/pipeline.ts";
+import { stageApplicationResources } from "./packaging/resources.ts";
 import { updaterMetadata } from "./packaging/appcast.ts";
 import { targetInfo, type QuickGuiTarget } from "./targets.ts";
 
@@ -78,6 +80,8 @@ export interface BuildResult {
 interface StagedBuild extends BuildResult {
   /** Staged files moved into the target output directory alongside the main artifact. */
   extraArtifacts?: string[];
+  /** Installers, packages, desktop entries, and scripts. Never application sidecars. */
+  packagedArtifacts?: string[];
 }
 
 export async function buildProject(
@@ -85,7 +89,7 @@ export async function buildProject(
   options: BuildProjectOptions,
 ): Promise<BuildResult> {
   const info = targetInfo(options.target);
-  validateInputs(config, info.platform);
+  validateBuildInputs(config, info.platform);
   if (info.platform === "darwin" && options.mode === "production") {
     validateMacPackaging(config, options);
   }
@@ -122,7 +126,9 @@ export async function buildProject(
       stagingRoot,
     );
     const executablePath = resolve(finalPath, relative(staged.artifactPath, staged.executablePath));
-    const packagePaths = extras.map((extra) => extra.finalPath);
+    const packagePaths = (staged.packagedArtifacts ?? []).map((stagedPath) =>
+      resolve(targetOutDir, basename(stagedPath)),
+    );
     let updates: { artifactPath: string; manifestPath: string } | undefined;
     if (options.updateManifest && options.mode === "production") {
       updates = await writeUpdateManifest({
@@ -196,15 +202,15 @@ async function buildMacApp(
     }
     iconFile = "AppIcon.icns";
   } else if (config.icon && options.mode === "production") {
-    // Icon containers are regenerated per build, so development reloads skip the `sips` passes.
-    generatedIcns = resolveIcons(config, stagingRoot)?.icns;
+    // Icon containers are regenerated per build, so development reloads skip the resize pass.
+    generatedIcns = (await resolveIcons(config))?.icns;
     if (generatedIcns) iconFile = "AppIcon.icns";
   }
   const reservedResources = new Set<string>([
     ...(iconFile ? [iconFile] : []),
     ...(fonts.length > 0 ? ["fonts"] : []),
   ]);
-  copyResources(config.resources, resources, reservedResources);
+  stageApplicationResources(config.resourceDir, config.resources, resources, reservedResources);
   if (config.macos.icon && iconFile) {
     cpSync(config.macos.icon, resolve(resources, iconFile));
   } else if (generatedIcns && iconFile) {
@@ -239,6 +245,7 @@ async function buildMacApp(
       target: options.target,
       mode: options.mode,
       extraArtifacts: [packagePath],
+      packagedArtifacts: [packagePath],
     };
   }
 
@@ -359,17 +366,28 @@ async function buildMacDmg(
 ): Promise<string> {
   const dmgPath = resolve(stagingRoot, macDmgFilename(config.name, config.version));
   const dmgTitle = config.macos.dmgTitle ?? config.name;
-  // The image holds the app and a link to /Applications for the usual drag-to-install layout.
+  const appFileName = basename(appPath);
+  const volumeIcon = join(appPath, "Contents", "Resources", "AppIcon.icns");
+  // create-dmg copies this folder, then adds the Applications drop link itself.
   const imageRoot = mkdtempSync(join(stagingRoot, ".dmg-"));
-  cpSync(appPath, join(imageRoot, basename(appPath)), { recursive: true, verbatimSymlinks: true });
-  symlinkSync("/Applications", join(imageRoot, "Applications"));
+  cpSync(appPath, join(imageRoot, appFileName), { recursive: true, verbatimSymlinks: true });
   try {
-    await run(hdiutilCreateArguments(dmgTitle, imageRoot, dmgPath), config.projectRoot);
+    console.log(`[quickgui] Creating ${basename(dmgPath)}`);
+    await run(
+      createDmgArguments({
+        dmgPath,
+        sourceFolder: imageRoot,
+        volumeName: dmgTitle,
+        appFileName,
+        ...(existsSync(volumeIcon) ? { volumeIcon } : {}),
+      }),
+      config.projectRoot,
+    );
   } finally {
     rmSync(imageRoot, { recursive: true, force: true });
   }
   if (!existsSync(dmgPath) || !statSync(dmgPath).isFile()) {
-    throw new CliError(`hdiutil did not produce the expected disk image: ${dmgPath}`);
+    throw new CliError(`create-dmg did not produce the expected disk image: ${dmgPath}`);
   }
 
   if (identity !== "-") {
@@ -388,29 +406,6 @@ async function buildMacDmg(
   }
 
   return dmgPath;
-}
-
-/** The `hdiutil` invocation that packs `sourceFolder` into a compressed, read-only disk image. */
-export function hdiutilCreateArguments(
-  volumeName: string,
-  sourceFolder: string,
-  dmgPath: string,
-): string[] {
-  return [
-    "hdiutil",
-    "create",
-    "-volname",
-    volumeName,
-    "-srcfolder",
-    sourceFolder,
-    "-ov",
-    "-format",
-    "UDZO",
-    "-fs",
-    "HFS+",
-    "-quiet",
-    dmgPath,
-  ];
 }
 
 export function macDmgFilename(name: string, version: string): string {
@@ -448,21 +443,22 @@ async function buildExecutable(
   const fonts = stageFonts(config, resolve(stagingRoot, "fonts"));
   const libraries = await compileExecutable(config, options, executablePath, fonts);
   if (info.platform !== "windows") chmodSync(executablePath, 0o755);
+  const payload = stageExecutableSidecars(config, stagingRoot, libraries, info.platform);
   const result: StagedBuild = {
     artifactPath: executablePath,
-    extraArtifacts: libraries,
+    extraArtifacts: payload,
     executablePath,
     target: options.target,
     mode: options.mode,
   };
   if (options.mode !== "production") return result;
 
-  const icons = resolveIcons(config, stagingRoot);
+  const icons = await resolveIcons(config, iconSource(config, info.platform));
   const packaged =
     info.platform === "linux"
       ? await packageLinux({
           config,
-          libraries,
+          libraries: payload,
           target: options.target,
           executablePath,
           stagingRoot,
@@ -471,7 +467,7 @@ async function buildExecutable(
         })
       : await packageWindows({
           config,
-          libraries,
+          libraries: payload,
           executablePath,
           stagingRoot,
           run: (command, cwd) => run(command, cwd),
@@ -479,7 +475,8 @@ async function buildExecutable(
         });
   return {
     ...result,
-    extraArtifacts: [...(result.extraArtifacts ?? []), ...packaged.artifacts],
+    extraArtifacts: [...payload, ...packaged.artifacts],
+    packagedArtifacts: packaged.artifacts,
     ...(packaged.notes.length > 0 ? { notes: packaged.notes } : {}),
   };
 }
@@ -560,8 +557,8 @@ function updateBaseUrl(config: ResolvedQuickGuiConfig, options: BuildProjectOpti
 }
 
 /** The artifact the Rust updater installs for this target, chosen from what the build produced. */
-function updateSource(
-  options: BuildProjectOptions,
+export function updateSource(
+  options: Pick<BuildProjectOptions, "target">,
   artifactPath: string,
   packagePaths: readonly string[],
 ): string {
@@ -581,21 +578,79 @@ function updateSource(
   return appImage ?? artifactPath;
 }
 
-function resolveIcons(
+function iconSource(
+  config: ResolvedQuickGuiConfig,
+  platform: "darwin" | "linux" | "windows",
+): string | undefined {
+  if (config.icon) return config.icon;
+  return platform === "linux" ? config.linux.icon : undefined;
+}
+
+async function resolveIcons(
+  config: ResolvedQuickGuiConfig,
+  source = config.icon,
+): Promise<IconBuildResult | undefined> {
+  if (!source) return undefined;
+  return await buildIcons(source);
+}
+
+/**
+ * Names written into the Linux/Windows staging root after resources are copied.
+ *
+ * A configured resource whose basename matches one of these would be overwritten by icon
+ * generation, the NSIS script, AppDir, or an installer, or would collide with `quickgui.json`.
+ */
+export function reservedSidecarNames(
+  config: ResolvedQuickGuiConfig,
+  platform: "darwin" | "linux" | "windows",
+): string[] {
+  const names = ["fonts", "quickgui.json", ".quickgui-icons"];
+  if (platform === "linux") {
+    const packageName = debianPackageName(config.executableName);
+    names.push(
+      `${config.executableName}.desktop`,
+      `${config.executableName}.mime.xml`,
+      `${config.executableName}.AppDir`,
+      `${config.executableName}-${config.version}-x86_64.AppImage`,
+      `${config.executableName}-${config.version}-aarch64.AppImage`,
+      `${packageName}_${config.version}_amd64.deb`,
+      `${packageName}_${config.version}_arm64.deb`,
+    );
+  }
+  if (platform === "windows") {
+    names.push(
+      `${config.executableName}.ico`,
+      `${config.executableName}.nsi`,
+      `${config.executableName}-${config.version}-setup.exe`,
+    );
+  }
+  return names;
+}
+
+/** Files and directories that must travel with the executable on every host. */
+export function stageExecutableSidecars(
   config: ResolvedQuickGuiConfig,
   stagingRoot: string,
-): IconBuildResult | undefined {
-  if (!config.icon) return undefined;
-  return buildIcons(config.icon, resolve(stagingRoot, ".quickgui-icons"), (command) => {
-    const result = Bun.spawnSync(command, {
-      cwd: config.projectRoot,
-      stdout: "pipe",
-      stderr: "pipe",
-    });
-    if (result.exitCode !== 0) {
-      throw new CliError(`Command failed: ${command.join(" ")}`);
-    }
-  });
+  alreadyStaged: readonly string[],
+  platform: "darwin" | "linux" | "windows",
+): string[] {
+  const reserved = new Set([
+    config.executableName,
+    `${config.executableName}.exe`,
+    ...reservedSidecarNames(config, platform),
+    ...alreadyStaged.map((path) => basename(path)),
+  ]);
+  const staged = [...alreadyStaged];
+  const names = new Set(staged.map((path) => basename(path)));
+  const fontsDir = resolve(stagingRoot, "fonts");
+  if (existsSync(fontsDir) && !names.has("fonts")) {
+    staged.push(fontsDir);
+    names.add("fonts");
+  }
+  staged.push(
+    ...stageApplicationResources(config.resourceDir, config.resources, stagingRoot, reserved),
+  );
+  return staged;
 }
 
 function validateMacPackaging(config: ResolvedQuickGuiConfig, options: BuildProjectOptions): void {
@@ -615,7 +670,13 @@ function validateMacPackaging(config: ResolvedQuickGuiConfig, options: BuildProj
   }
 }
 
-function validateInputs(
+function requireExistingFile(path: string, label: string): void {
+  if (!existsSync(path) || !statSync(path).isFile()) {
+    throw new CliError(`${label} not found: ${path}`);
+  }
+}
+
+export function validateBuildInputs(
   config: ResolvedQuickGuiConfig,
   platform: "darwin" | "linux" | "windows",
 ): void {
@@ -624,6 +685,12 @@ function validateInputs(
     throw new CliError(
       `${languageLabel(config.language)} application package not found: ${config.entry}`,
     );
+  }
+  if (
+    config.resourceDir &&
+    (!existsSync(config.resourceDir) || !statSync(config.resourceDir).isDirectory())
+  ) {
+    throw new CliError(`Resource directory not found: ${config.resourceDir}`);
   }
   for (const resource of config.resources) {
     if (!existsSync(resource)) throw new CliError(`Resource not found: ${resource}`);
@@ -634,43 +701,20 @@ function validateInputs(
     }
   }
   if (platform === "darwin") {
-    if (config.macos.icon && !existsSync(config.macos.icon)) {
-      throw new CliError(`macOS icon not found: ${config.macos.icon}`);
-    }
+    if (config.macos.icon) requireExistingFile(config.macos.icon, "macOS icon");
     if (config.macos.entitlements && !existsSync(config.macos.entitlements)) {
       throw new CliError(`macOS entitlements not found: ${config.macos.entitlements}`);
     }
   }
-  if (platform === "windows" && config.windows.icon && !existsSync(config.windows.icon)) {
-    throw new CliError(`Windows icon not found: ${config.windows.icon}`);
+  if (platform === "windows" && config.windows.icon) {
+    requireExistingFile(config.windows.icon, "Windows icon");
   }
-  if (config.icon && (!existsSync(config.icon) || !statSync(config.icon).isFile())) {
-    throw new CliError(`Icon not found: ${config.icon}`);
+  if (platform === "linux" && config.linux.icon) {
+    requireExistingFile(config.linux.icon, "Linux icon");
   }
+  if (config.icon) requireExistingFile(config.icon, "Icon");
   if (config.updates?.notesFile && !existsSync(config.updates.notesFile)) {
     throw new CliError(`Release notes not found: ${config.updates.notesFile}`);
-  }
-}
-
-function copyResources(
-  paths: string[],
-  destination: string,
-  reservedNames: ReadonlySet<string> = new Set(),
-): void {
-  const names = new Map(
-    [...reservedNames].map((name) => [name.toLocaleLowerCase("en-US"), name] as const),
-  );
-  for (const path of paths) {
-    const name = basename(path);
-    const normalizedName = name.toLocaleLowerCase("en-US");
-    const previous = names.get(normalizedName);
-    if (previous) {
-      throw new CliError(
-        `Resource destination name is reserved or duplicated: ${name} conflicts with ${previous}`,
-      );
-    }
-    names.set(normalizedName, name);
-    cpSync(path, resolve(destination, name), { recursive: statSync(path).isDirectory() });
   }
 }
 

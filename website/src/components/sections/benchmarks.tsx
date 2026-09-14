@@ -9,6 +9,7 @@ const colors: Record<string, string> = {
   "quickgui-go": "var(--peach)",
   "quickgui-typescript": "#7ea6e8",
   "quickgui-rust": "#b7794d",
+  gpui: "#5e6ad2",
   tauri: "#64748b",
   electron: "#71717a",
 };
@@ -234,6 +235,9 @@ export function Benchmarks() {
               height={1504}
               loading="lazy"
               className="h-auto w-full"
+              onError={(event) => {
+                event.currentTarget.hidden = true;
+              }}
             />
           </div>
         </details>

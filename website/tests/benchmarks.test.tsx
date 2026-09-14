@@ -52,6 +52,8 @@ test("all measured apps fit inside the charts and appear in the preview picker",
   expect(measured.results.map((row) => row.id)).toEqual([
     "quickgui-go",
     "quickgui-typescript",
+    "quickgui-rust",
+    "gpui",
     "tauri",
     "electron",
   ]);

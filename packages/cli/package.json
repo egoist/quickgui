@@ -1,6 +1,6 @@
 {
   "name": "@quickgui/cli",
-  "version": "0.1.4-next.2",
+  "version": "0.1.4-next.4",
   "description": "Project, development, and packaging CLI for natively compiled QuickGUI applications",
   "repository": {
     "type": "git",
@@ -37,6 +37,7 @@
     "src/targets.ts",
     "templates",
     "src/packaging",
+    "vendor",
     "!**/*.test.ts"
   ],
   "scripts": {
@@ -51,7 +52,9 @@
     "bun": ">=1.4.0"
   },
   "os": [
-    "darwin"
+    "darwin",
+    "linux",
+    "win32"
   ],
   "publishConfig": {
     "access": "public"

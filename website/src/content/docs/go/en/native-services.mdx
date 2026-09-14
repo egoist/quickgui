@@ -8,7 +8,7 @@ Handle the Dock icon with `native.App.OnReopen` so a new window opens when none 
 
 ## Commands and services
 
-Use the typed `native` APIs for dialogs, clipboard, shell, appearance, menus, notifications, and other platform features. Operations that return a result use a completion callback — handle errors there instead of blocking.
+Use the typed `native` APIs for dialogs, clipboard, shell, appearance, menus, notifications, and other platform features. Operations that return a result use a completion callback — handle errors there instead of blocking. Tray icons are covered in [Tray Icon](/docs/go/tray-icon).
 
 For background work, `ui.Async` cancels when its component is disposed. `native.Dispatch` delivers a result back to the UI goroutine. Read and write signals only there.
 

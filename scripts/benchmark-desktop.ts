@@ -2,6 +2,7 @@
 /** Reproduce the homepage's release-app comparison on macOS arm64. */
 import { createHash } from "node:crypto";
 import {
+  chmodSync,
   cpSync,
   existsSync,
   lstatSync,
@@ -34,6 +35,7 @@ const supportedAppIds = [
   "quickgui-go",
   "quickgui-typescript",
   "quickgui-rust",
+  "gpui",
   "tauri",
   "electron",
 ] as const;
@@ -85,6 +87,57 @@ async function command(argv: string[], cwd = root): Promise<string> {
   return stdout.trim();
 }
 
+function packageMacApp(options: {
+  appPath: string;
+  binaryPath: string;
+  name: string;
+  executableName: string;
+  identifier: string;
+  version: string;
+}) {
+  const contents = join(options.appPath, "Contents");
+  const macos = join(contents, "MacOS");
+  mkdirSync(macos, { recursive: true });
+  const executablePath = join(macos, options.executableName);
+  cpSync(options.binaryPath, executablePath);
+  chmodSync(executablePath, 0o755);
+  writeFileSync(
+    join(contents, "Info.plist"),
+    `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>CFBundleDevelopmentRegion</key>
+  <string>en</string>
+  <key>CFBundleDisplayName</key>
+  <string>${options.name}</string>
+  <key>CFBundleExecutable</key>
+  <string>${options.executableName}</string>
+  <key>CFBundleIdentifier</key>
+  <string>${options.identifier}</string>
+  <key>CFBundleInfoDictionaryVersion</key>
+  <string>6.0</string>
+  <key>CFBundleName</key>
+  <string>${options.name}</string>
+  <key>CFBundlePackageType</key>
+  <string>APPL</string>
+  <key>CFBundleShortVersionString</key>
+  <string>${options.version}</string>
+  <key>CFBundleVersion</key>
+  <string>${options.version}</string>
+  <key>LSApplicationCategoryType</key>
+  <string>public.app-category.developer-tools</string>
+  <key>LSMinimumSystemVersion</key>
+  <string>14.0</string>
+  <key>NSHighResolutionCapable</key>
+  <true/>
+</dict>
+</plist>
+`,
+  );
+  writeFileSync(join(contents, "PkgInfo"), "APPL????");
+}
+
 function bytesInBundle(path: string, inodes = new Set<string>()): number {
   const stat = lstatSync(path);
   if (stat.isDirectory())
@@ -107,6 +160,7 @@ async function build(selectedIds: readonly AppId[]): Promise<App[]> {
     const id = `quickgui-${language}` as AppId;
     if (selected.has(id)) writeFileSync(join(fixtures, `${id}/issues.generated.json`), dataset);
   }
+  if (selected.has("gpui")) writeFileSync(join(fixtures, "gpui/issues.generated.json"), dataset);
   const webOutput = join(output, "web");
   if (selected.has("tauri") || selected.has("electron")) {
     writeFileSync(join(fixtures, "web/issues.generated.json"), dataset);
@@ -141,6 +195,29 @@ async function build(selectedIds: readonly AppId[]): Promise<App[]> {
       version: quickguiVersion,
       appPath: result.artifactPath,
       executablePath: result.executablePath,
+    });
+  }
+  if (selected.has("gpui")) {
+    console.log("[benchmark] Building GPUI (release)");
+    await command(["cargo", "build", "--release", "--manifest-path", join(fixtures, "gpui/Cargo.toml")]);
+    const gpuiBinary = join(output, "cargo/release/benchmark-gpui");
+    const gpuiApp = join(output, "gpui/Benchmark-GPUI.app");
+    packageMacApp({
+      appPath: gpuiApp,
+      binaryPath: gpuiBinary,
+      name: "Benchmark GPUI",
+      executableName: "Benchmark-GPUI",
+      identifier: "dev.quickgui.benchmark.gpui",
+      version: "0.2.2",
+    });
+    await command(["codesign", "--force", "--deep", "--sign", "-", gpuiApp]);
+    await command(["codesign", "--verify", "--deep", "--strict", gpuiApp]);
+    apps.push({
+      id: "gpui",
+      name: "GPUI",
+      version: "0.2.2",
+      appPath: gpuiApp,
+      executablePath: join(gpuiApp, "Contents/MacOS/Benchmark-GPUI"),
     });
   }
   if (selected.has("tauri")) {
@@ -259,9 +336,16 @@ async function readyWindow(pid: number) {
     const windows = JSON.parse(
       await command(["/usr/bin/osascript", "-l", "JavaScript", "-e", inspect, String(pid)]),
     );
-    const window = windows.find(
-      (item: { kCGWindowName?: string }) => item.kCGWindowName === workload.readyTitle,
-    );
+    const window =
+      windows.find(
+        (item: { kCGWindowName?: string }) => item.kCGWindowName === workload.readyTitle,
+      ) ??
+      windows.find(
+        (item: { kCGWindowBounds?: { Width?: number; Height?: number } }) =>
+          item.kCGWindowBounds?.Width === workload.width &&
+          (item.kCGWindowBounds?.Height ?? 0) >= workload.height,
+      ) ??
+      (windows.length === 1 ? windows[0] : undefined);
     if (window) return { id: window.kCGWindowNumber as number, bounds: window.kCGWindowBounds };
     await Bun.sleep(100);
   }
@@ -414,14 +498,21 @@ async function measure(apps: App[]) {
           const window = await readyWindow(mainPid);
           const screenshots = join(output, "screenshots");
           mkdirSync(screenshots, { recursive: true });
-          await command([
-            "/usr/sbin/screencapture",
-            "-x",
-            "-o",
-            "-l",
-            String(window.id),
-            join(screenshots, `${app.id}-${run + 1}.png`),
-          ]);
+          try {
+            await command([
+              "/usr/sbin/screencapture",
+              "-x",
+              "-o",
+              "-l",
+              String(window.id),
+              join(screenshots, `${app.id}-${run + 1}.png`),
+            ]);
+          } catch (cause) {
+            console.warn(
+              `[benchmark] ${app.name}: could not capture a window screenshot; continuing with memory samples`,
+            );
+            console.warn(cause);
+          }
           appRuns.push({
             run: run + 1,
             windowBounds: window.bounds,
@@ -496,7 +587,7 @@ async function measure(apps: App[]) {
       workload:
         "A 1100 × 720 issue tracker with 1,000 identical records, three sidebar filters, search, 100 retained rows per page, pagination, issue details, editable notes, and completion actions. Idle on the first page with the first issue selected. Edits stay in memory for the session; no network or database service.",
       build:
-        "Production builds; no optional plugins. QuickGUI Go uses the CLI release build, QuickGUI TypeScript embeds Bun and a Solid 2 worker with the same native library, and QuickGUI Rust links the crate into its executable. Tauri uses the default Cargo release profile; Electron is packaged with ASAR.",
+        "Production builds; no optional plugins. QuickGUI Go uses the CLI release build, QuickGUI TypeScript embeds Bun and a Solid 2 worker with the same native library, and QuickGUI Rust links the crate into its executable. GPUI and Tauri use the default Cargo release profile; Electron is packaged with ASAR.",
       memory:
         "Sum of proc_pid_rusage physical footprints for the main app, bundled helper executables, and coalition-associated WebKit WebContent/GPU/Networking processes. AutoFill/SafariPlatformSupport and other macOS services are recorded but excluded. Includes compressed memory; this is not JavaScript heap size or RSS. Charts use decimal MB (1,000,000 bytes), as in Activity Monitor.",
       bundle:
@@ -552,7 +643,8 @@ async function measure(apps: App[]) {
     mkdirSync(publicDir, { recursive: true });
     mkdirSync(dataDir, { recursive: true });
     for (const app of apps) {
-      cpSync(join(output, "screenshots", `${app.id}-1.png`), join(publicDir, `${app.id}.png`));
+      const screenshot = join(output, "screenshots", `${app.id}-1.png`);
+      if (existsSync(screenshot)) cpSync(screenshot, join(publicDir, `${app.id}.png`));
     }
     writeFileSync(publishedPath, json);
     writeFileSync(

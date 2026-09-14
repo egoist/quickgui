@@ -5,27 +5,115 @@ on:
     tags:
       - "v*"
   workflow_dispatch:
+    inputs:
+      publish_only:
+        description: Publish existing npm tarballs without rebuilding natives
+        type: boolean
+        default: false
+      reuse_run_id:
+        description: Actions run id that uploaded quickgui-*-npm-* artifacts
+        type: string
 
 concurrency:
   group: release-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
-  quality:
-    name: Quality gates
-    uses: ./.github/workflows/ci.yml
-    with:
-      ref: ${{ github.sha }}
-    permissions:
-      contents: read
+  native:
+    name: Native ${{ matrix.name }}
+    if: github.repository == 'egoist/quickgui' && github.event.inputs.publish_only != 'true'
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macOS
+            id: macos
+            os: macos-latest
+            targets: darwin-arm64 darwin-x64
+            rust-targets: aarch64-apple-darwin x86_64-apple-darwin
+          - name: Linux x64
+            id: linux-x64
+            os: ubuntu-latest
+            targets: linux-x64
+            rust-targets: x86_64-unknown-linux-gnu
+          - name: Linux arm64
+            id: linux-arm64
+            os: ubuntu-24.04-arm
+            targets: linux-arm64
+            rust-targets: aarch64-unknown-linux-gnu
+          - name: Windows x64
+            id: windows-x64
+            os: windows-latest
+            targets: windows-x64
+            rust-targets: x86_64-pc-windows-msvc
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.sha }}
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: 1.4.0
+      - name: Synchronize package versions
+        run: bun scripts/sync-release-version.ts
+      - uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29 # v2
+        with:
+          version: 0.15.2
+      - name: Install Rust
+        run: |
+          rustup toolchain install stable --profile minimal --component rustfmt
+          rustup default stable
+          rustup target add ${{ matrix.rust-targets }}
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.23.x'
+          cache-dependency-path: '**/go.sum'
+      - name: Cache Cargo
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: cargo-${{ runner.os }}-${{ runner.arch }}-release-native-${{ hashFiles('Cargo.lock') }}
+          restore-keys: cargo-${{ runner.os }}-${{ runner.arch }}-release-native-
+      - name: Install JavaScript dependencies
+        run: bun install --frozen-lockfile
+      - name: Build native packages
+        run: bun scripts/build-release-natives.ts ${{ matrix.targets }}
+      - name: Verify optional native extension bundles
+        if: runner.os == 'macOS'
+        run: bun scripts/check-extensions.ts
+      - name: Install Zig for extension templates
+        if: runner.os == 'macOS'
+        uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29 # v2
+        with:
+          version: 0.16.0
+      - name: Verify extension project templates from the packed CLI
+        if: runner.os == 'macOS'
+        run: bun scripts/check-extension-templates.ts
+      - name: Stage native libraries
+        run: bun scripts/stage-native-lib-artifacts.ts target/native-libs
+      - name: Upload native libraries
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: native-libs-${{ matrix.id }}
+          path: target/native-libs
+          if-no-files-found: error
+          retention-days: 14
 
   publish:
     name: Publish release
-    if: github.repository == 'egoist/quickgui'
-    needs: quality
+    if: ${{ always() && !cancelled() && github.repository == 'egoist/quickgui' && (needs.native.result == 'success' || needs.native.result == 'skipped') }}
+    needs: [native]
     runs-on: macos-latest
-    timeout-minutes: 75
+    timeout-minutes: 45
     permissions:
+      actions: read
       contents: write
       id-token: write
     steps:
@@ -51,15 +139,17 @@ jobs:
           printf 'sha=%s\n' "$release_sha" >> "$GITHUB_OUTPUT"
           printf 'tag=%s\n' "$release_tag" >> "$GITHUB_OUTPUT"
           printf 'QUICKGUI_RELEASE_TAG=%s\n' "$release_tag" >> "$GITHUB_ENV"
-      - uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29 # v2
-        with:
-          version: 0.15.2
+          if [[ '${{ github.event.inputs.publish_only }}' == 'true' ]]; then
+            run_id='${{ github.event.inputs.reuse_run_id }}'
+            test -n "$run_id"
+            printf 'QUICKGUI_PUBLISH_ONLY=1\n' >> "$GITHUB_ENV"
+            printf 'QUICKGUI_REUSE_RUN_ID=%s\n' "$run_id" >> "$GITHUB_ENV"
+          fi
       - name: Install Rust
         run: |
-          rustup toolchain install stable --profile minimal --component rustfmt
+          rustup toolchain install stable --profile minimal
           rustup toolchain install 1.90.0 --profile minimal
           rustup default stable
-          rustup target add aarch64-apple-darwin x86_64-apple-darwin
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: 24
@@ -73,6 +163,7 @@ jobs:
         id: release
         run: bun scripts/release-metadata.ts "$GITHUB_OUTPUT"
       - name: Verify release tag target
+        if: env.QUICKGUI_PUBLISH_ONLY != '1'
         shell: bash
         run: |
           if git ls-remote --exit-code --tags origin "refs/tags/$QUICKGUI_RELEASE_TAG" >/dev/null 2>&1; then
@@ -85,37 +176,56 @@ jobs:
           fi
       - name: Install JavaScript dependencies
         run: bun install --frozen-lockfile
-      - name: Build macOS native packages
-        run: |
-          bun run build:native --target aarch64-apple-darwin
-          bun run build:native --target x86_64-apple-darwin
-          bun run build:native --extension terminal --target aarch64-apple-darwin
-          bun run build:native --extension terminal --target x86_64-apple-darwin
-          bun run build:native --extension updater --target aarch64-apple-darwin
-          bun run build:native --extension updater --target x86_64-apple-darwin
-      - name: Test JavaScript packages
-        run: |
-          bun run test:js
-          bun run test:typescript
-          bun scripts/generate-typescript.ts --check
-          bun run typecheck:js
-      - name: Verify optional native extension bundles
-        run: bun scripts/check-extensions.ts
-      - name: Install Zig for extension templates
-        uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29 # v2
+      - name: Download native libraries from a previous run
+        if: env.QUICKGUI_PUBLISH_ONLY == '1'
+        uses: actions/download-artifact@v5
         with:
-          version: 0.16.0
-      - name: Verify extension project templates from the packed CLI
-        run: bun scripts/check-extension-templates.ts
-      - name: Restore Zig for existing native release tooling
-        uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29 # v2
+          run-id: ${{ env.QUICKGUI_REUSE_RUN_ID }}
+          github-token: ${{ github.token }}
+          pattern: native-libs-*
+          path: .
+          merge-multiple: true
+      - name: Download native libraries
+        if: env.QUICKGUI_PUBLISH_ONLY != '1'
+        uses: actions/download-artifact@v5
         with:
-          version: 0.15.2
+          pattern: native-libs-*
+          path: .
+          merge-multiple: true
+      - name: Restore downloaded native libraries
+        run: bun scripts/restore-native-lib-artifacts.ts
+      - name: Verify downloaded native libraries
+        shell: bash
+        run: |
+          missing=0
+          for path in \
+            packages/native/lib/darwin-arm64/libquickgui_host.dylib \
+            packages/native/lib/darwin-x64/libquickgui_host.dylib \
+            packages/native/lib/linux-arm64/libquickgui_host.so \
+            packages/native/lib/linux-x64/libquickgui_host.so \
+            packages/native/lib/windows-x64/quickgui_host.dll \
+            packages/extension-terminal/lib/darwin-arm64/libquickgui_terminal.dylib \
+            packages/extension-terminal/lib/windows-x64/quickgui_terminal.dll \
+            packages/extension-updater/lib/windows-x64/quickgui_updater.dll
+          do
+            if [[ ! -f $path ]]; then
+              echo "missing $path" >&2
+              missing=1
+            fi
+          done
+          if (( missing )); then
+            echo "downloaded native tree:" >&2
+            find native extension-terminal extension-updater packages -type f \( \
+              -name 'libquickgui_*' -o -name 'quickgui_*.dll' -o -name 'quickgui-updater-helper*' \
+            \) 2>/dev/null | sort >&2 || true
+            exit 1
+          fi
       - name: Build and verify npm tarballs
         run: bun scripts/package-npm-release.ts target/npm-release
       - name: Verify registry publication plan
         run: |
           scripts/release-crates.sh --check
+          test -n "$(ls target/npm-release/quickgui-*.tgz 2>/dev/null)"
           bun scripts/release-npm.ts --check target/npm-release
       - name: Upload npm release candidates
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
@@ -139,7 +249,12 @@ jobs:
           go_tag="go/v$RELEASE_VERSION"
           if git ls-remote --exit-code --tags origin "refs/tags/$go_tag" >/dev/null 2>&1; then
             git fetch origin "refs/tags/$go_tag:refs/tags/$go_tag"
-            test "$(git rev-list -n 1 "$go_tag")" = "$RELEASE_SHA"
+            existing=$(git rev-list -n 1 "$go_tag")
+            if [[ $existing == "$RELEASE_SHA" ]]; then
+              echo "Go module tag $go_tag already points at $RELEASE_SHA"
+            else
+              echo "Go module tag $go_tag already published at $existing; leaving it in place"
+            fi
           else
             git tag "$go_tag" "$RELEASE_SHA"
             git push origin "refs/tags/$go_tag"

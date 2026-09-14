@@ -1,0 +1,77 @@
+パッケージ後のアプリアイコンは、Finder、Dock、Windows のタスクバーとスタートメニュー、Linux のデスクトップランチャーが表示する画像です。PNG を `resources/icon.png` に置きます。実行中にウィンドウアイコンや macOS の Dock アイコンを変えることもできます。
+
+## 元になるアイコン
+
+`resources/icon.png` に、少なくとも 256×256 ピクセルの正方形 PNG を置きます。1024×1024 がよい元画像です。`quickgui build` は、macOS・Windows・Linux が必要とする各サイズへリサイズします。
+
+```text
+my-app/
+├── resources/
+│   └── icon.png
+├── app.tsx
+└── quickgui.config.ts
+```
+
+CLI は macOS 用に `.icns`、Windows インストーラー用に `.ico`、Linux 用に Freedesktop の `hicolor` サイズを書き出します。開発リロードは生成コンテナをスキップします。本番ビルドと設定済みの `macos.icon` はアイコンをインストールします。
+
+任意の `resources/icon.iconset/icon_<n>x<n>.png` は、生成サイズを手描きのファイルで置き換えます。このフォルダはビルド入力であり、パッケージにはコピーされません。
+
+ソース PNG が `resources/icon.png` 以外にあるときだけ、CLI 設定の `icon` を使います。
+
+## プラットフォーム固有のアイコン
+
+既にプラットフォーム用コンテナがあるときに使います。
+
+```text
+resources/icon.png
+resources/icon.icns
+resources/icon.ico
+```
+
+`macos.icon` を省略すると macOS は `resources/icon.icns` を使います。`windows.icon` を省略すると NSIS インストーラーは `resources/icon.ico` を使います。`resources/icon.png` と `icon` の両方を省略したとき、`linux.icon` が正方形 PNG として使われます。
+
+```ts
+export default defineConfig({
+  language: "typescript",
+  name: "My App",
+  identifier: "com.example.my-app",
+  entry: "app.tsx",
+  macos: { icon: "packaging/AppIcon.icns" },
+  windows: { icon: "packaging/AppIcon.ico" },
+});
+```
+
+`macos.icon` は `.icns` でなければなりません。`windows.icon` は `.ico` です。これらの設定パスは `resources/` 内のファイルより優先されます。
+
+ドキュメントタイプのアイコンは、パッケージされたリソース内のベース名です。[バンドルするリソース](/docs/typescript/bundled-resources)を参照してください。
+
+## ウィンドウと Dock のアイコン
+
+パッケージされたアイコンはアプリケーションの識別です。ウィンドウは Windows と X11 で別の画像を表示できます。
+
+```tsx
+import { Window } from "@quickgui/native";
+import { createRenderer } from "@quickgui/solid";
+
+new Window({
+  title: "My App",
+  icon: iconPath,
+  renderer: createRenderer(App),
+});
+```
+
+`iconPath` は絶対ファイルシステムパスです。[バンドルするリソース](/docs/typescript/bundled-resources)のとおり `app.getPaths()` から結合します。ウィンドウ作成後は `window.setIcon(iconPath)` または `window.clearIcon()` を呼びます。
+
+macOS ではウィンドウ固有のアイコンはありません。`app.dock.setIcon(iconPath)` でこのプロセスの Dock 画像を置き換えます。
+
+メニューバーと通知領域のアイコンは別の画像です。[トレイアイコン](/docs/typescript/tray-icon)を参照してください。
+
+## 生成されるサイズ
+
+| Target | Sizes |
+| --- | --- |
+| macOS `.icns` | 32, 64, 128, 256, 512, 1024 |
+| Windows `.ico` | 16, 24, 32, 48, 64, 128, 256 |
+| Linux `hicolor` | 16, 32, 48, 64, 128, 256, 512 |
+
+表の各サイズはソース PNG から生成されます。ソースは正方形で、少なくとも 256×256、最大 16 MiB です。

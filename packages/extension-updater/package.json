@@ -1,6 +1,6 @@
 {
   "name": "@quickgui/extension-updater",
-  "version": "0.1.4-next.1",
+  "version": "0.1.4-next.4",
   "description": "Optional Sparkle-compatible automatic updater for QuickGUI",
   "license": "MIT OR Apache-2.0",
   "repository": {
@@ -19,7 +19,9 @@
     "quickgui.extension.json"
   ],
   "os": [
-    "darwin"
+    "darwin",
+    "linux",
+    "win32"
   ],
   "type": "module",
   "exports": {

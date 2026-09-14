@@ -1,6 +1,6 @@
 {
   "name": "@quickgui/native",
-  "version": "0.1.4-next.1",
+  "version": "0.1.4-next.4",
   "description": "QuickGUI native libraries and Bun application bindings",
   "repository": {
     "type": "git",
@@ -27,7 +27,9 @@
     "build": "bun ./build.ts"
   },
   "os": [
-    "darwin"
+    "darwin",
+    "linux",
+    "win32"
   ],
   "publishConfig": {
     "access": "public"

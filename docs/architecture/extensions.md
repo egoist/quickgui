@@ -75,8 +75,8 @@ bun packages/native/build.ts --extension updater
 bun scripts/check-extensions.ts
 ```
 
-The native build commands rebuild framework artifacts after native changes. Go application edits only run Go compilation and reuse them. Cross-architecture release builds pass `--target aarch64-apple-darwin` or `--target x86_64-apple-darwin` for each artifact.
+The native build commands rebuild framework artifacts after native changes. Go application edits only run Go compilation and reuse them. Release builds pass `--target` for each published image: `darwin-arm64`, `darwin-x64`, `linux-arm64`, `linux-x64`, and `windows-x64`.
 
-Version synchronization covers the backend crate, npm package, and Go manifest. The release workflow builds and validates the two core images, two terminal images, and two updater images with Sparkle resources, packages four independent npm archives, then publishes them in dependency order. `@quickgui/cli` depends on `@quickgui/native`; `@quickgui/extension-terminal` and `@quickgui/extension-updater` remain optional.
+Version synchronization covers the backend crate, npm package, and Go manifest. The release workflow builds those host, terminal, and updater images on macOS, Linux, and Windows in parallel, packages the five npm archives, then publishes them in dependency order. `@quickgui/cli` depends on `@quickgui/native`; `@quickgui/extension-terminal` and `@quickgui/extension-updater` remain optional.
 
 Third-party service authors ship a Go manifest/requirement, a library implementing the public service ABI, and an optional npm artifact package under their own release workflow. They do not extend the core registry or built-in release list. `scripts/check-extensions.ts` builds the standalone C extension, checks real request/reply behavior through purego, and packages an isolated consumer with a separately copied Go module and npm package. It then removes those build inputs before running the bundled executable.

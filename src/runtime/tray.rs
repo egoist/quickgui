@@ -73,14 +73,18 @@ impl TrayIconImage {
     }
 
     /// Read and decode an image file before queuing main-thread tray work.
+    ///
+    /// Paths whose stem ends in `Template` (optionally `@2x`) are marked for macOS template
+    /// rendering. Call [`Self::template`] to override that convention.
     pub fn from_path(path: impl AsRef<Path>) -> Result<Self, PlatformError> {
-        let bytes = std::fs::read(path.as_ref()).map_err(|error| {
+        let path = path.as_ref();
+        let bytes = std::fs::read(path).map_err(|error| {
             tray_error(format!(
                 "could not read tray icon {}: {error}",
-                path.as_ref().display()
+                path.display()
             ))
         })?;
-        Self::from_encoded(&bytes)
+        Ok(Self::from_encoded(&bytes)?.template(crate::is_template_image_path(path)))
     }
 
     /// Mark the artwork as a macOS template image.
@@ -209,6 +213,12 @@ impl TrayIconOptions {
         self.menu = menu.into_iter().collect();
         self
     }
+
+    /// Treat the artwork as a macOS template image.
+    pub fn icon_is_template(mut self, template: bool) -> Self {
+        self.icon_is_template = template;
+        self
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
@@ -329,7 +339,7 @@ impl AppRunner {
         &mut self,
         options: TrayIconOptions,
     ) -> Result<PlatformResponse<()>, PlatformError> {
-        validate_options(&options)?;
+        validate_tray_options(&options)?;
         self.queue_tray_command(|responder| TrayCommand::Set { options, responder })
     }
 
@@ -374,6 +384,31 @@ impl AppRunner {
 }
 
 impl Runtime {
+    pub(super) fn apply_tray_platform_request(
+        &mut self,
+        request: crate::platform::PlatformRequest,
+    ) -> Option<crate::platform::PlatformRequest> {
+        match request {
+            crate::platform::PlatformRequest::SetTrayIcon(options) => {
+                if let Err(error) = self.set_tray_icon_now(options) {
+                    tracing::warn!(%error, "could not set the tray icon");
+                }
+                None
+            }
+            crate::platform::PlatformRequest::RemoveTrayIcon(id) => {
+                self.tray_icons.remove(&id);
+                None
+            }
+            crate::platform::PlatformRequest::ShowTrayMenu(id) => {
+                if let Err(error) = self.show_tray_menu_now(id) {
+                    tracing::warn!(%error, "could not show the tray menu");
+                }
+                None
+            }
+            other => Some(other),
+        }
+    }
+
     pub(super) fn process_tray_commands(&mut self) {
         while let Some(command) = self.pending_tray_commands.pop_front() {
             match command {
@@ -392,7 +427,10 @@ impl Runtime {
         }
     }
 
-    fn set_tray_icon_now(&mut self, options: TrayIconOptions) -> Result<(), PlatformError> {
+    pub(super) fn set_tray_icon_now(
+        &mut self,
+        options: TrayIconOptions,
+    ) -> Result<(), PlatformError> {
         if !self.tray_icons.contains_key(&options.id) && self.tray_icons.len() >= MAX_TRAY_ICONS {
             return Err(tray_error("the application already owns 32 tray icons"));
         }
@@ -402,7 +440,7 @@ impl Runtime {
         Ok(())
     }
 
-    fn show_tray_menu_now(&self, id: u32) -> Result<(), PlatformError> {
+    pub(super) fn show_tray_menu_now(&self, id: u32) -> Result<(), PlatformError> {
         let tray = self
             .tray_icons
             .get(&id)
@@ -424,7 +462,7 @@ impl Runtime {
     }
 }
 
-fn validate_options(options: &TrayIconOptions) -> Result<(), PlatformError> {
+pub(crate) fn validate_tray_options(options: &TrayIconOptions) -> Result<(), PlatformError> {
     if options.id == 0 {
         return Err(tray_error("a tray icon id must be nonzero"));
     }
@@ -974,17 +1012,40 @@ mod tests {
     }
 
     #[test]
+    fn from_path_marks_template_filenames() {
+        let png = crate::Image::from_rgba(1, 1, vec![0, 0, 0, 255])
+            .unwrap()
+            .to_png()
+            .unwrap();
+        let template_path = std::env::temp_dir().join(format!(
+            "quickgui-{}-statusTemplate.png",
+            std::process::id()
+        ));
+        let plain_path =
+            std::env::temp_dir().join(format!("quickgui-{}-status.png", std::process::id()));
+        std::fs::write(&template_path, &png).unwrap();
+        std::fs::write(&plain_path, &png).unwrap();
+        let template = TrayIconImage::from_path(&template_path).unwrap();
+        let plain = TrayIconImage::from_path(&plain_path).unwrap();
+        let _ = std::fs::remove_file(template_path);
+        let _ = std::fs::remove_file(plain_path);
+        assert!(template.is_template());
+        assert!(!plain.is_template());
+        assert!(!template.template(false).is_template());
+    }
+
+    #[test]
     fn validates_bounded_unique_menu_ids() {
         let valid = TrayIconOptions::new(1, icon()).menu([
             TrayMenuItem::action(1, "Open"),
             TrayMenuItem::submenu("More", [TrayMenuItem::action(2, "Quit")]),
         ]);
-        assert!(validate_options(&valid).is_ok());
+        assert!(validate_tray_options(&valid).is_ok());
 
         let duplicate = TrayIconOptions::new(1, icon()).menu([
             TrayMenuItem::action(1, "Open"),
             TrayMenuItem::action(1, "Quit"),
         ]);
-        assert!(validate_options(&duplicate).is_err());
+        assert!(validate_tray_options(&duplicate).is_err());
     }
 }

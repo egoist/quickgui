@@ -14,9 +14,10 @@ Edits are kept in memory for the session. The initial view contains the first
 background synchronization. No fixture includes optional extensions or plugins.
 Electron and Tauri use the exact same bundled TypeScript, HTML, and CSS. QuickGUI
 uses Go, Bun/Solid 2 TypeScript, and Rust components over the same native core.
+GPUI is Zed's GPU UI framework, built as a standalone Rust app.
 
 [`workload.ts`](workload.ts) generates one deterministic dataset embedded in all
-five builds; generated copies are ignored by Git. The result records the dataset
+six builds; generated copies are ignored by Git. The result records the dataset
 SHA-256, record count, page size, and content dimensions.
 
 ## Reproduce
@@ -29,7 +30,7 @@ bun install --cwd benchmarks/desktop --frozen-lockfile
 bun scripts/benchmark-desktop.ts --publish
 ```
 
-This builds all five production apps and then launches them sequentially through
+This builds all six production apps and then launches them sequentially through
 LaunchServices. Keep the machine awake and avoid interacting with the benchmark
 windows during sampling. It only closes the benchmark processes it started.
 Existing user applications are left running. Build output, app bundles, and the
@@ -61,8 +62,8 @@ bun scripts/benchmark-desktop.ts --build-only
 # Rerun the already-built apps and regenerate the homepage's data files.
 bun scripts/benchmark-desktop.ts --measure-only --publish
 
-# Build and measure only QuickGUI Rust, merging it with the published rows.
-bun scripts/benchmark-desktop.ts --only quickgui-rust --publish
+# Build and measure only GPUI, merging it with the published rows.
+bun scripts/benchmark-desktop.ts --only gpui --publish
 
 # Open the packaged Electron app for manual use.
 open "target/desktop-benchmarks/electron/Benchmark Electron-darwin-arm64/Benchmark Electron.app"
@@ -155,12 +156,13 @@ allocation, extended attributes, and compression are excluded.
 
 Tauri uses the OS's WebKit, so WebKit is not part of its distributed bundle.
 Electron ships Chromium and Node. QuickGUI Go bundles its shared native runtime,
-QuickGUI TypeScript also embeds Bun, and QuickGUI Rust links the core into its executable.
+QuickGUI TypeScript also embeds Bun, QuickGUI Rust links the core into its executable,
+and GPUI links Zed's GPU UI framework into its executable.
 This measures what each fixture ships, rather than adding system libraries to
 one framework or removing included libraries from another. It is installed
 bundle size, not DMG, ZIP, or installer download size.
 
-The CLI uses its normal Go and Rust release builds. Tauri uses the default Cargo
+The CLI uses its normal Go and Rust release builds. GPUI and Tauri use the default Cargo
 release profile. Electron is packaged with ASAR using `@electron/packager`.
 Dependency versions are pinned in the fixture manifests and lockfiles.
 

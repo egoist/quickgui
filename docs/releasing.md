@@ -15,7 +15,7 @@ beta is not part of the 0.1 release boundary.
 
 The main crate's minimum supported Rust version is 1.90, matching `libghostty-vt` 0.2.1 as selected
 by the optional terminal feature. CI compiles every target and feature with that exact toolchain on
-Linux in addition to the stable macOS quality job.
+Linux in addition to the stable macOS test, backend, and package jobs.
 
 ## Automated release gate
 
@@ -49,15 +49,21 @@ invocation uploads one immutable `quickgui-<version>-crates-<commit>` artifact c
 verified `.crate` archives, `SHA256SUMS`, this release guide, and the changelog. Pull requests verify
 the same packages but do not retain release artifacts. The CI workflow never publishes.
 
-A pushed `v*` tag starts the separate `Release` workflow, which invokes the reusable CI workflow
-and waits for its macOS, Windows, and Linux gates before publishing. The publish job rejects a tag
-that is not exactly `v<root-package-version>` or lacks a dated changelog section. The root
-`package.json` version is the source of truth; the release gate requires all six published crates,
-the native host, terminal, and updater backend crates, and all five npm packages to match it. The job builds both macOS
-native architectures for the core, terminal extension, and updater extension including pinned Sparkle resources, runs the CLI tests and TypeScript 7 checks, verifies the npm
-tarballs, and publishes in dependency order. The reusable CI also checks the Go SDK
-and every Go example with CGO disabled. Fresh Rust and Go consumers verify public
-installs before the workflow creates the GitHub Release.
+A pushed `v*` tag starts the separate `Release` workflow. It does not rerun the CI quality
+gates. Ordinary manual dispatch rebuilds natives the same way. `publish_only` plus a prior
+run id reuses that run's native artifacts instead of compiling them again. Native host,
+terminal, and updater images build in parallel on macOS (arm64 and x64, including Sparkle),
+Linux x64, Linux arm64, and Windows x64. Each native job copies those images under
+`target/native-libs/packages` with framework symlinks left intact, so
+`actions/upload-artifact` cannot strip the `packages/` prefix and Sparkle's `Current` /
+`Resources` links do not copy into themselves. The publish job merges the four artifacts,
+restores `packages/*/lib` if a flattened layout is present, rejects a tag that is not exactly
+`v<root-package-version>` or lacks a dated changelog section, packs the five npm archives from
+the downloaded libraries, and publishes crates.io,
+the Go module tag, and npm in dependency order. The root `package.json` version is the source
+of truth; every published crate, backend, and npm package must match it. Fresh Rust and Go
+consumers verify public installs (`quickgui init --language go`) before the workflow creates
+the GitHub Release.
 
 ## macOS acceptance evidence
 
@@ -94,7 +100,18 @@ npm requires Node 22.14 or newer and npm 11.5.1 or newer for OIDC; the workflow 
 verifies the npm CLI before publication. No `NPM_TOKEN` secret is required.
 
 Creating the workflow does not create the npm registry-side trust records. A missing or misspelled
-record makes npm authentication fail before publication.
+record makes npm authentication fail with a 404 on `PUT` even when the package already exists.
+Each of the five packages needs that Trusted Publisher record before OIDC can publish it. From
+an npm login with 2FA:
+
+```console
+for name in native extension-terminal extension-updater solid cli; do
+  npm trust github "@quickgui/$name" --file release.yml --repo egoist/quickgui
+done
+```
+
+Or add the same record in each package's Trusted publishing settings on npmjs.com. This
+repository already has those records.
 
 ## Version-driven publication
 
@@ -130,15 +147,21 @@ The workflow publishes crates.io packages in this dependency order:
 6. `quickgui`
 
 The Go SDK is published from the same source commit with a `go/v<version>` tag, as required for
-the nested `github.com/egoist/quickgui/go` module. The workflow refuses to move an existing SDK tag.
+the nested `github.com/egoist/quickgui/go` module. The workflow refuses to move an existing SDK tag
+and continues when that tag already exists, so a later npm-only recovery can keep the published
+Go module bytes unchanged.
 The repository must be readable by Go consumers; a tag alone does not grant access to a private repository.
 
 It then publishes npm packages in the order `@quickgui/native`, `@quickgui/extension-terminal`, `@quickgui/extension-updater`, `@quickgui/solid`, and `@quickgui/cli`.
+npm 11 refuses a prerelease without `--tag`, so every version is published with `--tag latest`.
+A rerun skips a version that is already on the registry instead of republishing or moving
+dist-tags; OIDC cannot run `npm dist-tag`.
 The terminal and updater packages are optional; the CLI resolves its exact version only when a Go import requires it.
-The CLI waits until the native package is anonymously resolvable from
-its public registry. A rerun skips an existing, non-yanked crate version and skips an existing npm
-version only when its registry integrity matches the locally verified tarball. This permits safe
-recovery from a partial registry release without attempting to overwrite immutable versions.
+Packages are published back-to-back; npm does not need a prior package to
+finish indexing before the next `npm publish`. A rerun skips an existing, non-yanked crate version and skips an npm version that is already
+on the registry. Native images are not bit-identical across rebuilds, so a later recovery of the
+same version leaves the published tarball in place instead of failing on a checksum mismatch. This
+permits safe recovery from a partial registry release without attempting to overwrite immutable versions.
 
 The npm tarballs and their SHA-256 checksums are retained as a workflow artifact and attached to the
 GitHub Release. npm trusted publishing works for the private repository, but does not generate
@@ -158,8 +181,9 @@ cargo publish --locked
 ```
 
 Pack npm packages with `bun pm pack`, which resolves `workspace:*` dependencies to their exact
-workspace versions, and publish the resulting tarballs with npm 11.5.1 or newer. Do not publish the
-workspace directories with npm directly. Wait for each package to propagate before its dependent.
+workspace versions, and publish the resulting tarballs with npm 11.5.1 or newer. Pass
+`--tag latest` (required for prereleases on npm 11). Do not publish the
+workspace directories with npm directly.
 Never rerun a successful manual publish; first inspect the public registry and continue after the
 last completed package.
 

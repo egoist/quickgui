@@ -330,6 +330,13 @@ impl TestAppContext {
                 PlatformRequest::SetSecureKeyboardEntry(enabled) => {
                     self.application_shell.secure_keyboard_entry = enabled;
                 }
+                PlatformRequest::SetTrayIcon(options) => {
+                    self.tray_icons.insert(options.id, options);
+                }
+                PlatformRequest::RemoveTrayIcon(id) => {
+                    self.tray_icons.remove(&id);
+                }
+                PlatformRequest::ShowTrayMenu(_) => {}
                 PlatformRequest::Beep => self.application_shell.beeps += 1,
                 PlatformRequest::MoveToApplicationsFolder { responder } => {
                     self.application_shell.applications_folder_moves += 1;

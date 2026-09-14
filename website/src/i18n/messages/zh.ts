@@ -104,7 +104,7 @@ export const zh: typeof en = {
   },
   benchmarks: {
     title: "基准测试",
-    lead: "在同一台 Mac 上测量 QuickGUI Go、QuickGUI TypeScript、QuickGUI Rust、Tauri 和 Electron 的空闲内存与安装体积。每个应用都运行相同的任务管理器，包含 1,000 条任务。",
+    lead: "在同一台 Mac 上测量 QuickGUI Go、QuickGUI TypeScript、QuickGUI Rust、GPUI、Tauri 和 Electron 的空闲内存与安装体积。每个应用都运行相同的任务管理器，包含 1,000 条任务。",
     memory: "应用空闲内存",
     bundle: "安装体积",
     measured: "测量日期：{{date}}",
@@ -115,7 +115,7 @@ export const zh: typeof en = {
     memoryMethod:
       "内存为应用及渲染辅助进程的物理占用之和，包括 WebKit 或 Chromium 的渲染、GPU 和网络进程，不包含自动填充及其他 macOS 系统服务。采样期间 CPU 和内存必须保持稳定，截图在采样结束后进行。数据包含压缩内存，使用与活动监视器一致的十进制 MB（1,000,000 字节），不强制垃圾回收或清空缓存。",
     bundleMethod:
-      "体积统计 .app 内实际分发的文件，包括原生库和框架。QuickGUI TypeScript 包含 Bun 和 Solid 2，QuickGUI Rust 将原生核心链接进可执行文件，Electron 包含 Chromium 和 Node，不含系统提供的 WebKit 等框架。这是安装体积，而非压缩下载大小。",
+      "体积统计 .app 内实际分发的文件，包括原生库和框架。QuickGUI TypeScript 包含 Bun 和 Solid 2，QuickGUI Rust 将原生核心链接进可执行文件，GPUI 将 Zed 的 GPU UI 框架打进可执行文件，Electron 包含 Chromium 和 Node，不含系统提供的 WebKit 等框架。这是安装体积，而非压缩下载大小。",
     scope:
       "演示支持搜索、状态筛选、翻页、备注编辑和完成操作。数据仅在当前会话的内存中保存，不使用数据库或网络服务。图表衡量应用加载后的空闲占用，不代表交互吞吐量。结果会随应用、设备和操作系统变化。QuickGUI 使用开发版本构建，每项结果均记录了对应的代码版本。",
     preview: "基准测试应用",

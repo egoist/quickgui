@@ -3100,3 +3100,51 @@ fn uniform_gradient_admission_stops_at_the_table_cap() {
     );
     assert_eq!(gradients.len(), UNIFORM_TABLE_LEN);
 }
+
+#[cfg(target_os = "macos")]
+#[test]
+fn native_intrinsic_labels_round_once_in_logical_pixels() {
+    let fonts = Rc::new(RefCell::new(fixture_font_system()));
+    let content: Arc<str> = Arc::from("Parity fixture");
+    let style = TextStyle::new(12.1, Color::WHITE)
+        .family(FontFamily::named("Inter"))
+        .line_height(18.0);
+    let scale = 2.0;
+    let mut buffer = Buffer::new(
+        &mut fonts.borrow_mut(),
+        Metrics::new(style.font_size * scale, style.line_height * scale),
+    );
+    configure_text_buffer(
+        &mut buffer,
+        &mut fonts.borrow_mut(),
+        &content,
+        &style,
+        None,
+        None,
+        scale,
+    );
+    let physical_width = text_buffer_width(&buffer);
+    let logical_width = physical_width / scale;
+    assert_ne!(
+        logical_width,
+        logical_width.ceil(),
+        "fixture must require rounding"
+    );
+    assert_ne!(
+        logical_width.ceil(),
+        (physical_width.ceil() + 1.0) / scale,
+        "fixture must distinguish logical rounding from a physical guard pixel",
+    );
+    let mut renderer =
+        pollster::block_on(OffscreenRenderer::new(PerformanceProfile::Balanced, fonts)).unwrap();
+    let measured = renderer.measure_text(TextId::new(900), &content, &style, None, scale);
+    assert_eq!(measured.width, logical_width.ceil());
+    let constrained = renderer.measure_text(
+        TextId::new(900),
+        &content,
+        &style,
+        Some(measured.width),
+        scale,
+    );
+    assert_eq!(constrained.height, 18.0);
+}

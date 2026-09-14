@@ -104,7 +104,7 @@ export const ja: typeof en = {
   },
   benchmarks: {
     title: "ベンチマーク",
-    lead: "QuickGUI Go、QuickGUI TypeScript、QuickGUI Rust、Tauri、Electron のアイドル時メモリとインストールサイズを同じ Mac で測定しました。各アプリで同じ課題管理ツールを動かし、1,000 件の課題を読み込みます。",
+    lead: "QuickGUI Go、QuickGUI TypeScript、QuickGUI Rust、GPUI、Tauri、Electron のアイドル時メモリとインストールサイズを同じ Mac で測定しました。各アプリで同じ課題管理ツールを動かし、1,000 件の課題を読み込みます。",
     memory: "アプリのアイドル時メモリ",
     bundle: "インストールサイズ",
     measured: "測定日：{{date}}",
@@ -115,7 +115,7 @@ export const ja: typeof en = {
     memoryMethod:
       "メモリはアプリと描画補助プロセスの物理フットプリントの合計です。WebKit や Chromium の描画、GPU、ネットワークプロセスを含み、自動入力などの macOS サービスは除外します。測定中も CPU とメモリの安定を確認し、スクリーンショットは測定後に撮影します。圧縮メモリを含み、アクティビティモニタと同じ十進 MB（1,000,000 バイト）で表示します。強制 GC やキャッシュ削除は行いません。",
     bundleMethod:
-      "サイズは .app 内に配布するファイルを集計し、ネイティブライブラリやフレームワークを含みます。QuickGUI TypeScript は Bun と Solid 2 を同梱し、QuickGUI Rust はネイティブコアを実行ファイルにリンクし、Electron は Chromium と Node を同梱します。OS が提供する WebKit などは除外します。圧縮ダウンロードではなく、インストール後のサイズです。",
+      "サイズは .app 内に配布するファイルを集計し、ネイティブライブラリやフレームワークを含みます。QuickGUI TypeScript は Bun と Solid 2 を同梱し、QuickGUI Rust はネイティブコアを実行ファイルにリンクし、GPUI は Zed の GPU UI フレームワークを実行ファイルに含め、Electron は Chromium と Node を同梱します。OS が提供する WebKit などは除外します。圧縮ダウンロードではなく、インストール後のサイズです。",
     scope:
       "検索、状態フィルター、ページ切り替え、メモの編集、完了操作に対応しています。データはセッション中のメモリに保持し、データベースやネットワークサービスは使いません。グラフは読み込み後のアイドル時の使用量で、操作の処理性能を表すものではありません。結果はアプリ、マシン、OS によって変わります。QuickGUI は開発版からビルドしており、各結果に使用したリビジョンを記録しています。",
     preview: "ベンチマーク用アプリ",

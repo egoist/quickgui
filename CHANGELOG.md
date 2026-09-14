@@ -4,6 +4,66 @@ All notable user-facing changes to QuickGUI are recorded here.
 
 ## Unreleased
 
+### CLI
+
+- Production macOS disk images are created with the vendored
+  [create-dmg](https://github.com/create-dmg/create-dmg) script: a Finder window, icon
+  positions, an Applications drop link, and the app icon as the volume icon when present.
+  Signing, notarization, and stapling stay in the CLI.
+- A project `resources/` directory is packaged automatically. `resources/icon.png` is the
+  application icon; `resources/icon.icns` and `resources/icon.ico` override platform containers
+  when present. The `resources` config option only adds extra files or folders.
+- `quickgui build` resizes `resources/icon.png` to every `.icns`, `.ico`, and Linux `hicolor`
+  size on all hosts, using Bun's image pipeline. A pre-sized `icon.iconset/` is optional.
+- `resources` and staged `fonts` are now copied beside the executable on Linux and Windows
+  (AppDir, `.deb`, NSIS, and development builds), matching macOS `Contents/Resources`. Directory
+  payloads are copied recursively instead of being treated as a single file.
+- `linux.icon` is used as the Linux desktop PNG source when `resources/icon.png` and `icon` are
+  omitted. It must be a file, matching the top-level `icon` check.
+- Generated packaging names (`*.AppDir`, `*-setup.exe`, `quickgui.json`, and similar) are reserved
+  so a resource cannot overwrite them. Update manifests select AppImage and NSIS artifacts
+  from packaging outputs only. Debian `md5sums` omit directory members.
+
+### Framework
+
+- `Image::open`, `MenuIcon::open`, and `TrayIconImage::from_path` treat a stem ending in
+  `Template` (optionally `@2x`) as a macOS template image. Go and TypeScript `ImageSource`
+  values accept an explicit `template` flag; omitted path flags still infer that convention.
+- Rust `EventContext` can create, replace, remove, and (on macOS and Windows) pop a native
+  tray menu, so `Application::run` apps no longer need `AppRunner` for tray icons.
+
+### Website
+
+- Added App Icon, Tray Icon, and Bundled Resources guides for Go, TypeScript, and Rust.
+
+## 0.1.4-next.4 - 2026-09-13
+
+Same user-facing cut as 0.1.4-next.3. This version is the complete `latest` npm
+set; `0.1.4-next.3` could not move `@quickgui/native` onto `latest` after that
+package was already published.
+
+## 0.1.4-next.3 - 2026-09-13
+
+### CLI
+
+- Shipped project templates are now `.tmpl` files. After `bun install`, Go, bun, and Cargo
+  no longer treat `node_modules/@quickgui/cli/templates` as packages or modules.
+- Native resource bundles now size the gzip envelope separately from decoded content. A
+  framework at the 128 MiB content limit packs and unpacks, and an oversized envelope is
+  rejected before any output is written.
+- Published npm packages now ship Linux and Windows host libraries beside the macOS
+  images, so `quickgui` installs on those platforms instead of being rejected as
+  darwin-only. The Windows terminal image links Ghostty's static archive instead of
+  the DLL import library, so `quickgui_terminal.dll` can link on MSVC.
+
+### JavaScript
+
+- `useParams`, `useLocation`, and `useSearchParams` now return store-like objects, so
+  `params.id` and `location.pathname` work as they do in Solid Router instead of requiring
+  accessor calls.
+- Destroying the native application now rejects pending app-service requests. Those
+  promises previously stayed pending after cleanup.
+
 ## @quickgui/cli 0.1.4-next.2 - 2026-09-13
 
 ### CLI

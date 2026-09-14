@@ -4,6 +4,8 @@ Go 项目把应用代码放在 Go 模块里，开发命令放在一个小型 Bun
 
 ```text
 my-app/
+├── resources/
+│   └── icon.png
 ├── main.go
 ├── go.mod
 ├── go.sum
@@ -51,7 +53,7 @@ entry = "."
 
 CLI 会先读 `quickgui.toml`，再读 `quickgui.config.ts`。用 `--config configs/dev.toml` 指定文件。版本号请加引号，例如 `version = "..."`。
 
-用 `resources` 打包额外文件，用 `fonts` 注册自定义字体：
+应用图标来自 `resources/icon.png`。额外文件可以列在 `resources` 中。用 `fonts` 注册自定义字体。见[应用图标](/docs/go/app-icon)和[打包资源](/docs/go/bundled-resources)。
 
 ```ts
 export default defineConfig({
@@ -59,7 +61,6 @@ export default defineConfig({
   identifier: "com.example.my-app",
   entry: ".",
   fonts: ["assets/MyFont.ttf"],
-  resources: ["assets"],
 });
 ```
 

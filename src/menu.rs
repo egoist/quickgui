@@ -212,8 +212,27 @@ impl MenuIcon {
     }
 
     /// Decode a supported image file with QuickGUI's normal image bounds.
+    ///
+    /// Paths whose stem ends in `Template` (optionally `@2x`) are marked for macOS template
+    /// rendering. Call [`Self::template`] to override that convention.
     pub fn open(path: impl AsRef<Path>) -> Result<Self, ImageError> {
-        Image::open(path).map(Self)
+        let path = path.as_ref();
+        Image::open(path).map(|image| Self(image.template(crate::is_template_image_path(path))))
+    }
+
+    /// Mark the artwork as a macOS template image.
+    pub fn template(self, template: bool) -> Self {
+        Self(self.0.template(template))
+    }
+
+    /// Whether this artwork is marked for macOS template rendering.
+    pub fn is_template(&self) -> bool {
+        self.0.is_template()
+    }
+
+    #[cfg_attr(not(target_os = "macos"), allow(dead_code))]
+    pub(crate) fn image(&self) -> &Image {
+        &self.0
     }
 
     pub fn width(&self) -> u32 {
@@ -224,7 +243,7 @@ impl MenuIcon {
         self.0.height()
     }
 
-    #[cfg_attr(not(any(target_os = "macos", target_os = "windows")), allow(dead_code))]
+    #[cfg_attr(not(target_os = "windows"), allow(dead_code))]
     pub(crate) fn rgba(&self) -> &[u8] {
         self.0.rgba()
     }

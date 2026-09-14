@@ -1,9 +1,16 @@
 import { describe, expect, test } from "bun:test";
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
 
 import { resolveConfig } from "../config.ts";
-import { macInfoPlist } from "../build.ts";
+import {
+  macInfoPlist,
+  reservedSidecarNames,
+  stageExecutableSidecars,
+  updateSource,
+  validateBuildInputs,
+} from "../build.ts";
 import { createAr, createTar, normalizeArchivePath, splitUstarPath } from "./archive.ts";
 import {
   linuxMimeTypes,
@@ -16,12 +23,16 @@ import {
   type ResolvedDocumentType,
 } from "./documents.ts";
 import {
+  collectIconSizes,
   createIcns,
   createIco,
   ICNS_ENTRIES,
+  ICO_SIZES,
   iconsetEntryPath,
+  LINUX_ICON_SIZES,
+  PACKAGED_ICON_SIZES,
   pngDimensions,
-  sipsResizeArguments,
+  resizePng,
 } from "./icons.ts";
 import {
   appImageArguments,
@@ -33,13 +44,29 @@ import {
   desktopEntry,
 } from "./linux.ts";
 import {
+  createDmgArguments,
+  createDmgFlags,
+  DMG_APP_POSITION,
+  DMG_APPLICATIONS_POSITION,
+  DMG_ICON_SIZE,
+  DMG_WINDOW_POSITION,
+  DMG_WINDOW_SIZE,
+  resolveCreateDmgScript,
+} from "./dmg.ts";
+import {
   masCodesignArguments,
   masEntitlementsTemplate,
   masPackageFilename,
   productBuildArguments,
   validateMasConfig,
 } from "./mas.ts";
-import { debianPackageName } from "./pipeline.ts";
+import { buildIcons, debianPackageName, packageLinux, payloadMd5Sums } from "./pipeline.ts";
+import {
+  copyResourceDirectory,
+  copyResources,
+  extraPayloadEntries,
+  stageApplicationResources,
+} from "./resources.ts";
 import {
   buildUpdateManifest,
   joinUrl,
@@ -80,6 +107,20 @@ const documentTypes: ResolvedDocumentType[] = [
     utTypeIdentifier: "com.example.demo.log",
   },
 ];
+
+/** 1×1 opaque red PNG used as a seed for `Bun.Image`. */
+const PIXEL_PNG = Uint8Array.from([
+  0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44, 0x52,
+  0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x08, 0x06, 0x00, 0x00, 0x00, 0x1f, 0x15, 0xc4,
+  0x89, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x44, 0x41, 0x54, 0x78, 0x9c, 0x63, 0xb8, 0xa3, 0xa1, 0xf1,
+  0x1f, 0x00, 0x05, 0x3c, 0x02, 0x2c, 0x0e, 0xc4, 0x2f, 0xc5, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45,
+  0x4e, 0x44, 0xae, 0x42, 0x60, 0x82,
+]);
+
+/** A decodable square PNG of the requested size. */
+async function realPng(size: number): Promise<Uint8Array> {
+  return await new Bun.Image(PIXEL_PNG).resize(size, size).png().bytes();
+}
 
 /** A one-pixel-per-side PNG is enough: the writers only copy bytes and read `IHDR`. */
 function fakePng(size: number): Uint8Array {
@@ -179,19 +220,247 @@ describe("icon containers", () => {
     expect(view.getUint32(6 + 16 + 8, true)).toBe(sources.get(256)!.byteLength);
   });
 
-  test("names the sips resize and pre-sized iconset paths", () => {
-    expect(sipsResizeArguments("/a/icon.png", "/b/icon-64.png", 64)).toEqual([
-      "sips",
-      "-z",
-      "64",
-      "64",
-      "/a/icon.png",
-      "--out",
-      "/b/icon-64.png",
-    ]);
+  test("names pre-sized iconset paths", () => {
     expect(iconsetEntryPath("/assets/icon.png", 512)).toBe(
       "/assets/icon.iconset/icon_512x512.png",
     );
+  });
+
+  test("resizes a square PNG to every packaged size", async () => {
+    const source = await realPng(256);
+    expect(pngDimensions(source)).toEqual({ width: 256, height: 256 });
+    const down = await resizePng(source, 32);
+    expect(pngDimensions(down)).toEqual({ width: 32, height: 32 });
+    const up = await resizePng(source, 512);
+    expect(pngDimensions(up)).toEqual({ width: 512, height: 512 });
+    await expect(resizePng(source, 0)).rejects.toThrow("Invalid icon size");
+  });
+
+  test("generates icns, ico, and hicolor sizes from one source PNG", async () => {
+    const root = mkdtempSync(join(tmpdir(), "quickgui-icon-gen-"));
+    try {
+      const icon = join(root, "icon.png");
+      writeFileSync(icon, await realPng(256));
+      const built = await buildIcons(icon);
+      expect([...built.png.keys()]).toEqual([...PACKAGED_ICON_SIZES]);
+      for (const size of PACKAGED_ICON_SIZES) {
+        expect(pngDimensions(built.png.get(size)!)).toEqual({ width: size, height: size });
+      }
+      expect(built.icns).toBeDefined();
+      expect(new TextDecoder().decode(built.icns!.subarray(0, 4))).toBe("icns");
+      expect(built.ico).toBeDefined();
+      const ico = new DataView(built.ico!.buffer, built.ico!.byteOffset, built.ico!.byteLength);
+      expect(ico.getUint16(4, true)).toBe(ICO_SIZES.length);
+      for (const size of LINUX_ICON_SIZES) expect(built.png.has(size)).toBe(true);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("uses a matching iconset entry instead of resizing", async () => {
+    const root = mkdtempSync(join(tmpdir(), "quickgui-iconset-"));
+    try {
+      const icon = join(root, "icon.png");
+      const source = await realPng(256);
+      writeFileSync(icon, source);
+      mkdirSync(join(root, "icon.iconset"));
+      const override = await realPng(32);
+      writeFileSync(join(root, "icon.iconset", "icon_32x32.png"), override);
+      const collected = await collectIconSizes(icon, source, [32, 256]);
+      expect(collected.get(32)).toEqual(override);
+      expect(collected.get(256)).toBe(source);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("application resources", () => {
+  test("copies the resources directory contents and extra configured files", () => {
+    const root = mkdtempSync(join(tmpdir(), "quickgui-convention-"));
+    try {
+      const resources = join(root, "resources");
+      mkdirSync(join(resources, "icon.iconset"), { recursive: true });
+      writeFileSync(join(resources, "icon.png"), "png");
+      writeFileSync(join(resources, "icon.iconset", "icon_256x256.png"), "256");
+      writeFileSync(join(resources, ".gitkeep"), "");
+      writeFileSync(join(resources, "hero.png"), "hero");
+      writeFileSync(join(root, "notes.txt"), "extra");
+      const destination = join(root, "out");
+      expect(
+        stageApplicationResources(resources, [join(root, "notes.txt")], destination),
+      ).toEqual([join(destination, "hero.png"), join(destination, "icon.png"), join(destination, "notes.txt")]);
+      expect(readFileSync(join(destination, "hero.png"), "utf8")).toBe("hero");
+      expect(existsSync(join(destination, "icon.iconset"))).toBe(false);
+      expect(existsSync(join(destination, ".gitkeep"))).toBe(false);
+      expect(() => copyResourceDirectory(resources, destination, new Set(["hero.png"]))).toThrow(
+        "reserved or duplicated",
+      );
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("copies files and directories by basename and rejects reserved names", () => {
+    const root = mkdtempSync(join(tmpdir(), "quickgui-resources-"));
+    try {
+      const assets = join(root, "assets");
+      mkdirSync(assets);
+      writeFileSync(join(assets, "logo.png"), "png");
+      writeFileSync(join(root, "notes.txt"), "hello");
+      const destination = join(root, "out");
+      mkdirSync(destination);
+      expect(copyResources([assets, join(root, "notes.txt")], destination)).toEqual([
+        join(destination, "assets"),
+        join(destination, "notes.txt"),
+      ]);
+      expect(readFileSync(join(destination, "assets", "logo.png"), "utf8")).toBe("png");
+      expect(() => copyResources([assets], destination, new Set(["assets"]))).toThrow(
+        "reserved or duplicated",
+      );
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("expands directories into deterministic archive members", () => {
+    const root = mkdtempSync(join(tmpdir(), "quickgui-payload-"));
+    try {
+      const assets = join(root, "assets");
+      mkdirSync(join(assets, "copy"), { recursive: true });
+      writeFileSync(join(assets, "logo.png"), "png");
+      writeFileSync(join(assets, "copy", "template.txt"), "hi");
+      const entries = extraPayloadEntries([assets], "usr/bin");
+      expect(entries.map((entry) => entry.path)).toEqual([
+        "usr/bin/assets",
+        "usr/bin/assets/copy",
+        "usr/bin/assets/copy/template.txt",
+        "usr/bin/assets/logo.png",
+      ]);
+      expect(entries[0]).toMatchObject({ type: "directory" });
+      expect(new TextDecoder().decode(entries[2]?.data)).toBe("hi");
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("Linux AppDir and Debian payloads keep resources beside the executable", async () => {
+    const root = mkdtempSync(join(tmpdir(), "quickgui-linux-resources-"));
+    try {
+      writeFileSync(join(root, "demo"), "exe");
+      const assets = join(root, "assets");
+      mkdirSync(assets);
+      writeFileSync(join(assets, "note.txt"), "bundled");
+      const config = resolveConfig(
+        {
+          name: "Demo",
+          identifier: "com.example.demo",
+          language: "go",
+          entry: ".",
+          linux: { appImage: true, deb: true, maintainer: "Demo <demo@example.com>" },
+        },
+        root,
+      );
+      const result = await packageLinux({
+        config,
+        libraries: [assets],
+        target: "linux-x64",
+        executablePath: join(root, "demo"),
+        stagingRoot: root,
+        run: async () => {},
+      });
+      expect(existsSync(join(root, "Demo.AppDir", "usr", "bin", "assets", "note.txt"))).toBe(true);
+      const deb = result.artifacts.find((path) => path.endsWith(".deb"));
+      expect(deb).toBeDefined();
+      expect(readFileSync(deb!).byteLength).toBeGreaterThan(0);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("Debian md5sums omit directory members", () => {
+    const root = mkdtempSync(join(tmpdir(), "quickgui-md5-"));
+    try {
+      const assets = join(root, "assets");
+      mkdirSync(assets);
+      writeFileSync(join(assets, "note.txt"), "bundled");
+      const sums = payloadMd5Sums(extraPayloadEntries([assets], "usr/bin"));
+      expect(sums).toContain("usr/bin/assets/note.txt");
+      expect(sums).not.toContain("  usr/bin/assets\n");
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("reserves generated packaging names before copying resources", () => {
+    const root = mkdtempSync(join(tmpdir(), "quickgui-reserved-"));
+    try {
+      writeFileSync(join(root, "main.go"), "package main\n");
+      const config = resolveConfig(
+        {
+          name: "Demo",
+          identifier: "com.example.demo",
+          language: "go",
+          entry: ".",
+          version: "1.2.3",
+        },
+        root,
+      );
+      expect(reservedSidecarNames(config, "windows")).toEqual(
+        expect.arrayContaining(["Demo.ico", "Demo.nsi", "Demo-1.2.3-setup.exe", "quickgui.json"]),
+      );
+      expect(reservedSidecarNames(config, "linux")).toEqual(
+        expect.arrayContaining(["Demo.AppDir", "Demo-1.2.3-x86_64.AppImage", "demo_1.2.3_amd64.deb"]),
+      );
+      writeFileSync(join(root, "Demo.ico"), "icon");
+      writeFileSync(join(root, "quickgui.json"), "{}");
+      const colliding = resolveConfig(
+        {
+          name: "Demo",
+          identifier: "com.example.demo",
+          language: "go",
+          entry: ".",
+          resources: ["Demo.ico", "quickgui.json"],
+        },
+        root,
+      );
+      expect(() => stageExecutableSidecars(colliding, root, [], "windows")).toThrow(
+        "reserved or duplicated",
+      );
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("update artifacts come from packaged paths, not executable sidecars", () => {
+    expect(updateSource({ target: "linux-x64" }, "/out/Demo", [])).toBe("/out/Demo");
+    expect(
+      updateSource({ target: "linux-x64" }, "/out/Demo", ["/out/Demo-1.0.0-x86_64.AppImage"]),
+    ).toBe("/out/Demo-1.0.0-x86_64.AppImage");
+    expect(
+      updateSource({ target: "windows-x64" }, "/out/Demo.exe", ["/out/Demo-1.0.0-setup.exe"]),
+    ).toBe("/out/Demo-1.0.0-setup.exe");
+  });
+
+  test("linux.icon must be a file", () => {
+    const root = mkdtempSync(join(tmpdir(), "quickgui-linux-icon-"));
+    try {
+      writeFileSync(join(root, "main.go"), "package main\n");
+      mkdirSync(join(root, "icon-dir"));
+      const config = resolveConfig(
+        {
+          name: "Demo",
+          identifier: "com.example.demo",
+          language: "go",
+          entry: ".",
+          linux: { icon: "icon-dir" },
+        },
+        root,
+      );
+      expect(() => validateBuildInputs(config, "linux")).toThrow("Linux icon not found");
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 });
 
@@ -438,6 +707,35 @@ describe("Windows packaging", () => {
     expect(perMachine).not.toContain('CreateShortCut "$DESKTOP\\Demo.lnk"');
   });
 
+  test("installs extra files and directories beside the executable", () => {
+    const root = mkdtempSync(join(tmpdir(), "quickgui-nsis-resources-"));
+    try {
+      const assets = join(root, "assets");
+      mkdirSync(assets);
+      const withFiles = nsisScript({
+        name: "Demo",
+        executableName: "Demo.exe",
+        identifier: "com.example.demo",
+        version: "1.2.3",
+        publisher: "Example Inc",
+        executablePath: "/build/Demo.exe",
+        outputFile: "/build/setup.exe",
+        extraFiles: [
+          ["/build/quickgui_host.dll", "quickgui_host.dll"],
+          [assets, "assets"],
+        ],
+        protocols: [],
+        documentTypes: [],
+      });
+      expect(withFiles).toContain('File "/oname=quickgui_host.dll" "/build/quickgui_host.dll"');
+      expect(withFiles).toContain('CreateDirectory "$INSTDIR\\assets"');
+      expect(withFiles).toContain(`File /r "${assets}\\*.*"`);
+      expect(withFiles).toContain('RMDir /r "$INSTDIR\\assets"');
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   test("file versions are four numeric components", () => {
     expect(windowsFileVersion("1.2.3")).toBe("1.2.3.0");
     expect(windowsFileVersion("1.2.3-beta.4")).toBe("1.2.3.0");
@@ -471,6 +769,82 @@ describe("Windows packaging", () => {
     expect(() =>
       signToolArguments({ artifact: "setup.exe", certificateFile: "a.pfx", subjectName: "b" }),
     ).toThrow();
+  });
+});
+
+describe("macOS create-dmg packaging", () => {
+  test("ships the vendored create-dmg script", () => {
+    const script = resolveCreateDmgScript();
+    expect(existsSync(script)).toBe(true);
+    expect(readFileSync(script, "utf8").startsWith("#!/usr/bin/env bash")).toBe(true);
+  });
+
+  test("builds a Finder-layout create-dmg command", () => {
+    const flags = createDmgFlags({
+      dmgPath: "/tmp/My App 1.2.3.dmg",
+      sourceFolder: "/tmp/dmg-src",
+      volumeName: "Great App",
+      appFileName: "My-App.app",
+    });
+    expect(flags).toEqual([
+      "--volname",
+      "Great App",
+      "--window-pos",
+      String(DMG_WINDOW_POSITION.x),
+      String(DMG_WINDOW_POSITION.y),
+      "--window-size",
+      String(DMG_WINDOW_SIZE.width),
+      String(DMG_WINDOW_SIZE.height),
+      "--icon-size",
+      String(DMG_ICON_SIZE),
+      "--icon",
+      "My-App.app",
+      String(DMG_APP_POSITION.x),
+      String(DMG_APP_POSITION.y),
+      "--hide-extension",
+      "My-App.app",
+      "--app-drop-link",
+      String(DMG_APPLICATIONS_POSITION.x),
+      String(DMG_APPLICATIONS_POSITION.y),
+      "--overwrite",
+      "--hdiutil-quiet",
+      "/tmp/My App 1.2.3.dmg",
+      "/tmp/dmg-src",
+    ]);
+    expect(createDmgArguments({
+      dmgPath: "/tmp/My App 1.2.3.dmg",
+      sourceFolder: "/tmp/dmg-src",
+      volumeName: "Great App",
+      appFileName: "My-App.app",
+      volumeIcon: "/tmp/AppIcon.icns",
+    })).toEqual([
+      resolveCreateDmgScript(),
+      "--volname",
+      "Great App",
+      "--volicon",
+      "/tmp/AppIcon.icns",
+      "--window-pos",
+      String(DMG_WINDOW_POSITION.x),
+      String(DMG_WINDOW_POSITION.y),
+      "--window-size",
+      String(DMG_WINDOW_SIZE.width),
+      String(DMG_WINDOW_SIZE.height),
+      "--icon-size",
+      String(DMG_ICON_SIZE),
+      "--icon",
+      "My-App.app",
+      String(DMG_APP_POSITION.x),
+      String(DMG_APP_POSITION.y),
+      "--hide-extension",
+      "My-App.app",
+      "--app-drop-link",
+      String(DMG_APPLICATIONS_POSITION.x),
+      String(DMG_APPLICATIONS_POSITION.y),
+      "--overwrite",
+      "--hdiutil-quiet",
+      "/tmp/My App 1.2.3.dmg",
+      "/tmp/dmg-src",
+    ]);
   });
 });
 

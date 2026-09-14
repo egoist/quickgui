@@ -1,19 +1,30 @@
 package native
 
 // ImageSource supplies a file path, encoded image bytes, or RGBA8 bytes with dimensions.
+//
+// Template marks the artwork as a macOS template image. When omitted, paths whose stem
+// ends in Template (optionally @2x) are inferred.
 type ImageSource struct {
-	Path   string `json:"path,omitempty"`
-	Data   []byte `json:"data,omitempty"`
-	Width  uint32 `json:"width,omitempty"`
-	Height uint32 `json:"height,omitempty"`
+	Path     string `json:"path,omitempty"`
+	Data     []byte `json:"data,omitempty"`
+	Width    uint32 `json:"width,omitempty"`
+	Height   uint32 `json:"height,omitempty"`
+	Template *bool  `json:"template,omitempty"`
+}
+
+// TemplateImage is a file path marked as a macOS template image.
+func TemplateImage(path string) ImageSource {
+	template := true
+	return ImageSource{Path: path, Template: &template}
 }
 
 // MenuIcon uses the native menu image encoding.
 type MenuIcon struct {
-	Path   string `json:"path,omitempty"`
-	Data   []byte `json:"dataBase64,omitempty"`
-	Width  uint32 `json:"width,omitempty"`
-	Height uint32 `json:"height,omitempty"`
+	Path     string `json:"path,omitempty"`
+	Data     []byte `json:"dataBase64,omitempty"`
+	Width    uint32 `json:"width,omitempty"`
+	Height   uint32 `json:"height,omitempty"`
+	Template *bool  `json:"template,omitempty"`
 }
 
 type AboutPanelOptions struct {

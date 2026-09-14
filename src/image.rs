@@ -41,6 +41,33 @@ pub const DEFAULT_SYSTEM_IMAGE_SCALE: f32 = 2.0;
 static NEXT_IMAGE_ID: AtomicU64 = AtomicU64::new(1);
 static NEXT_CUSTOM_RESOURCE_ID: AtomicU64 = AtomicU64::new(1);
 
+/// Whether `path` uses Apple's template-image filename convention.
+///
+/// A stem that ends in `Template`, optionally followed by a scale suffix such as `@2x`, is treated
+/// as a monochrome mask. `trayTemplate.png` and `statusTemplate@2x.png` match; `emailTemplateIcon.png`
+/// does not.
+pub fn is_template_image_path(path: impl AsRef<Path>) -> bool {
+    let Some(stem) = path.as_ref().file_stem().and_then(|stem| stem.to_str()) else {
+        return false;
+    };
+    template_image_stem(stem).ends_with("Template")
+}
+
+fn template_image_stem(stem: &str) -> &str {
+    let Some((base, suffix)) = stem.rsplit_once('@') else {
+        return stem;
+    };
+    if suffix.len() >= 2
+        && suffix.ends_with('x')
+        && suffix[..suffix.len() - 1]
+            .bytes()
+            .all(|b| b.is_ascii_digit())
+    {
+        return base;
+    }
+    stem
+}
+
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub(crate) struct ImageId(u64);
 
@@ -130,6 +157,10 @@ impl Image {
     ///
     /// Prefer passing a path to [`crate::img`] for event-driven background loading. This method is
     /// useful when an application already owns a background execution context.
+    ///
+    /// Paths whose stem ends in `Template`, optionally followed by a scale suffix such as `@2x`,
+    /// are marked for macOS template rendering. Call [`Self::template`] to override that
+    /// convention.
     pub fn open(path: impl AsRef<Path>) -> Result<Self, ImageError> {
         let path = path.as_ref();
         let metadata = std::fs::metadata(path).map_err(|source| ImageError::Open {
@@ -153,7 +184,10 @@ impl Image {
         limits.max_alloc = Some(MAX_DECODED_IMAGE_BYTES);
         reader.limits(limits);
         let decoded = reader.decode().map_err(ImageError::Decode)?.into_rgba8();
-        Self::from_rgba(decoded.width(), decoded.height(), decoded.into_raw())
+        Ok(
+            Self::from_rgba(decoded.width(), decoded.height(), decoded.into_raw())?
+                .template(is_template_image_path(path)),
+        )
     }
 
     pub fn width(&self) -> u32 {
@@ -943,6 +977,26 @@ mod tests {
         let _ = std::fs::remove_file(path);
         assert_eq!(image.size(), Size::new(1.0, 1.0));
         assert_eq!(image.rgba(), pixels);
+        assert!(!image.is_template());
+    }
+
+    #[test]
+    fn open_marks_template_filenames() {
+        let path = std::env::temp_dir().join(format!(
+            "quickgui-{}-statusTemplate.png",
+            std::process::id()
+        ));
+        let pixels = [7, 11, 13, 255];
+        let mut encoded = Vec::new();
+        PngEncoder::new(&mut encoded)
+            .write_image(&pixels, 1, 1, ExtendedColorType::Rgba8)
+            .unwrap();
+        std::fs::write(&path, encoded).unwrap();
+
+        let image = Image::open(&path).unwrap();
+        let _ = std::fs::remove_file(&path);
+        assert!(image.is_template());
+        assert!(!image.template(false).is_template());
     }
 
     #[test]
@@ -1233,5 +1287,26 @@ mod tests {
             ObjectFit::ScaleDown,
         );
         assert_eq!(fitted.destination, Rect::new(40.0, 30.0, 20.0, 40.0));
+    }
+
+    #[test]
+    fn template_image_paths_follow_the_macos_filename_convention() {
+        for path in [
+            "trayTemplate.png",
+            "statusTemplate@2x.png",
+            "icons/statusTemplate@3x.png",
+            "Template.png",
+        ] {
+            assert!(is_template_image_path(path), "{path}");
+        }
+        for path in [
+            "icon.png",
+            "emailTemplateIcon.png",
+            "template.png",
+            "tray-template.png",
+            "status@2x.png",
+        ] {
+            assert!(!is_template_image_path(path), "{path}");
+        }
     }
 }

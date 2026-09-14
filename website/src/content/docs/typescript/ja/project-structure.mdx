@@ -4,6 +4,8 @@ TypeScript プロジェクトでは、アプリケーションコードを `app.
 
 ```text
 my-app/
+├── resources/
+│   └── icon.png
 ├── app.tsx
 ├── quickgui.config.ts
 ├── tsconfig.json
@@ -28,11 +30,10 @@ export default defineConfig({
   identifier: "com.example.my-app",
   entry: "app.tsx",
   fonts: ["assets/MyFont.ttf"],
-  resources: ["assets"],
 });
 ```
 
-TOML でも同じキーを使えます。`tsconfig.json` では `jsx` を `"preserve"` に、`jsxImportSource` を `"@quickgui/solid"` に設定します。
+アプリアイコンは `resources/icon.png` です。追加ファイルは `resources` に列挙できます。[アプリアイコン](/docs/typescript/app-icon)と[バンドルするリソース](/docs/typescript/bundled-resources)を参照してください。TOML でも同じキーを使えます。`tsconfig.json` では `jsx` を `"preserve"` に、`jsxImportSource` を `"@quickgui/solid"` に設定します。
 
 ## パッケージ
 

@@ -4,7 +4,7 @@ import { callsNamed, fakeBinding, queueEvents } from "./fake-binding.ts";
 mock.module("../src/binding.ts", () => fakeBinding);
 
 const { Clipboard, Menu, Window, app } = await import("../src/index.ts");
-const { serializeNativeMenu } = await import("../src/system.ts");
+const { nativeImageSource, serializeNativeMenu } = await import("../src/system.ts");
 await app.whenReady();
 
 function parsedMenu(name: "setApplicationMenu"): unknown {
@@ -72,6 +72,43 @@ describe("native menu declarations", () => {
     }[];
     expect(parsed[0]!.items[2]!.accelerator).toBe("Cmd+2");
     expect(parsed[0]!.items[2]!.id).toBe(serialized.actionIds[1]);
+  });
+
+  test("image sources pass an explicit template flag to the host", () => {
+    expect(nativeImageSource("/icons/statusTemplate.png")).toEqual({
+      path: "/icons/statusTemplate.png",
+    });
+    expect(nativeImageSource({ path: "/icons/plain.png", template: false })).toEqual({
+      path: "/icons/plain.png",
+      template: false,
+    });
+    expect(
+      nativeImageSource({ data: Uint8Array.from([0, 0, 0, 255]), width: 1, height: 1, template: true }),
+    ).toMatchObject({ width: 1, height: 1, template: true });
+  });
+
+  test("menu icons carry an explicit template flag", () => {
+    const serialized = serializeNativeMenu([
+      {
+        label: "App",
+        items: [
+          { label: "Status", icon: { path: "/icons/statusTemplate.png" }, click: () => {} },
+          {
+            label: "Plain",
+            icon: { path: "/icons/plain.png", template: false },
+            click: () => {},
+          },
+        ],
+      },
+    ]);
+    const parsed = JSON.parse(serialized.json) as {
+      items: { icon?: Record<string, unknown> }[];
+    }[];
+    expect(parsed[0]!.items[0]!.icon).toEqual({ path: "/icons/statusTemplate.png" });
+    expect(parsed[0]!.items[1]!.icon).toEqual({
+      path: "/icons/plain.png",
+      template: false,
+    });
   });
 });
 

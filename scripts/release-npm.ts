@@ -2,6 +2,7 @@
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
+import { alreadyPublished, npmPublishArgs, npmPublishTag } from "./npm-publish-tag.ts";
 
 const mode = process.argv[2];
 if (mode !== "--check" && mode !== "--publish")
@@ -11,19 +12,33 @@ const root = resolve(import.meta.dir, "..");
 const directory = resolve(root, process.argv[3] ?? "target/npm-release");
 const version = JSON.parse(readFileSync(join(root, "package.json"), "utf8")).version as string;
 
-function run(argv: string[]): string {
+function run(argv: string[]): { stdout: string; stderr: string; exitCode: number } {
   const child = Bun.spawnSync(argv, {
     cwd: root,
     stdin: "inherit",
     stdout: "pipe",
-    stderr: "inherit",
+    stderr: "pipe",
   });
-  if (child.exitCode !== 0) throw new Error(`${argv.join(" ")} exited ${child.exitCode}`);
-  return child.stdout.toString().trim();
+  return {
+    stdout: child.stdout.toString().trim(),
+    stderr: child.stderr.toString().trim(),
+    exitCode: child.exitCode ?? 1,
+  };
 }
-run(["bun", join(import.meta.dir, "release-metadata.ts")]);
 
-async function isPublished(name: string, integrity: string): Promise<boolean> {
+function mustRun(argv: string[]): string {
+  const result = run(argv);
+  if (result.exitCode !== 0) {
+    if (result.stderr) console.error(result.stderr);
+    throw new Error(`${argv.join(" ")} exited ${result.exitCode}`);
+  }
+  if (result.stderr) console.error(result.stderr);
+  return result.stdout;
+}
+
+mustRun(["bun", join(import.meta.dir, "release-metadata.ts")]);
+
+async function publishedIntegrity(name: string): Promise<string | undefined> {
   let response: Response | undefined;
   for (let attempt = 0; attempt < 6; attempt++) {
     try {
@@ -38,20 +53,18 @@ async function isPublished(name: string, integrity: string): Promise<boolean> {
     }
     if (attempt < 5) await Bun.sleep(1000 * (attempt + 1));
   }
-  if (response?.status === 404) return false;
+  if (response?.status === 404) return undefined;
   if (!response?.ok) throw new Error(`Registry request failed for ${name}`);
   const metadata = (await response.json()) as { dist?: { integrity?: string } };
-  if (metadata.dist?.integrity !== integrity)
-    throw new Error(`${name}@${version} is public with different bytes`);
-  return true;
+  return metadata.dist?.integrity;
 }
 
 if (publish) {
-  const [nodeMajor = 0, nodeMinor = 0] = run(["node", "--version"])
+  const [nodeMajor = 0, nodeMinor = 0] = mustRun(["node", "--version"])
     .replace(/^v/, "")
     .split(".")
     .map(Number);
-  const [npmMajor = 0, npmMinor = 0, npmPatch = 0] = run(["npm", "--version"])
+  const [npmMajor = 0, npmMinor = 0, npmPatch = 0] = mustRun(["npm", "--version"])
     .split(".")
     .map(Number);
   if (nodeMajor < 22 || (nodeMajor === 22 && nodeMinor < 14))
@@ -67,23 +80,31 @@ for (const part of ["native", "extension-terminal", "extension-updater", "solid"
   const archive = join(directory, `quickgui-${part}-${version}.tgz`);
   if (!existsSync(archive)) throw new Error(`Missing archive: ${archive}`);
   const integrity = `sha512-${createHash("sha512").update(readFileSync(archive)).digest("base64")}`;
-  if (await isPublished(name, integrity)) {
-    console.log(`${name}@${version} is already public with matching bytes; skipping`);
+  const publicIntegrity = await publishedIntegrity(name);
+  if (publicIntegrity) {
+    console.log(
+      publicIntegrity === integrity
+        ? `${name}@${version} is already public with matching bytes; skipping`
+        : `${name}@${version} is already public with different bytes; skipping immutable registry version`,
+    );
     continue;
   }
   if (!publish) {
-    console.log(`${name}@${version} is ready to publish`);
+    console.log(`${name}@${version} is ready to publish with tag ${npmPublishTag}`);
     continue;
   }
-  console.log(run(["npm", "publish", archive, "--access", "public"]));
-  let available = false;
-  for (let attempt = 0; attempt < 60; attempt++) {
-    if (await isPublished(name, integrity)) {
-      available = true;
-      break;
+  const published = run(npmPublishArgs(archive));
+  if (published.exitCode !== 0) {
+    if (alreadyPublished(published.stderr)) {
+      console.log(`${name}@${version} is already on the registry; skipping`);
+      continue;
     }
-    await Bun.sleep(5000);
+    if (published.stderr) console.error(published.stderr);
+    throw new Error(
+      `${name}@${version} publish failed. A 404 on an existing package usually means npm has no Trusted Publisher for GitHub owner egoist, repository quickgui, workflow release.yml, and no environment.`,
+    );
   }
-  if (!available) throw new Error(`Timed out waiting for ${name}@${version}`);
+  if (published.stdout) console.log(published.stdout);
+  if (published.stderr) console.error(published.stderr);
   console.log(`Published ${name}@${version}`);
 }

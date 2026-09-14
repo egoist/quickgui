@@ -2,4 +2,6 @@
 /quickgui-go/issues.generated.json
 /quickgui-rust/issues.generated.json
 /quickgui-typescript/issues.generated.json
+/gpui/issues.generated.json
+/gpui/target/
 /web/issues.generated.json

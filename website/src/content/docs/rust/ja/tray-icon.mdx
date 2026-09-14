@@ -1,0 +1,77 @@
+トレイアイコンは、macOS のメニューバー、Windows の通知領域、または Linux の StatusNotifierItem ホストに表示されます。画像を `resources/` に置き、起動コールバックでアイコンを作ります。パッケージの[アプリアイコン](/docs/rust/app-icon)とは別の画像です。
+
+## トレイアイコンを作る
+
+小さな PNG をアプリに同梱し、インストール後のパスからアイコンを作ります。
+
+```rust
+Application::new()
+    .on_tray_event(|event, cx| {
+        if event.kind == TrayEventKind::Click {
+            // ウィンドウを表示またはフォーカスする。
+        }
+        if event.kind == TrayEventKind::MenuItem && event.menu_item_id == Some(2) {
+            cx.exit();
+        }
+    })
+    .run(|cx| {
+        let icon = TrayIconImage::from_path(
+            cx.app_paths()
+                .unwrap()
+                .resource_dir()
+                .join("trayTemplate.png"),
+        )
+        .expect("tray icon");
+        cx.set_tray_icon(
+            TrayIconOptions::new(1, icon)
+                .tooltip("My App")
+                .menu([
+                    TrayMenuItem::action(1, "Show window"),
+                    TrayMenuItem::separator(),
+                    TrayMenuItem::action(2, "Quit"),
+                ]),
+        )
+        .expect("tray icon");
+        cx.open_window(WindowOptions::new("My App").size(760.0, 520.0), App);
+    })
+```
+
+`set_tray_icon` はその id のアイコンを置き換えます。`remove_tray_icon` は削除します。`Image::open` と `TrayIconImage::from_path` は、どちらもテンプレートのファイル名規則に従います。
+
+1× の元画像には 22×22 の PNG が適しています。Retina のメニューバー用には 44×44 の `trayTemplate@2x.png` を用意します。
+
+## テンプレート画像
+
+macOS では、テンプレート画像は単色のマスクです。AppKit はアルファチャンネルだけを使い、メニューバーのライト、ダーク、ハイライトの外観に合わせて再着色します。
+
+ファイル名のステムが `Template` で終わり、そのあとに `@2x` や `@3x` が付いてもよい場合、テンプレートとして扱われます。
+
+```text
+resources/trayTemplate.png
+resources/trayTemplate@2x.png
+```
+
+`trayTemplate.png` と `statusTemplate@2x.png` は一致します。`emailTemplateIcon.png` は一致しません。`quickgui::is_template_image_path` は同じ判定です。
+
+名前がこの規則に従わないときは `.template(true)` または `.icon_is_template(true)` を呼びます。`.template(false)` でフラグをオフにできます。`Image`、`MenuIcon`、`TrayIconImage` はいずれもフラグを持ちます。他のプラットフォームは保持して無視します。
+
+```rust
+let icon = Image::open(path)?.template(false);
+cx.set_dock_icon(icon)?;
+```
+
+## メニューとイベント
+
+トレイメニューはネイティブのコンテキストメニューです。`Application::on_tray_event` で `TrayEventKind::MenuItem` を処理します。他の種類は `Click`、`DoubleClick`、`Enter`、`Move`、`Leave`、`Scroll` です。
+
+`show_tray_menu` は macOS と Windows で、カーソル位置にメニューを開きます。Linux ホストはメニュー表示を自分で行い、この呼び出しを拒否します。
+
+## プラットフォーム
+
+| プラットフォーム | ホスト | テンプレート画像 | show_tray_menu |
+| --- | --- | --- | --- |
+| macOS | メニューバーの extra | AppKit が再着色 | 対応 |
+| Windows | 通知領域 | 無視 | 対応 |
+| Linux | StatusNotifierItem | 無視 | 非対応 |
+
+`DesktopIntegrationSupport::current().tray_icons` は macOS、Windows、Linux で true です。`programmable_tray_popup` は macOS と Windows のみです。トレイアイコンは最大 32 個です。

@@ -43,6 +43,9 @@ const goDescriptions = {
   'native-services': 'Open windows and use menus, clipboard, dialogs, and file watching.',
   'swift-ui': 'Embed real SwiftUI controls inside a Go application.',
   'swift-ui-hosting': 'Style SwiftUI controls and nest QuickGUI content inside them.',
+  'app-icon': 'Use resources/icon.png as the packaged application icon, or change the window or Dock icon at runtime.',
+  'tray-icon': 'Add a menu-bar or notification-area icon, and mark macOS template images by filename or flag.',
+  'bundled-resources': 'Ship files in resources/ and load them from the packaged resource directory.',
   updater: 'Ship signed automatic updates for macOS, Windows, and Linux.',
   extensions: 'Share Go components or add a native service your app can call.',
 } satisfies Record<DocsSlug, string>
@@ -61,6 +64,9 @@ const goSearchTerms = {
   'native-services': ['window', 'menu', 'clipboard', 'WatchFiles', 'Dispatch', 'Async'],
   'swift-ui': ['swiftui', 'host', 'slider', 'toggle', 'picker'],
   'swift-ui-hosting': ['modifier', 'glass', 'quickguihostview', 'popover'],
+  'app-icon': ['icon', 'icns', 'ico', 'dock', 'taskbar', 'png'],
+  'tray-icon': ['tray', 'menubar', 'status', 'template', 'Template.png', 'notification'],
+  'bundled-resources': ['resources', 'assets', 'bundle', 'fonts', 'resourceDir'],
   updater: ['updater', 'sparkle', 'appcast', 'updates', 'signing'],
   extensions: ['extension', 'init-extension', 'plugin', 'manifest', 'InvokeExtension'],
 } satisfies Record<DocsSlug, readonly string[]>

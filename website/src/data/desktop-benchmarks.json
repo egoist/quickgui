@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "measuredAt": "2026-09-13T00:39:34.522Z",
+  "measuredAt": "2026-09-13T22:54:45.683Z",
   "platform": "macOS arm64",
   "workload": {
     "id": "issue-tracker-v1",
@@ -23,12 +23,12 @@
     "rust": "rustc 1.96.0 (ac68faa20 2026-05-25)",
     "bun": "1.4.2",
     "solid": "2.0.0-rc.8",
-    "quickguiRevision": "d88334805f24e1e0474323cdb0646065b75f6229",
+    "quickguiRevision": "c6bca9fc51e9315942939ddf6aee97d1a89fec44",
     "quickguiWorkingTreeDirty": true
   },
   "methodology": {
     "workload": "A 1100 × 720 issue tracker with 1,000 identical records, three sidebar filters, search, 100 retained rows per page, pagination, issue details, editable notes, and completion actions. Idle on the first page with the first issue selected. Edits stay in memory for the session; no network or database service.",
-    "build": "Production builds; no optional plugins. QuickGUI Go uses the CLI release build, QuickGUI TypeScript embeds Bun and a Solid 2 worker with the same native library, and QuickGUI Rust links the crate into its executable. Tauri uses the default Cargo release profile; Electron is packaged with ASAR.",
+    "build": "Production builds; no optional plugins. QuickGUI Go uses the CLI release build, QuickGUI TypeScript embeds Bun and a Solid 2 worker with the same native library, and QuickGUI Rust links the crate into its executable. GPUI and Tauri use the default Cargo release profile; Electron is packaged with ASAR.",
     "memory": "Sum of proc_pid_rusage physical footprints for the main app, bundled helper executables, and coalition-associated WebKit WebContent/GPU/Networking processes. AutoFill/SafariPlatformSupport and other macOS services are recorded but excluded. Includes compressed memory; this is not JavaScript heap size or RSS. Charts use decimal MB (1,000,000 bytes), as in Activity Monitor.",
     "bundle": "Uncompressed .app file bytes, including bundled libraries/frameworks. Symlinks counted once; OS-provided frameworks such as WebKit are excluded. This is not installer/download size.",
     "aggregation": "Wait at least 30 seconds after readiness, then require 15 seconds with app/renderer CPU at most 1% of one core, unchanged process membership, and memory spread at most 1 MB or 1% for both main process and framework helpers. Take ten further one-second samples, requiring continued stability; activity restarts the idle observation within the same 180-second deadline. Median per launch, then median of three launch medians; whiskers show the launch-median range. No forced GC, cache purge, or memory-pressure injection.",
@@ -111,6 +111,27 @@
       "memoryMinBytes": 68682736,
       "memoryMaxBytes": 69960712,
       "mainProcessMemoryBytes": 68731912,
+      "frameworkHelperMemoryBytes": 0
+    },
+    {
+      "id": "gpui",
+      "name": "GPUI",
+      "version": "0.2.2",
+      "measuredAt": "2026-09-13T22:54:45.679Z",
+      "toolchain": {
+        "go": "go version go1.27.1 darwin/arm64",
+        "rust": "rustc 1.96.0 (ac68faa20 2026-05-25)",
+        "bun": "1.4.2",
+        "solid": "2.0.0-rc.8",
+        "quickguiRevision": "c6bca9fc51e9315942939ddf6aee97d1a89fec44",
+        "quickguiWorkingTreeDirty": true
+      },
+      "bundleBytes": 6267188,
+      "executableSha256": "6a9ecc0bf3eee2e9eb6c12eecc2bd22d335f8eae1bcdf37a4430ed54783dc1a0",
+      "memoryBytes": 78169096,
+      "memoryMinBytes": 78087176,
+      "memoryMaxBytes": 78185480,
+      "mainProcessMemoryBytes": 78169096,
       "frameworkHelperMemoryBytes": 0
     },
     {

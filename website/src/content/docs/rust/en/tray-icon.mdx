@@ -1,0 +1,77 @@
+A tray icon lives in the macOS menu bar, the Windows notification area, or a Linux StatusNotifierItem host. Put the artwork in `resources/` and create the icon from the application startup callback. This is separate from the packaged [App Icon](/docs/rust/app-icon).
+
+## Create a tray icon
+
+Ship a small PNG with the app, then create the icon from its packaged path:
+
+```rust
+Application::new()
+    .on_tray_event(|event, cx| {
+        if event.kind == TrayEventKind::Click {
+            // Show or focus a window.
+        }
+        if event.kind == TrayEventKind::MenuItem && event.menu_item_id == Some(2) {
+            cx.exit();
+        }
+    })
+    .run(|cx| {
+        let icon = TrayIconImage::from_path(
+            cx.app_paths()
+                .unwrap()
+                .resource_dir()
+                .join("trayTemplate.png"),
+        )
+        .expect("tray icon");
+        cx.set_tray_icon(
+            TrayIconOptions::new(1, icon)
+                .tooltip("My App")
+                .menu([
+                    TrayMenuItem::action(1, "Show window"),
+                    TrayMenuItem::separator(),
+                    TrayMenuItem::action(2, "Quit"),
+                ]),
+        )
+        .expect("tray icon");
+        cx.open_window(WindowOptions::new("My App").size(760.0, 520.0), App);
+    })
+```
+
+`set_tray_icon` replaces the icon with that id. `remove_tray_icon` deletes it. `Image::open` and `TrayIconImage::from_path` both honor the template filename convention.
+
+A 22×22 PNG is a good 1× source. Draw a 44×44 companion as `trayTemplate@2x.png` when you want a retina menu-bar image.
+
+## Template images
+
+On macOS, a template image is a monochrome mask. AppKit recolors it for the menu bar's light, dark, and highlighted appearances using only the alpha channel.
+
+A filename whose stem ends in `Template`, optionally followed by `@2x` or `@3x`, is treated as a template:
+
+```text
+resources/trayTemplate.png
+resources/trayTemplate@2x.png
+```
+
+`trayTemplate.png` and `statusTemplate@2x.png` match. `emailTemplateIcon.png` does not. `quickgui::is_template_image_path` is the same check.
+
+Call `.template(true)` or `.icon_is_template(true)` when the name does not follow that convention, or `.template(false)` to force the flag off. `Image`, `MenuIcon`, and `TrayIconImage` all carry the flag. Other platforms keep it and ignore it.
+
+```rust
+let icon = Image::open(path)?.template(false);
+cx.set_dock_icon(icon)?;
+```
+
+## Menus and events
+
+The tray menu is a native context menu. Handle `TrayEventKind::MenuItem` on `Application::on_tray_event`. Other kinds are `Click`, `DoubleClick`, `Enter`, `Move`, `Leave`, and `Scroll`.
+
+`show_tray_menu` opens the menu at the cursor on macOS and Windows. Linux hosts own menu presentation and reject that call.
+
+## Platform notes
+
+| Platform | Host | Template images | show_tray_menu |
+| --- | --- | --- | --- |
+| macOS | Menu bar extra | Recolored by AppKit | Supported |
+| Windows | Notification area | Ignored | Supported |
+| Linux | StatusNotifierItem | Ignored | Unsupported |
+
+`DesktopIntegrationSupport::current().tray_icons` is true on macOS, Windows, and Linux. `programmable_tray_popup` is macOS and Windows only. Keep at most 32 tray icons.

@@ -1,6 +1,6 @@
 [package]
 name = "quickgui-accesskit-winit"
-version = "0.1.4-next.1"
+version = "0.1.4-next.4"
 authors.workspace = true
 license = "Apache-2.0"
 description = "QuickGUI's AccessKit adapter for quickgui-winit"
@@ -25,7 +25,7 @@ tokio = ["accesskit_unix/tokio"]
 
 [dependencies]
 accesskit = { version = "0.24.1", path = "../../common" }
-winit = { package = "quickgui-winit", path = "../winit", version = "=0.1.4-next.1", default-features = false }
+winit = { package = "quickgui-winit", path = "../winit", version = "=0.1.4-next.4", default-features = false }
 rwh_05 = { package = "raw-window-handle", version = "0.5", features = ["std"], optional = true }
 rwh_06 = { package = "raw-window-handle", version = "0.6.2", features = ["std"], optional = true }
 
@@ -47,7 +47,7 @@ accesskit_ios = { version = "0.1.2", path = "../ios" }
 [dev-dependencies.winit]
 package = "quickgui-winit"
 path = "../winit"
-version = "=0.1.4-next.1"
+version = "=0.1.4-next.4"
 default-features = false
 features = ["x11", "wayland", "wayland-dlopen", "wayland-csd-adwaita"]
 

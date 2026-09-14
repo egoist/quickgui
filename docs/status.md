@@ -123,8 +123,8 @@ Implemented now:
   with a native main-thread application loop, a pinned Go UI goroutine, asynchronous native
   services, per-window retained trees, and mutation batches. The TypeScript CLI initializes Go
   projects, restarts development apps after a candidate becomes ready, and bundles the matching
-  native library for production. Published native assets currently target macOS; Windows and
-  Linux require a matching host library and native runtime acceptance;
+  native library for production. Published native assets cover macOS arm64/x64, Linux arm64/x64,
+  and Windows x64;
 - macOS/Windows/Linux backend selection through Winit 0.30 and WGPU 30;
 - inherited right-to-left layout direction with post-layout mirroring of paint, hit testing, and
   accessibility geometry inside each parent content box, logical `ps`/`pe`/`ms`/`me`/`border_s`/

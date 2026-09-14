@@ -3039,7 +3039,7 @@ dependencies = [
 
 [[package]]
 name = "quickgui"
-version = "0.1.4-next.1"
+version = "0.1.4-next.4"
 dependencies = [
  "accesskit",
  "arboard",
@@ -3091,7 +3091,7 @@ dependencies = [
 
 [[package]]
 name = "quickgui-accesskit-winit"
-version = "0.1.4-next.1"
+version = "0.1.4-next.4"
 dependencies = [
  "accesskit",
  "accesskit_ios",
@@ -3113,7 +3113,7 @@ dependencies = [
 
 [[package]]
 name = "quickgui-cosmic-text"
-version = "0.1.4-next.1"
+version = "0.1.4-next.4"
 dependencies = [
  "bitflags 2.13.2",
  "core-foundation 0.9.4",
@@ -3140,7 +3140,7 @@ dependencies = [
 
 [[package]]
 name = "quickgui-glyphon"
-version = "0.1.4-next.1"
+version = "0.1.4-next.4"
 dependencies = [
  "etagere",
  "lru",
@@ -3151,7 +3151,7 @@ dependencies = [
 
 [[package]]
 name = "quickgui-system"
-version = "0.1.4-next.1"
+version = "0.1.4-next.4"
 dependencies = [
  "auto-launch",
  "block2 0.5.1",
@@ -3178,7 +3178,7 @@ dependencies = [
 
 [[package]]
 name = "quickgui-winit"
-version = "0.1.4-next.1"
+version = "0.1.4-next.4"
 dependencies = [
  "ahash",
  "android-activity",

@@ -18,6 +18,9 @@ export const DOCS_GUIDE_ORDER = [
   'native-services',
   'swift-ui',
   'swift-ui-hosting',
+  'app-icon',
+  'tray-icon',
+  'bundled-resources',
   'updater',
   'extensions',
 ] as const
@@ -32,6 +35,26 @@ const sectionTitles = {
     en: ['Generated files', 'Application entry', 'Configuration', 'Packages', 'Local development'],
     zh: ['生成的文件', '应用入口', '配置', '软件包', '本地开发'],
     ja: ['生成されるファイル', 'アプリケーションのエントリ', '設定', 'パッケージ', 'ローカル開発'],
+  },
+  'app-icon': {
+    en: ['Source icon', 'Platform-specific icons', 'Window and Dock icons', 'Generated sizes'],
+    zh: ['源图标', '平台专用图标', '窗口与程序坞图标', '生成的尺寸'],
+    ja: [
+      '元になるアイコン',
+      'プラットフォーム固有のアイコン',
+      'ウィンドウと Dock のアイコン',
+      '生成されるサイズ',
+    ],
+  },
+  'tray-icon': {
+    en: ['Create a tray icon', 'Template images', 'Menus and events', 'Platform notes'],
+    zh: ['创建托盘图标', '模板图像', '菜单与事件', '平台说明'],
+    ja: ['トレイアイコンを作る', 'テンプレート画像', 'メニューとイベント', 'プラットフォーム'],
+  },
+  'bundled-resources': {
+    en: ['The resources directory', 'Additional files', 'Install locations', 'Loading files', 'Fonts'],
+    zh: ['resources 目录', '额外文件', '安装位置', '读取文件', '字体'],
+    ja: ['resources ディレクトリ', '追加ファイル', 'インストール先', 'ファイルの読み込み', 'フォント'],
   },
   updater: {
     en: [
@@ -241,6 +264,21 @@ const guideTitles = {
     en: 'Project Structure',
     ja: 'プロジェクト構成',
     zh: '项目结构',
+  },
+  'app-icon': {
+    en: 'App Icon',
+    ja: 'アプリアイコン',
+    zh: '应用图标',
+  },
+  'tray-icon': {
+    en: 'Tray Icon',
+    ja: 'トレイアイコン',
+    zh: '托盘图标',
+  },
+  'bundled-resources': {
+    en: 'Bundled Resources',
+    ja: 'バンドルするリソース',
+    zh: '打包资源',
   },
   updater: {
     en: 'Auto Updater',

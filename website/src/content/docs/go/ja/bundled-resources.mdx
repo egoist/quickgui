@@ -1,0 +1,99 @@
+実行ファイルにコンパイルしないファイル（画像、テンプレート、JSON、その他のデータ）は `resources/` ディレクトリに置きます。CLI はその内容をパッケージ後のアプリにコピーします。実行中のアプリはリソースディレクトリから読みます。起動時のカレントディレクトリには依存しません。
+
+カスタムフォントは別オプションです。[フォント](#fonts)を参照してください。
+
+## resources ディレクトリ
+
+```text
+my-app/
+├── resources/
+│   ├── icon.png
+│   ├── hero.png
+│   └── copy/
+│       └── template.txt
+├── main.go
+└── quickgui.config.ts
+```
+
+各ファイルは `resources/` からの相対パスを保ちます。`resources/hero.png` は `hero.png` としてインストールされます。`resources/copy/template.txt` は `copy/template.txt` としてインストールされます。行き先の名前は、`fonts`、`AppIcon.icns`、`quickgui.json`、ホスト共有ライブラリなどの予約名を置き換えてはいけません。
+
+`quickgui dev` と `quickgui build` はどちらもこれらのファイルをステージします。設定に書いた追加パスが無いとビルドは失敗します。`resources/` ディレクトリ自体は任意です。
+
+## 追加ファイル
+
+`resources` 設定で、同じパッケージ先に追加のファイルやフォルダをマージします。各追加パスはベース名でコピーされます。プロジェクトの `resources/` フォルダはここに書かないでください。自動で含まれます。
+
+```ts
+import { defineConfig } from "@quickgui/cli";
+
+export default defineConfig({
+  name: "My App",
+  identifier: "com.example.my-app",
+  entry: ".",
+  resources: ["legal/NOTICE.txt", "vendor/data"],
+  fonts: ["assets/MyFont.ttf"],
+});
+```
+
+`legal/NOTICE.txt` は `NOTICE.txt` としてインストールされます。`vendor/data` は `data/` としてインストールされます。
+
+## インストール先
+
+| Platform | Resource directory |
+| --- | --- |
+| macOS `.app` | `Contents/Resources` |
+| Linux AppDir, AppImage, and `.deb` | Next to the executable (`usr/bin`) |
+| Windows installer | Next to the executable in `$INSTDIR` |
+
+実行時はパッケージ名を `ResourceDir` に結合してください。プロジェクトツリーやカレントディレクトリからは読まないでください。
+
+## ファイルの読み込み
+
+`native.Run` の準備ができたあとホストにパスを尋ね、パッケージ名を結合します。
+
+```go
+import (
+	"path/filepath"
+
+	"github.com/egoist/quickgui/go/native"
+	"github.com/egoist/quickgui/go/ui"
+)
+
+func App() *ui.Element {
+	return ui.Image().Value(hero).Width(160).Height(120)
+}
+
+var hero string
+
+func main() {
+	native.Run(func() {
+		native.App.GetPaths(func(paths *native.AppPaths, err error) {
+			if err != nil || paths == nil {
+				return
+			}
+			hero = filepath.Join(paths.ResourceDir, "hero.png")
+			native.NewWindow(native.WindowOptions{
+				Title:     "My App",
+				Component: App,
+			})
+		})
+	})
+}
+```
+
+`ui.Image` はそのファイルシステムパスを受け取ります。他のファイルも同じ結合を使います。`os.ReadFile` や独自のローダーで開きます。相対画像パスはリソースディレクトリに対して解決されません。
+
+## フォント
+
+`fonts` は OpenType ファイルです。CLI はそれらをリソースディレクトリ内の `fonts/` にコピーし、最初のウィンドウを開く前に登録します。
+
+```ts
+export default defineConfig({
+  name: "My App",
+  identifier: "com.example.my-app",
+  entry: ".",
+  fonts: ["assets/MyFont.ttf"],
+});
+```
+
+スタイルではフォントファミリー名を使います。フォントは `resources/` の代わりにはなりません。画像や JSON は、そのディレクトリか追加の `resources` リストに置きます。

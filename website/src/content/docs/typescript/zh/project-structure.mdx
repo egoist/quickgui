@@ -4,6 +4,8 @@ TypeScript 项目把应用代码放在 `app.tsx` 里，开发命令放在 `packa
 
 ```text
 my-app/
+├── resources/
+│   └── icon.png
 ├── app.tsx
 ├── quickgui.config.ts
 ├── tsconfig.json
@@ -28,11 +30,10 @@ export default defineConfig({
   identifier: "com.example.my-app",
   entry: "app.tsx",
   fonts: ["assets/MyFont.ttf"],
-  resources: ["assets"],
 });
 ```
 
-TOML 支持相同的键。在 `tsconfig.json` 中，把 `jsx` 设为 `"preserve"`，把 `jsxImportSource` 设为 `"@quickgui/solid"`。
+应用图标来自 `resources/icon.png`。额外文件可以列在 `resources` 中。见[应用图标](/docs/typescript/app-icon)和[打包资源](/docs/typescript/bundled-resources)。TOML 支持相同的键。在 `tsconfig.json` 中，把 `jsx` 设为 `"preserve"`，把 `jsxImportSource` 设为 `"@quickgui/solid"`。
 
 ## 软件包
 

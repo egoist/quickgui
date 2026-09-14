@@ -102,7 +102,7 @@ export const en = {
   },
   benchmarks: {
     title: "Benchmarks",
-    lead: "Idle memory and installed bundle size for QuickGUI Go, QuickGUI TypeScript, QuickGUI Rust, Tauri, and Electron, measured on the same Mac. Each app runs the same issue tracker with 1,000 issues.",
+    lead: "Idle memory and installed bundle size for QuickGUI Go, QuickGUI TypeScript, QuickGUI Rust, GPUI, Tauri, and Electron, measured on the same Mac. Each app runs the same issue tracker with 1,000 issues.",
     memory: "Idle app memory",
     bundle: "Installed bundle",
     measured: "Measured {{date}}",
@@ -113,7 +113,7 @@ export const en = {
     memoryMethod:
       "Memory is the sum of physical footprints for the app and its rendering helpers, including WebKit or Chromium renderer, GPU, and network processes. AutoFill and other macOS services are excluded. CPU and memory must stay stable throughout sampling; screenshots are taken afterward. Values include compressed memory and use decimal MB (1,000,000 bytes), as in Activity Monitor. No forced garbage collection or cache purge.",
     bundleMethod:
-      "Bundle size counts the files shipped inside the .app, including native libraries and frameworks. QuickGUI TypeScript includes Bun and Solid 2, QuickGUI Rust links the native core into its executable, and Electron includes Chromium and Node. OS-provided frameworks such as WebKit are excluded. This is installed size, not a compressed download.",
+      "Bundle size counts the files shipped inside the .app, including native libraries and frameworks. QuickGUI TypeScript includes Bun and Solid 2, QuickGUI Rust links the native core into its executable, GPUI ships Zed's GPU UI framework in its executable, and Electron includes Chromium and Node. OS-provided frameworks such as WebKit are excluded. This is installed size, not a compressed download.",
     scope:
       "The demo supports search, status filters, pagination, editable notes, and completion actions. Data stays in memory for the session, with no database or network service. These charts measure the loaded app at idle, not interaction throughput. Results vary with your app, machine, and operating system. QuickGUI results use development checkouts; each result records its exact revision.",
     preview: "Benchmark apps",

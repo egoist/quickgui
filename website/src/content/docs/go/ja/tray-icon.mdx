@@ -1,0 +1,74 @@
+トレイアイコンは、macOS のメニューバー、Windows の通知領域、または Linux の StatusNotifierItem ホストに表示されます。画像を `resources/` に置き、起動後にアイコンを作ります。パッケージの[アプリアイコン](/docs/go/app-icon)とは別の画像です。
+
+## トレイアイコンを作る
+
+小さな PNG をアプリに同梱し、インストール後のパスからアイコンを作ります。
+
+```go
+native.App.GetPaths(func(paths *native.AppPaths, err error) {
+	if err != nil || paths == nil {
+		return
+	}
+	icon := filepath.Join(paths.ResourceDir, "trayTemplate.png")
+	native.Tray.Create(native.TrayIconOptions{
+		Icon:    native.TemplateImage(icon),
+		Tooltip: "My App",
+		Menu: []native.TrayMenuItem{
+			{Label: "Show window", Click: showWindow},
+			{Type: "separator"},
+			{Label: "Quit", Click: func() { native.App.Quit(false, nil) }},
+		},
+	}, func(tray *native.TrayIcon, err error) {
+		if err != nil {
+			return
+		}
+		tray.OnEvent(func(event native.TrayEvent) {
+			if event.Kind == "click" {
+				showWindow()
+			}
+		})
+	})
+})
+```
+
+`Tray.Create` は id を割り当てます。そのハンドルで `tray.Update`、`tray.ShowMenu`、`tray.Destroy` を呼びます。`native.Tray` は macOS、Windows、Linux で使えます。
+
+1× の元画像には 22×22 の PNG が適しています。Retina のメニューバー用には 44×44 の `trayTemplate@2x.png` を用意します。
+
+## テンプレート画像
+
+macOS では、テンプレート画像は単色のマスクです。AppKit はアルファチャンネルだけを使い、メニューバーのライト、ダーク、ハイライトの外観に合わせて再着色します。
+
+ファイル名のステムが `Template` で終わり、そのあとに `@2x` や `@3x` が付いてもよい場合、テンプレートとして扱われます。
+
+```text
+resources/trayTemplate.png
+resources/trayTemplate@2x.png
+```
+
+`trayTemplate.png` と `statusTemplate@2x.png` は一致します。`emailTemplateIcon.png` は一致しません。
+
+名前がこの規則に従わないときは `native.TemplateImage(path)` を使うか `ImageSource.Template` を設定します。フラグをオフにすることもできます。
+
+```go
+disabled := false
+native.Desktop.SetDockIcon(&native.ImageSource{Path: iconPath, Template: &disabled})
+```
+
+同じ `ImageSource` フィールドは、ウィンドウアイコン、Dock アイコン、About パネルのアイコン、メニュー項目のアイコンにも使います。他のプラットフォームはフラグを保持し、無視します。
+
+## メニューとイベント
+
+トレイメニューはネイティブのコンテキストメニューです。アクション項目は `Click` を呼びます。`OnEvent` で `click`、`double-click`、`enter`、`move`、`leave`、`menu-item`、`scroll` を監視します。
+
+`ShowMenu` は macOS と Windows で、カーソル位置にメニューを開きます。Linux ホストはメニュー表示を自分で行い、この呼び出しを拒否します。
+
+## プラットフォーム
+
+| プラットフォーム | ホスト | テンプレート画像 | ShowMenu |
+| --- | --- | --- | --- |
+| macOS | メニューバーの extra | AppKit が再着色 | 対応 |
+| Windows | 通知領域 | 無視 | 対応 |
+| Linux | StatusNotifierItem | 無視 | 非対応 |
+
+`Desktop.GetSupport` は `TrayIcons` と `ProgrammableTrayPopup` を返します。トレイアイコンは最大 32 個です。

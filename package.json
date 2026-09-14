@@ -1,6 +1,6 @@
 {
   "name": "quickgui-workspace",
-  "version": "0.1.4-next.1",
+  "version": "0.1.4-next.4",
   "private": true,
   "packageManager": "bun@1.4.0",
   "workspaces": [
@@ -13,7 +13,7 @@
     "build": "bun run --cwd website build",
     "deploy": "bun run --cwd website deploy",
     "build:native": "bun run --filter @quickgui/native build",
-    "test:js": "bun test ./packages/cli ./scripts/benchmark-memory.test.ts",
+    "test:js": "bun test ./packages/cli ./scripts/benchmark-memory.test.ts ./scripts/native-lib-artifacts.test.ts ./scripts/npm-publish-tag.test.ts",
     "test:typescript": "bun scripts/check-typescript-coverage.ts && bun test --preload ./packages/solid/test/preload.ts ./packages/solid/test ./packages/native/test ./packages/extension-updater/test && bun run --cwd examples/quick-git-typescript test",
     "typecheck:js": "bun benchmarks/desktop/quickgui-typescript/generate.ts && bunx tsc -p tsconfig.json --noEmit",
     "version:sync": "bun scripts/sync-release-version.ts",

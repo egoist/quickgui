@@ -12,10 +12,10 @@ const extension = extensionIndex < 0 ? undefined : process.argv[extensionIndex +
 if (extensionIndex >= 0 && extension !== "terminal" && extension !== "updater")
   throw new Error(`Unknown native extension: ${extension ?? "(missing)"}`);
 
-const architecture =
+const hostArchitecture =
   process.arch === "arm64" ? "arm64" : process.arch === "x64" ? "x64" : undefined;
-if (architecture === undefined) throw new Error(`Unsupported host architecture: ${process.arch}`);
-const platform =
+if (hostArchitecture === undefined) throw new Error(`Unsupported host architecture: ${process.arch}`);
+const hostPlatform =
   process.platform === "darwin"
     ? "darwin"
     : process.platform === "linux"
@@ -23,20 +23,53 @@ const platform =
       : process.platform === "win32"
         ? "windows"
         : undefined;
-if (platform === undefined) throw new Error(`Unsupported host platform: ${process.platform}`);
+if (hostPlatform === undefined) throw new Error(`Unsupported host platform: ${process.platform}`);
+
+const triples: Record<
+  string,
+  { triple: string; stage: string; platform: "darwin" | "linux" | "windows" }
+> = {
+  "aarch64-apple-darwin": {
+    triple: "aarch64-apple-darwin",
+    stage: "darwin-arm64",
+    platform: "darwin",
+  },
+  "x86_64-apple-darwin": { triple: "x86_64-apple-darwin", stage: "darwin-x64", platform: "darwin" },
+  "darwin-arm64": { triple: "aarch64-apple-darwin", stage: "darwin-arm64", platform: "darwin" },
+  "darwin-x64": { triple: "x86_64-apple-darwin", stage: "darwin-x64", platform: "darwin" },
+  "aarch64-unknown-linux-gnu": {
+    triple: "aarch64-unknown-linux-gnu",
+    stage: "linux-arm64",
+    platform: "linux",
+  },
+  "x86_64-unknown-linux-gnu": {
+    triple: "x86_64-unknown-linux-gnu",
+    stage: "linux-x64",
+    platform: "linux",
+  },
+  "linux-arm64": { triple: "aarch64-unknown-linux-gnu", stage: "linux-arm64", platform: "linux" },
+  "linux-x64": { triple: "x86_64-unknown-linux-gnu", stage: "linux-x64", platform: "linux" },
+  "aarch64-pc-windows-msvc": {
+    triple: "aarch64-pc-windows-msvc",
+    stage: "windows-arm64",
+    platform: "windows",
+  },
+  "x86_64-pc-windows-msvc": {
+    triple: "x86_64-pc-windows-msvc",
+    stage: "windows-x64",
+    platform: "windows",
+  },
+  "windows-arm64": { triple: "aarch64-pc-windows-msvc", stage: "windows-arm64", platform: "windows" },
+  "windows-x64": { triple: "x86_64-pc-windows-msvc", stage: "windows-x64", platform: "windows" },
+};
 const requestedIndex = process.argv.indexOf("--target");
 const requested = requestedIndex < 0 ? undefined : process.argv[requestedIndex + 1];
-const triples: Record<string, { triple: string; stage: string }> = {
-  "aarch64-apple-darwin": { triple: "aarch64-apple-darwin", stage: "darwin-arm64" },
-  "x86_64-apple-darwin": { triple: "x86_64-apple-darwin", stage: "darwin-x64" },
-  "darwin-arm64": { triple: "aarch64-apple-darwin", stage: "darwin-arm64" },
-  "darwin-x64": { triple: "x86_64-apple-darwin", stage: "darwin-x64" },
-};
 const selected = requested === undefined ? undefined : triples[requested];
 if (requestedIndex >= 0 && selected === undefined)
   throw new Error(`Unsupported Rust host target: ${requested ?? "(missing)"}`);
-const target = selected?.stage ?? `${platform}-${architecture}`;
 
+const platform = selected?.platform ?? hostPlatform;
+const target = selected?.stage ?? `${hostPlatform}-${hostArchitecture}`;
 const profile = debug ? "debug" : "release";
 const crate = extension ? `quickgui-${extension}` : "quickgui-host";
 const cargo = [
@@ -76,12 +109,7 @@ const name =
     : platform === "windows"
       ? `${basename}.dll`
       : `lib${basename}.so`;
-const library = join(
-  targetDir,
-  ...(selected === undefined ? [] : [selected.triple]),
-  profile,
-  name,
-);
+const library = join(targetDir, ...(selected === undefined ? [] : [selected.triple]), profile, name);
 if (!existsSync(library)) throw new Error(`Expected the shared library at ${library}`);
 const stage = join(
   extension ? resolve(packageRoot, "..", `extension-${extension}`) : packageRoot,
