@@ -34,6 +34,13 @@ fallbacks to owned text attributes, fallback selection, and shaping-cache identi
 Copyright the Cosmic Text contributors and is available under MIT or Apache-2.0; see
 `vendor/cosmic_text/LICENSE-MIT` and `vendor/cosmic_text/LICENSE-APACHE`.
 
+## create-dmg
+
+`packages/cli/vendor/create-dmg` is create-dmg 1.3.0 from
+https://github.com/create-dmg/create-dmg, used to package production macOS disk images.
+create-dmg is Copyright 2008-2014 Andrey Tarantsov and Copyright 2020 Andrew Janke, and
+is licensed under the MIT License; see `packages/cli/vendor/create-dmg/LICENSE`.
+
 ## Text-shaping and documentation fonts
 
 `tests/fixtures/fonts/Inter-Regular.ttf` is Copyright 2020 The Inter Project Authors, and

@@ -44,6 +44,16 @@ import {
   desktopEntry,
 } from "./linux.ts";
 import {
+  createDmgArguments,
+  createDmgFlags,
+  DMG_APP_POSITION,
+  DMG_APPLICATIONS_POSITION,
+  DMG_ICON_SIZE,
+  DMG_WINDOW_POSITION,
+  DMG_WINDOW_SIZE,
+  resolveCreateDmgScript,
+} from "./dmg.ts";
+import {
   masCodesignArguments,
   masEntitlementsTemplate,
   masPackageFilename,
@@ -759,6 +769,82 @@ describe("Windows packaging", () => {
     expect(() =>
       signToolArguments({ artifact: "setup.exe", certificateFile: "a.pfx", subjectName: "b" }),
     ).toThrow();
+  });
+});
+
+describe("macOS create-dmg packaging", () => {
+  test("ships the vendored create-dmg script", () => {
+    const script = resolveCreateDmgScript();
+    expect(existsSync(script)).toBe(true);
+    expect(readFileSync(script, "utf8").startsWith("#!/usr/bin/env bash")).toBe(true);
+  });
+
+  test("builds a Finder-layout create-dmg command", () => {
+    const flags = createDmgFlags({
+      dmgPath: "/tmp/My App 1.2.3.dmg",
+      sourceFolder: "/tmp/dmg-src",
+      volumeName: "Great App",
+      appFileName: "My-App.app",
+    });
+    expect(flags).toEqual([
+      "--volname",
+      "Great App",
+      "--window-pos",
+      String(DMG_WINDOW_POSITION.x),
+      String(DMG_WINDOW_POSITION.y),
+      "--window-size",
+      String(DMG_WINDOW_SIZE.width),
+      String(DMG_WINDOW_SIZE.height),
+      "--icon-size",
+      String(DMG_ICON_SIZE),
+      "--icon",
+      "My-App.app",
+      String(DMG_APP_POSITION.x),
+      String(DMG_APP_POSITION.y),
+      "--hide-extension",
+      "My-App.app",
+      "--app-drop-link",
+      String(DMG_APPLICATIONS_POSITION.x),
+      String(DMG_APPLICATIONS_POSITION.y),
+      "--overwrite",
+      "--hdiutil-quiet",
+      "/tmp/My App 1.2.3.dmg",
+      "/tmp/dmg-src",
+    ]);
+    expect(createDmgArguments({
+      dmgPath: "/tmp/My App 1.2.3.dmg",
+      sourceFolder: "/tmp/dmg-src",
+      volumeName: "Great App",
+      appFileName: "My-App.app",
+      volumeIcon: "/tmp/AppIcon.icns",
+    })).toEqual([
+      resolveCreateDmgScript(),
+      "--volname",
+      "Great App",
+      "--volicon",
+      "/tmp/AppIcon.icns",
+      "--window-pos",
+      String(DMG_WINDOW_POSITION.x),
+      String(DMG_WINDOW_POSITION.y),
+      "--window-size",
+      String(DMG_WINDOW_SIZE.width),
+      String(DMG_WINDOW_SIZE.height),
+      "--icon-size",
+      String(DMG_ICON_SIZE),
+      "--icon",
+      "My-App.app",
+      String(DMG_APP_POSITION.x),
+      String(DMG_APP_POSITION.y),
+      "--hide-extension",
+      "My-App.app",
+      "--app-drop-link",
+      String(DMG_APPLICATIONS_POSITION.x),
+      String(DMG_APPLICATIONS_POSITION.y),
+      "--overwrite",
+      "--hdiutil-quiet",
+      "/tmp/My App 1.2.3.dmg",
+      "/tmp/dmg-src",
+    ]);
   });
 });
 

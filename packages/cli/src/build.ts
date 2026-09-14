@@ -8,10 +8,9 @@ import {
   renameSync,
   rmSync,
   statSync,
-  symlinkSync,
   writeFileSync,
 } from "node:fs";
-import { basename, dirname, extname, join, relative, resolve } from "node:path";
+import { basename, extname, join, relative, resolve } from "node:path";
 
 import {
   languageLabel,
@@ -26,6 +25,7 @@ import {
   macTypeDeclarationsPlist,
   type ResolvedDocumentType,
 } from "./packaging/documents.ts";
+import { createDmgArguments } from "./packaging/dmg.ts";
 import {
   masCodesignArguments,
   masEntitlementsTemplate,
@@ -366,17 +366,28 @@ async function buildMacDmg(
 ): Promise<string> {
   const dmgPath = resolve(stagingRoot, macDmgFilename(config.name, config.version));
   const dmgTitle = config.macos.dmgTitle ?? config.name;
-  // The image holds the app and a link to /Applications for the usual drag-to-install layout.
+  const appFileName = basename(appPath);
+  const volumeIcon = join(appPath, "Contents", "Resources", "AppIcon.icns");
+  // create-dmg copies this folder, then adds the Applications drop link itself.
   const imageRoot = mkdtempSync(join(stagingRoot, ".dmg-"));
-  cpSync(appPath, join(imageRoot, basename(appPath)), { recursive: true, verbatimSymlinks: true });
-  symlinkSync("/Applications", join(imageRoot, "Applications"));
+  cpSync(appPath, join(imageRoot, appFileName), { recursive: true, verbatimSymlinks: true });
   try {
-    await run(hdiutilCreateArguments(dmgTitle, imageRoot, dmgPath), config.projectRoot);
+    console.log(`[quickgui] Creating ${basename(dmgPath)}`);
+    await run(
+      createDmgArguments({
+        dmgPath,
+        sourceFolder: imageRoot,
+        volumeName: dmgTitle,
+        appFileName,
+        ...(existsSync(volumeIcon) ? { volumeIcon } : {}),
+      }),
+      config.projectRoot,
+    );
   } finally {
     rmSync(imageRoot, { recursive: true, force: true });
   }
   if (!existsSync(dmgPath) || !statSync(dmgPath).isFile()) {
-    throw new CliError(`hdiutil did not produce the expected disk image: ${dmgPath}`);
+    throw new CliError(`create-dmg did not produce the expected disk image: ${dmgPath}`);
   }
 
   if (identity !== "-") {
@@ -395,29 +406,6 @@ async function buildMacDmg(
   }
 
   return dmgPath;
-}
-
-/** The `hdiutil` invocation that packs `sourceFolder` into a compressed, read-only disk image. */
-export function hdiutilCreateArguments(
-  volumeName: string,
-  sourceFolder: string,
-  dmgPath: string,
-): string[] {
-  return [
-    "hdiutil",
-    "create",
-    "-volname",
-    volumeName,
-    "-srcfolder",
-    sourceFolder,
-    "-ov",
-    "-format",
-    "UDZO",
-    "-fs",
-    "HFS+",
-    "-quiet",
-    dmgPath,
-  ];
 }
 
 export function macDmgFilename(name: string, version: string): string {

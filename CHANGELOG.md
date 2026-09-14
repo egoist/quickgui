@@ -6,6 +6,10 @@ All notable user-facing changes to QuickGUI are recorded here.
 
 ### CLI
 
+- Production macOS disk images are created with the vendored
+  [create-dmg](https://github.com/create-dmg/create-dmg) script: a Finder window, icon
+  positions, an Applications drop link, and the app icon as the volume icon when present.
+  Signing, notarization, and stapling stay in the CLI.
 - A project `resources/` directory is packaged automatically. `resources/icon.png` is the
   application icon; `resources/icon.icns` and `resources/icon.ico` override platform containers
   when present. The `resources` config option only adds extra files or folders.

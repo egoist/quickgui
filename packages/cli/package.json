@@ -37,6 +37,7 @@
     "src/targets.ts",
     "templates",
     "src/packaging",
+    "vendor",
     "!**/*.test.ts"
   ],
   "scripts": {
