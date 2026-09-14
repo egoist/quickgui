@@ -13,14 +13,15 @@ import (
 ## Usage
 
 ```go
-func VirtualListExample(rows []string) *ui.Element {
+func VirtualListExample(rows []string, rowHeights []float64) *ui.Element {
 	return ui.VirtualList().Child(func() *native.Node {
 		var children []*native.Node
 		for _, row := range rows {
 			children = append(children, ui.Text(row).Height(36).Node)
 		}
 		return ui.Fragment(children)
-	}).Height(320).EstimatedItemHeight(36).Overscan(6).FollowMode("normal")
+	}).Height(320).EstimatedItemHeight(36).Overscan(6).
+		OverscanPixels(240).ItemHeights(rowHeights).FollowMode("normal")
 
 }
 ```
@@ -31,6 +32,8 @@ func VirtualListExample(rows []string) *ui.Element {
 | --- | --- |
 | `EstimatedItemHeight` | Initial logical row-height estimate used by virtualization. |
 | `Overscan` | Extra rows mounted before and after the visible range. |
+| `OverscanPixels` | Extra logical distance mounted before and after the visible range. |
+| `ItemHeights` | Exact row heights supplied without waiting for layout measurement. |
 | `ListAlignment` | Pins short list content to the top or bottom. |
 | `FollowMode` | Chooses ordinary scrolling or tail-following behavior. |
 | `children` | Content mounted inside the component. |

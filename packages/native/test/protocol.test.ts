@@ -75,8 +75,8 @@ describe("binary mutation protocol", () => {
     expect(() => batch.setProperty(1, PropertyCode.Width, Number.NaN)).toThrow("finite");
   });
 
-  test("encodes native controls, SwiftUI reverse hosts, overlays, terminals, SVGs, paint, and pointer capture under protocol v30", () => {
-    expect(PROTOCOL_VERSION).toBe(31);
+  test("encodes native controls, SwiftUI reverse hosts, overlays, terminals, SVGs, paint, and pointer capture under the current protocol", () => {
+    expect(PROTOCOL_VERSION).toBe(32);
     const batch = new MutationBatch();
     batch.createElement(1, NativeNodeTag.Input);
     batch.setProperty(1, PropertyCode.Value, "hello");

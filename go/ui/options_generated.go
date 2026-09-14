@@ -1053,6 +1053,16 @@ func Overscan(value any) Option {
 	return propertyOption(func(props *Props) { props.Overscan = value })
 }
 
+// OverscanPixels configures the corresponding node property.
+func OverscanPixels(value any) Option {
+	return propertyOption(func(props *Props) { props.OverscanPixels = value })
+}
+
+// ItemHeights configures the corresponding node property.
+func ItemHeights(value any) Option {
+	return propertyOption(func(props *Props) { props.ItemHeights = value })
+}
+
 // ListAlignment configures the corresponding node property.
 func ListAlignment(value string) Option {
 	return propertyOption(func(props *Props) { props.ListAlignment = value })

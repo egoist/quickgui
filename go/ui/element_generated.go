@@ -974,6 +974,16 @@ func (element *Element) Overscan(value any) *Element {
 	return element.configureProperty("Overscan", Overscan(value))
 }
 
+// OverscanPixels configures the corresponding node property.
+func (element *Element) OverscanPixels(value any) *Element {
+	return element.configureProperty("OverscanPixels", OverscanPixels(value))
+}
+
+// ItemHeights configures the corresponding node property.
+func (element *Element) ItemHeights(value any) *Element {
+	return element.configureProperty("ItemHeights", ItemHeights(value))
+}
+
 // ListAlignment configures the corresponding node property.
 func (element *Element) ListAlignment(value string) *Element {
 	return element.configureProperty("ListAlignment", ListAlignment(value))

@@ -513,6 +513,8 @@ describe("Solid universal host", () => {
     const list = createComponent(VirtualList, {
       estimatedItemHeight: 180,
       overscan: 3,
+      overscanPixels: 240,
+      itemHeights: [2_000_000],
       listAlignment: "bottom",
       followMode: "tail",
       children: createComponent(Text, { children: "Visible row" }),
@@ -520,6 +522,8 @@ describe("Solid universal host", () => {
 
     expect(list.properties.get(PropertyCode.EstimatedItemHeight)).toBe(180);
     expect(list.properties.get(PropertyCode.Overscan)).toBe(3);
+    expect(list.properties.get(PropertyCode.OverscanPixels)).toBe(240);
+    expect(list.properties.get(PropertyCode.ItemHeights)).toBe("[2000000]");
     expect(list.properties.get(PropertyCode.ListAlignment)).toBe("bottom");
     expect(list.properties.get(PropertyCode.FollowMode)).toBe("tail");
     expect(list.children).toHaveLength(1);

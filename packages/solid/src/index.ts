@@ -172,6 +172,8 @@ const properties: Record<string, PropertyEntry> = {
   scrollToEndRevision: { code: PropertyCode.ScrollToEndRevision },
   estimatedItemHeight: { code: PropertyCode.EstimatedItemHeight },
   overscan: { code: PropertyCode.Overscan },
+  overscanPixels: { code: PropertyCode.OverscanPixels },
+  itemHeights: { code: PropertyCode.ItemHeights, normalize: normalizeItemHeights },
   listAlignment: { code: PropertyCode.ListAlignment },
   followMode: { code: PropertyCode.FollowMode },
   anchorPlacement: { code: PropertyCode.AnchorPlacement },
@@ -1605,6 +1607,24 @@ function normalizeExtent(value: PropertyInput): string | null {
     }
   }
   return JSON.stringify([pair[0], pair[1]]);
+}
+
+function normalizeItemHeights(value: PropertyInput): string | null {
+  if (value === null || value === undefined || value === false) return null;
+  if (!Array.isArray(value)) {
+    throw new TypeError("QuickGUI item heights must be an array of numbers");
+  }
+  const heights = Array.from(value, (height) => {
+    if (typeof height !== "number" || !Number.isFinite(height) || height <= 0) {
+      throw new TypeError("QuickGUI item heights must be positive finite numbers");
+    }
+    return height;
+  });
+  const encoded = JSON.stringify(heights);
+  if (textEncoder.encode(encoded).length > 1024 * 1024) {
+    throw new TypeError("QuickGUI item-height declarations are limited to 1048576 bytes");
+  }
+  return encoded;
 }
 
 function normalizeComponentJson(value: PropertyInput): string | null {
@@ -9268,6 +9288,8 @@ export namespace JSX {
   export interface VirtualListProps extends NativeProps {
     estimatedItemHeight?: number;
     overscan?: number;
+    overscanPixels?: number;
+    itemHeights?: readonly number[];
     listAlignment?: "top" | "bottom";
     followMode?: "normal" | "tail";
   }

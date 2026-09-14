@@ -90,7 +90,7 @@ use dialog::{
 };
 
 const PROTOCOL_MAGIC: &[u8; 4] = b"QGMB";
-const PROTOCOL_VERSION: u16 = 31;
+const PROTOCOL_VERSION: u16 = 32;
 const ROOT_NODE: u32 = 0;
 const ROOT_ELEMENT_ID: u64 = u64::MAX - 1;
 const MAX_BATCH_BYTES: usize = 16 * 1024 * 1024;
@@ -495,7 +495,9 @@ mod property {
     pub const SELECTED: u16 = 358;
     pub const SCROLL_SNAP_X: u16 = 359;
     pub const SCROLL_SNAP_Y: u16 = 360;
-    pub const LAST: u16 = SCROLL_SNAP_Y;
+    pub const OVERSCAN_PIXELS: u16 = 361;
+    pub const ITEM_HEIGHTS: u16 = 362;
+    pub const LAST: u16 = ITEM_HEIGHTS;
 }
 
 /// Base64 transport for optional byte payloads carried inside JSON options and results.

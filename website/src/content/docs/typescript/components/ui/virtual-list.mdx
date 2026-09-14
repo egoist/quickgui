@@ -11,7 +11,12 @@ import { VirtualList } from "@quickgui/solid";
 ## Usage
 
 ```tsx
-<VirtualList estimatedItemHeight={36} overscan={6}>
+<VirtualList
+  estimatedItemHeight={36}
+  overscan={6}
+  overscanPixels={240}
+  itemHeights={rowHeights()}
+>
   <For each={rows()}>{(row) => <Row row={row} />}</For>
 </VirtualList>
 ```
@@ -22,7 +27,8 @@ import { VirtualList } from "@quickgui/solid";
 | --- | --- |
 | `estimatedItemHeight` | Initial logical row-height estimate used by virtualization. |
 | `overscan` | Extra rows mounted before and after the visible range. |
+| `overscanPixels` | Extra logical distance mounted before and after the visible range. |
+| `itemHeights` | Exact row heights supplied without waiting for layout measurement. |
 | `listAlignment` | Pins short list content to the top or bottom. |
 | `followMode` | Chooses ordinary scrolling or tail-following behavior. |
 | `children` | Content mounted inside the component. |
-

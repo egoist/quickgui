@@ -833,10 +833,49 @@ pub(super) struct QueuedEvent {
 
 pub(super) type EventQueue = Rc<RefCell<VecDeque<QueuedEvent>>>;
 
+const MAX_LIST_ITEM_HEIGHTS_JSON_BYTES: usize = MAX_STRING_BYTES;
+
+fn list_item_heights_source(node: &NativeNode) -> Option<Arc<str>> {
+    match node.property(property::ITEM_HEIGHTS) {
+        Some(PropertyValue::String(source)) => Some(Arc::clone(source)),
+        _ => None,
+    }
+}
+
+pub(super) fn decode_list_item_heights(
+    source: Option<&Arc<str>>,
+    item_count: usize,
+) -> Option<Vec<f32>> {
+    let source = source?.as_ref();
+    if source.len() > MAX_LIST_ITEM_HEIGHTS_JSON_BYTES {
+        return None;
+    }
+    let heights = serde_json::from_str::<Vec<f64>>(source).ok()?;
+    (heights.len() == item_count
+        && heights
+            .iter()
+            .all(|height| height.is_finite() && *height > 0.0))
+    .then(|| {
+        heights
+            .into_iter()
+            .map(|height| height.min(f64::from(quickgui::MAX_LIST_ITEM_HEIGHT)) as f32)
+            .collect()
+    })
+}
+
+fn same_list_item_heights_source(left: Option<&Arc<str>>, right: Option<&Arc<str>>) -> bool {
+    match (left, right) {
+        (Some(left), Some(right)) => Arc::ptr_eq(left, right) || left == right,
+        (None, None) => true,
+        _ => false,
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(super) struct NativeListConfig {
     pub(super) estimated_item_height: f32,
     pub(super) overscan: usize,
+    pub(super) overscan_pixels: f32,
     pub(super) alignment: ListAlignment,
     pub(super) follow_mode: FollowMode,
 }
@@ -846,8 +885,12 @@ impl NativeListConfig {
         let estimated_item_height = node
             .number(property::ESTIMATED_ITEM_HEIGHT)
             .unwrap_or(160.0)
-            .clamp(1.0, 1_048_576.0);
+            .clamp(1.0, quickgui::MAX_LIST_ITEM_HEIGHT);
         let overscan = node.number(property::OVERSCAN).unwrap_or(2.0).max(0.0) as usize;
+        let overscan_pixels = node
+            .number(property::OVERSCAN_PIXELS)
+            .unwrap_or(0.0)
+            .clamp(0.0, quickgui::MAX_LIST_ITEM_HEIGHT);
         let alignment = match node.string(property::LIST_ALIGNMENT) {
             Some("bottom") => ListAlignment::Bottom,
             _ => ListAlignment::Top,
@@ -859,6 +902,7 @@ impl NativeListConfig {
         Self {
             estimated_item_height,
             overscan,
+            overscan_pixels,
             alignment,
             follow_mode,
         }
@@ -867,6 +911,7 @@ impl NativeListConfig {
     pub(super) fn create_state(self, item_count: usize) -> ListState {
         ListState::new(item_count, self.estimated_item_height)
             .with_overscan(self.overscan)
+            .with_overscan_pixels(self.overscan_pixels)
             .with_alignment(self.alignment)
             .with_follow_mode(self.follow_mode)
     }
@@ -876,6 +921,8 @@ pub(super) struct NativeListState {
     pub(super) config: NativeListConfig,
     pub(super) children: Vec<u32>,
     pub(super) list: ListState,
+    item_heights_source: Option<Arc<str>>,
+    has_item_heights: bool,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -1002,32 +1049,67 @@ impl NativeTerminalState {
 impl NativeListState {
     pub(super) fn new(node: &NativeNode) -> Self {
         let config = NativeListConfig::from_node(node);
+        let item_heights_source = list_item_heights_source(node);
+        let item_heights =
+            decode_list_item_heights(item_heights_source.as_ref(), node.children.len());
+        let list = config.create_state(node.children.len());
+        if let Some(heights) = &item_heights {
+            list.set_item_heights(heights);
+        }
         Self {
             config,
             children: node.children.clone(),
-            list: config.create_state(node.children.len()),
+            list,
+            item_heights_source,
+            has_item_heights: item_heights.is_some(),
         }
     }
 
     pub(super) fn sync(&mut self, node: &NativeNode) {
         let config = NativeListConfig::from_node(node);
+        let item_heights_source = list_item_heights_source(node);
+        let item_heights_changed = !same_list_item_heights_source(
+            self.item_heights_source.as_ref(),
+            item_heights_source.as_ref(),
+        );
         if self.config != config {
             self.config = config;
             self.children.clone_from(&node.children);
             self.list = config.create_state(self.children.len());
+            let item_heights =
+                decode_list_item_heights(item_heights_source.as_ref(), self.children.len());
+            if let Some(heights) = &item_heights {
+                self.list.set_item_heights(heights);
+            }
+            self.item_heights_source = item_heights_source;
+            self.has_item_heights = item_heights.is_some();
             return;
         }
-        if self.children == node.children {
+        let children_changed = self.children != node.children;
+        if !children_changed && !item_heights_changed {
             return;
         }
-        let stable_prefix =
-            self.children.starts_with(&node.children) || node.children.starts_with(&self.children);
-        if stable_prefix {
-            self.list.set_item_count(node.children.len());
-        } else {
-            self.list.reset(node.children.len());
+        let mut measurements_reset = false;
+        if children_changed {
+            let stable_prefix = self.children.starts_with(&node.children)
+                || node.children.starts_with(&self.children);
+            if stable_prefix {
+                self.list.set_item_count(node.children.len());
+            } else {
+                self.list.reset(node.children.len());
+                measurements_reset = true;
+            }
+            self.children.clone_from(&node.children);
         }
-        self.children.clone_from(&node.children);
+        let item_heights =
+            decode_list_item_heights(item_heights_source.as_ref(), self.children.len());
+        if let Some(heights) = &item_heights {
+            self.list.set_item_heights(heights);
+        } else if self.has_item_heights && !measurements_reset {
+            self.list.remeasure();
+        }
+        self.item_heights_source = item_heights_source;
+        self.has_item_heights = item_heights.is_some();
     }
 }
 

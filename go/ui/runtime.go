@@ -65,6 +65,8 @@ type Props struct {
 	Streaming               any
 	EstimatedItemHeight     any
 	Overscan                any
+	OverscanPixels          any
+	ItemHeights             any
 	ListAlignment           string
 	FollowMode              string
 	ObjectFit               string
@@ -117,6 +119,12 @@ func applyPropValues(node *native.Node, props Props) {
 	}
 	if props.Overscan != nil {
 		bindNumber(node, protocol.Overscan, props.Overscan)
+	}
+	if props.OverscanPixels != nil {
+		bindNumber(node, protocol.OverscanPixels, props.OverscanPixels)
+	}
+	if props.ItemHeights != nil {
+		bindItemHeights(node, props.ItemHeights)
 	}
 	if props.ListAlignment != "" {
 		setString(node, protocol.ListAlignment, props.ListAlignment)

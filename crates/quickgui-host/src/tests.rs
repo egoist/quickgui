@@ -1228,6 +1228,54 @@ fn native_virtual_list_mounts_only_the_initial_window_and_overscan() {
     assert!(mounted < item_count as usize);
 }
 
+#[test]
+fn native_virtual_list_applies_pixel_overscan_and_known_heights() {
+    let oversized: Arc<str> = Arc::from("[2000000]");
+    assert_eq!(
+        decode_list_item_heights(Some(&oversized), 1),
+        Some(vec![quickgui::MAX_LIST_ITEM_HEIGHT])
+    );
+
+    let mut node = NativeNode::new(NodeTag::VirtualList);
+    node.children = (1..=1_000).collect();
+    node.set_property(
+        property::ESTIMATED_ITEM_HEIGHT,
+        Some(PropertyValue::Number(10.0)),
+    );
+    node.set_property(property::OVERSCAN, Some(PropertyValue::Number(0.0)));
+    node.set_property(property::OVERSCAN_PIXELS, Some(PropertyValue::Number(20.0)));
+    let mut heights = vec![10.0_f32; node.children.len()];
+    heights[1] = 100.0;
+    node.set_property(
+        property::ITEM_HEIGHTS,
+        Some(PropertyValue::String(Arc::from(
+            serde_json::to_string(&heights).unwrap(),
+        ))),
+    );
+
+    let mut retained = NativeListState::new(&node);
+    retained.list.set_viewport_size(400.0, 40.0);
+    retained.list.scroll_to_pixels(110.0);
+    assert_eq!(retained.list.visible_rows().range, 1..8);
+    assert_eq!(retained.list.stats().measured_items, 1);
+
+    let anchor = retained.list.logical_scroll_top();
+    heights[0] = 20.0;
+    node.set_property(
+        property::ITEM_HEIGHTS,
+        Some(PropertyValue::String(Arc::from(
+            serde_json::to_string(&heights).unwrap(),
+        ))),
+    );
+    retained.sync(&node);
+    assert_eq!(retained.list.logical_scroll_top(), anchor);
+    assert_eq!(retained.list.scroll_offset(), 120.0);
+
+    node.set_property(property::ITEM_HEIGHTS, None);
+    retained.sync(&node);
+    assert_eq!(retained.list.stats().measured_items, 0);
+}
+
 #[cfg(unix)]
 #[test]
 fn native_terminal_runs_a_real_pty_and_rerenders_ghostty_output() {

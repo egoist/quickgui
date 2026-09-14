@@ -623,8 +623,8 @@ pub use undo::{
     UndoManager, UndoableChange, undo_key_bindings,
 };
 pub use virtual_list::{
-    FollowMode, ListAlignment, ListOffset, ListState, ListStateStats, MAX_LIST_ITEMS,
-    MAX_LIST_OVERSCAN_ITEMS, MAX_MOUNTED_LIST_ITEMS, VirtualList, VisibleRows,
+    FollowMode, ListAlignment, ListOffset, ListState, ListStateStats, MAX_LIST_ITEM_HEIGHT,
+    MAX_LIST_ITEMS, MAX_LIST_OVERSCAN_ITEMS, MAX_MOUNTED_LIST_ITEMS, VirtualList, VisibleRows,
 };
 #[cfg(any(test, feature = "test-support"))]
 pub use visual_test::{

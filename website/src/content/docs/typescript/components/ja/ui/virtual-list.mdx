@@ -11,7 +11,12 @@ import { VirtualList } from "@quickgui/solid";
 ## 使い方
 
 ```tsx
-<VirtualList estimatedItemHeight={36} overscan={6}>
+<VirtualList
+  estimatedItemHeight={36}
+  overscan={6}
+  overscanPixels={240}
+  itemHeights={rowHeights()}
+>
   <For each={rows()}>{(row) => <Row row={row} />}</For>
 </VirtualList>
 ```
@@ -22,7 +27,8 @@ import { VirtualList } from "@quickgui/solid";
 | --- | --- |
 | `estimatedItemHeight` | 仮想化で使う初期論理行高の推定値です。 |
 | `overscan` | 表示範囲の前後に追加でマウントする行数です。 |
+| `overscanPixels` | 表示範囲の前後に追加でマウントする論理距離です。 |
+| `itemHeights` | レイアウト計測を待たずに指定する正確な行高です。 |
 | `listAlignment` | 短いリスト内容を上端または下端に固定します。 |
 | `followMode` | 通常のスクロールまたは末尾追従の動作を選びます。 |
 | `children` | コンポーネント内にマウントする内容です。 |
-

@@ -13,14 +13,15 @@ import (
 ## 使い方
 
 ```go
-func VirtualListExample(rows []string) *ui.Element {
+func VirtualListExample(rows []string, rowHeights []float64) *ui.Element {
 	return ui.VirtualList().Child(func() *native.Node {
 		var children []*native.Node
 		for _, row := range rows {
 			children = append(children, ui.Text(row).Height(36).Node)
 		}
 		return ui.Fragment(children)
-	}).Height(320).EstimatedItemHeight(36).Overscan(6).FollowMode("normal")
+	}).Height(320).EstimatedItemHeight(36).Overscan(6).
+		OverscanPixels(240).ItemHeights(rowHeights).FollowMode("normal")
 
 }
 ```
@@ -31,6 +32,8 @@ func VirtualListExample(rows []string) *ui.Element {
 | --- | --- |
 | `EstimatedItemHeight` | 仮想化で使う初期論理行高の推定値です。 |
 | `Overscan` | 表示範囲の前後に追加でマウントする行数です。 |
+| `OverscanPixels` | 表示範囲の前後に追加でマウントする論理距離です。 |
+| `ItemHeights` | レイアウト計測を待たずに指定する正確な行高です。 |
 | `ListAlignment` | 短いリスト内容を上端または下端に固定します。 |
 | `FollowMode` | 通常のスクロールまたは末尾追従の動作を選びます。 |
 | `children` | コンポーネント内にマウントする内容です。 |

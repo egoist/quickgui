@@ -120,7 +120,15 @@ export const ALL_COMPONENT_DOCS = [
     section: 'Primitives',
     description: 'Lays out and paints the visible part of a long or variable-height collection.',
     parts: [],
-    keyProps: ['EstimatedItemHeight', 'Overscan', 'ListAlignment', 'FollowMode', 'children'],
+    keyProps: [
+      'EstimatedItemHeight',
+      'Overscan',
+      'OverscanPixels',
+      'ItemHeights',
+      'ListAlignment',
+      'FollowMode',
+      'children',
+    ],
   },
   {
     kind: 'ui',

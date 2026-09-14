@@ -302,6 +302,11 @@ paint-only. The logical top item and pixel inset survive measurement changes. Wi
 invalidate measurements, and `remeasure_items(range)` handles content changes without throwing
 away unaffected blocks.
 
+`with_overscan_pixels` adds a stable logical render-ahead distance on top of row-count overscan.
+When row heights are already known, `set_item_heights` seeds all of them at once and preserves the
+current logical scroll anchor. Go and TypeScript expose the same controls as `OverscanPixels` /
+`ItemHeights` and `overscanPixels` / `itemHeights`.
+
 `set_item_count` preserves unchanged prefix measurements; use `reset` when item identity changes.
 Bottom-aligned transcripts can combine `ListAlignment::Bottom` and `FollowMode::Tail`. Cloned
 `ListState` values intentionally share scroll and measurement state, so mount one shared state as
