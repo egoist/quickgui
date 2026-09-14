@@ -1,0 +1,62 @@
+スナップポイントを備え、スワイプによる閉じる操作をコアが管理するモーダルまたはフォーカストラップ型シートです。
+
+## インポート
+
+`github.com/egoist/quickgui/go/ui` から `ui` をインポートします。
+
+```go
+import (
+	"github.com/egoist/quickgui/go/ui"
+)
+```
+
+## 使い方
+
+```go
+func DrawerExample() *ui.Element {
+	drawer := ui.NewDrawer().SnapPoints([]float64{0.4, 0.9}).SwipeDirection("down")
+	return drawer.Root().Children(
+		drawer.Trigger().Child("Open drawer"),
+		drawer.Portal().Children(
+			drawer.Backdrop(),
+			drawer.Viewport().Child(
+				drawer.Popup().Children(
+					drawer.SwipeArea(),
+					drawer.Content().Children(
+						drawer.Title().Child("Settings"),
+						drawer.Close().Child("Close"),
+					),
+				),
+			),
+		),
+	)
+}
+```
+
+## 構成
+
+- `drawer.Root`
+- `drawer.Trigger`
+- `drawer.Portal`
+- `drawer.Backdrop`
+- `drawer.Viewport`
+- `drawer.Popup`
+- `drawer.Content`
+- `drawer.Title`
+- `drawer.Description`
+- `drawer.Close`
+- `drawer.SwipeArea`
+
+## 主なプロパティ
+
+| プロパティ | 説明 |
+| --- | --- |
+| `Open` | 制御された開閉状態です。 |
+| `DefaultOpen` | コンポーネント自身が開閉状態を管理するときの初期状態です。 |
+| `OnOpenChange` | コアが決定した開閉を通知します。 |
+| `Modal` | ダイアログのようにフォーカスを閉じ込めます。`DrawerModalityTrapFocus` はフォーカスのみ閉じ込めます。 |
+| `SnapPoints` | ドロワーで許可する展開量を、ビューポート比率またはピクセルで指定します。 |
+| `SnapPoint` | 開いたドロワーが最初に停止する、宣言済みスナップポイントです。 |
+| `SwipeDirection` | スワイプでサーフェスを閉じる、または移動する方向の端です。 |
+| `DisablePointerDismissal` | 背景とスワイプによる閉じる操作を拒否し、Escape キーと閉じるコントロールだけを残します。 |
+| `OnSwipeChange` | ライブのスワイプを通知します。アプリケーションが適用するペイントのみのトランスフォームに使用します。 |

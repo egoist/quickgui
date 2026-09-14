@@ -100,6 +100,11 @@ const UI: Record<string, Target> = {
   "system-popover": { file: "src/popover_component.rs", type: "SystemPopover" },
   dialog: { file: "src/dialog.rs", type: "Dialog" },
   "alert-dialog": { file: "src/dialog.rs", type: "Dialog", ctor: "alert" },
+  drawer: {
+    file: "src/drawer.rs",
+    type: "Drawer",
+    extraTypes: [{ file: "src/drawer.rs", type: "DrawerState" }],
+  },
   tooltip: { file: "src/tooltip.rs", type: "Tooltip" },
   "preview-card": { file: "src/preview_card.rs", type: "PreviewCard" },
   toast: { file: "src/toast.rs", type: "Toast", extraFns: [{ file: "src/toast.rs", fn: "toast_viewport" }] },

@@ -1,0 +1,49 @@
+带吸附点的模态或焦点约束式抽屉,滑动关闭由核心管理。
+
+## 导入
+
+从 `quickgui` 导入 `Drawer` 和 `DrawerState`。
+
+```rust
+use quickgui::*;
+```
+
+## 用法
+
+```rust
+let sheet = DrawerState::new(SwipeDirection::Down).snap_points(&[0.45, 1.0]);
+let drawer = Drawer::from_state("filters", &sheet);
+drawer.root().child(
+    drawer
+        .portal()
+        .child(drawer.backdrop())
+        .child(drawer.viewport().child(
+            drawer.popup().child(drawer.title_with(text("Filters"))),
+        )),
+)
+```
+
+## 结构
+
+- `Drawer::root`
+- `Drawer::trigger`
+- `Drawer::portal`
+- `Drawer::backdrop`
+- `Drawer::viewport`
+- `Drawer::popup`
+- `Drawer::content`
+- `Drawer::title`
+- `Drawer::description`
+- `Drawer::close`
+- `Drawer::swipe_area`
+
+## 主要属性
+
+| 属性 | 说明 |
+| --- | --- |
+| `DrawerState::set_open` | 受控的打开状态。 |
+| `DrawerState::snap_points` | 抽屉可用的展开位置,以视口比例或像素表示。 |
+| `DrawerState::default_snap_point` | 抽屉打开时落在哪个已声明的吸附点。 |
+| `Drawer::modal` | 像对话框一样约束焦点;`DrawerModality::TrapFocus` 仅约束焦点。 |
+| `DrawerState::disable_pointer_dismissal` | 拒绝背景和滑动关闭,只保留 Escape 键和关闭控件。 |
+| `DrawerState::swipe_offset` | 实时滑动位移,用于应用自行应用的纯绘制变换。 |

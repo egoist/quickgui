@@ -31,10 +31,16 @@ All notable user-facing changes to QuickGUI are recorded here.
   values accept an explicit `template` flag; omitted path flags still infer that convention.
 - Rust `EventContext` can create, replace, remove, and (on macOS and Windows) pop a native
   tray menu, so `Application::run` apps no longer need `AppRunner` for tray icons.
+- The Go binding now exposes the `Drawer` component: `ui.NewDrawer()` with Root, Trigger,
+  Portal, Backdrop, Viewport, Popup, Content, Title, Description, Close, and SwipeArea
+  parts, controlled `Open`/`DefaultOpen`, modality, swipe direction, snap points, and live
+  swipe reporting through `ui.UseDrawerSwipe`, matching the Rust core and TypeScript.
 
 ### Website
 
 - Added App Icon, Tray Icon, and Bundled Resources guides for Go, TypeScript, and Rust.
+- The Drawer component reference now covers Go and Rust beside TypeScript, in all three
+  locales.
 
 ## 0.1.4-next.4 - 2026-09-13
 

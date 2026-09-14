@@ -1,0 +1,49 @@
+A modal or focus-trapping sheet with snap points and core-owned swipe dismissal.
+
+## Import
+
+Import `Drawer` and `DrawerState` from `quickgui`.
+
+```rust
+use quickgui::*;
+```
+
+## Usage
+
+```rust
+let sheet = DrawerState::new(SwipeDirection::Down).snap_points(&[0.45, 1.0]);
+let drawer = Drawer::from_state("filters", &sheet);
+drawer.root().child(
+    drawer
+        .portal()
+        .child(drawer.backdrop())
+        .child(drawer.viewport().child(
+            drawer.popup().child(drawer.title_with(text("Filters"))),
+        )),
+)
+```
+
+## Anatomy
+
+- `Drawer::root`
+- `Drawer::trigger`
+- `Drawer::portal`
+- `Drawer::backdrop`
+- `Drawer::viewport`
+- `Drawer::popup`
+- `Drawer::content`
+- `Drawer::title`
+- `Drawer::description`
+- `Drawer::close`
+- `Drawer::swipe_area`
+
+## Key props
+
+| Prop | Purpose |
+| --- | --- |
+| `DrawerState::set_open` | Controlled open state. |
+| `DrawerState::snap_points` | Allowed drawer extents, expressed as viewport fractions or pixels. |
+| `DrawerState::default_snap_point` | Which declared snap point an opening drawer lands on. |
+| `Drawer::modal` | Contains focus like a dialog; `DrawerModality::TrapFocus` only contains focus. |
+| `DrawerState::disable_pointer_dismissal` | Refuses backdrop and swipe dismissal, leaving Escape and the close control. |
+| `DrawerState::swipe_offset` | The live swipe, for the paint-only transform the application applies. |

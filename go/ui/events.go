@@ -219,6 +219,9 @@ type ComponentChangeDetails struct {
 	Toasts              []ToastStackEntry               `json:"toasts,omitempty"`
 	LoadingStatus       string                          `json:"loadingStatus,omitempty"`
 	Complete            string                          `json:"complete,omitempty"`
+	SnapPoint           *int                            `json:"snapPoint,omitempty"`
+	Swiping             *bool                           `json:"swiping,omitempty"`
+	SwipeOffset         *float64                        `json:"swipeOffset,omitempty"`
 	Offset              *ScrollOffset                   `json:"offset,omitempty"`
 	Scrolling           *bool                           `json:"scrolling,omitempty"`
 	Hovering            *bool                           `json:"hovering,omitempty"`

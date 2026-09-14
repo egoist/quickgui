@@ -1,0 +1,49 @@
+スナップポイントを備え、スワイプによる閉じる操作をコアが管理するモーダルまたはフォーカストラップ型シートです。
+
+## インポート
+
+`quickgui` から `Drawer` と `DrawerState` をインポートします。
+
+```rust
+use quickgui::*;
+```
+
+## 使い方
+
+```rust
+let sheet = DrawerState::new(SwipeDirection::Down).snap_points(&[0.45, 1.0]);
+let drawer = Drawer::from_state("filters", &sheet);
+drawer.root().child(
+    drawer
+        .portal()
+        .child(drawer.backdrop())
+        .child(drawer.viewport().child(
+            drawer.popup().child(drawer.title_with(text("Filters"))),
+        )),
+)
+```
+
+## 構成
+
+- `Drawer::root`
+- `Drawer::trigger`
+- `Drawer::portal`
+- `Drawer::backdrop`
+- `Drawer::viewport`
+- `Drawer::popup`
+- `Drawer::content`
+- `Drawer::title`
+- `Drawer::description`
+- `Drawer::close`
+- `Drawer::swipe_area`
+
+## 主なプロパティ
+
+| プロパティ | 説明 |
+| --- | --- |
+| `DrawerState::set_open` | 制御された開閉状態です。 |
+| `DrawerState::snap_points` | ドロワーで許可する展開量を、ビューポート比率またはピクセルで指定します。 |
+| `DrawerState::default_snap_point` | 開いたドロワーが最初に停止する、宣言済みスナップポイントです。 |
+| `Drawer::modal` | ダイアログのようにフォーカスを閉じ込めます。`DrawerModality::TrapFocus` はフォーカスのみ閉じ込めます。 |
+| `DrawerState::disable_pointer_dismissal` | 背景とスワイプによる閉じる操作を拒否し、Escape キーと閉じるコントロールだけを残します。 |
+| `DrawerState::swipe_offset` | ライブのスワイプ量です。アプリケーションが適用するペイントのみのトランスフォームに使用します。 |

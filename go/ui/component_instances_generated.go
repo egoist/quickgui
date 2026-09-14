@@ -1445,6 +1445,148 @@ func (component *DialogComponent) Close(options ...PartProps) *Element {
 	return component.instance.partElement(func(children Component) *native.Node { props.Children = children; return (dialogAPI{}).Close(props) }, props.Children)
 }
 
+// DrawerComponent is one Drawer instance. Configure it before mounting its root.
+// Parts return fluent elements and share only this instance's state.
+type DrawerComponent struct {
+	instance componentInstance
+	props    DrawerRootProps
+}
+
+// NewDrawer declares a Drawer instance. Optional props provide initial settings.
+func NewDrawer(props ...DrawerRootProps) *DrawerComponent {
+	return &DrawerComponent{instance: componentInstance{name: "Drawer"}, props: componentProps("NewDrawer", props)}
+}
+
+func (component *DrawerComponent) Disabled(value any) *DrawerComponent {
+	component.instance.configure()
+	component.props.Disabled = value
+	return component
+}
+
+func (component *DrawerComponent) Open(value any) *DrawerComponent {
+	component.instance.configure()
+	component.props.Open = componentAccessor[bool](value)
+	return component
+}
+
+func (component *DrawerComponent) DefaultOpen(value bool) *DrawerComponent {
+	component.instance.configure()
+	component.props.DefaultOpen = value
+	return component
+}
+
+func (component *DrawerComponent) OnOpenChange(value func(bool, *native.Event)) *DrawerComponent {
+	component.instance.configure()
+	component.props.OnOpenChange = value
+	return component
+}
+
+func (component *DrawerComponent) Modal(value DrawerModality) *DrawerComponent {
+	component.instance.configure()
+	component.props.Modal = value
+	return component
+}
+
+func (component *DrawerComponent) SwipeDirection(value string) *DrawerComponent {
+	component.instance.configure()
+	component.props.SwipeDirection = value
+	return component
+}
+
+func (component *DrawerComponent) SnapPoints(value []float64) *DrawerComponent {
+	component.instance.configure()
+	component.props.SnapPoints = value
+	return component
+}
+
+func (component *DrawerComponent) SnapPoint(value int) *DrawerComponent {
+	component.instance.configure()
+	component.props.SnapPoint = &value
+	return component
+}
+
+func (component *DrawerComponent) OnSnapPointChange(value func(int, *native.Event)) *DrawerComponent {
+	component.instance.configure()
+	component.props.OnSnapPointChange = value
+	return component
+}
+
+func (component *DrawerComponent) DisablePointerDismissal(value bool) *DrawerComponent {
+	component.instance.configure()
+	component.props.DisablePointerDismissal = &value
+	return component
+}
+
+func (component *DrawerComponent) OnSwipeChange(value func(DrawerSwipeState, *native.Event)) *DrawerComponent {
+	component.instance.configure()
+	component.props.OnSwipeChange = value
+	return component
+}
+
+func (component *DrawerComponent) Root() *Element {
+	return component.instance.rootElement(false, func(children Component) *native.Node {
+		props := component.props
+		props.Children = children
+		return (drawerAPI{}).Root(props)
+	}, component.props.Children)
+}
+
+func (component *DrawerComponent) Trigger(options ...PartProps) *Element {
+	props := componentProps("Drawer.Trigger", options)
+	return component.instance.partElement(func(children Component) *native.Node { props.Children = children; return (drawerAPI{}).Trigger(props) }, props.Children)
+}
+
+func (component *DrawerComponent) Portal(options ...PartProps) *Element {
+	props := componentProps("Drawer.Portal", options)
+	return component.instance.partElement(func(children Component) *native.Node { props.Children = children; return (drawerAPI{}).Portal(props) }, props.Children)
+}
+
+func (component *DrawerComponent) Backdrop(options ...PartProps) *Element {
+	props := componentProps("Drawer.Backdrop", options)
+	return component.instance.partElement(func(children Component) *native.Node { props.Children = children; return (drawerAPI{}).Backdrop(props) }, props.Children)
+}
+
+func (component *DrawerComponent) Viewport(options ...PartProps) *Element {
+	props := componentProps("Drawer.Viewport", options)
+	return component.instance.partElement(func(children Component) *native.Node { props.Children = children; return (drawerAPI{}).Viewport(props) }, props.Children)
+}
+
+func (component *DrawerComponent) Popup(options ...PartProps) *Element {
+	props := componentProps("Drawer.Popup", options)
+	return component.instance.partElement(func(children Component) *native.Node { props.Children = children; return (drawerAPI{}).Popup(props) }, props.Children)
+}
+
+func (component *DrawerComponent) Content(options ...PartProps) *Element {
+	props := componentProps("Drawer.Content", options)
+	return component.instance.partElement(func(children Component) *native.Node { props.Children = children; return (drawerAPI{}).Content(props) }, props.Children)
+}
+
+func (component *DrawerComponent) Title(options ...PartProps) *Element {
+	props := componentProps("Drawer.Title", options)
+	return component.instance.partElement(func(children Component) *native.Node { props.Children = children; return (drawerAPI{}).Title(props) }, props.Children)
+}
+
+func (component *DrawerComponent) Description(options ...PartProps) *Element {
+	props := componentProps("Drawer.Description", options)
+	return component.instance.partElement(func(children Component) *native.Node {
+		props.Children = children
+		return (drawerAPI{}).Description(props)
+	}, props.Children)
+}
+
+func (component *DrawerComponent) Close(options ...PartProps) *Element {
+	props := componentProps("Drawer.Close", options)
+	return component.instance.partElement(func(children Component) *native.Node { props.Children = children; return (drawerAPI{}).Close(props) }, props.Children)
+}
+
+func (component *DrawerComponent) SwipeArea(options ...PartProps) *Element {
+	props := componentProps("Drawer.SwipeArea", options)
+	return component.instance.partElement(func(children Component) *native.Node {
+		props.Children = children
+		return (drawerAPI{}).SwipeArea(props)
+	}, props.Children)
+}
+
 // FieldComponent is one Field instance. Configure it before mounting its root.
 // Parts return fluent elements and share only this instance's state.
 type FieldComponent struct {

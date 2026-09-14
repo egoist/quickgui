@@ -1,0 +1,62 @@
+带吸附点的模态或焦点约束式抽屉,滑动关闭由核心管理。
+
+## 导入
+
+从 `github.com/egoist/quickgui/go/ui` 导入 `ui`。
+
+```go
+import (
+	"github.com/egoist/quickgui/go/ui"
+)
+```
+
+## 用法
+
+```go
+func DrawerExample() *ui.Element {
+	drawer := ui.NewDrawer().SnapPoints([]float64{0.4, 0.9}).SwipeDirection("down")
+	return drawer.Root().Children(
+		drawer.Trigger().Child("Open drawer"),
+		drawer.Portal().Children(
+			drawer.Backdrop(),
+			drawer.Viewport().Child(
+				drawer.Popup().Children(
+					drawer.SwipeArea(),
+					drawer.Content().Children(
+						drawer.Title().Child("Settings"),
+						drawer.Close().Child("Close"),
+					),
+				),
+			),
+		),
+	)
+}
+```
+
+## 结构
+
+- `drawer.Root`
+- `drawer.Trigger`
+- `drawer.Portal`
+- `drawer.Backdrop`
+- `drawer.Viewport`
+- `drawer.Popup`
+- `drawer.Content`
+- `drawer.Title`
+- `drawer.Description`
+- `drawer.Close`
+- `drawer.SwipeArea`
+
+## 主要属性
+
+| 属性 | 说明 |
+| --- | --- |
+| `Open` | 受控的打开状态。 |
+| `DefaultOpen` | 组件自行管理打开状态时的初始状态。 |
+| `OnOpenChange` | 报告核心做出的打开或关闭决定。 |
+| `Modal` | 像对话框一样约束焦点;`DrawerModalityTrapFocus` 仅约束焦点。 |
+| `SnapPoints` | 抽屉可用的展开位置,以视口比例或像素表示。 |
+| `SnapPoint` | 抽屉打开时落在哪个已声明的吸附点。 |
+| `SwipeDirection` | 滑动关闭或移动界面时朝向的边缘。 |
+| `DisablePointerDismissal` | 拒绝背景和滑动关闭,只保留 Escape 键和关闭控件。 |
+| `OnSwipeChange` | 报告实时滑动状态,用于应用自行应用的纯绘制变换。 |
