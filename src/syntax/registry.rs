@@ -97,13 +97,13 @@ impl Registry {
             && self.bytes.saturating_add(bytes) <= MAX_LANGUAGE_REGISTRY_BYTES
             && self.query_bytes.saturating_add(query_bytes) <= MAX_REGISTRY_QUERY_BYTES
     }
-    pub fn from_name(&self, name: &str) -> Option<SyntaxLanguage> {
+    pub fn by_name(&self, name: &str) -> Option<SyntaxLanguage> {
         self.names
             .get(name)
             .or_else(|| self.extensions.get(name))
             .copied()
     }
-    pub fn from_filename(&self, name: &str) -> Option<SyntaxLanguage> {
+    pub fn by_filename(&self, name: &str) -> Option<SyntaxLanguage> {
         self.filenames.get(name).copied()
     }
     pub fn configuration(&self, id: RegisteredSyntaxLanguage) -> Option<&HighlightConfiguration> {
@@ -220,7 +220,7 @@ impl Registry {
             .chain(&definition.aliases)
             .chain(&definition.extensions)
         {
-            if super::builtin_from_name(name).is_some() || self.from_name(name).is_some() {
+            if super::builtin_from_name(name).is_some() || self.by_name(name).is_some() {
                 return Err(error(format!(
                     "language name or extension '{name}' is already registered"
                 )));
