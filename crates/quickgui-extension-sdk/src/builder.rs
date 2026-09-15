@@ -338,12 +338,8 @@ mod input_tests {
 
 // The SDK retains row closures outside serialized nodes, indexed by package-local list identity.
 thread_local! {static ROWS:RefCell<HashMap<u64,RowRenderer>>=RefCell::new(HashMap::new());}
+#[derive(Default)]
 pub struct Renderers(HashMap<u64, RowRenderer>);
-impl Default for Renderers {
-    fn default() -> Self {
-        Self(HashMap::new())
-    }
-}
 impl Renderers {
     pub fn root(&mut self, build: impl FnOnce() -> Element) -> schema::Frame {
         ROWS.with(|rows| rows.borrow_mut().clear());

@@ -251,14 +251,13 @@ impl Frame {
                     return Err("invalid component text span");
                 }
             }
-            if let Some(list) = &value.list {
-                if list.count > 1_000_000
+            if let Some(list) = &value.list
+                && (list.count > 1_000_000
                     || !list.estimate.is_finite()
                     || list.estimate <= 0.0
-                    || list.overscan > 128
-                {
-                    return Err("invalid component list");
-                }
+                    || list.overscan > 128)
+            {
+                return Err("invalid component list");
             }
             if value.kind == Primitive::Component && value.component.is_none() {
                 return Err("component reference is missing");
