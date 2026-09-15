@@ -265,8 +265,6 @@ jobs:
           done
       - name: Publish npm packages
         run: bun scripts/release-npm.ts --publish target/npm-release
-      - name: Verify public registry installs
-        run: bun scripts/release-registry-smoke.ts '${{ steps.release.outputs.version }}'
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}

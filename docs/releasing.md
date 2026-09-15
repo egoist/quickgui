@@ -61,9 +61,9 @@ restores `packages/*/lib` if a flattened layout is present, rejects a tag that i
 `v<root-package-version>` or lacks a dated changelog section, packs the five npm archives from
 the downloaded libraries, and publishes crates.io,
 the Go module tag, and npm in dependency order. The root `package.json` version is the source
-of truth; every published crate, backend, and npm package must match it. Fresh Rust and Go
-consumers verify public installs (`quickgui init --language go`) before the workflow creates
-the GitHub Release.
+of truth; every published crate, backend, and npm package must match it. The workflow then
+creates the GitHub Release. It does not wait for public registry consumers to resolve the
+just-published packages; npm can still report a version as missing after a successful publish.
 
 ## macOS acceptance evidence
 
@@ -190,8 +190,10 @@ workspace directories with npm directly.
 Never rerun a successful manual publish; first inspect the public registry and continue after the
 last completed package.
 
-Finally, run `bun scripts/release-registry-smoke.ts <version>` to compile a fresh Rust 1.90 consumer
-without patches, install the core and CLI npm packages at that same version in a fresh project,
-resolve the tagged Go SDK, and compile apps with and without the optional terminal import using
-`CGO_ENABLED=0` using the installed CLI. Run the live macOS gates once more from
-the tagged source if the published artifacts differ from the previously recorded candidates.
+Optionally, run `bun scripts/release-registry-smoke.ts <version>` after the registries have
+indexed the new version. That compiles a fresh Rust 1.90 consumer without patches, installs the
+core and CLI npm packages at that same version in a fresh project, resolves the tagged Go SDK,
+and compiles apps with and without the optional terminal import using `CGO_ENABLED=0` using the
+installed CLI. npm may still fail to resolve a version that is already published; inspect the
+registry directly if that happens. Run the live macOS gates once more from the tagged source if
+the published artifacts differ from the previously recorded candidates.
