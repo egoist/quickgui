@@ -565,6 +565,28 @@ export const ALL_COMPONENT_DOCS = [
   },
   {
     kind: 'ui',
+    slug: 'drawer',
+    name: 'Drawer',
+    section: 'Overlays',
+    description:
+      'A modal or focus-trapping sheet with snap points and core-owned swipe dismissal.',
+    parts: [
+      'Root',
+      'Trigger',
+      'Portal',
+      'Backdrop',
+      'Viewport',
+      'Popup',
+      'Content',
+      'Title',
+      'Description',
+      'Close',
+      'SwipeArea',
+    ],
+    keyProps: ['Open', 'DefaultOpen', 'OnOpenChange', 'SnapPoints', 'SwipeDirection'],
+  },
+  {
+    kind: 'ui',
     slug: 'tooltip',
     name: 'Tooltip',
     section: 'Overlays',

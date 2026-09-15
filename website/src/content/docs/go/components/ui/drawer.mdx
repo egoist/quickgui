@@ -1,0 +1,62 @@
+A modal or focus-trapping sheet with snap points and core-owned swipe dismissal.
+
+## Import
+
+Import `ui` from `github.com/egoist/quickgui/go/ui`.
+
+```go
+import (
+	"github.com/egoist/quickgui/go/ui"
+)
+```
+
+## Usage
+
+```go
+func DrawerExample() *ui.Element {
+	drawer := ui.NewDrawer().SnapPoints([]float64{0.4, 0.9}).SwipeDirection("down")
+	return drawer.Root().Children(
+		drawer.Trigger().Child("Open drawer"),
+		drawer.Portal().Children(
+			drawer.Backdrop(),
+			drawer.Viewport().Child(
+				drawer.Popup().Children(
+					drawer.SwipeArea(),
+					drawer.Content().Children(
+						drawer.Title().Child("Settings"),
+						drawer.Close().Child("Close"),
+					),
+				),
+			),
+		),
+	)
+}
+```
+
+## Anatomy
+
+- `drawer.Root`
+- `drawer.Trigger`
+- `drawer.Portal`
+- `drawer.Backdrop`
+- `drawer.Viewport`
+- `drawer.Popup`
+- `drawer.Content`
+- `drawer.Title`
+- `drawer.Description`
+- `drawer.Close`
+- `drawer.SwipeArea`
+
+## Key props
+
+| Prop | Purpose |
+| --- | --- |
+| `Open` | Controlled open state. |
+| `DefaultOpen` | Initial state when the component owns whether it is open. |
+| `OnOpenChange` | Reports an open or close decision from the core. |
+| `Modal` | Contains focus like a dialog; `DrawerModalityTrapFocus` only contains focus. |
+| `SnapPoints` | Allowed drawer extents, expressed as viewport fractions or pixels. |
+| `SnapPoint` | Which declared snap point an opening drawer lands on. |
+| `SwipeDirection` | Edge toward which a swipe dismisses or moves the surface. |
+| `DisablePointerDismissal` | Refuses backdrop and swipe dismissal, leaving Escape and the close control. |
+| `OnSwipeChange` | Reports the live swipe, for the paint-only transform the application applies. |
