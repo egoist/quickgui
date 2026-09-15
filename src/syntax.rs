@@ -69,7 +69,7 @@ impl SyntaxLanguage {
     pub fn from_name(name: &str) -> Option<Self> {
         let name = name.trim().trim_start_matches('.').to_ascii_lowercase();
         registry::snapshot()
-            .by_name(&name)
+            .from_name(&name)
             .or_else(|| builtin_from_name(&name))
     }
 
@@ -90,7 +90,7 @@ impl SyntaxLanguage {
     pub fn from_path(path: impl AsRef<Path>) -> Option<Self> {
         let path = path.as_ref();
         if let Some(name) = path.file_name().and_then(|name| name.to_str())
-            && let Some(language) = registry::snapshot().by_filename(&name.to_ascii_lowercase())
+            && let Some(language) = registry::snapshot().from_filename(&name.to_ascii_lowercase())
         {
             return Some(language);
         }
@@ -140,7 +140,7 @@ fn builtin_from_name(name: &str) -> Option<SyntaxLanguage> {
 }
 
 /// Foreground palette used by Tree-sitter capture classes.
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct SyntaxTheme {
     pub keyword: Option<Color>,
     pub literal: Option<Color>,
@@ -150,6 +150,21 @@ pub struct SyntaxTheme {
     pub r#type: Option<Color>,
     pub function: Option<Color>,
     pub metadata: Option<Color>,
+}
+
+impl Default for SyntaxTheme {
+    fn default() -> Self {
+        Self {
+            keyword: None,
+            literal: None,
+            string: None,
+            comment: None,
+            number: None,
+            r#type: None,
+            function: None,
+            metadata: None,
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -533,7 +548,7 @@ fn configuration(
     match language {
         SyntaxLanguage::PlainText => None,
         SyntaxLanguage::Registered(id) => registry.configuration(id),
-        _ => registry.by_name(&language.name()).and_then(|language| {
+        _ => registry.from_name(&language.name()).and_then(|language| {
             if let SyntaxLanguage::Registered(id) = language {
                 registry.configuration(id)
             } else {
@@ -553,7 +568,7 @@ fn injected_configuration<'a>(
     }
     {
         builtin_from_name(&name.to_ascii_lowercase())
-            .or_else(|| registry.by_name(&name.to_ascii_lowercase()))
+            .or_else(|| registry.from_name(&name.to_ascii_lowercase()))
             .and_then(|language| configuration(language, registry))
     }
 }

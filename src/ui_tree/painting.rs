@@ -119,8 +119,10 @@ fn paint_editor_line_numbers<R: TextLayoutEngine>(
         return;
     }
     let line_y = |line: usize, renderer: &mut R| {
-        if line == 0 && (content.is_empty() || line_starts[line] == 0) {
-            return 0.0;
+        if content.is_empty() || line == 0 && line_starts[line] == 0 {
+            if line == 0 {
+                return 0.0;
+            }
         }
         renderer
             .text_caret_position_with_highlights(
@@ -2350,8 +2352,10 @@ fn paint_element_contents(
         offset.x = offset.x.clamp(0.0, max_offset.x);
         offset.y = offset.y.clamp(0.0, max_offset.y);
         Some((max_offset, offset.y, true))
+    } else if let Some(max_offset) = scroll_max_offset {
+        Some((max_offset, scroll.y, false))
     } else {
-        scroll_max_offset.map(|max_offset| (max_offset, scroll.y, false))
+        None
     };
 
     // Ordinary overflow containers and retained virtual lists intentionally converge here. This

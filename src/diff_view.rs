@@ -410,13 +410,13 @@ enum RenderRow {
     },
     Gap(Arc<str>),
     Pair {
-        old: Option<Box<RenderSide>>,
-        new: Option<Box<RenderSide>>,
+        old: Option<RenderSide>,
+        new: Option<RenderSide>,
     },
     Unified {
         old_line: Option<u32>,
         new_line: Option<u32>,
-        side: Box<RenderSide>,
+        side: RenderSide,
     },
     Notice(Arc<str>),
 }
@@ -778,17 +778,13 @@ fn render_split_column_row(
             .child(text(label.clone())),
         RenderRow::Pair { old, new } => render_side(
             id,
-            if new_side {
-                new.as_deref()
-            } else {
-                old.as_deref()
-            },
+            if new_side { new.as_ref() } else { old.as_ref() },
             new_side,
             style,
         )
         .w_full()
         .h(style.line_height),
-        RenderRow::Unified { side, .. } => render_side(id, Some(side.as_ref()), new_side, style)
+        RenderRow::Unified { side, .. } => render_side(id, Some(side), new_side, style)
             .w_full()
             .h(style.line_height),
     }
@@ -859,7 +855,7 @@ fn render_row(id: ElementId, row: &RenderRow, style: DiffViewStyle) -> Element {
             .child(
                 render_side(
                     derived_diff_id(id, DIFF_LEFT_ROW_ID_TAG, 0),
-                    old.as_deref(),
+                    old.as_ref(),
                     false,
                     style,
                 )
@@ -868,7 +864,7 @@ fn render_row(id: ElementId, row: &RenderRow, style: DiffViewStyle) -> Element {
             .child(
                 render_side(
                     derived_diff_id(id, DIFF_RIGHT_ROW_ID_TAG, 0),
-                    new.as_deref(),
+                    new.as_ref(),
                     true,
                     style,
                 )
@@ -1233,8 +1229,8 @@ fn build_render_rows(document: &DiffDocument, style: DiffViewStyle) -> Vec<Rende
                     (DiffLayout::Split, DiffSegment::Context(lines)) => {
                         for (old, new) in lines {
                             rows.push(RenderRow::Pair {
-                                old: Some(Box::new(render_side_data(old, language, style, None))),
-                                new: Some(Box::new(render_side_data(new, language, style, None))),
+                                old: Some(render_side_data(old, language, style, None)),
+                                new: Some(render_side_data(new, language, style, None)),
                             });
                         }
                     }
@@ -1254,20 +1250,20 @@ fn build_render_rows(document: &DiffDocument, style: DiffViewStyle) -> Vec<Rende
                                 .map(|(old, new)| inline_change_ranges(&old.text, &new.text));
                             rows.push(RenderRow::Pair {
                                 old: old.map(|line| {
-                                    Box::new(render_side_data(
+                                    render_side_data(
                                         line,
                                         language,
                                         style,
                                         inline.as_ref().map(|ranges| ranges.0.clone()),
-                                    ))
+                                    )
                                 }),
                                 new: new.map(|line| {
-                                    Box::new(render_side_data(
+                                    render_side_data(
                                         line,
                                         language,
                                         style,
                                         inline.as_ref().map(|ranges| ranges.1.clone()),
-                                    ))
+                                    )
                                 }),
                             });
                         }
@@ -1277,7 +1273,7 @@ fn build_render_rows(document: &DiffDocument, style: DiffViewStyle) -> Vec<Rende
                             rows.push(RenderRow::Unified {
                                 old_line: old.old_line,
                                 new_line: new.new_line,
-                                side: Box::new(render_side_data(new, language, style, None)),
+                                side: render_side_data(new, language, style, None),
                             });
                         }
                     }
@@ -1301,24 +1297,24 @@ fn build_render_rows(document: &DiffDocument, style: DiffViewStyle) -> Vec<Rende
                             rows.push(RenderRow::Unified {
                                 old_line: line.old_line,
                                 new_line: None,
-                                side: Box::new(render_side_data(
+                                side: render_side_data(
                                     line,
                                     language,
                                     style,
                                     inline[index].as_ref().map(|ranges| ranges.0.clone()),
-                                )),
+                                ),
                             });
                         }
                         for (index, line) in additions.iter().enumerate() {
                             rows.push(RenderRow::Unified {
                                 old_line: None,
                                 new_line: line.new_line,
-                                side: Box::new(render_side_data(
+                                side: render_side_data(
                                     line,
                                     language,
                                     style,
                                     inline[index].as_ref().map(|ranges| ranges.1.clone()),
-                                )),
+                                ),
                             });
                         }
                     }
@@ -1457,18 +1453,18 @@ fn prepare_diff_syntax_lane(
 
 fn syntax_lane_side(row: &RenderRow, lane: DiffSyntaxLane) -> Option<&RenderSide> {
     match (row, lane) {
-        (RenderRow::Pair { old, .. }, DiffSyntaxLane::Old) => old.as_deref(),
-        (RenderRow::Pair { new, .. }, DiffSyntaxLane::New) => new.as_deref(),
-        (RenderRow::Unified { side, .. }, DiffSyntaxLane::Unified) => Some(side.as_ref()),
+        (RenderRow::Pair { old, .. }, DiffSyntaxLane::Old) => old.as_ref(),
+        (RenderRow::Pair { new, .. }, DiffSyntaxLane::New) => new.as_ref(),
+        (RenderRow::Unified { side, .. }, DiffSyntaxLane::Unified) => Some(side),
         _ => None,
     }
 }
 
 fn syntax_lane_side_mut(row: &mut RenderRow, lane: DiffSyntaxLane) -> Option<&mut RenderSide> {
     match (row, lane) {
-        (RenderRow::Pair { old, .. }, DiffSyntaxLane::Old) => old.as_deref_mut(),
-        (RenderRow::Pair { new, .. }, DiffSyntaxLane::New) => new.as_deref_mut(),
-        (RenderRow::Unified { side, .. }, DiffSyntaxLane::Unified) => Some(side.as_mut()),
+        (RenderRow::Pair { old, .. }, DiffSyntaxLane::Old) => old.as_mut(),
+        (RenderRow::Pair { new, .. }, DiffSyntaxLane::New) => new.as_mut(),
+        (RenderRow::Unified { side, .. }, DiffSyntaxLane::Unified) => Some(side),
         _ => None,
     }
 }
@@ -1826,13 +1822,13 @@ fn parse_patch(patch: &str) -> DiffDocument {
     let mut retained_lines = 0;
     let mut structure_truncated = false;
     for raw in patch.lines() {
-        if let Some(header) = raw.strip_prefix("diff --git ") {
+        if raw.starts_with("diff --git ") {
             flush_patch_file(&mut current, &mut files);
             if files.len() == MAX_DIFF_FILES {
                 structure_truncated = true;
                 break;
             }
-            let (old_path, new_path) = parse_git_header_paths(header);
+            let (old_path, new_path) = parse_git_header_paths(&raw[11..]);
             current = Some(PatchFile {
                 old_path,
                 new_path,

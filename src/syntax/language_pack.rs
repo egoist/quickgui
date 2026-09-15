@@ -219,7 +219,7 @@ fn pack_members(bytes: &[u8]) -> Result<BTreeMap<String, &[u8]>, SyntaxLanguageE
         {
             return Err(error("invalid pack member path"));
         }
-        if members.len() > registry::MAX_REGISTERED_SYNTAX_LANGUAGES {
+        if members.len() >= registry::MAX_REGISTERED_SYNTAX_LANGUAGES + 1 {
             return Err(error("too many pack members"));
         }
         let start =

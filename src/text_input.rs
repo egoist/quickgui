@@ -2829,10 +2829,8 @@ mod tests {
     #[cfg(feature = "text-input-decorations")]
     #[test]
     fn read_only_editor_keeps_selection_but_refuses_every_text_history_path() {
-        let constraints = InputConstraints {
-            editor: Some(crate::TextInputIndentation::default().read_only(true)),
-            ..Default::default()
-        };
+        let mut constraints = InputConstraints::default();
+        constraints.editor = Some(crate::TextInputIndentation::default().read_only(true));
         let mut input = TextInputState::with_constraints("value", true, constraints);
         assert!(input.set_selection(0, 5));
         assert_eq!(input.selected_text(), Some("value"));
