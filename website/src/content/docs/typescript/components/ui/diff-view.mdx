@@ -1,5 +1,7 @@
 A virtualized split or unified file diff with synchronized rows and independent pane scrolling.
 
+No language grammars are included by default. Register a linked grammar in Rust, or load one portable pack of selected Tree-sitter Wasm grammars and queries using `loadLanguagePack` (TypeScript) / `LoadLanguagePack` (Go).
+
 Unstyled by default: text and line-number colors inherit, and the component adds no background, border, rounding, padding, or syntax/diff palette. Supply application styles and explicit colors to opt into an appearance.
 
 ## Import
@@ -37,7 +39,7 @@ extensions: ["@quickgui/extension-editor"]
 
 ## Syntax highlighting
 
-DiffView uses the same bundled Tree-sitter grammars as Editor. When its document, language, or syntax palette changes, the Rust core parses each visible old/new file lane once and assigns capture fragments to logical rows. Styled text is materialized and cached only when a row is mounted, with inline addition/deletion emphasis merged at non-overlapping byte boundaries. Scrolling never invokes the parser.
+DiffView uses the same registered Tree-sitter grammars as Editor. When its document, language, or syntax palette changes, the Rust core parses each visible old/new file lane once and assigns capture fragments to logical rows. Styled text is materialized and cached only when a row is mounted, with inline addition/deletion emphasis merged at non-overlapping byte boundaries. Scrolling never invokes the parser.
 
 ## Key props
 

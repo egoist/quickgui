@@ -38,6 +38,11 @@ editor = [
   "text-input-decorations",
   "dep:imara-diff",
   "dep:tree-sitter-highlight",
+  "dep:tree-sitter",
+]
+language-packs = ["editor", "tree-sitter/wasm", "dep:tar", "dep:sha2"]
+bundled-languages = [
+  "editor",
   "dep:tree-sitter-bash",
   "dep:tree-sitter-cpp",
   "dep:tree-sitter-css",
@@ -75,11 +80,14 @@ flate2 = "1.1"
 glyphon = { package = "quickgui-glyphon", path = "vendor/glyphon", version = "=0.1.4-next.4" }
 image-codecs = { package = "image", version = "0.25.10", default-features = false, features = ["gif", "jpeg", "png", "tiff", "webp"] }
 imara-diff = { version = "0.2.0", optional = true }
+tar = { version = "0.4", default-features = false, optional = true }
+sha2 = { version = "0.10", optional = true }
 tree-sitter-bash = { version = "0.25.1", optional = true }
 tree-sitter-cpp = { version = "0.23.4", optional = true }
 tree-sitter-css = { version = "0.25.0", optional = true }
 tree-sitter-go = { version = "0.25.0", optional = true }
-tree-sitter-highlight = { version = "0.27.0", optional = true }
+tree-sitter-highlight = { version = "=0.26.7", optional = true }
+tree-sitter = { version = "=0.26.7", optional = true }
 tree-sitter-html = { version = "0.23.2", optional = true }
 tree-sitter-java = { version = "0.23.5", optional = true }
 tree-sitter-javascript = { version = "0.25.0", optional = true }
@@ -170,6 +178,8 @@ wasm-bindgen-futures = "0.4"
 web-sys = { version = "0.3", features = ["CssStyleDeclaration", "Document", "Element", "HtmlCanvasElement", "HtmlElement", "Node", "console", "CustomEvent", "Window"] }
 
 [dev-dependencies]
+tree-sitter-lua = "0.5.0"
+tree-sitter-rust = "0.24.2"
 criterion = { version = "0.8", features = ["html_reports"] }
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
 ureq = { version = "3.4", features = ["json"] }

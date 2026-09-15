@@ -1,5 +1,7 @@
 シンタックスカラー、行番号、インデント、両軸スクロールに対応した保持型ネイティブコードエディターです。
 
+既定では言語文法を含みません。Rust はリンク済み文法を登録でき、Go / TypeScript は `LoadLanguagePack` / `loadLanguagePack` で選択した Tree-sitter Wasm 文法とクエリをまとめた単一の移植可能なパックを読み込めます。
+
 既定では見た目のスタイルを持ちません。文字と行番号の色は継承され、背景、枠線、角丸、余白、構文・差分の配色は追加されません。外観はアプリ側で明示的に指定します。
 
 ## インポート
@@ -10,7 +12,7 @@ bun add @quickgui/extension-editor
 
 ```tsx
 import { createSignal } from "solid-js";
-import { Editor } from "@quickgui/extension-editor";
+import { Editor, loadLanguagePack } from "@quickgui/extension-editor";
 ```
 
 ```ts
@@ -53,3 +55,18 @@ const [source, setSource] = createSignal("export function answer() { return 42; 
 | `style`        | 保持型エディターの QuickGUI レイアウトおよび描画スタイルです。      |
 
 キャレットはスタイルなしでも機能します。アクティブ行の背景とフォーカス枠は明示的に指定します。
+
+## 言語パック
+
+既定のコンポーネントには文法を組み込みません。選択した Tree-sitter パーサーを `.wasm` にビルドし、テキストクエリと一緒に単一の移植可能なパックへまとめます。設定の `grammars` は Wasm ファイルのパス、`languages` は名前、文法、別名、拡張子、クエリパスを指定します。宣言した言語依存関係も含め、共有文法は一度だけ格納します。
+
+```sh
+quickgui pack-languages languages.json --languages lua,rust --out resources/languages.qglang
+```
+
+```ts
+await loadLanguagePack("/absolute/path/languages.qglang");
+// Editor and CodeBlock can now select language="lua".
+```
+
+`LoadLanguagePack` / `loadLanguagePack` はアプリ準備完了後にリソースディレクトリのパスで一度呼び出します。パックは JSON マニフェスト、クエリ文字列、生の Wasm モジュールを含むバイナリ ustar ファイルです。base64、解凍、ファイル展開は不要です。同じ内容の再ロードは何も変更せず、競合時には登録全体が失敗します。Rust は `editor` のみで `register_syntax_language` にリンク済み文法を渡すこともできます。

@@ -20,6 +20,12 @@ export const CLI_VERSION = "0.1.4-next.4";
 export async function runCli(argv: string[]): Promise<number> {
   const command = parseCliArgs(argv);
   switch (command.command) {
+    case "pack-languages": {
+      const { buildLanguagePack } = await import("./language-pack.ts");
+      const languages = buildLanguagePack(command.config,command.output,command.languages);
+      console.log(`Packed ${languages.join(", ")} into ${resolve(command.output)}`);
+      return 0;
+    }
     case "help":
       console.log(helpText(command.topic));
       return 0;
@@ -204,6 +210,15 @@ async function runBuild(command: Extract<ParsedCliCommand, { command: "build" }>
 }
 
 function helpText(topic?: HelpTopic): string {
+  if (topic === "pack-languages") return `Usage: quickgui pack-languages <config.json> --out <languages.qglang>
+
+Bundle compiled Tree-sitter Wasm grammars, queries, and metadata into one portable file.
+No grammars are included by default in editor components.
+
+Options:
+  --languages <names>        Comma-separated selection (default: all configured languages)
+  --out <file>               Output pack file
+  -h, --help                 Show this help`;
   if (topic === "init-extension") {
     return `Usage: quickgui init-extension [directory] [options]
 
@@ -298,6 +313,7 @@ Commands:
   init-extension [directory] Create a Go, Zig, or Rust extension
   dev                        Run a native app with source reload
   build                      Package a production application
+  pack-languages             Bundle selected Wasm grammars into one portable pack
   fmt                        Format Go, TypeScript, or Rust source
   check                      Type-check compiled Go, TypeScript, or Rust views
   test                       Test compiled Go, TypeScript, or Rust views

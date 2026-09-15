@@ -5,13 +5,14 @@ use quickgui_extension_sdk::{
 };
 use serde_json::Value;
 use std::ptr;
+mod languages;
 mod props;
 
 pub const MAX_TEXT_HIGHLIGHTS: usize = 4096;
 pub const MAX_LIST_ITEMS: usize = 1_000_000;
 #[path = "../../../src/syntax.rs"]
 mod syntax;
-pub use syntax::{SyntaxLanguage, SyntaxTheme};
+pub use syntax::*;
 #[path = "../../../src/text_input_decorations.rs"]
 mod text_input_decorations;
 pub use text_input_decorations::{TextInputGutter, TextInputIndentation};
@@ -70,10 +71,12 @@ struct Surface {
     model: Model,
     props: Value,
     renderers: Renderers,
+    generation: u64,
+    _wake: std::sync::Arc<WakeHandle>,
 }
 pub struct Factory;
 impl ComponentFactory for Factory {
-    fn create(name: &str, props: Value, _wake: WakeHandle) -> Result<Box<dyn Component>, String> {
+    fn create(name: &str, props: Value, wake: WakeHandle) -> Result<Box<dyn Component>, String> {
         let model = match name {
             "editor" => Model::Editor(editor::Editor::default()),
             "code-block" => Model::Code(code_block::CodeBlock::default()),
@@ -86,6 +89,8 @@ impl ComponentFactory for Factory {
             model,
             props: Value::Null,
             renderers: Renderers::default(),
+            generation: 0,
+            _wake: languages::attach(wake)?,
         };
         surface.update(props)?;
         Ok(Box::new(surface))
@@ -93,7 +98,8 @@ impl ComponentFactory for Factory {
 }
 impl Component for Surface {
     fn update(&mut self, props: Value) -> Result<bool, String> {
-        if props == self.props {
+        let generation = syntax::syntax_language_generation();
+        if props == self.props && self.generation == generation {
             return Ok(false);
         }
         let source = props.get("value").and_then(Value::as_str).unwrap_or("");
@@ -140,12 +146,27 @@ impl Component for Surface {
                 diff.set_style(props::diff_style(&props));
             }
         }
+        match &mut self.model {
+            Model::Editor(model) => {
+                model.refresh_syntax_languages();
+            }
+            Model::Code(model) => {
+                model.refresh_syntax_languages();
+            }
+            Model::Diff(model) => {
+                model.refresh_syntax_languages();
+            }
+        }
+        self.generation = generation;
         self.props = props;
         Ok(true)
     }
     fn render(&mut self, request: schema::RenderRequest) -> Result<schema::Frame, String> {
         if request.renderer.is_some() {
             return self.renderers.rows(&request);
+        }
+        if self.generation != syntax::syntax_language_generation() {
+            self.update(self.props.clone())?;
         }
         Ok(self.renderers.root(|| match &self.model {
             Model::Editor(model) => {
@@ -174,12 +195,15 @@ impl Component for Surface {
         Ok(Default::default())
     }
 }
-static API: sdk::abi::ComponentApi = ComponentRuntime::<Factory>::API;
+static API: sdk::abi::PackageApi = sdk::abi::PackageApi {
+    component: ComponentRuntime::<Factory>::API,
+    service: languages::API,
+};
 static DESCRIPTOR: sdk::abi::Extension = sdk::abi::Extension {
     abi_version: sdk::abi::ABI_VERSION,
     descriptor_size: size_of::<sdk::abi::Extension>() as u32,
-    kind: sdk::abi::COMPONENT_EXTENSION,
-    api_size: size_of::<sdk::abi::ComponentApi>() as u32,
+    kind: sdk::abi::PACKAGE_EXTENSION,
+    api_size: size_of::<sdk::abi::PackageApi>() as u32,
     name: sdk::abi::Bytes::new(b"editor"),
     version: sdk::abi::Bytes::new(env!("CARGO_PKG_VERSION").as_bytes()),
     api: ptr::addr_of!(API).cast(),

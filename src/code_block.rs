@@ -192,6 +192,7 @@ pub struct CodeBlock {
     lines: Arc<[CodeBlockLine]>,
     list: ListState,
     content_width: f32,
+    syntax_generation: u64,
     truncated: bool,
 }
 
@@ -211,6 +212,7 @@ impl CodeBlock {
         let source: Arc<str> = Arc::from(source);
         let language = SyntaxLanguage::PlainText;
         let style = CodeBlockStyle::default();
+        let syntax_generation = crate::syntax::syntax_language_generation();
         let lines: Arc<[CodeBlockLine]> = build_lines(&source, language).into();
         let list = ListState::new(lines.len(), style.line_height).with_overscan(6);
         let content_width = code_content_width(&lines, style);
@@ -221,6 +223,7 @@ impl CodeBlock {
             lines,
             list,
             content_width,
+            syntax_generation,
             truncated,
         }
     }
@@ -387,7 +390,17 @@ impl CodeBlock {
             .child(body)
     }
 
+    /// Refresh newly registered injection grammars without resetting scroll state.
+    pub fn refresh_syntax_languages(&mut self) -> bool {
+        if self.syntax_generation == crate::syntax::syntax_language_generation() {
+            return false;
+        }
+        self.rebuild(false);
+        true
+    }
+
     fn rebuild(&mut self, reset_scroll: bool) {
+        self.syntax_generation = crate::syntax::syntax_language_generation();
         self.lines = build_lines(&self.source, self.language).into();
         self.content_width = code_content_width(&self.lines, self.style);
         if reset_scroll {
@@ -628,6 +641,7 @@ mod tests {
         assert!(!block.set_text("fn main() {}\n").changed);
         assert!(block.set_text("fn answer() -> u8 { 42 }\n").changed);
         assert_eq!(block.line_count(), 2);
+        #[cfg(feature = "bundled-languages")]
         assert!(!block.lines[0].syntax.is_empty());
     }
 

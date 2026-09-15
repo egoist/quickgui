@@ -44,6 +44,15 @@ struct EditorDemo {
 
 impl EditorDemo {
     fn new() -> Self {
+        let rust = SyntaxLanguage::from_name("rust").unwrap_or_else(|| {
+            let mut definition = quickgui::SyntaxLanguageDefinition::new(
+                "rust",
+                tree_sitter_rust::LANGUAGE.into(),
+                tree_sitter_rust::HIGHLIGHTS_QUERY,
+            );
+            definition.extensions = vec!["rs".into()];
+            quickgui::register_syntax_language(definition).expect("valid example Rust grammar")
+        });
         let (before, after) = scrollable_diff_sources();
         let code_style = CodeBlockStyle {
             background: Color::rgb8(30, 31, 36),
@@ -96,15 +105,15 @@ impl EditorDemo {
         };
         Self {
             editor: Editor::with_text(AFTER)
-                .with_language(SyntaxLanguage::Rust)
+                .with_language(rust)
                 .with_style(editor_style),
             code: CodeBlock::with_text(&after)
-                .with_language(SyntaxLanguage::Rust)
+                .with_language(rust)
                 .with_style(code_style),
             diff: DiffView::from_texts("before.rs", &before, "after.rs", &after).with_style(
                 DiffViewStyle {
                     layout: DiffLayout::Split,
-                    language: Some(SyntaxLanguage::Rust),
+                    language: Some(rust),
                     indicators: DiffIndicators::Bars,
                     syntax: code_style.syntax,
                     border_width: 1.0,

@@ -9,6 +9,8 @@ pub const ABI_VERSION: u32 = 1;
 pub const SERVICE_EXTENSION: u32 = 2;
 /// A package-owned retained component, rendered using the host's ordinary primitives.
 pub const COMPONENT_EXTENSION: u32 = 3;
+/// One independently versioned package providing components and asynchronous services.
+pub const PACKAGE_EXTENSION: u32 = 4;
 pub const MAX_EXTENSION_NAME: usize = 64;
 pub const MAX_EXTENSIONS: usize = 32;
 
@@ -97,4 +99,12 @@ pub struct ComponentApi {
     pub render: unsafe extern "C" fn(*mut c_void, Bytes, *mut c_void, Reply) -> i32,
     pub event: unsafe extern "C" fn(*mut c_void, Bytes, *mut c_void, Reply) -> i32,
     pub destroy: unsafe extern "C" fn(*mut c_void),
+}
+
+/// Both capabilities share the descriptor's name and lifetime. Neither table may be absent.
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct PackageApi {
+    pub component: ComponentApi,
+    pub service: ServiceApi,
 }

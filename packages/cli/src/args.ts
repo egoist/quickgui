@@ -4,6 +4,7 @@ import { parseExtensionType, type InitExtensionOptions } from "./init-extension.
 import { parseTarget, type QuickGuiTarget } from "./targets.ts";
 
 export type HelpTopic =
+  | "pack-languages"
   | "init"
   | "init-extension"
   | "dev"
@@ -14,6 +15,7 @@ export type HelpTopic =
   | "test";
 
 export type ParsedCliCommand =
+  | { command: "pack-languages"; config: string; output: string; languages?: string[] }
   | { command: "help"; topic?: HelpTopic }
   | { command: "version" }
   | { command: "fmt"; project: string; check: boolean }
@@ -75,6 +77,7 @@ export function parseCliArgs(argv: string[]): ParsedCliCommand {
   const command = argv[0];
   const rest = argv.slice(1);
   const helpTopics: readonly string[] = [
+    "pack-languages",
     "init",
     "init-extension",
     "dev",
@@ -87,7 +90,7 @@ export function parseCliArgs(argv: string[]): ParsedCliCommand {
   if (command === "help") {
     if (rest.length > 1 || (rest[0] && !helpTopics.includes(rest[0]))) {
       throw new CliError(
-        "Usage: quickgui help [init|init-extension|dev|build|keygen|fmt|check|test]",
+        "Usage: quickgui help [init|init-extension|dev|build|keygen|fmt|check|test|pack-languages]",
       );
     }
     return rest[0] ? { command: "help", topic: rest[0] as HelpTopic } : { command: "help" };
@@ -122,6 +125,15 @@ export function parseCliArgs(argv: string[]): ParsedCliCommand {
       project: stringOption(parsed, "project") ?? ".",
       check: parsed.values.has("check"),
     };
+  }
+
+  if (command === "pack-languages") {
+    const parsed = parseOptions(rest, {"--out":{key:"output",value:true},"--languages":{key:"languages",value:true}});
+    if (parsed.positionals.length !== 1) throw new CliError("Usage: quickgui pack-languages <config.json> --out <languages.qglang>");
+    const output = stringOption(parsed,"output");
+    if (!output) throw new CliError("pack-languages requires --out");
+    const selected = stringOption(parsed,"languages");
+    return {command:"pack-languages",config:parsed.positionals[0]!,output,...(selected?{languages:selected.split(",").map(name=>name.trim())}:{})};
   }
 
   if (command === "init-extension") {

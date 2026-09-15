@@ -1,5 +1,7 @@
 A retained native code editor with syntax coloring, line numbers, indentation, and both-axis scrolling.
 
+No language grammars are included by default. Register a linked grammar in Rust, or load one portable pack of selected Tree-sitter Wasm grammars and queries using `loadLanguagePack` (TypeScript) / `LoadLanguagePack` (Go).
+
 Unstyled by default: text and line-number colors inherit, and the component adds no background, border, rounding, padding, or syntax/diff palette. Supply application styles and explicit colors to opt into an appearance.
 
 ## Import
@@ -31,7 +33,7 @@ impl View for EditorExample {
 
 ## Syntax highlighting
 
-`SyntaxLanguage` selects a bundled Tree-sitter grammar and highlight query. Query captures are flattened into eight stable `SyntaxTheme` classes and applied as foreground-only `HighlightStyle` spans, so color never changes text metrics. Source or language changes reparse the bounded document; palette changes only remap the retained captures, and scrolling does no syntax work. Parsing is limited to 2 MiB, individual lines over 32 KiB stay plain, and the capture count is capped. This is structural syntax highlighting, not language-server semantic tokens.
+`SyntaxLanguage` selects a registered Tree-sitter grammar and highlight query. Query captures are flattened into eight stable `SyntaxTheme` classes and applied as foreground-only `HighlightStyle` spans, so color never changes text metrics. Source or language changes reparse the bounded document; palette changes only remap the retained captures, and scrolling does no syntax work. Parsing is limited to 2 MiB, individual lines over 32 KiB stay plain, and the capture count is capped. This is structural syntax highlighting, not language-server semantic tokens.
 
 ## Key props
 
@@ -39,7 +41,7 @@ impl View for EditorExample {
 | ------------------- | -------------------------------------------------------------------------------------------- |
 | `Editor::with_text` | Creates the retained controlled source model.                                                |
 | `set_text`          | Commits an input callback's value and refreshes syntax spans only when needed.               |
-| `set_language`      | Selects one of the bundled Tree-sitter grammars.                                             |
+| `set_language`      | Selects one of the registered Tree-sitter grammars.                                             |
 | `TextInputIndentation`    | Configures tabs, spaces, automatic indentation, and read-only behavior.                      |
 | `EditorStyle`       | Configures typography, wrapping, palette, gutter, active line, and an optional focus border. |
 | `element`           | Builds the native editor leaf for a stable element ID.                                       |
@@ -48,3 +50,18 @@ impl View for EditorExample {
   Add `features = ["editor"]` to the `quickgui` dependency. Keep one Editor model per open document
   so input, selection, undo, and scroll state retain stable identity.
 </Note>
+
+## Language packs
+
+No grammars are compiled into the default component. Build selected Tree-sitter parsers as `.wasm` files, then bundle them with text queries into one portable pack. The configuration maps `grammars` to Wasm file paths and lists `languages` with `name`, `grammar`, aliases, extensions, and query file paths. Declared language dependencies are included automatically; shared grammars are stored once.
+
+```sh
+quickgui pack-languages languages.json --languages lua,rust --out resources/languages.qglang
+```
+
+```rust
+// Enable features = ["language-packs"] for the Wasm pack loader.
+let languages = quickgui::load_syntax_language_pack("languages.qglang")?;
+```
+
+Load once after application readiness using the packaged resource directory. The pack is a binary ustar file with a JSON manifest, text queries, and raw Wasm modules—no base64, decompression, or file extraction. Identical loads are no-ops; conflicts fail atomically. Rust can instead register an application-linked grammar with `register_syntax_language` using only `features = ["editor"]`.

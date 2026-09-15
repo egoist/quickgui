@@ -126,6 +126,7 @@ pub struct Editor {
     source: Arc<str>,
     styled: StyledText,
     syntax_spans: Arc<[SyntaxSpan]>,
+    syntax_generation: u64,
     language: SyntaxLanguage,
     style: EditorStyle,
     behavior: TextInputIndentation,
@@ -147,10 +148,12 @@ impl Editor {
         let (source, truncated) = bounded_source(source);
         let source: Arc<str> = Arc::from(source);
         let language = SyntaxLanguage::PlainText;
+        let syntax_generation = crate::syntax::syntax_language_generation();
         let syntax_spans: Arc<[SyntaxSpan]> = syntax_spans(&source, language).into();
         Self {
             styled: styled_syntax(source.clone(), &syntax_spans, SyntaxTheme::default()),
             syntax_spans,
+            syntax_generation,
             source,
             language,
             style: EditorStyle::default(),
@@ -299,7 +302,18 @@ impl Editor {
         element.accessibility_read_only(self.behavior.read_only)
     }
 
+    /// Refresh captures after registering a grammar used by this document or an injection.
+    /// Returns false without parsing when the registry is unchanged; preserves editing state.
+    pub fn refresh_syntax_languages(&mut self) -> bool {
+        if self.syntax_generation == crate::syntax::syntax_language_generation() {
+            return false;
+        }
+        self.refresh_syntax();
+        true
+    }
+
     fn refresh_syntax(&mut self) {
+        self.syntax_generation = crate::syntax::syntax_language_generation();
         self.syntax_spans = syntax_spans(&self.source, self.language).into();
         self.refresh_styled_text();
     }
@@ -371,6 +385,7 @@ mod tests {
     fn editor_element_is_a_code_configured_multiline_input() {
         let mut editor = Editor::with_text("let answer = 42;");
         editor.set_language(SyntaxLanguage::Rust);
+        #[cfg(feature = "bundled-languages")]
         assert!(!editor.syntax_spans.is_empty());
         let element = editor.element("source");
         assert_eq!(element.focus, ElementStateStyle::default());

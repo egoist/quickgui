@@ -71,6 +71,7 @@ if (/^(quickgui |quickgui-host|wgpu|taffy)\b/m.test(extensionGraph))
   throw new Error("Terminal backend pulled in the renderer or runtime");
 
 const directory = mkdtempSync(join(tmpdir(), "quickgui-native-extensions-"));
+console.log((await run(["bun", "scripts/check-language-packs.ts"])).trim());
 try {
   const core = resolveHostLibrary(target, root);
   const independentComponent = join(directory, process.platform === "darwin" ? "libacme-counter.dylib" : process.platform === "win32" ? "acme-counter.dll" : "libacme-counter.so");

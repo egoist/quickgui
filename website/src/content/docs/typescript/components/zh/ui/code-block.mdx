@@ -1,5 +1,7 @@
 可选择、无插入光标的代码视图，支持 Tree-sitter 着色和逻辑行虚拟化。
 
+默认不包含任何语言语法。Rust 可注册静态链接的语法；Go 和 TypeScript 可通过 `LoadLanguagePack` / `loadLanguagePack` 加载单个跨平台包，其中包含所选 Tree-sitter Wasm 语法与查询。
+
 组件默认不带视觉样式：文本和行号继承颜色，不添加背景、边框、圆角、内边距或语法／差异配色。外观由应用显式提供样式与颜色。
 
 ## 导入
@@ -31,7 +33,7 @@ extensions: ["@quickgui/extension-editor"]
 
 ## 语法高亮
 
-`language` 选择内置的 Tree-sitter 语法和高亮查询。捕获结果通过 `syntaxTheme` 映射为只影响前景色的区间，因此高亮不会改变布局。源码或语言变化时由 Rust 核心解析；滚动只挂载逻辑行并创建预先计算的区间。解析最多处理 2 MiB，超过 32 KiB 的单行保持普通颜色，捕获数量也有上限。
+`language` 选择已注册的 Tree-sitter 语法和高亮查询。捕获结果通过 `syntaxTheme` 映射为只影响前景色的区间，因此高亮不会改变布局。源码或语言变化时由 Rust 核心解析；滚动只挂载逻辑行并创建预先计算的区间。解析最多处理 2 MiB，超过 32 KiB 的单行保持普通颜色，捕获数量也有上限。
 
 ## 主要属性
 

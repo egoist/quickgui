@@ -1,5 +1,7 @@
 保留式原生代码编辑器，支持语法着色、行号、缩进和双轴滚动。
 
+默认不包含任何语言语法。Rust 可注册静态链接的语法；Go 和 TypeScript 可通过 `LoadLanguagePack` / `loadLanguagePack` 加载单个跨平台包，其中包含所选 Tree-sitter Wasm 语法与查询。
+
 组件默认不带视觉样式：文本和行号继承颜色，不添加背景、边框、圆角、内边距或语法／差异配色。外观由应用显式提供样式与颜色。
 
 ## 导入
@@ -10,7 +12,7 @@ bun add @quickgui/extension-editor
 
 ```tsx
 import { createSignal } from "solid-js";
-import { Editor } from "@quickgui/extension-editor";
+import { Editor, loadLanguagePack } from "@quickgui/extension-editor";
 ```
 
 ```ts
@@ -35,7 +37,7 @@ const [source, setSource] = createSignal("export function answer() { return 42; 
 
 ## 语法高亮
 
-`language` 选择内置的 Tree-sitter 语法和高亮查询。查询捕获结果通过 `syntaxTheme` 映射为八种只影响前景色的绘制类别，因此颜色不会改变文本尺寸。源码或语言变化时重新解析受限文档；调色板变化只重新映射已有捕获，滚动不会执行语法分析。解析最多处理 2 MiB，超过 32 KiB 的单行保持普通颜色，捕获数量也有上限，且不需要语言服务器。
+`language` 选择已注册的 Tree-sitter 语法和高亮查询。查询捕获结果通过 `syntaxTheme` 映射为八种只影响前景色的绘制类别，因此颜色不会改变文本尺寸。源码或语言变化时重新解析受限文档；调色板变化只重新映射已有捕获，滚动不会执行语法分析。解析最多处理 2 MiB，超过 32 KiB 的单行保持普通颜色，捕获数量也有上限，且不需要语言服务器。
 
 ## 主要属性
 
@@ -53,3 +55,18 @@ const [source, setSource] = createSignal("export function answer() { return 42; 
 | `style`        | 保留式编辑器的 QuickGUI 布局与绘制样式。            |
 
 原生光标不依赖视觉样式；活动行背景和焦点边框均需显式设置。
+
+## 语言包
+
+默认组件不编译任何语言语法。将所选 Tree-sitter 解析器构建为 `.wasm`，再与文本查询合并为一个跨平台包。配置中的 `grammars` 映射到 Wasm 文件路径，`languages` 列出名称、语法、别名、扩展名和查询文件路径。声明的语言依赖会自动包含，相同语法只保存一次。
+
+```sh
+quickgui pack-languages languages.json --languages lua,rust --out resources/languages.qglang
+```
+
+```ts
+await loadLanguagePack("/absolute/path/languages.qglang");
+// Editor and CodeBlock can now select language="lua".
+```
+
+`LoadLanguagePack` / `loadLanguagePack` 在应用就绪后调用一次，使用打包资源目录中的路径。包是二进制 ustar 文件，包含 JSON 清单、文本查询和原始 Wasm 模块；不使用 base64，不需要解压或提取文件。相同内容重复加载不会触发重建，冲突时整个注册操作失败。Rust 也可仅启用 `editor`，通过 `register_syntax_language` 注册应用静态链接的语法。

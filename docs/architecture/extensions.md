@@ -20,6 +20,9 @@ A descriptor identifies an extension by name, exact version, ABI version, and ta
 
 `ComponentApi` supplies create, update, render, event, and destroy operations. The extension owns an opaque instance. Its calls run serially on the UI thread; workers communicate through a thread-safe wake handle. Creation owns the wake context on success and failure. Destroy releases component state and initiates worker shutdown; the final worker releases the last wake reference.
 
+`PackageApi` combines both tables under one name and counts as one package. The editor uses its
+service capability to load language packs asynchronously; the host does not know what a grammar is.
+
 Both contracts exchange borrowed C-layout spans and opaque handles. Rust objects, allocator ownership, and renderer instances never cross library boundaries. Libraries stay loaded for process lifetime; component/session state is released on unmount.
 
 ## Rendering and input

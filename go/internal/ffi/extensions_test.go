@@ -1,6 +1,7 @@
 package ffi
 
 import (
+	"encoding/json"
 	"os"
 	"strings"
 	"testing"
@@ -8,6 +9,48 @@ import (
 
 	"github.com/egoist/quickgui/go/protocol"
 )
+
+func TestEditorLanguagePackSmoke(t *testing.T) {
+	core, editor, pack := os.Getenv("QUICKGUI_TEST_CORE"), os.Getenv("QUICKGUI_TEST_EDITOR"), os.Getenv("QUICKGUI_TEST_LANGUAGE_PACK")
+	if core == "" || editor == "" || pack == "" {
+		t.Skip("language pack images not supplied")
+	}
+	expected := os.Getenv("QUICKGUI_TEST_LANGUAGE_NAMES")
+	if expected == "" {
+		expected = `["lua","rust"]`
+	}
+	library, err := Load(core, protocol.Version)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = library.LoadExtension("editor", editor); err != nil {
+		t.Fatal(err)
+	}
+	events := make(chan Event, 4)
+	defer library.Listen(func(event Event) { events <- event })()
+	request := func(path string) Event {
+		payload, _ := json.Marshal(map[string]string{"path": path})
+		method := []byte("extension/editor/load-language-pack")
+		if library.Invoke(713, method, uintptr(len(method)), payload, uintptr(len(payload))) != 0 {
+			t.Fatal("language command rejected")
+		}
+		select {
+		case event := <-events:
+			return event
+		case <-time.After(10 * time.Second):
+			t.Fatal("language command did not reply")
+			return Event{}
+		}
+	}
+	for i := 0; i < 2; i++ {
+		if event := request(pack); event.Value != expected || event.Extra != "" {
+			t.Fatalf("language registration failed: %+v", event)
+		}
+	}
+	if event := request("relative.json"); !strings.Contains(event.Extra, "absolute") {
+		t.Fatalf("language error was lost: %+v", event)
+	}
+}
 
 // This headless smoke is also run against real staged images by check-extensions.ts.
 func TestExtensionLibrarySmoke(t *testing.T) {

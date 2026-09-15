@@ -589,10 +589,16 @@ pub use swift_ui::{
     SwiftUiProgressView, SwiftUiQuickGuiHost, SwiftUiSegmentedControl, SwiftUiSegmentedTabs,
     SwiftUiSlider, SwiftUiStepper, SwiftUiTextField, SwiftUiToggle,
 };
+#[cfg(all(feature = "language-packs", not(target_arch = "wasm32")))]
+pub use syntax::{
+    MAX_LANGUAGE_PACK_BYTES, load_syntax_language_pack, load_syntax_language_pack_bytes,
+};
 #[cfg(feature = "editor")]
 pub use syntax::{
-    MAX_SYNTAX_HIGHLIGHTS, MAX_SYNTAX_LINE_BYTES, MAX_SYNTAX_SOURCE_BYTES, SyntaxLanguage,
-    SyntaxTheme, highlight_syntax,
+    MAX_LANGUAGE_QUERY_BYTES, MAX_REGISTERED_SYNTAX_LANGUAGES, MAX_SYNTAX_HIGHLIGHTS,
+    MAX_SYNTAX_LINE_BYTES, MAX_SYNTAX_SOURCE_BYTES, RegisteredSyntaxLanguage, SyntaxLanguage,
+    SyntaxLanguageDefinition, SyntaxLanguageError, SyntaxTheme, highlight_syntax,
+    register_syntax_language, syntax_language_generation,
 };
 pub use table::{
     MAX_TABLE_COLUMN_WIDTH, MAX_TABLE_COLUMNS, MAX_TABLE_ROWS, MAX_TABLE_SELECTION_RANGES,

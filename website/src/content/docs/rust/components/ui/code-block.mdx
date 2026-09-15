@@ -1,5 +1,7 @@
 Selectable, caret-free source code with Tree-sitter coloring and virtualized logical rows.
 
+No language grammars are included by default. Register a linked grammar in Rust, or load one portable pack of selected Tree-sitter Wasm grammars and queries using `loadLanguagePack` (TypeScript) / `LoadLanguagePack` (Go).
+
 Unstyled by default: text and line-number colors inherit, and the component adds no background, border, rounding, padding, or syntax/diff palette. Supply application styles and explicit colors to opt into an appearance.
 
 ## Import
@@ -22,7 +24,7 @@ code.element("example-code").h(280.0)
 
 ## Syntax highlighting
 
-`SyntaxLanguage` selects a bundled Tree-sitter grammar and its highlight query. Captures are flattened into eight stable `SyntaxTheme` classes and applied as foreground-only `HighlightStyle` spans, so color does not change text metrics. Parsing happens when source or language changes; scrolling only mounts rows and lazily creates their `StyledText`. Parsing is limited to 2 MiB, individual lines over 32 KiB stay plain, and the capture count is capped.
+`SyntaxLanguage` selects a registered Tree-sitter grammar and its highlight query. Captures are flattened into eight stable `SyntaxTheme` classes and applied as foreground-only `HighlightStyle` spans, so color does not change text metrics. Parsing happens when source or language changes; scrolling only mounts rows and lazily creates their `StyledText`. Parsing is limited to 2 MiB, individual lines over 32 KiB stay plain, and the capture count is capped.
 
 ## Key props
 
@@ -30,7 +32,7 @@ code.element("example-code").h(280.0)
 | ------------------------------ | ---------------------------------------------------------------------------- |
 | `CodeBlock::with_text`         | Creates the retained bounded source model.                                   |
 | `set_text`                     | Replaces source and resets the logical scroll position when it changed.      |
-| `set_language`                 | Selects a bundled Tree-sitter grammar.                                       |
+| `set_language`                 | Selects a registered Tree-sitter grammar.                                       |
 | `CodeBlockStyle::line_numbers` | Shows a sticky, non-selectable logical-line gutter.                          |
 | `CodeBlockStyle::word_wrap`    | Wraps long lines and disables horizontal scrolling.                          |
 | `CodeBlockStyle::syntax_theme` | Overrides the eight shared Tree-sitter capture colors.                       |

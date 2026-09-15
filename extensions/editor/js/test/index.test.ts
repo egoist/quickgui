@@ -2,9 +2,24 @@ import { expect, test } from "bun:test";
 import { createSignal, flush } from "solid-js";
 import { NativeNodeTag, PropertyCode, QuickGuiEvent, type NativeNode } from "@quickgui/native";
 import { createComponent } from "@quickgui/solid";
-import { CodeBlock, DiffView, Editor } from "@quickgui/extension-editor";
+import { CodeBlock, DiffView, Editor, loadLanguagePack } from "@quickgui/extension-editor";
+import { invokeReplies, lastCall } from "../../../../packages/native/test/fake-binding.ts";
 
 const props = (node: NativeNode) => JSON.parse(node.properties.get(PropertyCode.ExtensionProps) as string);
+
+test("language packs use the editor package service and propagate native errors", async () => {
+ const method="extension/editor/load-language-pack";
+ try {
+  invokeReplies.set(method,["lua","rust"]);
+  expect(await loadLanguagePack("/resources/lua/language.json")).toEqual(["lua","rust"]);
+  expect(lastCall("invoke").args).toEqual([method,{path:"/resources/lua/language.json"}]);
+  invokeReplies.set(method,new Error("unsupported Tree-sitter grammar ABI"));
+  await expect(loadLanguagePack("/resources/lua/language.json")).rejects.toThrow("unsupported Tree-sitter grammar ABI");
+  invokeReplies.set(method,null);
+  await expect(loadLanguagePack("/resources/lua/language.json")).rejects.toThrow("Invalid language registration reply");
+  await expect(loadLanguagePack("")).rejects.toThrow("pack path");
+ } finally { invokeReplies.delete(method); }
+});
 
 test("editor package keeps QuickGUI runtimes as peers", async () => {
  const manifest = await Bun.file(new URL("../../package.json", import.meta.url)).json();

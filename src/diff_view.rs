@@ -435,11 +435,13 @@ pub struct DiffView {
     rows: Arc<[RenderRow]>,
     list: ListState,
     content_widths: DiffContentWidths,
+    syntax_generation: u64,
 }
 
 impl DiffView {
     pub fn new(document: DiffDocument) -> Self {
         let style = DiffViewStyle::default();
+        let syntax_generation = crate::syntax::syntax_language_generation();
         let rows = build_render_rows(&document, style);
         let list = ListState::new(rows.len(), style.line_height).with_overscan(6);
         let content_widths = diff_content_widths(&document, style);
@@ -449,6 +451,7 @@ impl DiffView {
             rows: rows.into(),
             list,
             content_widths,
+            syntax_generation,
         }
     }
 
@@ -575,7 +578,17 @@ impl DiffView {
         root.child(body)
     }
 
+    /// Refresh registered language inference and injections while retaining scroll anchors.
+    pub fn refresh_syntax_languages(&mut self) -> bool {
+        if self.syntax_generation == crate::syntax::syntax_language_generation() {
+            return false;
+        }
+        self.rebuild(false);
+        true
+    }
+
     fn rebuild(&mut self, reset: bool) {
+        self.syntax_generation = crate::syntax::syntax_language_generation();
         let rows = build_render_rows(&self.document, self.style);
         self.rows = rows.into();
         self.content_widths = diff_content_widths(&self.document, self.style);

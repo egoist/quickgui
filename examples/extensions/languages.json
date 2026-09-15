@@ -1,0 +1,11 @@
+{
+  "grammars": {
+    "rust": {
+      "repository": "https://github.com/tree-sitter/tree-sitter-rust",
+      "rev": "77a3747266f4d621d0757825e6b11edcbf991ca5"
+    }
+  },
+  "languages": [
+    { "name": "rust", "grammar": "rust", "extensions": ["rs"] }
+  ]
+}

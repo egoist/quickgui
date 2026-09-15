@@ -19,6 +19,7 @@ import type {
 export type Call = { name: string; args: unknown[] };
 
 export const calls: Call[] = [];
+export const invokeReplies = new Map<string, unknown>();
 
 /** Native events waiting for the next `app.dispatchEvents()`. */
 const pendingEvents: Record<string, unknown>[] = [];
@@ -59,7 +60,9 @@ export const fakeBinding: Record<string, unknown> = {
   },
   invoke: async (method: string, value: unknown) => {
     record("invoke", [method, value]);
-    return null;
+    const reply = invokeReplies.get(method);
+    if (reply instanceof Error) throw reply;
+    return reply ?? null;
   },
   stopExtension: async (name: string, session: number) => {
     record("stopExtension", [name, session]);

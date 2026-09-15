@@ -18,3 +18,4 @@ _build/
 
 # Extension resources and installation helpers are generated native artifacts.
 extensions/*/lib/
+examples/extensions/resources/languages.qglang

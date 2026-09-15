@@ -9,6 +9,9 @@ fills, syntax colors, and diff colors belong to the application. Unspecified tex
 inherit; classic `+`/`−` markers distinguish changes without a palette. The styled examples opt into
 their dark appearance explicitly.
 
+Language grammars are not bundled by default. Register a linked grammar or load a portable
+[language pack](language-packs.md) containing your selected Wasm grammars and queries.
+
 ## Rust
 
 Enable the opt-in crate feature:
@@ -54,7 +57,7 @@ impl View for SourceView {
 }
 ```
 
-Call `Editor::set_language(SyntaxLanguage::Rust)` for bounded Tree-sitter captures and supply
+Register a grammar, then call `Editor::set_language(language)` for bounded Tree-sitter captures and supply
 `SyntaxTheme` colors to paint them. The
 editor reuses the core textarea's selection, IME composition, clipboard, undo/redo, accessibility,
 caret, and both-axis scroll state. Tab/Shift-Tab and newline auto-indent are enabled by
@@ -65,7 +68,7 @@ Rust callers can supply `EditorStyle::focus_border`.
 
 ### Syntax highlighting
 
-The built-in highlighter uses bundled Tree-sitter grammars and their `highlights.scm` queries.
+The highlighter uses registered Tree-sitter grammars and their `highlights.scm` queries.
 Query captures are flattened into eight stable public classes—keyword, literal, string, comment,
 number, type, function, and metadata—and `SyntaxTheme` maps those classes to foreground-only
 `HighlightStyle` values. Highlighting therefore never changes text metrics or layout. Markdown

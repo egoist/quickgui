@@ -20,6 +20,7 @@ extern "C" {
 #define QUICKGUI_EXTENSION_ABI_V1 1
 #define QUICKGUI_EXTENSION_SERVICE 2
 #define QUICKGUI_EXTENSION_COMPONENT 3
+#define QUICKGUI_EXTENSION_PACKAGE 4
 #define QUICKGUI_COMPONENT_MAX_PAYLOAD (16 * 1024 * 1024)
 #define QUICKGUI_EXTENSION_MAX_PAYLOAD (64 * 1024)
 #define QUICKGUI_EXTENSION_REPLY 0
@@ -70,6 +71,12 @@ typedef struct QuickGuiComponentApi {
     int32_t (*event)(void *instance, QuickGuiBytes event, void *context, QuickGuiReply reply);
     void (*destroy)(void *instance);
 } QuickGuiComponentApi;
+
+/* A package may expose components and async services under the same name. */
+typedef struct QuickGuiPackageApi {
+    QuickGuiComponentApi component;
+    QuickGuiServiceApi service;
+} QuickGuiPackageApi;
 
 /* All fields and the pointed-to table remain valid until process exit.
  * version is the extension's own exact release, not the core's release. */

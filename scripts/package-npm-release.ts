@@ -133,6 +133,7 @@ for (const pkg of packages) {
   if (pkg.name === "cli") {
     for (const required of [
       "src/extensions.ts",
+      "src/language-pack.ts",
       "src/typescript-build.ts",
       "src/typescript-compiler.ts",
       "src/rust-build.ts",

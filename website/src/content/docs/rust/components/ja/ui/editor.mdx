@@ -1,5 +1,7 @@
 シンタックスカラー、行番号、インデント、両軸スクロールに対応した保持型ネイティブコードエディターです。
 
+既定では言語文法を含みません。Rust はリンク済み文法を登録でき、Go / TypeScript は `LoadLanguagePack` / `loadLanguagePack` で選択した Tree-sitter Wasm 文法とクエリをまとめた単一の移植可能なパックを読み込めます。
+
 既定では見た目のスタイルを持ちません。文字と行番号の色は継承され、背景、枠線、角丸、余白、構文・差分の配色は追加されません。外観はアプリ側で明示的に指定します。
 
 ## インポート
@@ -49,3 +51,18 @@ impl View for EditorExample {
   を追加してください。入力、選択、Undo、スクロール状態の識別を保つため、開いたドキュメントごとに 1
   つの Editor モデルを保持します。
 </Note>
+
+## 言語パック
+
+既定のコンポーネントには文法を組み込みません。選択した Tree-sitter パーサーを `.wasm` にビルドし、テキストクエリと一緒に単一の移植可能なパックへまとめます。設定の `grammars` は Wasm ファイルのパス、`languages` は名前、文法、別名、拡張子、クエリパスを指定します。宣言した言語依存関係も含め、共有文法は一度だけ格納します。
+
+```sh
+quickgui pack-languages languages.json --languages lua,rust --out resources/languages.qglang
+```
+
+```rust
+// Enable features = ["language-packs"] for the Wasm pack loader.
+let languages = quickgui::load_syntax_language_pack("languages.qglang")?;
+```
+
+`LoadLanguagePack` / `loadLanguagePack` はアプリ準備完了後にリソースディレクトリのパスで一度呼び出します。パックは JSON マニフェスト、クエリ文字列、生の Wasm モジュールを含むバイナリ ustar ファイルです。base64、解凍、ファイル展開は不要です。同じ内容の再ロードは何も変更せず、競合時には登録全体が失敗します。Rust は `editor` のみで `register_syntax_language` にリンク済み文法を渡すこともできます。

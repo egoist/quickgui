@@ -1,9 +1,22 @@
-import { QuickGuiEvent, type ColorValue, type NativeNode } from "@quickgui/native";
+import { QuickGuiEvent, invokeExtension, type ColorValue, type NativeNode } from "@quickgui/native";
 import { ExtensionComponent, mergeProps, type NativeProps, type ExtensionComponentProps } from "@quickgui/solid";
 import { omit } from "solid-js";
 
 /** Use this extension's CodeBlock to render parsed Markdown fences. */
 export const HighlightedCodeBlock = { package: "editor", name: "code-block", props: {} } as const;
+
+/** Load a portable Tree-sitter Wasm pack and return its canonical language names.
+ * Await this before selecting the language. Registration is shared by editor, code blocks,
+ * diffs and injected languages. path must be an absolute packaged resource path.
+ * One file contains all selected grammars and queries; no native libraries are loaded.
+ */
+export async function loadLanguagePack(path: string): Promise<string[]> {
+  if (typeof path !== "string" || path.length === 0 || path.includes("\0"))
+    throw new TypeError("A language pack path is required");
+  const names = await invokeExtension<unknown>("editor", "load-language-pack", { path });
+  if (!Array.isArray(names) || !names.length || names.some(name => typeof name !== "string" || !name)) throw new Error("Invalid language registration reply");
+  return names as string[];
+}
 
 export type EditorLanguage =
   | "text"

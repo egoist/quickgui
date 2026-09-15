@@ -29,6 +29,7 @@
     "src/index.ts",
     "src/init.ts",
     "src/init-extension.ts",
+    "src/language-pack.ts",
     "src/native-build.ts",
     "src/go-build.ts",
     "src/rust-build.ts",

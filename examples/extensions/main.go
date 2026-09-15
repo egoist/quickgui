@@ -8,10 +8,24 @@ import (
 	"github.com/egoist/quickgui/go/native"
 	"github.com/egoist/quickgui/go/ui"
 	"log"
+	"path/filepath"
 	"strings"
 )
 
 func main() {
+	native.App.OnReady(func() {
+		native.App.GetPaths(func(paths *native.AppPaths, err error) {
+			if err != nil {
+				log.Print(err)
+				return
+			}
+			editor.LoadLanguagePack(filepath.Join(paths.ResourceDir, "languages.qglang"), func(_ []string, err error) {
+				if err != nil {
+					log.Printf("Demo Rust grammar: %v (run bun run pack:languages)", err)
+				}
+			})
+		})
+	})
 	if err := native.Run(func() {
 		native.NewWindow(native.WindowOptions{
 			Title:                "QuickGUI Extensions",

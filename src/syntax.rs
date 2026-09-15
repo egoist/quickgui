@@ -4,18 +4,30 @@
 //! Configurations are initialized once, parsers are reused per thread, and callers only invoke
 //! this module when their source, language, or syntax theme changes.
 
-use std::{
-    cell::RefCell,
-    ops::Range,
-    path::Path,
-    sync::{Arc, OnceLock},
-};
+#[cfg(feature = "bundled-languages")]
+use std::sync::OnceLock;
+use std::{cell::RefCell, ops::Range, path::Path, sync::Arc};
 
 use tree_sitter_highlight::{
     HighlightConfiguration, HighlightEvent, Highlighter as TreeSitterHighlighter,
 };
 
 use crate::{Color, HighlightStyle, MAX_TEXT_HIGHLIGHTS, StyledText};
+
+#[path = "syntax/registry.rs"]
+mod registry;
+pub use registry::{
+    MAX_LANGUAGE_QUERY_BYTES, MAX_REGISTERED_SYNTAX_LANGUAGES, RegisteredSyntaxLanguage,
+    SyntaxLanguageDefinition, SyntaxLanguageError, register_syntax_language,
+    syntax_language_generation,
+};
+#[cfg(all(feature = "language-packs", not(target_arch = "wasm32")))]
+#[path = "syntax/language_pack.rs"]
+mod language_pack;
+#[cfg(all(feature = "language-packs", not(target_arch = "wasm32")))]
+pub use language_pack::{
+    MAX_LANGUAGE_PACK_BYTES, load_syntax_language_pack, load_syntax_language_pack_bytes,
+};
 
 /// Maximum source bytes parsed by the built-in Tree-sitter highlighter.
 pub const MAX_SYNTAX_SOURCE_BYTES: usize = 2 * 1024 * 1024;
@@ -24,7 +36,9 @@ pub const MAX_SYNTAX_LINE_BYTES: usize = 32 * 1024;
 /// Maximum paint spans emitted by the built-in syntax highlighter.
 pub const MAX_SYNTAX_HIGHLIGHTS: usize = MAX_TEXT_HIGHLIGHTS;
 
-/// Languages with bundled Tree-sitter grammars and highlight queries.
+/// Plain text, registered languages, and well-known language identifiers.
+/// No grammars are included by the default `editor` feature. Load or register a grammar first;
+/// the optional `bundled-languages` feature explicitly opts into the built-in grammar set.
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
 pub enum SyntaxLanguage {
     #[default]
@@ -47,43 +61,42 @@ pub enum SyntaxLanguage {
     Html,
     Sql,
     Markdown,
+    Registered(RegisteredSyntaxLanguage),
 }
 
 impl SyntaxLanguage {
     /// Resolve a language name, common fence tag, or filename extension.
     pub fn from_name(name: &str) -> Option<Self> {
         let name = name.trim().trim_start_matches('.').to_ascii_lowercase();
-        Some(match name.as_str() {
-            "text" | "txt" | "plaintext" => Self::PlainText,
-            "rust" | "rs" => Self::Rust,
-            "javascript" | "js" | "jsx" | "mjs" | "cjs" => Self::JavaScript,
-            "typescript" | "ts" | "mts" | "cts" => Self::TypeScript,
-            "tsx" => Self::Tsx,
-            "python" | "py" | "py3" => Self::Python,
-            "go" | "golang" => Self::Go,
-            "c" | "h" | "cc" | "cpp" | "c++" | "cxx" | "hpp" | "objc" | "m" => Self::Cpp,
-            "java" | "kt" | "kotlin" | "scala" | "cs" | "csharp" | "c#" => Self::Java,
-            "ruby" | "rb" | "rake" | "gemfile" => Self::Ruby,
-            "swift" => Self::Swift,
-            "json" | "jsonc" | "json5" => Self::Json,
-            "yaml" | "yml" => Self::Yaml,
-            "toml" | "ini" | "cfg" => Self::Toml,
-            "shell" | "shellscript" | "sh" | "bash" | "zsh" | "fish" | "dockerfile" | "docker"
-            | "makefile" | "make" => Self::Shell,
-            "css" | "scss" | "sass" | "less" => Self::Css,
-            "html" | "htm" | "xml" | "svg" | "vue" | "svelte" => Self::Html,
-            "sql" | "postgres" | "postgresql" | "mysql" | "sqlite" => Self::Sql,
-            "markdown" | "md" | "mdx" | "mdown" => Self::Markdown,
-            _ => return None,
-        })
+        registry::snapshot()
+            .from_name(&name)
+            .or_else(|| builtin_from_name(&name))
+    }
+
+    /// Canonical name, including independently registered languages.
+    pub fn name(self) -> String {
+        match self {
+            Self::Registered(id) => registry::snapshot()
+                .language_name(id)
+                .unwrap_or("text")
+                .to_owned(),
+            _ => format!("{self:?}")
+                .to_ascii_lowercase()
+                .replace("plaintext", "text"),
+        }
     }
 
     /// Infer a language from a path without accessing the filesystem.
     pub fn from_path(path: impl AsRef<Path>) -> Option<Self> {
         let path = path.as_ref();
+        if let Some(name) = path.file_name().and_then(|name| name.to_str())
+            && let Some(language) = registry::snapshot().from_filename(&name.to_ascii_lowercase())
+        {
+            return Some(language);
+        }
         if let Some(name) = path.file_name().and_then(|name| name.to_str()) {
             match name.to_ascii_lowercase().as_str() {
-                "dockerfile" | "makefile" | "gemfile" | "rakefile" => {
+                "gemfile" | "rakefile" => {
                     return Self::from_name(name);
                 }
                 _ => {}
@@ -93,6 +106,37 @@ impl SyntaxLanguage {
             .and_then(|extension| extension.to_str())
             .and_then(Self::from_name)
     }
+}
+
+#[cfg(feature = "bundled-languages")]
+fn builtin_from_name(name: &str) -> Option<SyntaxLanguage> {
+    Some(match name {
+        "text" | "txt" | "plaintext" => SyntaxLanguage::PlainText,
+        "rust" | "rs" => SyntaxLanguage::Rust,
+        "javascript" | "js" | "jsx" | "mjs" | "cjs" => SyntaxLanguage::JavaScript,
+        "typescript" | "ts" | "mts" | "cts" => SyntaxLanguage::TypeScript,
+        "tsx" => SyntaxLanguage::Tsx,
+        "python" | "py" | "py3" => SyntaxLanguage::Python,
+        "go" | "golang" => SyntaxLanguage::Go,
+        "cc" | "cpp" | "c++" | "cxx" | "hpp" => SyntaxLanguage::Cpp,
+        "java" => SyntaxLanguage::Java,
+        "ruby" | "rb" | "rake" | "gemfile" | "rakefile" => SyntaxLanguage::Ruby,
+        "swift" => SyntaxLanguage::Swift,
+        "json" => SyntaxLanguage::Json,
+        "yaml" | "yml" => SyntaxLanguage::Yaml,
+        "toml" => SyntaxLanguage::Toml,
+        "shell" | "shellscript" | "sh" | "bash" => SyntaxLanguage::Shell,
+        "css" => SyntaxLanguage::Css,
+        "html" | "htm" => SyntaxLanguage::Html,
+        "sql" | "postgres" | "postgresql" | "mysql" | "sqlite" => SyntaxLanguage::Sql,
+        "markdown" | "md" | "mdown" => SyntaxLanguage::Markdown,
+        _ => return None,
+    })
+}
+
+#[cfg(not(feature = "bundled-languages"))]
+fn builtin_from_name(name: &str) -> Option<SyntaxLanguage> {
+    matches!(name, "text" | "txt" | "plaintext").then_some(SyntaxLanguage::PlainText)
 }
 
 /// Foreground palette used by Tree-sitter capture classes.
@@ -248,11 +292,20 @@ const CAPTURE_KINDS: &[SyntaxTokenKind] = &[
     SyntaxTokenKind::Metadata,
 ];
 
+struct SyntaxHighlighter {
+    inner: TreeSitterHighlighter,
+    #[cfg(all(feature = "language-packs", not(target_arch = "wasm32")))]
+    wasm_ready: bool,
+}
 thread_local! {
-    static TREE_SITTER_HIGHLIGHTER: RefCell<TreeSitterHighlighter> =
-        RefCell::new(TreeSitterHighlighter::new());
+    static TREE_SITTER_HIGHLIGHTER: RefCell<SyntaxHighlighter> = RefCell::new(SyntaxHighlighter {
+        inner: TreeSitterHighlighter::new(),
+        #[cfg(all(feature = "language-packs", not(target_arch = "wasm32")))]
+        wasm_ready: false,
+    });
 }
 
+#[cfg(feature = "bundled-languages")]
 macro_rules! configuration_slot {
     ($slot:ident, $language:expr, $name:literal, $highlights:expr, $injections:expr, $locals:expr) => {{
         static $slot: OnceLock<Option<HighlightConfiguration>> = OnceLock::new();
@@ -273,9 +326,14 @@ macro_rules! configuration_slot {
     }};
 }
 
-fn configuration(language: SyntaxLanguage) -> Option<&'static HighlightConfiguration> {
+#[cfg(feature = "bundled-languages")]
+fn configuration(
+    language: SyntaxLanguage,
+    registry: &registry::Registry,
+) -> Option<&HighlightConfiguration> {
     match language {
         SyntaxLanguage::PlainText => None,
+        SyntaxLanguage::Registered(id) => registry.configuration(id),
         SyntaxLanguage::Rust => configuration_slot!(
             RUST,
             tree_sitter_rust::LANGUAGE,
@@ -470,6 +528,7 @@ fn configuration(language: SyntaxLanguage) -> Option<&'static HighlightConfigura
     }
 }
 
+#[cfg(feature = "bundled-languages")]
 fn markdown_inline_configuration() -> Option<&'static HighlightConfiguration> {
     configuration_slot!(
         MARKDOWN_INLINE,
@@ -481,16 +540,42 @@ fn markdown_inline_configuration() -> Option<&'static HighlightConfiguration> {
     )
 }
 
-fn injected_configuration(name: &str) -> Option<&'static HighlightConfiguration> {
+#[cfg(not(feature = "bundled-languages"))]
+fn configuration(
+    language: SyntaxLanguage,
+    registry: &registry::Registry,
+) -> Option<&HighlightConfiguration> {
+    match language {
+        SyntaxLanguage::PlainText => None,
+        SyntaxLanguage::Registered(id) => registry.configuration(id),
+        _ => registry.from_name(&language.name()).and_then(|language| {
+            if let SyntaxLanguage::Registered(id) = language {
+                registry.configuration(id)
+            } else {
+                None
+            }
+        }),
+    }
+}
+
+fn injected_configuration<'a>(
+    name: &str,
+    registry: &'a registry::Registry,
+) -> Option<&'a HighlightConfiguration> {
+    #[cfg(feature = "bundled-languages")]
     if name == "markdown_inline" {
-        markdown_inline_configuration()
-    } else {
-        SyntaxLanguage::from_name(name).and_then(configuration)
+        return markdown_inline_configuration();
+    }
+    {
+        builtin_from_name(&name.to_ascii_lowercase())
+            .or_else(|| registry.from_name(&name.to_ascii_lowercase()))
+            .and_then(|language| configuration(language, registry))
     }
 }
 
 pub(crate) fn syntax_spans(source: &str, language: SyntaxLanguage) -> Vec<SyntaxSpan> {
-    let Some(configuration) = configuration(language) else {
+    let registry = registry::snapshot();
+    let Some(configuration) = configuration(language, &registry) else {
         return Vec::new();
     };
     if source.is_empty() {
@@ -502,12 +587,23 @@ pub(crate) fn syntax_spans(source: &str, language: SyntaxLanguage) -> Vec<Syntax
     let excluded = overlong_line_ranges(source);
 
     TREE_SITTER_HIGHLIGHTER.with(|highlighter| {
-        let mut highlighter = highlighter.borrow_mut();
-        let Ok(events) =
-            highlighter.highlight(configuration, source.as_bytes(), None, None, |name| {
-                injected_configuration(name)
-            })
-        else {
+        let mut state = highlighter.borrow_mut();
+        #[cfg(all(feature = "language-packs", not(target_arch = "wasm32")))]
+        if !state.wasm_ready
+            && let Some(engine) = language_pack::engine()
+        {
+            let Ok(store) = tree_sitter::WasmStore::new(engine) else {
+                return Vec::new();
+            };
+            if state.inner.parser.set_wasm_store(store).is_err() {
+                return Vec::new();
+            }
+            state.wasm_ready = true;
+        }
+        let highlighter = &mut state.inner;
+        let Ok(events) = highlighter.highlight(configuration, source.as_bytes(), None, |name| {
+            injected_configuration(name, &registry)
+        }) else {
             return Vec::new();
         };
         let mut stack = Vec::new();
@@ -588,7 +684,7 @@ fn floor_char_boundary(value: &str, mut index: usize) -> usize {
     index
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "bundled-languages"))]
 mod tests {
     use super::*;
 
@@ -603,10 +699,8 @@ mod tests {
             SyntaxLanguage::from_path("src/main.rs"),
             Some(SyntaxLanguage::Rust)
         );
-        assert_eq!(
-            SyntaxLanguage::from_path("Dockerfile"),
-            Some(SyntaxLanguage::Shell)
-        );
+        assert_eq!(SyntaxLanguage::from_path("Dockerfile"), None);
+        assert_eq!(SyntaxLanguage::from_name("kotlin"), None);
         assert_eq!(SyntaxLanguage::from_name("unknown"), None);
     }
 
@@ -632,7 +726,10 @@ mod tests {
             SyntaxLanguage::Sql,
             SyntaxLanguage::Markdown,
         ] {
-            assert!(configuration(language).is_some(), "missing {language:?}");
+            assert!(
+                configuration(language, &registry::snapshot()).is_some(),
+                "missing {language:?}"
+            );
         }
     }
 

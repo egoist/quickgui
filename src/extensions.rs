@@ -140,6 +140,20 @@ pub unsafe fn register_extension_versioned(
             api,
         );
     }
+    if descriptor.kind == abi::PACKAGE_EXTENSION {
+        if descriptor.api.is_null()
+            || descriptor.api_size as usize != size_of::<abi::PackageApi>()
+            || !unsafe { valid_functions(descriptor.api, 7) }
+        {
+            return Err("package extension function table mismatch");
+        }
+        let api = unsafe { *(descriptor.api.cast::<abi::PackageApi>()) };
+        return services().lock().unwrap().register_package(
+            std::str::from_utf8(name).map_err(|_| "invalid extension name")?,
+            std::str::from_utf8(version).map_err(|_| "invalid extension version")?,
+            api,
+        );
+    }
     if descriptor.kind == abi::SERVICE_EXTENSION {
         if descriptor.api.is_null()
             || descriptor.api_size as usize != size_of::<ServiceApi>()
@@ -170,6 +184,57 @@ unsafe fn valid_functions(table: *const std::ffi::c_void, count: usize) -> bool 
 }
 
 impl Registry {
+    fn len(&self) -> usize {
+        self.services.len()
+            + self
+                .components
+                .keys()
+                .filter(|name| !self.services.contains_key(*name))
+                .count()
+    }
+
+    fn register_package(
+        &mut self,
+        name: &str,
+        version: &str,
+        api: abi::PackageApi,
+    ) -> Result<(), &'static str> {
+        match (self.services.get(name), self.components.get(name)) {
+            (Some(service), Some(component))
+                if service.version == version
+                    && component.version == version
+                    && service.api.invoke as usize == api.service.invoke as usize
+                    && service.api.shutdown as usize == api.service.shutdown as usize
+                    && component.api.create as usize == api.component.create as usize
+                    && component.api.update as usize == api.component.update as usize
+                    && component.api.render as usize == api.component.render as usize
+                    && component.api.event as usize == api.component.event as usize
+                    && component.api.destroy as usize == api.component.destroy as usize =>
+            {
+                return Ok(());
+            }
+            (None, None) => {}
+            _ => return Err("a different extension with this name is already registered"),
+        }
+        if self.len() >= abi::MAX_EXTENSIONS {
+            return Err("native extension registry is full");
+        }
+        self.services.insert(
+            name.to_owned(),
+            RegisteredService {
+                version: version.to_owned(),
+                api: api.service,
+            },
+        );
+        self.components.insert(
+            name.to_owned(),
+            RegisteredComponent {
+                version: version.to_owned(),
+                api: api.component,
+            },
+        );
+        Ok(())
+    }
     fn register_component(
         &mut self,
         name: &str,
@@ -191,7 +256,7 @@ impl Registry {
             }
             return Ok(());
         }
-        if self.services.len() + self.components.len() >= abi::MAX_EXTENSIONS {
+        if self.len() >= abi::MAX_EXTENSIONS {
             return Err("native extension registry is full");
         }
         self.components.insert(
@@ -217,7 +282,7 @@ impl Registry {
             }
             return Ok(());
         }
-        if self.services.len() + self.components.len() >= abi::MAX_EXTENSIONS {
+        if self.len() >= abi::MAX_EXTENSIONS {
             return Err("native extension registry is full");
         }
         self.services.insert(
@@ -248,6 +313,116 @@ mod tests {
         SHUTDOWNS.fetch_add(10, Ordering::SeqCst);
     }
     static API: ServiceApi = ServiceApi { invoke, shutdown };
+
+    unsafe extern "C" fn create_component(
+        _: abi::Bytes,
+        _: abi::Bytes,
+        wake: abi::Wake,
+        _: *mut std::ffi::c_void,
+        _: abi::Reply,
+    ) -> *mut std::ffi::c_void {
+        unsafe { (wake.release)(wake.context) };
+        std::ptr::null_mut()
+    }
+    unsafe extern "C" fn update_component(_: *mut std::ffi::c_void, _: abi::Bytes) -> i32 {
+        0
+    }
+    unsafe extern "C" fn render_component(
+        _: *mut std::ffi::c_void,
+        _: abi::Bytes,
+        _: *mut std::ffi::c_void,
+        _: abi::Reply,
+    ) -> i32 {
+        0
+    }
+    unsafe extern "C" fn destroy_component(_: *mut std::ffi::c_void) {}
+    unsafe extern "C" fn shutdown_package() {}
+    const COMPONENT: ComponentApi = ComponentApi {
+        create: create_component,
+        update: update_component,
+        render: render_component,
+        event: render_component,
+        destroy: destroy_component,
+    };
+
+    #[test]
+    fn packages_register_both_capabilities_atomically_and_count_as_one() {
+        let mut registry = Registry::default();
+        let package = abi::PackageApi {
+            component: COMPONENT,
+            service: API,
+        };
+        registry
+            .register_package("package", "1.0", package)
+            .unwrap();
+        registry
+            .register_package("package", "1.0", package)
+            .unwrap();
+        assert_eq!(registry.len(), 1);
+        assert!(
+            registry.components.contains_key("package")
+                && registry.services.contains_key("package")
+        );
+        assert!(
+            registry
+                .register_package("package", "2.0", package)
+                .is_err()
+        );
+        assert!(registry.register("package", "1.0", API).is_err());
+        assert_eq!(registry.services["package"].version, "1.0");
+        for i in 1..abi::MAX_EXTENSIONS {
+            registry
+                .register(&format!("package-{i}"), "1.0", API)
+                .unwrap();
+        }
+        assert!(
+            registry
+                .register_package("overflow", "1.0", package)
+                .is_err()
+        );
+        assert!(
+            !registry.services.contains_key("overflow")
+                && !registry.components.contains_key("overflow")
+        );
+    }
+
+    #[test]
+    fn validates_both_tables_before_registering_a_package() {
+        let nulls = [0_usize; 7];
+        let package = abi::PackageApi {
+            component: COMPONENT,
+            service: ServiceApi {
+                invoke,
+                shutdown: shutdown_package,
+            },
+        };
+        let mut descriptor = Extension {
+            abi_version: abi::ABI_VERSION,
+            descriptor_size: size_of::<Extension>() as u32,
+            kind: abi::PACKAGE_EXTENSION,
+            api_size: size_of::<abi::PackageApi>() as u32,
+            name: abi::Bytes::new(b"independent-package-test"),
+            version: abi::Bytes::new(b"1.0"),
+            api: nulls.as_ptr().cast(),
+        };
+        assert!(
+            unsafe {
+                register_extension_versioned(&descriptor, b"independent-package-test", b"1.0")
+            }
+            .is_err()
+        );
+        assert!(
+            component("independent-package-test").is_none()
+                && service("independent-package-test").is_none()
+        );
+        descriptor.api = (&package as *const abi::PackageApi).cast();
+        unsafe { register_extension_versioned(&descriptor, b"independent-package-test", b"1.0") }
+            .unwrap();
+        assert!(
+            component("independent-package-test").is_some()
+                && service("independent-package-test").is_some()
+        );
+    }
 
     #[test]
     fn accepts_independent_services_without_extension_specific_core_code() {

@@ -60,3 +60,16 @@ func TestAppearanceIsExplicitInComponentProperties(t *testing.T) {
 		t.Fatal("missing caller-supplied header padding")
 	}
 }
+
+func TestLanguagePackRejectsRelativePathsBeforeInvokingTheHost(t *testing.T) {
+	calls := 0
+	LoadLanguagePack("languages/lua/language.json", func(names []string, err error) {
+		calls++
+		if len(names) != 0 || err == nil {
+			t.Fatal("relative path was accepted")
+		}
+	})
+	if calls != 1 {
+		t.Fatal("callback was not delivered exactly once")
+	}
+}

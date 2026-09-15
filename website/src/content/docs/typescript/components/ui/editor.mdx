@@ -1,5 +1,7 @@
 A retained native code editor with syntax coloring, line numbers, indentation, and both-axis scrolling.
 
+No language grammars are included by default. Register a linked grammar in Rust, or load one portable pack of selected Tree-sitter Wasm grammars and queries using `loadLanguagePack` (TypeScript) / `LoadLanguagePack` (Go).
+
 Unstyled by default: text and line-number colors inherit, and the component adds no background, border, rounding, padding, or syntax/diff palette. Supply application styles and explicit colors to opt into an appearance.
 
 ## Import
@@ -10,7 +12,7 @@ bun add @quickgui/extension-editor
 
 ```tsx
 import { createSignal } from "solid-js";
-import { Editor } from "@quickgui/extension-editor";
+import { Editor, loadLanguagePack } from "@quickgui/extension-editor";
 ```
 
 ```ts
@@ -35,7 +37,7 @@ const [source, setSource] = createSignal("export function answer() { return 42; 
 
 ## Syntax highlighting
 
-`language` selects a bundled Tree-sitter grammar and highlight query. Query captures map through `syntaxTheme` to eight foreground-only paint classes, so color never changes text metrics. Source or language changes reparse the bounded document; palette changes only remap retained captures, and scrolling does no syntax work. Parsing is limited to 2 MiB, individual lines over 32 KiB stay plain, and the capture count is capped. This does not require a language server.
+`language` selects a registered Tree-sitter grammar and highlight query. Query captures map through `syntaxTheme` to eight foreground-only paint classes, so color never changes text metrics. Source or language changes reparse the bounded document; palette changes only remap retained captures, and scrolling does no syntax work. Parsing is limited to 2 MiB, individual lines over 32 KiB stay plain, and the capture count is capped. This does not require a language server.
 
 ## Key props
 
@@ -53,3 +55,18 @@ const [source, setSource] = createSignal("export function answer() { return 42; 
 | `style`        | QuickGUI layout and paint styles for the retained editor.          |
 
 The native caret remains functional without styling. Active-line fills and focus borders are opt-in.
+
+## Language packs
+
+No grammars are compiled into the default component. Build selected Tree-sitter parsers as `.wasm` files, then bundle them with text queries into one portable pack. The configuration maps `grammars` to Wasm file paths and lists `languages` with `name`, `grammar`, aliases, extensions, and query file paths. Declared language dependencies are included automatically; shared grammars are stored once.
+
+```sh
+quickgui pack-languages languages.json --languages lua,rust --out resources/languages.qglang
+```
+
+```ts
+await loadLanguagePack("/absolute/path/languages.qglang");
+// Editor and CodeBlock can now select language="lua".
+```
+
+Load once after application readiness using the packaged resource directory. The pack is a binary ustar file with a JSON manifest, text queries, and raw Wasm modules—no base64, decompression, or file extraction. Identical loads are no-ops; conflicts fail atomically. Rust can instead register an application-linked grammar with `register_syntax_language` using only `features = ["editor"]`.

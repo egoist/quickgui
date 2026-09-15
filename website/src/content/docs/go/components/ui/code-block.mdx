@@ -1,5 +1,7 @@
 Selectable, caret-free source code with Tree-sitter coloring and virtualized logical rows.
 
+No language grammars are included by default. Register a linked grammar in Rust, or load one portable pack of selected Tree-sitter Wasm grammars and queries using `loadLanguagePack` (TypeScript) / `LoadLanguagePack` (Go).
+
 Unstyled by default: text and line-number colors inherit, and the component adds no background, border, rounding, padding, or syntax/diff palette. Supply application styles and explicit colors to opt into an appearance.
 
 ## Import
@@ -31,14 +33,14 @@ func CodeExample() *ui.Element {
 
 ## Syntax highlighting
 
-`Language` selects a bundled Tree-sitter grammar and highlight query. Captures map through `SyntaxTheme` to foreground-only spans, so highlighting does not change layout. The Rust core parses when source or language changes; scrolling only mounts logical rows and materializes their precomputed spans. Parsing is limited to 2 MiB, individual lines over 32 KiB stay plain, and the capture count is capped.
+`Language` selects a registered Tree-sitter grammar and highlight query. Captures map through `SyntaxTheme` to foreground-only spans, so highlighting does not change layout. The Rust core parses when source or language changes; scrolling only mounts logical rows and materializes their precomputed spans. Parsing is limited to 2 MiB, individual lines over 32 KiB stay plain, and the capture count is capped.
 
 ## Key props
 
 | Prop               | Purpose                                                           |
 | ------------------ | ----------------------------------------------------------------- |
 | `Value`            | UTF-8 source string or reactive accessor.                         |
-| `Language`         | Bundled grammar name such as `"go"`, `"rust"`, or `"typescript"`. |
+| `Language`         | Registered grammar name such as `"go"`, `"rust"`, or `"typescript"`. |
 | `LineNumbers`      | Shows a sticky, non-selectable logical-line gutter.               |
 | `Wrap`             | Wraps long lines instead of enabling horizontal scrolling.        |
 | `GutterBackground` | Overrides the line-number gutter background.                      |
