@@ -101,7 +101,6 @@ impl EditorDemo {
                 gutter_padding_right: code_style.gutter_padding_right,
                 ..TextInputGutter::default()
             },
-            ..EditorStyle::default()
         };
         Self {
             editor: Editor::with_text(AFTER)
