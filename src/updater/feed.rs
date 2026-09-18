@@ -18,6 +18,28 @@ pub struct Item {
     pub notes: String,
 }
 
+/// Which enclosure of a release the running installation can replace itself with. A Linux
+/// release lists its AppImage and its install-prefix tarball in one item.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum Payload {
+    /// Windows installers and hand-written single-enclosure feeds.
+    #[default]
+    Any,
+    AppImage,
+    /// `.tar.gz` holding one `bin/` + `share/` prefix under a versioned directory.
+    Prefix,
+}
+impl Payload {
+    fn accepts(self, url: &str) -> bool {
+        let archive = url::Url::parse(url).is_ok_and(|url| url.path().ends_with(".tar.gz"));
+        match self {
+            Payload::Any => true,
+            Payload::AppImage => !archive,
+            Payload::Prefix => archive,
+        }
+    }
+}
+
 pub fn https_url(raw: &str) -> Result<url::Url> {
     let url = url::Url::parse(raw).map_err(|_| "invalid update URL")?;
     if raw.len() > 4096
@@ -60,7 +82,7 @@ pub fn verify(bytes: &[u8], item: &Item, key: &str) -> Result<()> {
         .map_err(|_| "update signature verification failed".into())
 }
 
-pub fn newest(xml: &str, current: &str, os: &str) -> Result<Option<Item>> {
+pub fn newest(xml: &str, current: &str, os: &str, payload: Payload) -> Result<Option<Item>> {
     if xml.len() > MAX_FEED_BYTES {
         return Err("appcast exceeds 1 MiB".into());
     }
@@ -114,7 +136,10 @@ pub fn newest(xml: &str, current: &str, os: &str) -> Result<Option<Item>> {
             {
                 continue;
             }
-            let Some(url) = enclosure.attribute("url").filter(|s| https_url(s).is_ok()) else {
+            let Some(url) = enclosure
+                .attribute("url")
+                .filter(|s| https_url(s).is_ok() && payload.accepts(s))
+            else {
                 continue;
             };
             let Some(signature) =
@@ -195,6 +220,7 @@ fn supports_system(minimum: &str) -> bool {
         false
     }
 }
+#[cfg(windows)]
 fn system_version(raw: &str) -> Option<(u32, u32, u32)> {
     let parts = raw
         .split('.')
@@ -225,16 +251,24 @@ mod tests {
     fn parses_namespace_and_escapes_filters_os_and_prereleases() {
         let f = feed("1.10.0", "s:os='linux'");
         assert!(
-            newest(&f, "1.9.0", "linux")
+            newest(&f, "1.9.0", "linux", Payload::Any)
                 .unwrap()
                 .unwrap()
                 .url
                 .ends_with("x=1&y=2")
         );
-        assert!(newest(&f, "1.9.0", "windows").unwrap().is_none());
-        assert!(newest(&f, "1.10.0", "linux").unwrap().is_none());
         assert!(
-            newest(&feed("2.0.0-beta.1", ""), "1.9.0", "linux")
+            newest(&f, "1.9.0", "windows", Payload::Any)
+                .unwrap()
+                .is_none()
+        );
+        assert!(
+            newest(&f, "1.10.0", "linux", Payload::Any)
+                .unwrap()
+                .is_none()
+        );
+        assert!(
+            newest(&feed("2.0.0-beta.1", ""), "1.9.0", "linux", Payload::Any)
                 .unwrap()
                 .is_none()
         );
@@ -243,22 +277,72 @@ mod tests {
     fn rejects_unsigned_oversize_invalid_and_downgraded_feeds() {
         let f = feed("2.0.0", "");
         assert!(
-            newest(&f.replace("s:edSignature=", "unsigned="), "1.0.0", "linux")
-                .unwrap()
-                .is_none()
+            newest(
+                &f.replace("s:edSignature=", "unsigned="),
+                "1.0.0",
+                "linux",
+                Payload::Any
+            )
+            .unwrap()
+            .is_none()
         );
         assert!(
-            newest(&f.replace("https:", "http:"), "1.0.0", "linux")
-                .unwrap()
-                .is_none()
+            newest(
+                &f.replace("https:", "http:"),
+                "1.0.0",
+                "linux",
+                Payload::Any
+            )
+            .unwrap()
+            .is_none()
         );
-        assert!(newest("not xml", "1.0.0", "linux").is_err());
-        assert!(newest(&" ".repeat(MAX_FEED_BYTES + 1), "1.0.0", "linux").is_err());
+        assert!(newest("not xml", "1.0.0", "linux", Payload::Any).is_err());
         assert!(
-            newest(&feed("2.0.0", "s:deltaFrom='1.0.0'"), "1.0.0", "linux")
+            newest(
+                &" ".repeat(MAX_FEED_BYTES + 1),
+                "1.0.0",
+                "linux",
+                Payload::Any
+            )
+            .is_err()
+        );
+        assert!(
+            newest(
+                &feed("2.0.0", "s:deltaFrom='1.0.0'"),
+                "1.0.0",
+                "linux",
+                Payload::Any
+            )
+            .unwrap()
+            .is_none()
+        );
+    }
+    #[test]
+    fn linux_releases_offer_each_installation_its_own_enclosure() {
+        let signature = STANDARD.encode([0; 64]);
+        let f = format!(
+            r#"<rss xmlns:s="{SPARKLE}"><channel><item><s:shortVersionString>2.0.0</s:shortVersionString><enclosure url="https://example.com/App-2.0.0-linux-x64.AppImage" length="3" s:edSignature="{signature}"/><enclosure url="https://example.com/App-2.0.0-linux-x64.tar.gz?x=1" length="4" s:edSignature="{signature}"/></item></channel></rss>"#
+        );
+        let pick = |payload| newest(&f, "1.0.0", "linux", payload).unwrap().unwrap();
+        assert_eq!(pick(Payload::AppImage).length, 3);
+        assert_eq!(pick(Payload::Prefix).length, 4);
+        assert_eq!(pick(Payload::Any).length, 3);
+        let appimage_only = feed("2.0.0", "");
+        assert!(
+            newest(&appimage_only, "1.0.0", "linux", Payload::Prefix)
                 .unwrap()
                 .is_none()
         );
+    }
+    #[test]
+    fn notes_keep_their_lines_and_characters() {
+        let signature = STANDARD.encode([0; 64]);
+        let f = format!(
+            r#"<rss xmlns:s="{SPARKLE}"><channel><item><s:shortVersionString>2.0.0</s:shortVersionString><description s:format="markdown">Fixed:
+- crash on &lt;open&gt; &amp; save</description><enclosure url="https://example.com/app" length="3" s:edSignature="{signature}"/></item></channel></rss>"#
+        );
+        let item = newest(&f, "1.0.0", "linux", Payload::Any).unwrap().unwrap();
+        assert_eq!(item.notes, "Fixed:\n- crash on <open> & save");
     }
     #[test]
     fn verifies_sparkle_raw_ed25519_and_rejects_tampering() {

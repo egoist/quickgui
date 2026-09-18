@@ -148,9 +148,11 @@ Implemented now:
   contexts without render-time polling;
 - one-shot Rust-core relaunch requests that preserve or explicitly replace the native process
   command, spawn only after structured application and service teardown, and remain inspectable
-  without spawning in deterministic tests; plus HTTPS/Minisign updater download progress,
-  mandatory install-time re-verification, confined bounded archive extraction, rollback-capable
-  macOS bundle/Linux executable replacement, and Windows installer launch policies;
+  without spawning in deterministic tests; plus the core `updater` feature: Sparkle on macOS and
+  signed Sparkle-compatible appcasts elsewhere, with install-time re-verification, confined
+  bounded archive extraction, rollback-capable AppImage and install-prefix replacement on Linux,
+  and a verified NSIS handoff on Windows, shared with Go and TypeScript through the updater
+  extension;
 - bounded Rust-core crash reporting with a panic hook, an async-signal-safe native fatal-fault
   writer using a pre-opened descriptor and a pre-rendered report template, retention/parsing/
   deletion of stored reports, HTTPS upload of pending reports, and an opt-in main-thread hang
@@ -165,8 +167,8 @@ Implemented now:
   Linux AppDir/AppImage and a pure-TypeScript `.deb` writer; an NSIS installer with protocol and
   file-association registration plus an Authenticode signing hook; `quickgui build --mas` for Mac
   App Store `.pkg` submission; and `quickgui keygen` plus `quickgui build --update-manifest`
-  producing the exact per-platform artifact the Rust updater installs, signed with Minisign and
-  described by a `latest.json` both sides parse from one shared fixture;
+  producing the per-platform update artifacts, signed with Ed25519 and described by one
+  Sparkle-compatible appcast per target;
 - renderer-independent Rust-core RAII power assertions, bounded battery/thermal/low-power/CPU-limit
   snapshots, explicit idle and login-session queries, and event-driven suspend, lock, shutdown,
   source, thermal, and energy-mode transitions with platform-native resource teardown;

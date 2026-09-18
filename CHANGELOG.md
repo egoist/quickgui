@@ -6,9 +6,45 @@ All notable user-facing changes to QuickGUI are recorded here.
 
 ### CLI
 
+- `quickgui build` writes a self-updating per-user Linux install without external tools:
+  `<Name>-<version>-linux-<arch>.tar.gz` (a `bin/` + `share/` prefix), a generated `install.sh`,
+  and `latest-linux.txt`. The script installs into `~/.local/<package>.app` without root, links
+  the command into `~/.local/bin`, and registers the desktop entry, icon, and MIME package with
+  absolute paths. Set `linux.tarball = false` to skip it.
+- Linux appcasts list the AppImage and the tarball as enclosures of one item, and a tarball alone
+  is enough to publish updates when `appimagetool` is missing.
 - `quickgui build` no longer fails on Linux when a project has no icon. `appimagetool` refuses an
   AppDir without the icon its desktop entry names, so the AppImage now gets a placeholder icon
   and the build notes that none is configured.
+
+- `[updates]` names a publishing target instead of URLs: `updates.target = "github"` or `"s3"`,
+  chosen explicitly, with the matching section `updates.github` (just the repository) or
+  `updates.s3` (`bucket`, `publicUrl`, optional `endpoint`/`region`/`prefix`). The
+  feed, artifact, and `install.sh` URLs follow from it. `quickgui build --upload` signs the
+  release and publishes it there, through `gh` or Bun's S3 client. `updates.baseUrl`,
+  `updates.feedUrl`, and `--update-base-url` are removed.
+
+- Release notes come from one changelog for all versions. `updates.changelog` (default
+  `CHANGELOG.md`) replaces `updates.notesFile`; a release publishes the section under its
+  `## x.y.z` heading, optionally dated `## x.y.z - YYYY-MM-DD`, and the build fails when that
+  section is missing. The section is Markdown in the appcast (`sparkle:format="markdown"`), in
+  `event.notes`, and as the GitHub release description.
+
+### Updater
+
+- The updater is one implementation in the Rust core. Rust applications enable the `updater`
+  feature and use `quickgui::updater` (`Updater::start(quickgui::updater_options!())`, an async
+  event stream, `check`/`install`/`set_automatic_checks`); the updater extension for Go and
+  TypeScript compiles the same sources. `quickgui build` embeds `[updates]` into Rust
+  executables and stages the install helper or `Sparkle.framework` when the feature is enabled.
+- Removed the separate Rust `UpdateClient`, its Minisign signatures and `latest.json` manifests,
+  `updates.minisignSecretKey`, and the `minisign`/`rsign` requirement. `quickgui keygen` always
+  writes the Ed25519 key pair (the `--sparkle` and `--password` flags are gone), and
+  `--update-manifest` always writes a signed appcast.
+- The Linux updater recognises a managed `install.sh` prefix beside AppImages. It verifies and
+  inspects the signed archive before asking the app to quit, swaps the complete directory, rolls
+  back when the new build does not acknowledge startup, and refreshes the registered desktop
+  entry.
 
 ## 0.1.5 - 2026-09-16
 

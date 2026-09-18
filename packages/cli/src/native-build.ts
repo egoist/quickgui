@@ -1,12 +1,16 @@
 /** Application compilation. Go and TypeScript reuse the Rust shared library; Rust apps link the crate. */
-import { chmodSync, copyFileSync, constants, existsSync, mkdirSync } from "node:fs";
+import { copyFileSync, constants, existsSync, mkdirSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import type { ResolvedQuickGuiConfig } from "./config.ts";
 import { CliError } from "./error.ts";
 import { hostTarget, targetInfo, type QuickGuiTarget } from "./targets.ts";
 import { updaterMetadata } from "./packaging/appcast.ts";
-import { unpackResources } from "./extension-resources.ts";
-import { discoverExtensions, extensionLibraryName, resolveExtension } from "./extensions.ts";
+import {
+  discoverExtensions,
+  extensionLibraryName,
+  resolveExtension,
+  stageExtensionResources,
+} from "./extensions.ts";
 import { prepareGoWorkspace } from "./go-build.ts";
 import { compileRustApplication } from "./rust-build.ts";
 import { compileTypeScriptApplication, typescriptExtensions } from "./typescript-build.ts";
@@ -123,7 +127,7 @@ export async function compileNativeApplication(options: NativeCompileOptions): P
   ) {
     if (options.mode === "production" && !config.updates?.publicKey)
       throw new CliError(
-        "The updater extension requires [updates] with baseUrl and publicKey for production builds",
+        "The updater extension requires [updates] with publicKey and a target (github or s3) for production builds",
       );
     const metadata = Buffer.from(
       JSON.stringify(updaterMetadata(config, target, options.mode)),
@@ -148,20 +152,9 @@ export async function compileNativeApplication(options: NativeCompileOptions): P
   }
   // Stage all images first so resource extraction cannot claim another
   // extension's (or the core's) library path before that image is copied.
-  for (const extension of extensions) {
-    for (const resource of extension.resources?.[targetInfo(target).platform] ?? []) {
-      const input = await resolveExtension(extension, target, config.projectRoot, resource);
-      if (resource.endsWith(".qgr")) libraries.push(unpackResources(input, destination));
-      else {
-        const output = join(destination, resource);
-        if (existsSync(output))
-          throw new CliError("Native extension resource collision: " + resource);
-        copyFileSync(input, output, constants.COPYFILE_FICLONE);
-        chmodSync(output, 0o755);
-        libraries.push(output);
-      }
-    }
-  }
+  libraries.push(
+    ...(await stageExtensionResources(extensions, target, config.projectRoot, destination)),
+  );
   if (typescript) {
     await compileTypeScriptApplication(options, extensions);
     return libraries;

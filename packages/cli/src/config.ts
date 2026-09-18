@@ -8,6 +8,7 @@ import {
   MAX_DOCUMENT_TYPE_EXTENSIONS,
   type ResolvedDocumentType,
 } from "./packaging/documents.ts";
+import type { UpdateDestination } from "./packaging/publish.ts";
 import { parseTarget, type QuickGuiTarget } from "./targets.ts";
 
 export type { QuickGuiTarget } from "./targets.ts";
@@ -69,24 +70,55 @@ export interface DocumentTypeConfig {
   description?: string;
 }
 
-/** Signed Sparkle-compatible appcasts for the optional updater extension. */
+/** Publish releases to GitHub Releases. Feed and artifact URLs follow from the repository. */
+export interface UpdatesGitHubConfig {
+  /** `owner/name` on github.com. */
+  repository: string;
+  /** Release tags are this prefix plus the version. Defaults to "v". */
+  tagPrefix?: string;
+}
+
+/** Publish releases to an S3-compatible bucket served from a public origin. */
+export interface UpdatesS3Config {
+  bucket: string;
+  /** Public HTTPS origin that serves the bucket, e.g. "https://downloads.example.com". */
+  publicUrl: string;
+  /** S3 API endpoint for non-AWS providers such as Cloudflare R2. */
+  endpoint?: string;
+  region?: string;
+  /** Key prefix inside the bucket, also appended to `publicUrl`. */
+  prefix?: string;
+}
+
+/** Signed Sparkle-compatible appcasts for the updater. */
 export interface UpdatesConfig {
-  /** Appcast URL; {target} expands to e.g. darwin-arm64. Defaults to baseUrl/appcast-{target}.xml. */
-  feedUrl?: string;
+  /** Where releases are published and read from. Its section (`github` or `s3`) must be set. */
+  target: "github" | "s3";
+  github?: UpdatesGitHubConfig;
+  s3?: UpdatesS3Config;
   /** Base64 raw Ed25519 public key shared by Sparkle and portable backends. */
   publicKey?: string;
   /** Default preference; user choices persist across launches. */
   automaticChecks?: boolean;
   /** Base64 Sparkle secret-key file, overridden by QUICKGUI_UPDATER_PRIVATE_KEY. */
   ed25519SecretKey?: string;
-  /** Write a signed appcast during build. Legacy Minisign config still writes latest.json. */
+  /** Write a signed appcast during every production build, as `--update-manifest` does. */
   manifest?: boolean;
-  /** Public base URL the artifact is published under, e.g. "https://dl.example.com/app". */
-  baseUrl: string;
-  /** Minisign secret key path. `QUICKGUI_MINISIGN_SECRET_KEY` overrides it. */
-  minisignSecretKey?: string;
-  /** Release-notes file copied into the manifest `notes` field. */
-  notesFile?: string;
+  /**
+   * Markdown changelog covering every version. Each release publishes the section whose
+   * `## x.y.z` heading equals `version`. Defaults to `CHANGELOG.md` when the project has one.
+   */
+  changelog?: string;
+}
+
+/** `updates` after validation: the configured destination is one tagged value. */
+export interface ResolvedUpdatesConfig {
+  destination: UpdateDestination;
+  manifest: boolean;
+  publicKey?: string;
+  automaticChecks?: boolean;
+  ed25519SecretKey?: string;
+  changelog?: string;
 }
 
 export interface LinuxConfig {
@@ -106,6 +138,11 @@ export interface LinuxConfig {
   appImage?: boolean;
   /** Build a `.deb` package. Defaults to true when `linux.maintainer` is set. */
   deb?: boolean;
+  /**
+   * Build the self-updating per-user install: a `bin/` + `share/` tarball, its `install.sh`, and
+   * `latest-linux.txt`. Defaults to true.
+   */
+  tarball?: boolean;
 }
 
 /** Authenticode signing, executed only when building on Windows. */
@@ -239,10 +276,12 @@ export interface ResolvedQuickGuiConfig {
   protocols: string[];
   icon?: string;
   documentTypes: ResolvedDocumentType[];
-  updates?: Required<Pick<UpdatesConfig, "manifest" | "baseUrl">> & UpdatesConfig;
+  updates?: ResolvedUpdatesConfig;
   macos: Required<Pick<MacOSConfig, "minimumSystemVersion" | "category">> & MacOSConfig;
   windows: Required<Pick<WindowsConfig, "hideConsole">> & WindowsConfig;
-  linux: Required<Pick<LinuxConfig, "categories" | "section" | "depends" | "appImage" | "deb">> &
+  linux: Required<
+    Pick<LinuxConfig,"categories" | "section" | "depends" | "appImage" | "deb" | "tarball">
+  > &
     LinuxConfig;
   projectRoot: string;
   configPath: string;
@@ -424,6 +463,7 @@ export function resolveConfig(
       depends: stringArray(linux.depends, "linux.depends"),
       appImage: optionalBoolean(linux.appImage, "linux.appImage") ?? true,
       deb: optionalBoolean(linux.deb, "linux.deb") ?? linuxMaintainer !== undefined,
+      tarball: optionalBoolean(linux.tarball, "linux.tarball") ?? true,
       ...(linuxIcon ? { icon: resolveRelative(projectRoot, linuxIcon) } : {}),
       ...(linuxMaintainer ? { maintainer: linuxMaintainer } : {}),
       ...(linuxComment ? { comment: linuxComment } : {}),
@@ -525,16 +565,62 @@ function resolveDocumentTypes(value: unknown): ResolvedDocumentType[] {
   });
 }
 
-function resolveUpdates(
-  value: unknown,
-  projectRoot: string,
-): (Required<Pick<UpdatesConfig, "manifest" | "baseUrl">> & UpdatesConfig) | undefined {
+function resolveDestination(updates: Record<string, unknown>): UpdateDestination {
+  const target = requiredString(updates.target, "updates.target", 16);
+  if (target !== "github" && target !== "s3")
+    throw new CliError('`updates.target` must be "github" or "s3"');
+  // The other section may stay configured; only the chosen target is used.
+  if (updates[target] === undefined)
+    throw new CliError(`\`updates.target = "${target}"\` needs an \`updates.${target}\` section`);
+  if (target === "github") {
+    const github = objectOrEmpty(updates.github, "updates.github");
+    const repository = requiredString(github.repository, "updates.github.repository", 140);
+    if (!/^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})\/[A-Za-z0-9._-]{1,100}$/.test(repository))
+      throw new CliError("`updates.github.repository` must look like `owner/name`");
+    const tagPrefix = optionalString(github.tagPrefix, "updates.github.tagPrefix", 64) ?? "v";
+    if (!/^[A-Za-z0-9._\/-]*$/.test(tagPrefix))
+      throw new CliError("`updates.github.tagPrefix` may contain letters, digits, `.`, `_`, `-`, `/`");
+    return { kind: "github", repository, tagPrefix };
+  }
+  const s3 = objectOrEmpty(updates.s3, "updates.s3");
+  const bucket = requiredString(s3.bucket, "updates.s3.bucket", 255);
+  const httpsOrigin = (raw: string, field: string): string => {
+    let url: URL | undefined;
+    try {
+      url = new URL(raw);
+    } catch {
+      /* reported below */
+    }
+    if (!url || url.protocol !== "https:" || url.username || url.password || url.hash || url.search)
+      throw new CliError(`\`${field}\` must be an HTTPS URL without credentials, query, or fragment`);
+    return raw.replace(/\/+$/, "");
+  };
+  const publicUrl = httpsOrigin(
+    requiredString(s3.publicUrl, "updates.s3.publicUrl", 2_048),
+    "updates.s3.publicUrl",
+  );
+  const endpoint = optionalString(s3.endpoint, "updates.s3.endpoint", 2_048);
+  const region = optionalString(s3.region, "updates.s3.region", 64);
+  const prefix = (optionalString(s3.prefix, "updates.s3.prefix", 512) ?? "").replace(
+    /^\/+|\/+$/g,
+    "",
+  );
+  if (prefix.split("/").some((segment) => segment === "." || segment === ".."))
+    throw new CliError("`updates.s3.prefix` must not contain `.` or `..` segments");
+  return {
+    kind: "s3",
+    bucket,
+    publicUrl,
+    prefix,
+    ...(endpoint ? { endpoint: httpsOrigin(endpoint, "updates.s3.endpoint") } : {}),
+    ...(region ? { region } : {}),
+  };
+}
+
+function resolveUpdates(value: unknown, projectRoot: string): ResolvedUpdatesConfig | undefined {
   if (value === undefined) return undefined;
   const updates = objectOrEmpty(value, "updates");
-  const baseUrl = requiredString(updates.baseUrl, "updates.baseUrl", 2_048);
-  if (!/^https:\/\/[^\s"']+$/.test(baseUrl)) {
-    throw new CliError("`updates.baseUrl` must be an HTTPS URL");
-  }
+  const destination = resolveDestination(updates);
   const publicKey = optionalString(updates.publicKey, "updates.publicKey", 128);
   if (
     publicKey &&
@@ -542,31 +628,25 @@ function resolveUpdates(
       Buffer.from(publicKey, "base64").toString("base64") !== publicKey)
   )
     throw new CliError("updates.publicKey must be a base64 32-byte Ed25519 public key");
-  const feedUrl = optionalString(updates.feedUrl, "updates.feedUrl", 2048);
-  if (feedUrl) {
-    const url = new URL(feedUrl.replaceAll("{target}", "darwin-arm64"));
-    if (url.protocol !== "https:" || url.username || url.password || url.hash)
-      throw new CliError("updates.feedUrl must use HTTPS without credentials or fragments");
-  }
   const ed25519SecretKey = optionalString(
     updates.ed25519SecretKey,
     "updates.ed25519SecretKey",
     1024,
   );
   const automaticChecks = optionalBoolean(updates.automaticChecks, "updates.automaticChecks");
-  const secretKey = optionalString(updates.minisignSecretKey, "updates.minisignSecretKey", 1_024);
-  const notesFile = optionalString(updates.notesFile, "updates.notesFile", 1_024);
+  const configuredChangelog = optionalString(updates.changelog, "updates.changelog", 1_024);
+  const changelog = configuredChangelog
+    ? resolveRelative(projectRoot, configuredChangelog)
+    : [resolve(projectRoot, "CHANGELOG.md")].find((path) => existsSync(path));
   return {
     manifest: optionalBoolean(updates.manifest, "updates.manifest") ?? false,
-    baseUrl: baseUrl.replace(/\/+$/, ""),
+    destination,
     ...(publicKey ? { publicKey } : {}),
-    ...(feedUrl ? { feedUrl } : {}),
     ...(ed25519SecretKey
       ? { ed25519SecretKey: resolveRelative(projectRoot, ed25519SecretKey) }
       : {}),
     ...(automaticChecks === undefined ? {} : { automaticChecks }),
-    ...(secretKey ? { minisignSecretKey: resolveRelative(projectRoot, secretKey) } : {}),
-    ...(notesFile ? { notesFile: resolveRelative(projectRoot, notesFile) } : {}),
+    ...(changelog ? { changelog } : {}),
   };
 }
 

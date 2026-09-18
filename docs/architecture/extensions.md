@@ -8,7 +8,7 @@ Each first-party extension lives in `extensions/[name]/`. Its root contains `Car
 
 The base host contains one renderer, layout engine, text-input engine, and native event loop. It registers arbitrary extension names and independent versions through a generic descriptor. Editor, Markdown, and Terminal are component packages; Updater is an asynchronous service package. Their algorithms and dependencies are absent from the base host. The host has one generic extension node and does not enumerate component types or interpret their application properties.
 
-Rust applications enable `editor`, `markdown`, or `terminal` crate features to compile the shared implementations into their executable. Go and TypeScript applications load the optional libraries in the same process through purego or Bun FFI. Application edits reuse the selected native images.
+Rust applications enable `editor`, `markdown`, `terminal`, or `updater` crate features to compile the shared implementations into their executable; the updater's install helper still ships beside it as a file. Go and TypeScript applications load the optional libraries in the same process through purego or Bun FFI. Application edits reuse the selected native images.
 
 ## Public ABI
 

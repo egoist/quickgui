@@ -17,8 +17,6 @@ mod process;
 mod protocol;
 #[cfg(feature = "secure-storage")]
 mod secure_storage;
-#[cfg(feature = "updater")]
-mod update;
 
 pub use app_environment::{
     AppInfo, AppPaths, MAX_APP_IDENTIFIER_BYTES, MAX_APP_NAME_BYTES, MAX_APP_VERSION_BYTES,
@@ -57,14 +55,6 @@ pub use process::{
 pub use protocol::{ProtocolRegistration, ProtocolRegistrationOptions};
 #[cfg(feature = "secure-storage")]
 pub use secure_storage::SecureStorage;
-#[cfg(feature = "updater")]
-pub use update::{
-    AvailableUpdate, DEFAULT_MAX_EXPANDED_UPDATE_BYTES, DEFAULT_MAX_UPDATE_BYTES, InstalledUpdate,
-    MAX_UPDATE_ARCHIVE_ENTRIES, MAX_UPDATE_INSTALLER_ARGUMENT_BYTES,
-    MAX_UPDATE_INSTALLER_ARGUMENTS, MAX_UPDATE_MANIFEST_BYTES, MAX_UPDATE_SIGNATURE_BYTES,
-    UpdateCancellation, UpdateClient, UpdateInstallDisposition, UpdateInstallOptions,
-    UpdateProgress, WindowsUpdateInstallMode, default_update_target,
-};
 
 use std::sync::Arc;
 

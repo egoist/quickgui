@@ -56,6 +56,7 @@ describe("CLI arguments", () => {
       signingIdentity: "Developer ID Application: Example",
       notarizationProfile: "quickgui-notary",
       updateManifest: false,
+      upload: false,
       macAppStore: false,
     });
   });
@@ -65,24 +66,21 @@ describe("CLI arguments", () => {
       parseCliArgs([
         "build",
         "--update-manifest",
-        "--update-base-url",
-        "https://dl.example.com/demo",
         "--mas",
       ]),
     ).toEqual({
       command: "build",
       project: ".",
       updateManifest: true,
-      updateBaseUrl: "https://dl.example.com/demo",
+      upload: false,
       macAppStore: true,
     });
-    // A base URL alone implies the manifest.
-    expect(
-      parseCliArgs(["build", "--update-base-url=https://dl.example.com/demo"]),
-    ).toMatchObject({ updateManifest: true });
-    expect(() => parseCliArgs(["build", "--update-base-url", "http://dl.example.com"])).toThrow(
-      "HTTPS",
-    );
+    // Publishing needs the signed appcast, so --upload alone implies it.
+    expect(parseCliArgs(["build", "--upload"])).toMatchObject({
+      updateManifest: true,
+      upload: true,
+    });
+    expect(() => parseCliArgs(["build", "--update-base-url", "https://dl.example.com"])).toThrow();
     expect(() => parseCliArgs(["build", "--update-manifest=yes"])).toThrow(
       "does not take a value",
     );
@@ -104,14 +102,13 @@ describe("CLI arguments", () => {
       command: "keygen",
       outDir: ".",
       force: false,
-      passwordless: true,
     });
-    expect(parseCliArgs(["keygen", "--out-dir", "keys", "--force", "--password"])).toEqual({
+    expect(parseCliArgs(["keygen", "--out-dir", "keys", "--force"])).toEqual({
       command: "keygen",
       outDir: "keys",
       force: true,
-      passwordless: false,
     });
+    expect(() => parseCliArgs(["keygen", "--password"])).toThrow();
     expect(parseCliArgs(["help", "keygen"])).toEqual({ command: "help", topic: "keygen" });
     expect(parseCliArgs(["keygen", "--help"])).toEqual({ command: "help", topic: "keygen" });
     expect(() => parseCliArgs(["keygen", "extra"])).toThrow("positional");

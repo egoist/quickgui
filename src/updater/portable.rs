@@ -1,5 +1,8 @@
 //! Windows/Linux: the same Sparkle appcast and Ed25519 signature, with application-owned UI.
-use super::{Command, Events, Options, Result, Sink, UpdateStatus, UpdaterEvent, feed, handoff};
+use super::{
+    Command, Result, SessionEvents as Events, SessionOptions as Options, Sink, UpdateStatus,
+    UpdaterEvent, feed, handoff,
+};
 use std::{
     fs,
     io::{Read, Write},
@@ -132,6 +135,7 @@ pub(super) fn invoke(id: u32, method: &str, params: &str, sink: Arc<Sink>) -> Re
     Ok(())
 }
 
+#[allow(dead_code)] // See `super::shutdown`.
 pub(super) fn shutdown() {
     if let Some(session) = SESSION.lock().unwrap_or_else(|e| e.into_inner()).take() {
         session.events.close();
@@ -166,7 +170,12 @@ impl Session {
                         |_, _| {},
                     )?;
                     let xml = std::str::from_utf8(&bytes).map_err(|_| "appcast must be UTF-8")?;
-                    feed::newest(xml, &session.options.current_version, std::env::consts::OS)
+                    feed::newest(
+                        xml,
+                        &session.options.current_version,
+                        std::env::consts::OS,
+                        handoff::install_target()?.payload,
+                    )
                 })();
                 let mut operation = session.operation.lock().unwrap_or_else(|e| e.into_inner());
                 let report = matches!(*operation, Operation::Checking { explicit: true });
@@ -255,7 +264,7 @@ impl Session {
                         || session.events.stopped(),
                         || {
                             session.events.update("state", |e| {
-                                e.status = UpdateStatus::Updating;
+                                e.status = UpdateStatus::Installing;
                                 e.quit_required = true;
                             });
                             sink.reply();

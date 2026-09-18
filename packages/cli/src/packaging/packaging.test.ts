@@ -1,5 +1,14 @@
 import { describe, expect, test } from "bun:test";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  readlinkSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
@@ -8,6 +17,7 @@ import {
   macInfoPlist,
   reservedSidecarNames,
   stageExecutableSidecars,
+  updateAlternates,
   updateSource,
   validateBuildInputs,
 } from "../build.ts";
@@ -67,18 +77,6 @@ import {
   extraPayloadEntries,
   stageApplicationResources,
 } from "./resources.ts";
-import {
-  buildUpdateManifest,
-  joinUrl,
-  minisignKeygenArguments,
-  minisignSignArguments,
-  rfc3339,
-  serializeUpdateManifest,
-  updateArchiveArguments,
-  updateArtifactName,
-  updateTarget,
-  type UpdateManifest,
-} from "./updates.ts";
 import {
   makensisArguments,
   nsisScript,
@@ -409,6 +407,87 @@ describe("application resources", () => {
     }
   });
 
+  test.skipIf(process.platform !== "linux")(
+    "the tarball installs, registers, and uninstalls through install.sh",
+    async () => {
+      const root = mkdtempSync(join(tmpdir(), "quickgui-linux-tarball-"));
+      try {
+        writeFileSync(join(root, "demo"), "#!/bin/sh\n");
+        const assets = join(root, "assets");
+        mkdirSync(assets);
+        writeFileSync(join(assets, "note.txt"), "bundled");
+        const config = resolveConfig(
+          {
+            name: "Demo's App",
+            identifier: "com.example.demo",
+            version: "1.2.3",
+            language: "go",
+            entry: ".",
+            protocols: ["demo"],
+            linux: { appImage: false },
+          },
+          root,
+        );
+        const result = await packageLinux({
+          config,
+          libraries: [assets],
+          target: "linux-x64",
+          executablePath: join(root, "demo"),
+          stagingRoot: root,
+          run: async () => {},
+        });
+        const executable = config.executableName;
+        const tarball = join(root, `${executable}-1.2.3-linux-x64.tar.gz`);
+        expect(result.artifacts).toContain(tarball);
+        expect(readFileSync(join(root, "latest-linux.txt"), "utf8")).toBe("1.2.3\n");
+
+        const home = join(root, "home");
+        mkdirSync(home);
+        const run = (...args: string[]) =>
+          Bun.spawnSync(["sh", join(root, "install.sh"), ...args], {
+            env: {
+              PATH: process.env.PATH ?? "",
+              HOME: home,
+              DEMO_S_APP_BUNDLE_PATH: tarball,
+            },
+            stdout: "pipe",
+            stderr: "pipe",
+          });
+        const installed = run();
+        expect(installed.stderr.toString()).toBe("");
+        expect(installed.exitCode).toBe(0);
+        const prefix = join(home, ".local", "demo-s-app.app");
+        expect(readFileSync(join(prefix, "bin", "assets", "note.txt"), "utf8")).toBe("bundled");
+        expect(statSync(join(prefix, "bin", executable)).mode & 0o111).not.toBe(0);
+        expect(JSON.parse(readFileSync(join(prefix, "share/quickgui/install.json"), "utf8"))).toEqual(
+          { schema: 1, identifier: "com.example.demo", executable },
+        );
+        expect(readlinkSync(join(home, ".local", "bin", "demo-s-app"))).toBe(
+          join(prefix, "bin", executable),
+        );
+        const desktop = readFileSync(
+          join(home, ".local/share/applications", `${executable}.desktop`),
+          "utf8",
+        );
+        expect(desktop).toContain(`Exec="${join(prefix, "bin", executable)}" %U\n`);
+        expect(desktop).toContain(
+          `Icon=${join(prefix, "share/icons/hicolor/256x256/apps", `${executable}.png`)}\n`,
+        );
+
+        // Re-running upgrades in place; uninstalling removes only what the script created.
+        expect(run().exitCode).toBe(0);
+        expect(run("--uninstall").exitCode).toBe(0);
+        expect(existsSync(prefix)).toBe(false);
+        expect(existsSync(join(home, ".local/share/applications", `${executable}.desktop`))).toBe(
+          false,
+        );
+        expect(run("--uninstall").exitCode).toBe(1);
+      } finally {
+        rmSync(root, { recursive: true, force: true });
+      }
+    },
+  );
+
   test("Debian md5sums omit directory members", () => {
     const root = mkdtempSync(join(tmpdir(), "quickgui-md5-"));
     try {
@@ -471,6 +550,17 @@ describe("application resources", () => {
     expect(
       updateSource({ target: "windows-x64" }, "/out/Demo.exe", ["/out/Demo-1.0.0-setup.exe"]),
     ).toBe("/out/Demo-1.0.0-setup.exe");
+  });
+
+  test("the appcast publishes the Linux tarball beside or instead of the AppImage", () => {
+    const appImage = "/out/Demo-1.0.0-x86_64.AppImage";
+    const tarball = "/out/Demo-1.0.0-linux-x64.tar.gz";
+    const linux = { target: "linux-x64" } as const;
+    expect(updateSource(linux, "/out/Demo", [tarball])).toBe(tarball);
+    expect(updateSource(linux, "/out/Demo", [appImage, tarball])).toBe(appImage);
+    expect(updateAlternates(linux, [appImage, tarball])).toEqual([tarball]);
+    expect(updateAlternates(linux, [tarball])).toEqual([]);
+    expect(updateAlternates({ target: "windows-x64" }, ["/out/Demo.tar.gz"])).toEqual([]);
   });
 
   test("linux.icon must be a file", () => {
@@ -937,185 +1027,6 @@ describe("Mac App Store packaging", () => {
   });
 });
 
-describe("updater manifest", () => {
-  test("maps CLI targets to the core's default_update_target() strings", () => {
-    expect(updateTarget("darwin-arm64")).toBe("darwin-aarch64");
-    expect(updateTarget("darwin-x64")).toBe("darwin-x86_64");
-    expect(updateTarget("linux-arm64")).toBe("linux-aarch64");
-    expect(updateTarget("windows-x64")).toBe("windows-x86_64");
-  });
-
-  test("names the artifact layout each platform's installer accepts", () => {
-    expect(updateArtifactName("darwin-arm64", "Demo", "1.2.3")).toBe("Demo.app.tar.gz");
-    expect(updateArtifactName("windows-x64", "Demo", "1.2.3")).toBe("Demo-1.2.3-setup.exe");
-    expect(updateArtifactName("linux-x64", "Demo", "1.2.3")).toBe(
-      "Demo-1.2.3-x86_64.AppImage.tar.gz",
-    );
-    expect(updateArtifactName("linux-arm64", "Demo", "1.2.3")).toBe(
-      "Demo-1.2.3-aarch64.AppImage.tar.gz",
-    );
-    expect(updateArchiveArguments("/out", "Demo.app", "/out/Demo.app.tar.gz")).toEqual([
-      "tar",
-      "-czf",
-      "/out/Demo.app.tar.gz",
-      "-C",
-      "/out",
-      "Demo.app",
-    ]);
-  });
-
-  test("builds a platforms manifest and preserves sibling targets at the same version", () => {
-    const existing: UpdateManifest = {
-      version: "1.4.0",
-      platforms: {
-        "linux-x86_64": { url: "https://dl.example.com/app/old.tar.gz", signature: "sig" },
-      },
-    };
-    const manifest = buildUpdateManifest({
-      version: "1.4.0",
-      baseUrl: "https://dl.example.com/app/",
-      target: "darwin-arm64",
-      artifactName: "Demo.app.tar.gz",
-      signature: "c2lnbmF0dXJl",
-      notes: "Fixes things",
-      publishedAt: new Date("2026-09-03T12:00:00.500Z"),
-      existing,
-    });
-    expect(manifest).toEqual({
-      version: "1.4.0",
-      pub_date: "2026-09-03T12:00:00Z",
-      notes: "Fixes things",
-      platforms: {
-        "linux-x86_64": { url: "https://dl.example.com/app/old.tar.gz", signature: "sig" },
-        "darwin-aarch64": {
-          url: "https://dl.example.com/app/Demo.app.tar.gz",
-          signature: "c2lnbmF0dXJl",
-        },
-      },
-    });
-    expect(serializeUpdateManifest(manifest).endsWith("\n")).toBe(true);
-  });
-
-  test("supports the flat url/signature form", () => {
-    const manifest = buildUpdateManifest({
-      version: "2.0.0",
-      baseUrl: "https://dl.example.com/app",
-      target: "linux-x64",
-      artifactName: "demo.AppImage.tar.gz",
-      signature: "sig",
-      flat: true,
-      publishedAt: new Date("2026-01-01T00:00:00Z"),
-    });
-    expect(manifest.url).toBe("https://dl.example.com/app/demo.AppImage.tar.gz");
-    expect(manifest.signature).toBe("sig");
-    expect(manifest.platforms).toBeUndefined();
-  });
-
-  test("rejects non-semantic versions, plain HTTP, and empty signatures", () => {
-    const base = {
-      baseUrl: "https://dl.example.com/app",
-      target: "darwin-arm64" as const,
-      artifactName: "Demo.app.tar.gz",
-      signature: "sig",
-    };
-    expect(() => buildUpdateManifest({ ...base, version: "nightly" })).toThrow();
-    expect(() =>
-      buildUpdateManifest({ ...base, version: "1.0.0", baseUrl: "http://dl.example.com" }),
-    ).toThrow();
-    expect(() => buildUpdateManifest({ ...base, version: "1.0.0", signature: "" })).toThrow();
-    expect(joinUrl("https://dl.example.com/app/", "a b.tar.gz")).toBe(
-      "https://dl.example.com/app/a%20b.tar.gz",
-    );
-    expect(rfc3339(new Date("2026-09-03T12:00:00.999Z"))).toBe("2026-09-03T12:00:00Z");
-  });
-
-  test("the shared fixture round-trips through the manifest shape", () => {
-    const fixture = JSON.parse(
-      readFileSync(resolve(import.meta.dir, "../../../../tests/fixtures/updater-manifest.json"), "utf8"),
-    ) as UpdateManifest;
-    expect(fixture.version).toBe("1.4.0");
-    expect(fixture.pub_date).toBe("2026-09-03T12:00:00Z");
-    expect(Object.keys(fixture.platforms ?? {}).sort()).toEqual([
-      "darwin-aarch64",
-      "darwin-x86_64",
-      "linux-x86_64",
-      "windows-x86_64",
-    ]);
-    for (const platform of Object.values(fixture.platforms ?? {})) {
-      expect(platform.url.startsWith("https://")).toBe(true);
-      expect(platform.signature.length).toBeGreaterThan(0);
-    }
-    const rebuilt = buildUpdateManifest({
-      version: fixture.version,
-      baseUrl: "https://downloads.example.com/quickgui-demo",
-      target: "darwin-arm64",
-      artifactName: "Demo.app.tar.gz",
-      signature: fixture.platforms!["darwin-aarch64"]!.signature,
-      notes: fixture.notes!,
-      publishedAt: new Date(fixture.pub_date!),
-    });
-    expect(rebuilt.platforms!["darwin-aarch64"]).toEqual(fixture.platforms!["darwin-aarch64"]!);
-    expect(rebuilt.pub_date).toBe(fixture.pub_date);
-  });
-
-  test("minisign and rsign share one signing contract", () => {
-    expect(
-      minisignSignArguments({
-        tool: "minisign",
-        secretKey: "/keys/demo.key",
-        artifact: "/out/Demo.app.tar.gz",
-        signaturePath: "/out/Demo.app.tar.gz.minisig",
-        comment: "Demo 1.0.0",
-      }),
-    ).toEqual([
-      "minisign",
-      "-S",
-      "-s",
-      "/keys/demo.key",
-      "-m",
-      "/out/Demo.app.tar.gz",
-      "-x",
-      "/out/Demo.app.tar.gz.minisig",
-      "-c",
-      "Demo 1.0.0",
-    ]);
-    expect(
-      minisignSignArguments({
-        tool: "rsign",
-        secretKey: "/keys/demo.key",
-        artifact: "/out/Demo.app.tar.gz",
-        signaturePath: "/out/Demo.app.tar.gz.minisig",
-      }),
-    ).toEqual([
-      "rsign",
-      "sign",
-      "-s",
-      "/keys/demo.key",
-      "-x",
-      "/out/Demo.app.tar.gz.minisig",
-      "/out/Demo.app.tar.gz",
-    ]);
-    expect(minisignKeygenArguments("minisign", "/k/a.pub", "/k/a.key", true)).toEqual([
-      "minisign",
-      "-G",
-      "-p",
-      "/k/a.pub",
-      "-s",
-      "/k/a.key",
-      "-W",
-    ]);
-    expect(minisignKeygenArguments("rsign", "/k/a.pub", "/k/a.key", false)).toEqual([
-      "rsign",
-      "generate",
-      "-p",
-      "/k/a.pub",
-      "-s",
-      "/k/a.key",
-      "-f",
-    ]);
-  });
-});
-
 describe("configuration", () => {
   const base = { name: "Demo", identifier: "com.example.demo" };
 
@@ -1176,15 +1087,25 @@ describe("configuration", () => {
     const config = resolveConfig(
       {
         ...base,
-        updates: { manifest: true, baseUrl: "https://dl.example.com/app/", minisignSecretKey: "keys/demo.key" },
+        updates: {
+          manifest: true,
+          target: "s3",
+          s3: { bucket: "releases", publicUrl: "https://dl.example.com/", prefix: "/app/" },
+          changelog: "docs/CHANGES.md",
+        },
         linux: { maintainer: "Demo Team <demo@example.com>" },
       },
       "/project",
     );
     expect(config.updates).toEqual({
       manifest: true,
-      baseUrl: "https://dl.example.com/app",
-      minisignSecretKey: "/project/keys/demo.key",
+      destination: {
+        kind: "s3",
+        bucket: "releases",
+        publicUrl: "https://dl.example.com",
+        prefix: "app",
+      },
+      changelog: "/project/docs/CHANGES.md",
     });
     expect(config.linux).toEqual({
       categories: ["Utility"],
@@ -1192,14 +1113,33 @@ describe("configuration", () => {
       depends: [],
       appImage: true,
       deb: true,
+      tarball: true,
       maintainer: "Demo Team <demo@example.com>",
     });
     expect(
       resolveConfig(base, "/project").linux.deb,
     ).toBe(false);
-    expect(() =>
-      resolveConfig({ ...base, updates: { baseUrl: "http://dl.example.com" } }, "/project"),
-    ).toThrow();
+    const github = { repository: "demo/app" };
+    const s3 = { bucket: "releases", publicUrl: "https://dl.example.com" };
+    // The target is chosen explicitly; a second configured section is simply not used.
+    expect(
+      resolveConfig({ ...base, updates: { target: "github", github, s3 } }, "/project").updates
+        ?.destination,
+    ).toEqual({ kind: "github", repository: "demo/app", tagPrefix: "v" });
+    expect(
+      resolveConfig({ ...base, updates: { target: "s3", github, s3 } }, "/project").updates
+        ?.destination,
+    ).toMatchObject({ kind: "s3", bucket: "releases" });
+    for (const updates of [
+      {},
+      { github },
+      { target: "gitlab", github },
+      { target: "s3", github },
+      { target: "github", github: { repository: "not a repository" } },
+      { target: "s3", s3: { ...s3, publicUrl: "http://dl.example.com" } },
+      { target: "s3", s3: { ...s3, prefix: "../escape" } },
+    ])
+      expect(() => resolveConfig({ ...base, updates }, "/project")).toThrow();
   });
 
   test("Windows signing needs exactly one certificate selector", () => {

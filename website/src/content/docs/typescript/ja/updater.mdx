@@ -6,14 +6,22 @@
 bun add @quickgui/extension-updater
 ```
 
-署名用のキーペアを生成し、公開鍵をプロジェクトにコピーします。
+### 1. 署名鍵を作成する
+
+すべての更新は Ed25519 鍵で署名されます。鍵ペアは一度だけ作成し、アプリが存続する限り保管してください。インストール済みのアプリは、ビルド時の鍵で署名された更新しか受け付けません。
 
 ```sh
-bunx @quickgui/cli keygen --sparkle --out-dir "$HOME/.config/my-app/update-keys"
+bunx @quickgui/cli keygen --out-dir "$HOME/.config/my-app/update-keys"
 cp "$HOME/.config/my-app/update-keys/quickgui-update.pub" ./update-public-key.pub
 ```
 
-秘密鍵の `quickgui-update.key` はバージョン管理に入れないでください。
+このコマンドは `quickgui-update.pub` と `quickgui-update.key` を書き出します。公開鍵はコミットしても安全で、下の設定は `update-public-key.pub` から読み込みます。`.key` ファイルは秘密情報です。パスワードマネージャーや CI のシークレットストアに保管し、リポジトリには決して入れないでください。紛失すると、インストール済みのアプリは二度と更新できなくなります。
+
+### 2. リリースの公開先を選ぶ
+
+`updates.target` に `"github"` または `"s3"` を設定し、同じ名前のセクションを記入します。target によって `--upload` の送信先と、アプリが確認する URL が決まるため、フィードやダウンロードの URL を自分で書く必要はありません。両方のセクションを設定に残しておいても構いません。使われるのは `target` が指す方だけです。フィードのアドレスはアプリに組み込まれるため、後から `target` を変更しても、影響するのは変更後にビルドしたバージョンだけです。ユーザーが移行し終えるまでは、以前の target にも公開し続けてください。
+
+**GitHub Releases** に必要なのはリポジトリ名だけです。インストール済みのアプリは認証なしで更新をダウンロードするため、リポジトリは公開されている必要があります。
 
 ```ts
 import { readFileSync } from "node:fs";
@@ -27,17 +35,116 @@ export default defineConfig({
   entry: "app.tsx",
   extensions: ["@quickgui/extension-updater"],
   updates: {
-    baseUrl: "https://downloads.example.com/my-app",
+    target: "github", // publish to and update from GitHub Releases
     publicKey: readFileSync(
       new URL("./update-public-key.pub", import.meta.url),
       "utf8",
     ).trim(),
-    automaticChecks: true,
+    automaticChecks: true, // default for new installs; users can change it
+    changelog: "CHANGELOG.md", // optional; this file is used by default when it exists
+    github: {
+      repository: "example/my-app", // owner/name of a PUBLIC repository
+      // tagPrefix: "v",            // release tag = tagPrefix + version, e.g. v1.2.0
+    },
   },
 });
 ```
 
-`darwin-arm64` ビルドは、`updates.feedUrl` を設定しない限り `https://downloads.example.com/my-app/appcast-darwin-arm64.xml` を確認します。その URL の `{target}` は現在のターゲットに置き換わります。
+**Amazon S3** には、バケット、そのリージョン、そしてバケットを配信する公開 HTTPS アドレス（バケット自身の URL、またはその前段の CloudFront ドメイン）が必要です。
+
+```ts
+import { readFileSync } from "node:fs";
+import { defineConfig } from "@quickgui/cli";
+
+export default defineConfig({
+  language: "typescript",
+  name: "My App",
+  identifier: "com.example.my-app",
+  version: "1.0.0",
+  entry: "app.tsx",
+  extensions: ["@quickgui/extension-updater"],
+  updates: {
+    target: "s3", // publish to and update from the bucket below
+    publicKey: readFileSync(
+      new URL("./update-public-key.pub", import.meta.url),
+      "utf8",
+    ).trim(),
+    automaticChecks: true, // default for new installs; users can change it
+    changelog: "CHANGELOG.md", // optional; this file is used by default when it exists
+    s3: {
+      bucket: "my-app-releases",
+      region: "us-east-1",
+      publicUrl: "https://my-app-releases.s3.us-east-1.amazonaws.com",
+      // prefix: "stable",          // optional folder inside the bucket
+    },
+  },
+});
+```
+
+**Cloudflare R2、MinIO などの S3 互換ストレージ** では、S3 API のアドレスである `endpoint` を追加します。`publicUrl` は引き続きユーザーがダウンロードに使うアドレスで、R2 ではカスタムドメインまたはバケットの `r2.dev` URL です。
+
+```ts
+import { readFileSync } from "node:fs";
+import { defineConfig } from "@quickgui/cli";
+
+export default defineConfig({
+  language: "typescript",
+  name: "My App",
+  identifier: "com.example.my-app",
+  version: "1.0.0",
+  entry: "app.tsx",
+  extensions: ["@quickgui/extension-updater"],
+  updates: {
+    target: "s3", // publish to and update from the bucket below
+    publicKey: readFileSync(
+      new URL("./update-public-key.pub", import.meta.url),
+      "utf8",
+    ).trim(),
+    automaticChecks: true, // default for new installs; users can change it
+    changelog: "CHANGELOG.md", // optional; this file is used by default when it exists
+    s3: {
+      bucket: "my-app-releases",
+      endpoint: "https://ACCOUNT_ID.r2.cloudflarestorage.com", // S3 API endpoint
+      region: "auto",
+      publicUrl: "https://downloads.example.com", // custom domain or https://pub-….r2.dev
+      // prefix: "stable",
+    },
+  },
+});
+```
+
+バケットは、アップロードされたファイルの公開読み取りを許可している必要があります。QuickGUI はあなたの認証情報でアップロードしますが、バケットポリシーは変更しません。
+
+### 3. `updates` の全オプション
+
+| オプション | 必須 | 意味 |
+| --- | --- | --- |
+| `publicKey` | はい | `quickgui-update.pub` の内容。アプリに埋め込まれ、すべての更新の検証に使われます。 |
+| `target` | はい | `"github"` または `"s3"`。どのセクションを使うかを選びます。 |
+| `github.repository` | `target = "github"` の場合は必須 | 公開 GitHub リポジトリの `owner/name`。 |
+| `github.tagPrefix` | いいえ | リリースタグはこの接頭辞にバージョンを付けたものです。既定は `"v"` で、バージョン `1.2.0` は `v1.2.0` として公開されます。 |
+| `s3.bucket` | `target = "s3"` の場合は必須 | バケット名。 |
+| `s3.publicUrl` | `target = "s3"` の場合は必須 | バケットを配信する公開 HTTPS アドレス。クエリ文字列や認証情報は含められません。 |
+| `s3.endpoint` | いいえ | AWS 以外のプロバイダーの S3 API エンドポイント。AWS では省略します。 |
+| `s3.region` | いいえ | バケットのリージョン。R2 では `"auto"`。 |
+| `s3.prefix` | いいえ | バケット内のフォルダー。`publicUrl` の後ろにも付加されます。 |
+| `automaticChecks` | いいえ | 新規インストールが起動時に確認するかどうか。既定は `true`。ユーザー自身の選択は記憶され、優先されます。 |
+| `changelog` | いいえ | すべてのバージョンをまとめた Markdown の変更履歴。`version` と一致する `## x.y.z` セクションがリリースノートになります。`CHANGELOG.md` があれば既定でそれを使います。 |
+| `ed25519SecretKey` | いいえ | ローカルビルド用の秘密鍵ファイルのパス。環境変数 `QUICKGUI_UPDATER_PRIVATE_KEY` が優先されます。 |
+| `manifest` | いいえ | `true` にすると、`--update-manifest` と同様に、本番ビルドのたびに署名して更新フィードを書き出します。 |
+
+### URL の決まり方
+
+target によってすべてのアドレスが決まります。`<file>` は `appcast-darwin-arm64.xml` のようなファイル名、`<tag>` は `tagPrefix` にバージョンを付けたものです。
+
+| | GitHub | S3 |
+| --- | --- | --- |
+| 更新フィード、`install.sh`、`latest-linux.txt` | `https://github.com/<repository>/releases/latest/download/<file>` | `<publicUrl>/<prefix>/<file>` |
+| インストーラーと更新アーカイブ | `https://github.com/<repository>/releases/download/<tag>/<file>` | `<publicUrl>/<prefix>/<file>` |
+
+GitHub では、フィードは常に **Latest** と表示されているリリースから取得されます。ドラフトとプレリリースは latest にならないため、通常のリリースとして公開するまでユーザーには届きません。
+
+CLI はバージョン、識別子、フィード URL、公開鍵をアプリに埋め込みます。秘密鍵が埋め込まれることはありません。
 
 ## アプリでの使用
 
@@ -88,23 +195,144 @@ export function CheckForUpdatesButton() {
 
 ## 対応プラットフォーム
 
-macOS は Sparkle を使います。Windows は署名済み NSIS インストーラーを使います。Linux は AppImage を使います。Linux のパッケージマネージャによるインストールは `disabled` を報告します。現在の事前ビルド済みパッケージは macOS 向けです。他のターゲットでは、そのホスト上でネイティブビルドが必要です。
+macOS は Sparkle を使います。Windows は署名済み NSIS インストーラーを使います。Linux は AppImage、または `quickgui build` が出力する `install.sh` の tarball を使います（`curl -fsSL https://example.com/install.sh | sh` で root なしに `~/.local` へインストールします）。Linux のパッケージマネージャによるインストールは `disabled` を報告します。現在の事前ビルド済みパッケージは macOS 向けです。他のターゲットでは、そのホスト上でネイティブビルドが必要です。
 
 ## 更新の公開
 
-`quickgui.config.ts` の `version` を上げます。秘密鍵を環境変数に読み込みます。
+### 1. 手元のマシンからリリースする
+
+まず設定の `version` を上げます。アプリは自分より高いバージョンしかインストールしません。そのバージョンの `## <version>` セクションを `CHANGELOG.md` に追加します。次に、ビルドに秘密鍵を渡し、`--upload` を付けて実行します：
 
 ```sh
-export QUICKGUI_UPDATER_PRIVATE_KEY="$(cat "$HOME/.config/my-app/update-keys/quickgui-update.key")"
+export QUICKGUI_UPDATER_PRIVATE_KEY="$(cat ~/.config/my-app/update-keys/quickgui-update.key)"
+bunx @quickgui/cli build --upload
 ```
+
+GitHub の場合は、一度 `gh auth login` でサインインしておきます（または `GH_TOKEN` を設定します）。S3 の場合は `AWS_ACCESS_KEY_ID` と `AWS_SECRET_ACCESS_KEY` を設定します。
+
+`--upload` はアプリをビルドし、更新ファイルに署名し、フィードを書き出して、すべてを公開します。完了すると公開 URL を 1 つずつ表示します。アップロードせずに署名とフィードの書き出しだけを行いたい場合（先に `dist/` を確認したい場合など）は、代わりに `--update-manifest` を使います。このコマンドはターゲットごとに 1 回実行します。ターゲットごとに専用のフィードがあるため、Mac が Linux ビルドをダウンロードすることはありません。
+
+### 2. アップロードされるファイル
+
+| ターゲット | ファイル |
+| --- | --- |
+| macOS | 新規ユーザー向けの `<Name>.dmg`、更新用の `<Name>-<version>-<target>.zip`、`appcast-<target>.xml` |
+| Windows | `<Name>-<version>-<target>.exe`（インストーラー兼更新）、`appcast-<target>.xml` |
+| Linux | `.AppImage`、`<Name>-<version>-<target>.tar.gz`、設定している場合は `.deb`、`install.sh`、`latest-linux.txt`、`appcast-<target>.xml` |
+
+バージョン付きファイルが先に、フィードが最後にアップロードされるため、フィードがまだ存在しないファイルを指すことはありません。GitHub では、最初のターゲットがリリース `<tag>` を作成し（そのバージョンの変更履歴セクションが説明になります）、以降のターゲットは自分のファイルをそこに追加します。再実行すると同名のファイルは置き換えられます。
+
+### 3. GitHub Actions からリリースする
+
+秘密鍵を `QUICKGUI_UPDATER_PRIVATE_KEY` という名前のリポジトリシークレットとして追加し（Settings → Secrets and variables → Actions）、設定のバージョンと一致するタグをプッシュします：
+
+```yaml
+# .github/workflows/release.yml
+name: Release
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write # lets GITHUB_TOKEN create the release and upload assets
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            target: darwin-arm64
+          - os: ubuntu-22.04
+            target: linux-x64
+          - os: windows-latest
+            target: windows-x64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install
+      - run: bunx @quickgui/cli build --target ${{ matrix.target }} --upload
+        env:
+          QUICKGUI_UPDATER_PRIVATE_KEY: ${{ secrets.QUICKGUI_UPDATER_PRIVATE_KEY }}
+          GH_TOKEN: ${{ github.token }}
+          # For updates.s3 instead of GH_TOKEN:
+          # AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          # AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+```
+
+3 つのジョブは同じリリースにアップロードします。`gh` CLI は GitHub のランナーにプリインストールされています。配布する macOS ビルドには `--sign` と `--notarize` も指定してください。Windows ではランナーに NSIS（`makensis`）が必要です。Linux は `appimagetool` がインストールされている場合にのみ AppImage を生成します（tarball には何も必要ありません）。
+
+### リリースノート
+
+リリースノートは、すべてのバージョンを 1 つにまとめた Markdown の変更履歴から取得されます。バージョン `1.2.0` を公開すると、ビルドは `## 1.2.0` という見出しの下のセクションを取り出し、更新と一緒に配布します。
+
+`updates.changelog` にはプロジェクトからの相対パスでファイルを指定します。省略した場合、プロジェクトディレクトリに `CHANGELOG.md` があればそれが使われます。
+
+```md
+# Changelog
+
+## 1.2.0 - 2026-09-19
+
+Faster startup and a fix for lost drafts.
+
+- Search inside a project with **Ctrl+Shift+F**
+- Windows remember their size and position
+- Fix drafts being lost when the app quits during a save
+
+## 1.1.0
+
+- Add a tray icon
+- Fix a crash when opening an empty project
+```
+
+- リリースの見出しは `## x.y.z` で、`x.y.z` は設定の `version` です。日付を続けることもできます：`## x.y.z - 2026-09-19`。
+- ノートは、その見出しの下から次の `## ` 見出しまでのすべてです。最初のリリース見出しより上にあるテキスト（タイトルや説明など）が公開されることはありません。
+- 必要であれば「追加」「修正」などのグループに `###` を使えます。これらはセクションの中にとどまります。
+- 1 つのセクションは最大 16 KiB です。
+- 最新のリリースを一番上に書きます。コミット履歴ではなく、アプリを使う人にとって何が変わったのかを書いてください。
+
+見出しがない場合やセクションが空の場合、公開は ``CHANGELOG.md has no notes for this release. Add a `## 1.2.0` section`` というエラーで失敗するため、誤ったノートでリリースされることはありません。変更履歴がまったくないプロジェクトはノートなしで公開され、更新はバージョン番号だけで引き続き提供されます。ビルドは、取り出したセクションを `dist/<target>/release-notes.md` にも書き出します。
+
+| 表示される場所 | 表示のされ方 |
+| --- | --- |
+| Windows と Linux | アプリが Markdown を `event.notes` としてそのまま受け取ります。Markdown コンポーネントでレンダリングするか、テキストとして表示してください。 |
+| macOS | Sparkle の更新ウィンドウが Markdown としてレンダリングします。 |
+| GitHub のリリースページ（`target = "github"`） | リリースの説明になります。 |
+
+### S3 の認証情報
+
+| 変数 | 意味 |
+| --- | --- |
+| `AWS_ACCESS_KEY_ID` または `S3_ACCESS_KEY_ID` | バケットにオブジェクトを書き込む権限を持つアクセスキー |
+| `AWS_SECRET_ACCESS_KEY` または `S3_SECRET_ACCESS_KEY` | そのシークレット |
+| `AWS_SESSION_TOKEN` または `S3_SESSION_TOKEN` | 一時的な認証情報の場合のみ |
+
+R2 では、バケットに対する **Object Read & Write** 権限を持つ API トークンを作成し、そのアクセスキー ID とシークレットを使います。CDN がバケットをキャッシュしている場合は、`appcast-*.xml`、`latest-linux.txt`、`install.sh` のキャッシュ期間を短くしてください。これらはリリースのたびに変わります。
+
+### Linux のインストールコマンド
+
+Linux ビルドは `install.sh` も公開します。root なしで tarball を `~/.local/<package>.app` にインストールし、アプリケーションメニューに登録します。このインストールは自動的に最新の状態に保たれます。ユーザーには次の 1 行を案内してください：
 
 ```sh
-bunx @quickgui/cli build --target darwin-arm64 --update-manifest \
-  --sign "Developer ID Application: Example (TEAMID)" \
-  --notarize my-app-notary
+# updates.github
+curl -fsSL https://github.com/example/my-app/releases/latest/download/install.sh | sh
+# updates.s3
+curl -fsSL https://downloads.example.com/install.sh | sh
 ```
 
-先にバージョン付きアーカイブをアップロードし、そのあと appcast をアップロードします。アーキテクチャごとに独自のフィードがあります。`updates.manifest: true` は、本番ビルドのたびにフィードを生成します。
+同じ URL に `| sh -s -- --uninstall` を付けるとアンインストールできます。tarball とスクリプトが不要な場合は `linux.tarball = false` を設定します。
+
+### トラブルシューティング
+
+- **アプリが「最新です」と表示する。** 公開した `version` はインストール済みのものより高い必要があります。GitHub ではそのリリースがドラフトやプレリリースであってはならず、そのターゲットのフィードが存在している必要があります。上の表のフィード URL をブラウザーで開いて確認してください。
+- **`Set updates.publicKey and QUICKGUI_UPDATER_PRIVATE_KEY`。** ビルドに秘密鍵が渡されていません。変数をエクスポートするか、`ed25519SecretKey` を設定してください。
+- **`Update signing key does not match updates.publicKey`。** 秘密鍵が、設定した公開鍵と対になっていません。最初の鍵を使ってください。配布済みのアプリはその鍵しか信頼しません。
+- **`CHANGELOG.md has no notes for this release`。** `version` と完全に一致する `## x.y.z` 見出しを追加し、その下に少なくとも 1 行書いてください。
+- **ステータスが `disabled` になる。** 開発ビルドは更新されません。`.deb`、システム全体、root 所有の Linux インストールも同様です。本番ビルドでテストしてください。
+- **`GitHub upload failed`。** `gh auth status`、トークンにリポジトリへの書き込み権限があるか（Actions では `contents: write`）、リポジトリ名が正しいかを確認してください。
+- **`S3 upload failed`。** 認証情報、`region`、`endpoint` を確認してください。ダウンロード時の 403 は、バケットが公開読み取りを許可していないことを意味します。
 
 ## ネイティブ成果物
 

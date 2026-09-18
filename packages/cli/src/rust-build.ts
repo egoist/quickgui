@@ -4,6 +4,8 @@ import { dirname, join, resolve } from "node:path";
 import type { NativeCompileOptions } from "./native-build.ts";
 import type { ResolvedQuickGuiConfig } from "./config.ts";
 import { CliError } from "./error.ts";
+import { stageExtensionResources, type ExtensionManifest } from "./extensions.ts";
+import { updaterMetadata } from "./packaging/appcast.ts";
 import { hostTarget, targetInfo, type QuickGuiTarget } from "./targets.ts";
 
 export interface RustBuildPlan {
@@ -68,6 +70,10 @@ export function rustBuildPlan(options: NativeCompileOptions): RustBuildPlan {
     env: {
       ...process.env,
       ...(rustflags ? { RUSTFLAGS: rustflags } : {}),
+      // Read by `quickgui::updater_options!()`; inert unless the application uses it.
+      QUICKGUI_UPDATER_METADATA: Buffer.from(
+        JSON.stringify(updaterMetadata(config, target, mode)),
+      ).toString("base64url"),
     },
     manifestPath,
     manifestDir: dirname(manifestPath),
@@ -133,6 +139,55 @@ export function parseCargoExecutable(stdout: string): string {
   return executable;
 }
 
+/**
+ * Helper files the core's `updater` feature needs beside the application. They ship in
+ * `@quickgui/extension-updater` at the core's exact version; the library there is not used,
+ * because a Rust application links the updater. Mirrors `extensions/updater/quickgui.extension.json`.
+ */
+export function rustUpdaterResources(version: string): ExtensionManifest {
+  return {
+    schema: 1,
+    name: "updater",
+    abi: 1,
+    package: "@quickgui/extension-updater",
+    version,
+    library: "quickgui_updater",
+    resources: {
+      darwin: ["Sparkle.framework.qgr"],
+      linux: ["quickgui-updater-helper"],
+      windows: ["quickgui-updater-helper.exe"],
+    },
+  };
+}
+
+/** The `quickgui` crate Cargo linked into the build: its version and enabled features. */
+export function parseCargoCore(stdout: string): { version: string; features: string[] } | undefined {
+  for (const line of stdout.split("\n")) {
+    if (!line.includes('"compiler-artifact"')) continue;
+    try {
+      const message = JSON.parse(line) as {
+        reason?: string;
+        package_id?: string;
+        features?: string[];
+        target?: { kind?: string[]; name?: string };
+      };
+      // Package IDs read `<source>#quickgui@<version>`, or `<source>#<version>` when the source
+      // directory already carries the package name.
+      const version = /#(?:[^#@]+@)?(\d+\.\d+\.\d+[^\s#@]*)$/.exec(message.package_id ?? "")?.[1];
+      if (
+        message.reason === "compiler-artifact" &&
+        version &&
+        message.target?.name === "quickgui" &&
+        message.target.kind?.some((kind) => kind === "lib" || kind === "rlib")
+      )
+        return { version, features: message.features ?? [] };
+    } catch {
+      // Same leftover non-JSON lines parseCargoExecutable skips.
+    }
+  }
+  return undefined;
+}
+
 export async function compileRustApplication(options: NativeCompileOptions): Promise<string[]> {
   requireRustManifest(options.config);
   if (!Bun.which("cargo")) throw new CliError("Rust's cargo is required on PATH");
@@ -161,7 +216,28 @@ export async function compileRustApplication(options: NativeCompileOptions): Pro
     join(resourceDir, "quickgui.json"),
     `${JSON.stringify(packagedAppMetadata(options.config, options.mode, options.fonts), null, 2)}\n`,
   );
-  return rustPackagedSidecars(options.executablePath, options.target, options.fonts);
+  const core = parseCargoCore(stdout);
+  const extensions = core?.features.includes("updater") ? [rustUpdaterResources(core.version)] : [];
+  if (extensions.length > 0 && options.mode === "production" && !options.config.updates?.publicKey)
+    throw new CliError(
+      "The updater requires [updates] with publicKey and a target (github or s3) for production builds",
+    );
+  // The updater is linked into the executable; only its helper files travel beside it.
+  const destination =
+    targetInfo(options.target).platform === "darwin"
+      ? resolve(dirname(options.executablePath), "..", "Frameworks")
+      : dirname(options.executablePath);
+  if (extensions.some((extension) => extension.resources?.[targetInfo(options.target).platform]))
+    mkdirSync(destination, { recursive: true });
+  return [
+    ...rustPackagedSidecars(options.executablePath, options.target, options.fonts),
+    ...(await stageExtensionResources(
+      extensions,
+      options.target,
+      options.config.projectRoot,
+      destination,
+    )),
+  ];
 }
 
 export async function runRust(

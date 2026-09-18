@@ -203,7 +203,7 @@ Check callback errors and retain/dispose subscription or resource handles for th
 duration they are needed. Capture the owning window during component creation if
 an asynchronous result needs to operate on it. Examples and platform limits are
 documented in [clipboard](../docs/clipboard.md#go), [document windows](../docs/document-windows.md#go),
-[updates](../docs/relaunch-and-updates.md#download-progress-from-go), and
+[updates](../docs/updater.md), and
 [crash reporting and metrics](../docs/crash-reporting-and-metrics.md#go).
 
 ## Build

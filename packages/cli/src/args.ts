@@ -47,15 +47,13 @@ export type ParsedCliCommand =
       signingIdentity?: string;
       notarizationProfile?: string;
       updateManifest: boolean;
-      updateBaseUrl?: string;
+      upload: boolean;
       macAppStore: boolean;
     }
   | {
       command: "keygen";
-      sparkle?: boolean;
       outDir: string;
       force: boolean;
-      passwordless: boolean;
     };
 
 interface OptionSpec {
@@ -218,7 +216,7 @@ export function parseCliArgs(argv: string[]): ParsedCliCommand {
       "--sign": { key: "signingIdentity", value: true },
       "--notarize": { key: "notarizationProfile", value: true },
       "--update-manifest": { key: "updateManifest", value: false },
-      "--update-base-url": { key: "updateBaseUrl", value: true },
+      "--upload": { key: "upload", value: false },
       "--mas": { key: "macAppStore", value: false },
     });
     rejectPositionals(parsed, "quickgui build");
@@ -227,21 +225,17 @@ export function parseCliArgs(argv: string[]): ParsedCliCommand {
     const configFile = stringOption(parsed, "configFile");
     const signingIdentity = stringOption(parsed, "signingIdentity");
     const notarizationProfile = stringOption(parsed, "notarizationProfile");
-    const updateBaseUrl = stringOption(parsed, "updateBaseUrl");
-    if (updateBaseUrl !== undefined && !/^https:\/\/[^\s"']+$/.test(updateBaseUrl)) {
-      throw new CliError("--update-base-url must be an HTTPS URL");
-    }
     return {
       command: "build",
       project: stringOption(parsed, "project") ?? ".",
       ...(configFile ? { configFile } : {}),
-      updateManifest: parsed.values.has("updateManifest") || updateBaseUrl !== undefined,
+      updateManifest: parsed.values.has("updateManifest") || parsed.values.has("upload"),
+      upload: parsed.values.has("upload"),
       macAppStore: parsed.values.has("macAppStore"),
       ...(target ? { target: parseTarget(target) } : {}),
       ...(outDir ? { outDir } : {}),
       ...(signingIdentity ? { signingIdentity } : {}),
       ...(notarizationProfile ? { notarizationProfile } : {}),
-      ...(updateBaseUrl ? { updateBaseUrl } : {}),
     };
   }
 
@@ -249,16 +243,12 @@ export function parseCliArgs(argv: string[]): ParsedCliCommand {
     const parsed = parseOptions(rest, {
       "--out-dir": { key: "outDir", value: true },
       "--force": { key: "force", value: false },
-      "--password": { key: "password", value: false },
-      "--sparkle": { key: "sparkle", value: false },
     });
     rejectPositionals(parsed, "quickgui keygen");
     return {
       command: "keygen",
-      ...(parsed.values.has("sparkle") ? { sparkle: true } : {}),
       outDir: stringOption(parsed, "outDir") ?? ".",
       force: parsed.values.has("force"),
-      passwordless: !parsed.values.has("password"),
     };
   }
 

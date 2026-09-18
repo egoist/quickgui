@@ -22,7 +22,8 @@ test("the TypeScript updater guide loads real configuration and compiles the ext
     "utf8",
   );
   const sources = [...docs.matchAll(/```(?:ts|tsx)\n([\s\S]*?)```/g)].map((match) => match[1]!);
-  expect(sources).toHaveLength(3);
+  // Three destination examples (GitHub, S3, S3-compatible), then updates.ts and app.tsx.
+  expect(sources).toHaveLength(5);
   const project = mkdtempSync(join(tmpdir(), "quickgui-updater-docs-"));
   try {
     const keys = generateUpdaterKeys(join(project, "keys"));
@@ -37,7 +38,33 @@ test("the TypeScript updater guide loads real configuration and compiles the ext
       join(project, "node_modules/solid-js"),
       "dir",
     );
-    for (const [index, file] of ["quickgui.config.ts", "updates.ts", "app.tsx"].entries())
+    const destinations = [];
+    for (const [index, file] of ["s3.config.ts", "r2.config.ts"].entries()) {
+      writeFileSync(join(project, file), sources[index + 1]!);
+      destinations.push((await loadConfig(project, file)).updates?.destination);
+    }
+    expect(destinations).toEqual([
+      {
+        kind: "s3",
+        bucket: "my-app-releases",
+        region: "us-east-1",
+        publicUrl: "https://my-app-releases.s3.us-east-1.amazonaws.com",
+        prefix: "",
+      },
+      {
+        kind: "s3",
+        bucket: "my-app-releases",
+        endpoint: "https://ACCOUNT_ID.r2.cloudflarestorage.com",
+        region: "auto",
+        publicUrl: "https://downloads.example.com",
+        prefix: "",
+      },
+    ]);
+    for (const [file, index] of [
+      ["quickgui.config.ts", 0],
+      ["updates.ts", 3],
+      ["app.tsx", 4],
+    ] as const)
       writeFileSync(join(project, file), sources[index]!);
     const config = await loadConfig(project).catch((error) => {
       throw error.cause ?? error;
@@ -48,7 +75,8 @@ test("the TypeScript updater guide loads real configuration and compiles the ext
       "@quickgui/extension-updater",
     );
     expect(updaterMetadata(config, "darwin-arm64", "production")).toEqual({
-      feedUrl: "https://downloads.example.com/my-app/appcast-darwin-arm64.xml",
+      feedUrl:
+        "https://github.com/example/my-app/releases/latest/download/appcast-darwin-arm64.xml",
       publicKey: readFileSync(keys.publicKeyPath, "utf8").trim(),
       currentVersion: "1.0.0",
       identifier: "com.example.my-app",
