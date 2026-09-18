@@ -8,6 +8,7 @@
 
 import { existsSync, readFileSync } from "node:fs";
 import { basename, dirname, extname, join } from "node:path";
+import { deflateSync } from "node:zlib";
 
 import { CliError, errorMessage } from "../error.ts";
 import { concat } from "./archive.ts";
@@ -116,6 +117,40 @@ export function readSourceIcon(icon: string): Uint8Array {
     throw new CliError(`Icon must be at least 256x256 pixels, got ${width}x${width}: ${icon}`);
   }
   return data;
+}
+
+/** Edge length of the icon written when a project configures none. */
+export const PLACEHOLDER_ICON_SIZE = 256;
+
+/**
+ * A flat gray square PNG for packagers that refuse to run without an icon, such as
+ * `appimagetool`. One-bit palette rows keep it to a few hundred bytes.
+ */
+export function placeholderPng(size = PLACEHOLDER_ICON_SIZE): Uint8Array {
+  const header = new Uint8Array(13);
+  const view = new DataView(header.buffer);
+  view.setUint32(0, size);
+  view.setUint32(4, size);
+  header.set([1, 3, 0, 0, 0], 8);
+  // Every row is a filter byte plus all-zero palette indices.
+  const rows = new Uint8Array(size * (1 + Math.ceil(size / 8)));
+  return concat([
+    PNG_SIGNATURE,
+    pngChunk("IHDR", header),
+    pngChunk("PLTE", Uint8Array.from([0x8a, 0x8f, 0x98])),
+    pngChunk("IDAT", new Uint8Array(deflateSync(rows))),
+    pngChunk("IEND", new Uint8Array(0)),
+  ]);
+}
+
+function pngChunk(type: string, data: Uint8Array): Uint8Array {
+  const chunk = new Uint8Array(12 + data.byteLength);
+  const view = new DataView(chunk.buffer);
+  view.setUint32(0, data.byteLength);
+  chunk.set(new TextEncoder().encode(type), 4);
+  chunk.set(data, 8);
+  view.setUint32(8 + data.byteLength, Bun.hash.crc32(chunk.subarray(4, 8 + data.byteLength)));
+  return chunk;
 }
 
 /** Resize a square PNG to `size`×`size` with Bun's built-in image pipeline. */

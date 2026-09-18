@@ -378,6 +378,37 @@ describe("application resources", () => {
     }
   });
 
+  test("AppDir gets a decodable placeholder icon when none is configured", async () => {
+    const root = mkdtempSync(join(tmpdir(), "quickgui-linux-placeholder-"));
+    try {
+      writeFileSync(join(root, "demo"), "exe");
+      const config = resolveConfig(
+        {
+          name: "Demo",
+          identifier: "com.example.demo",
+          language: "go",
+          entry: ".",
+          linux: { appImage: true },
+        },
+        root,
+      );
+      const result = await packageLinux({
+        config,
+        libraries: [],
+        target: "linux-x64",
+        executablePath: join(root, "demo"),
+        stagingRoot: root,
+        run: async () => {},
+      });
+      const icon = new Uint8Array(readFileSync(join(root, "Demo.AppDir", "Demo.png")));
+      expect(pngDimensions(icon)).toEqual({ width: 256, height: 256 });
+      expect(pngDimensions(await resizePng(icon, 64))).toEqual({ width: 64, height: 64 });
+      expect(result.notes.some((note) => note.includes("placeholder icon"))).toBe(true);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   test("Debian md5sums omit directory members", () => {
     const root = mkdtempSync(join(tmpdir(), "quickgui-md5-"));
     try {

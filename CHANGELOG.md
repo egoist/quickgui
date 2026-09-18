@@ -4,6 +4,12 @@ All notable user-facing changes to QuickGUI are recorded here.
 
 ## Unreleased
 
+### CLI
+
+- `quickgui build` no longer fails on Linux when a project has no icon. `appimagetool` refuses an
+  AppDir without the icon its desktop entry names, so the AppImage now gets a placeholder icon
+  and the build notes that none is configured.
+
 ## 0.1.5 - 2026-09-16
 
 ### CLI

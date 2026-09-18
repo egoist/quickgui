@@ -28,6 +28,7 @@ import {
   createIco,
   LINUX_ICON_SIZES,
   PACKAGED_ICON_SIZES,
+  placeholderPng,
   readSourceIcon,
 } from "./icons.ts";
 import { sharedMimeInfoXml } from "./documents.ts";
@@ -160,8 +161,12 @@ export async function packageLinux(input: LinuxPackagingInput): Promise<Packagin
     writeFileSync(join(appDir, `${config.executableName}.desktop`), entry);
     writeFileSync(join(appDir, "AppRun"), appRunScript(config.executableName));
     chmodSync(join(appDir, "AppRun"), 0o755);
+    // appimagetool rejects an AppDir whose desktop entry names an icon that is not there.
     const largest = largestIcon(input.icons);
-    if (largest) writeFileSync(join(appDir, `${config.executableName}.png`), largest);
+    writeFileSync(join(appDir, `${config.executableName}.png`), largest ?? placeholderPng());
+    if (!largest) {
+      notes.push("No `icon` is configured, so the AppImage uses a placeholder icon.");
+    }
     for (const [size, png] of input.icons?.png ?? []) {
       const directory = join(appDir, "usr", "share", "icons", "hicolor", `${size}x${size}`, "apps");
       mkdirSync(directory, { recursive: true });
