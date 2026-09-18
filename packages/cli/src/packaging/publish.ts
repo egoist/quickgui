@@ -3,7 +3,7 @@
  *
  * A destination fixes every URL the updater and `install.sh` read, so projects configure the
  * place once instead of spelling feed and artifact URLs. Each release has versioned artifacts
- * (installers, archives) and mutable pointers (`appcast-<target>.xml`, `latest-linux.txt`,
+ * (installers, archives) and mutable pointers (`appcast-<target>.xml`, `latest-linux-<arch>.txt`,
  * `install.sh`) that always describe the newest release.
  */
 
@@ -137,12 +137,29 @@ async function spawn(command: string[], cwd: string): Promise<{ status: number; 
 export interface UploadTools {
   which: (command: string) => string | null;
   spawn: (command: string[], cwd: string) => Promise<{ status: number; output: string }>;
+  /** Store one local file as an object. */
+  putObject: (destination: S3Destination, key: string, path: string, type: string) => Promise<void>;
+}
+
+/** Credentials come from the standard `AWS_…` or `S3_…` environment variables. */
+async function putObject(
+  destination: S3Destination,
+  key: string,
+  path: string,
+  type: string,
+): Promise<void> {
+  const client = new Bun.S3Client({
+    bucket: destination.bucket,
+    ...(destination.endpoint ? { endpoint: destination.endpoint } : {}),
+    ...(destination.region ? { region: destination.region } : {}),
+  });
+  await client.write(key, Bun.file(path), { type });
 }
 
 /** Publish one build's release files. Returns the public URLs, pointers last. */
 export async function uploadRelease(
   upload: ReleaseUpload,
-  tools: UploadTools = { which: (command) => Bun.which(command), spawn },
+  tools: UploadTools = { which: (command) => Bun.which(command), spawn, putObject },
 ): Promise<string[]> {
   const { destination } = upload;
   for (const path of [...upload.artifacts, ...upload.pointers])
@@ -164,18 +181,15 @@ export async function uploadRelease(
       result = await tools.spawn(commands.upload, upload.cwd);
     if (result.status !== 0) throw new CliError(`GitHub upload failed\n${result.output}`);
   } else {
-    // Credentials come from the standard S3_*/AWS_* environment variables.
-    const client = new Bun.S3Client({
-      bucket: destination.bucket,
-      ...(destination.endpoint ? { endpoint: destination.endpoint } : {}),
-      ...(destination.region ? { region: destination.region } : {}),
-    });
     for (const path of [...upload.artifacts, ...upload.pointers]) {
       const extension = /\.[^.]+$/.exec(path)?.[0] ?? "";
       try {
-        await client.write(s3Key(destination, path), Bun.file(path), {
-          type: CONTENT_TYPES[extension] ?? "application/octet-stream",
-        });
+        await tools.putObject(
+          destination,
+          s3Key(destination, path),
+          path,
+          CONTENT_TYPES[extension] ?? "application/octet-stream",
+        );
       } catch (error) {
         throw new CliError(
           `S3 upload failed for ${basename(path)}: ${error instanceof Error ? error.message : String(error)}`,

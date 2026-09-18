@@ -8,7 +8,7 @@ All notable user-facing changes to QuickGUI are recorded here.
 
 - `quickgui build` writes a self-updating per-user Linux install without external tools:
   `<Name>-<version>-linux-<arch>.tar.gz` (a `bin/` + `share/` prefix), a generated `install.sh`,
-  and `latest-linux.txt`. The script installs into `~/.local/<package>.app` without root, links
+  and `latest-linux-<arch>.txt`. The script installs into `~/.local/<package>.app` without root, links
   the command into `~/.local/bin`, and registers the desktop entry, icon, and MIME package with
   absolute paths. Set `linux.tarball = false` to skip it.
 - Linux appcasts list the AppImage and the tarball as enclosures of one item, and a tarball alone
@@ -32,6 +32,8 @@ All notable user-facing changes to QuickGUI are recorded here.
 
 ### Updater
 
+- TypeScript applications acknowledge startup to the install helper when the app becomes ready.
+  Without it, a Windows or Linux update of a TypeScript app was rolled back every time.
 - The updater is one implementation in the Rust core. Rust applications enable the `updater`
   feature and use `quickgui::updater` (`Updater::start(quickgui::updater_options!())`, an async
   event stream, `check`/`install`/`set_automatic_checks`); the updater extension for Go and

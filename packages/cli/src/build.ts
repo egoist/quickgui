@@ -43,7 +43,7 @@ import {
 } from "./packaging/pipeline.ts";
 import { stageApplicationResources } from "./packaging/resources.ts";
 import { updaterMetadata } from "./packaging/appcast.ts";
-import { LATEST_LINUX_VERSION_FILE, tarballName } from "./packaging/linux.ts";
+import { latestVersionFile, tarballName } from "./packaging/linux.ts";
 import { uploadRelease } from "./packaging/publish.ts";
 import { targetInfo, type QuickGuiTarget } from "./targets.ts";
 
@@ -577,10 +577,10 @@ export function releaseFiles(
   manifestPath: string,
 ): { artifacts: string[]; pointers: string[] } {
   const artifact = /\.(?:AppImage|tar\.gz|deb|dmg|pkg|zip|exe)$/;
-  const pointer = new Set(["install.sh", LATEST_LINUX_VERSION_FILE]);
+  const pointer = (name: string): boolean => name === "install.sh" || /^latest-[a-z0-9-]+\.txt$/.test(name);
   return {
     artifacts: [...new Set(produced.filter((path) => artifact.test(path)))],
-    pointers: [...produced.filter((path) => pointer.has(basename(path))), manifestPath],
+    pointers: [...produced.filter((path) => pointer(basename(path))), manifestPath],
   };
 }
 
@@ -660,7 +660,8 @@ export function reservedSidecarNames(
       tarballName(config.executableName, config.version, "linux-x64"),
       tarballName(config.executableName, config.version, "linux-arm64"),
       "install.sh",
-      LATEST_LINUX_VERSION_FILE,
+      latestVersionFile("linux-x64"),
+      latestVersionFile("linux-arm64"),
     );
   }
   if (platform === "windows") {

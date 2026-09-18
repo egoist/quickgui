@@ -139,7 +139,7 @@ target によってすべてのアドレスが決まります。`<file>` は `ap
 
 | | GitHub | S3 |
 | --- | --- | --- |
-| 更新フィード、`install.sh`、`latest-linux.txt` | `https://github.com/<repository>/releases/latest/download/<file>` | `<publicUrl>/<prefix>/<file>` |
+| 更新フィード、`install.sh`、`latest-linux-<arch>.txt` | `https://github.com/<repository>/releases/latest/download/<file>` | `<publicUrl>/<prefix>/<file>` |
 | インストーラーと更新アーカイブ | `https://github.com/<repository>/releases/download/<tag>/<file>` | `<publicUrl>/<prefix>/<file>` |
 
 GitHub では、フィードは常に **Latest** と表示されているリリースから取得されます。ドラフトとプレリリースは latest にならないため、通常のリリースとして公開するまでユーザーには届きません。
@@ -218,7 +218,7 @@ GitHub の場合は、一度 `gh auth login` でサインインしておきま�
 | --- | --- |
 | macOS | 新規ユーザー向けの `<Name>.dmg`、更新用の `<Name>-<version>-<target>.zip`、`appcast-<target>.xml` |
 | Windows | `<Name>-<version>-<target>.exe`（インストーラー兼更新）、`appcast-<target>.xml` |
-| Linux | `.AppImage`、`<Name>-<version>-<target>.tar.gz`、設定している場合は `.deb`、`install.sh`、`latest-linux.txt`、`appcast-<target>.xml` |
+| Linux | `.AppImage`、`<Name>-<version>-<target>.tar.gz`、設定している場合は `.deb`、`install.sh`、`latest-linux-<arch>.txt`、`appcast-<target>.xml` |
 
 バージョン付きファイルが先に、フィードが最後にアップロードされるため、フィードがまだ存在しないファイルを指すことはありません。GitHub では、最初のターゲットがリリース `<tag>` を作成し（そのバージョンの変更履歴セクションが説明になります）、以降のターゲットは自分のファイルをそこに追加します。再実行すると同名のファイルは置き換えられます。
 
@@ -309,7 +309,7 @@ Faster startup and a fix for lost drafts.
 | `AWS_SECRET_ACCESS_KEY` または `S3_SECRET_ACCESS_KEY` | そのシークレット |
 | `AWS_SESSION_TOKEN` または `S3_SESSION_TOKEN` | 一時的な認証情報の場合のみ |
 
-R2 では、バケットに対する **Object Read & Write** 権限を持つ API トークンを作成し、そのアクセスキー ID とシークレットを使います。CDN がバケットをキャッシュしている場合は、`appcast-*.xml`、`latest-linux.txt`、`install.sh` のキャッシュ期間を短くしてください。これらはリリースのたびに変わります。
+R2 では、バケットに対する **Object Read & Write** 権限を持つ API トークンを作成し、そのアクセスキー ID とシークレットを使います。CDN がバケットをキャッシュしている場合は、`appcast-*.xml`、`latest-linux-<arch>.txt`、`install.sh` のキャッシュ期間を短くしてください。これらはリリースのたびに変わります。
 
 ### Linux のインストールコマンド
 

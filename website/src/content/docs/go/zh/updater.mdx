@@ -89,7 +89,7 @@ target 决定了所有地址。`<file>` 是类似 `appcast-darwin-arm64.xml` 的
 
 | | GitHub | S3 |
 | --- | --- | --- |
-| 更新 feed、`install.sh`、`latest-linux.txt` | `https://github.com/<repository>/releases/latest/download/<file>` | `<publicUrl>/<prefix>/<file>` |
+| 更新 feed、`install.sh`、`latest-linux-<arch>.txt` | `https://github.com/<repository>/releases/latest/download/<file>` | `<publicUrl>/<prefix>/<file>` |
 | 安装程序和更新归档 | `https://github.com/<repository>/releases/download/<tag>/<file>` | `<publicUrl>/<prefix>/<file>` |
 
 在 GitHub 上，feed 始终来自标记为 **Latest** 的 release。草稿和预发布永远不会成为 latest，因此在你把它们发布为正式 release 之前，用户不会收到它们。
@@ -148,7 +148,7 @@ Windows 和 Linux 在启用自动检查时，启动时检查一次。`QuitRequir
 
 Linux `.deb` 包、系统二进制文件以及 root 拥有的安装会报告 `disabled`。这些情况请使用平台包管理器。
 
-`quickgui build` 还会生成 `<Name>-<version>-linux-<arch>.tar.gz`、`install.sh` 和 `latest-linux.txt`。`--upload` 会发布这三个文件，使用 GitHub 时脚本有固定的 URL：`curl -fsSL https://github.com/<owner>/<repo>/releases/latest/download/install.sh | sh` 无需 root 即可安装到 `~/.local/<package>.app`，并把应用加入应用程序菜单，这种安装会自动保持更新。设置 `linux.tarball = false` 可跳过它。
+`quickgui build` 还会生成 `<Name>-<version>-linux-<arch>.tar.gz`、`install.sh` 和 `latest-linux-<arch>.txt`。`--upload` 会发布这三个文件，使用 GitHub 时脚本有固定的 URL：`curl -fsSL https://github.com/<owner>/<repo>/releases/latest/download/install.sh | sh` 无需 root 即可安装到 `~/.local/<package>.app`，并把应用加入应用程序菜单，这种安装会自动保持更新。设置 `linux.tarball = false` 可跳过它。
 
 Feed 是带 Ed25519 签名的 HTTPS Sparkle RSS appcast。没有未签名的回退。
 
@@ -173,7 +173,7 @@ quickgui build --upload
 | --- | --- |
 | macOS | 给新用户的 `<Name>.dmg`、用于更新的 `<Name>-<version>-<target>.zip`、`appcast-<target>.xml` |
 | Windows | `<Name>-<version>-<target>.exe`（安装与更新共用）、`appcast-<target>.xml` |
-| Linux | `.AppImage`、`<Name>-<version>-<target>.tar.gz`、已配置时的 `.deb`、`install.sh`、`latest-linux.txt`、`appcast-<target>.xml` |
+| Linux | `.AppImage`、`<Name>-<version>-<target>.tar.gz`、已配置时的 `.deb`、`install.sh`、`latest-linux-<arch>.txt`、`appcast-<target>.xml` |
 
 带版本号的文件先上传，feed 最后上传，因此 feed 永远不会指向尚不存在的文件。在 GitHub 上，第一个目标会创建 release `<tag>`（以该版本的更新日志一节作为描述），之后的目标把自己的文件追加进去。重新运行会替换同名文件。
 
@@ -267,7 +267,7 @@ Faster startup and a fix for lost drafts.
 | `AWS_SECRET_ACCESS_KEY` 或 `S3_SECRET_ACCESS_KEY` | 对应的密钥 |
 | `AWS_SESSION_TOKEN` 或 `S3_SESSION_TOKEN` | 仅用于临时凭据 |
 
-对于 R2，请创建对该 bucket 具有 **Object Read & Write** 权限的 API token，并使用它的 access key ID 和 secret。如果 bucket 前面有 CDN 缓存，请为 `appcast-*.xml`、`latest-linux.txt` 和 `install.sh` 设置较短的缓存时间，因为它们每次发布都会变化。
+对于 R2，请创建对该 bucket 具有 **Object Read & Write** 权限的 API token，并使用它的 access key ID 和 secret。如果 bucket 前面有 CDN 缓存，请为 `appcast-*.xml`、`latest-linux-<arch>.txt` 和 `install.sh` 设置较短的缓存时间，因为它们每次发布都会变化。
 
 ### Linux 安装命令
 

@@ -151,7 +151,7 @@ A production Linux build writes these files to `dist/linux-<arch>/`:
 | `<package>_<version>_<arch>.deb` | Debian package, written in pure TypeScript | `linux.maintainer` |
 | `<Name>-<version>-linux-<arch>.tar.gz` | Per-user install with a `bin/` + `share/` layout | nothing |
 | `install.sh` | Installs the tarball into `~/.local/<package>.app` without root, links `~/.local/bin/<package>`, and registers the desktop entry, icon, and file types | nothing |
-| `latest-linux.txt` | The version `install.sh` resolves "latest" to | nothing |
+| `latest-linux-<arch>.txt` | The version `install.sh` resolves "latest" to | nothing |
 
 `<package>` is the lowercase executable name, for example `my-app`. A project without an icon gets a gray placeholder in the AppImage and tarball; add `resources/icon.png` to replace it.
 
@@ -165,7 +165,7 @@ depends = ["libgtk-3-0"]                 # Debian Depends
 icon = "assets/linux.png"                # only when resources/icon.png and `icon` are absent
 appImage = true                          # default true
 deb = true                               # default: true when maintainer is set
-tarball = true                           # default true; false skips the tarball, install.sh, latest-linux.txt
+tarball = true                           # default true; false skips the tarball, install.sh, latest-linux-<arch>.txt
 ```
 
 Test the install script against a local build without publishing anything. The variable prefix is the package name in upper case:
@@ -208,7 +208,7 @@ repository = "example/my-app"            # public repository; tagPrefix = "v" by
 | --- | --- |
 | `quickgui build` | Builds and packages. Nothing is signed or uploaded. |
 | `quickgui build --update-manifest` | Also signs the update files and writes `appcast-<target>.xml`. `updates.manifest = true` does this on every production build. |
-| `quickgui build --upload` | Also publishes the installers, update files, feed, `install.sh`, and `latest-linux.txt` to the configured target. Implies `--update-manifest`. |
+| `quickgui build --upload` | Also publishes the installers, update files, feed, `install.sh`, and `latest-linux-<arch>.txt` to the configured target. Implies `--update-manifest`. |
 
 Release notes come from one Markdown changelog for all versions: the build publishes the section under the `## x.y.z` heading that equals `version` (a date may follow, `## x.y.z - 2026-09-19`), and fails when that section is missing. See [Release notes](../../docs/updater.md#release-notes).
 

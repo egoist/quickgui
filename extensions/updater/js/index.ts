@@ -1,4 +1,24 @@
-import { ExtensionSession } from "@quickgui/native";
+import { writeFileSync } from "node:fs";
+import { basename, isAbsolute } from "node:path";
+import { app, ExtensionSession } from "@quickgui/native";
+
+/**
+ * Tell the install helper that the updated application started. Without it the helper restores
+ * the previous version. This runs when the app becomes ready, whether or not an `Updater` is
+ * created, and children never inherit the helper's private path.
+ */
+export function acknowledgeStartup(): void {
+  const path = process.env.QUICKGUI_UPDATE_READY_FILE;
+  if (!path) return;
+  delete process.env.QUICKGUI_UPDATE_READY_FILE;
+  if (!isAbsolute(path) || basename(path) !== "application-ready" || path.length >= 4096) return;
+  try {
+    writeFileSync(path, "ready\n", { flag: "wx", mode: 0o600 });
+  } catch {
+    // The helper treats a missing acknowledgement as a failed start and rolls back.
+  }
+}
+void app.whenReady().then(acknowledgeStartup, () => {});
 
 export interface UpdaterOptions {
   feedUrl?: string;

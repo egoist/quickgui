@@ -31,11 +31,13 @@ pub enum Payload {
 }
 impl Payload {
     fn accepts(self, url: &str) -> bool {
-        let archive = url::Url::parse(url).is_ok_and(|url| url.path().ends_with(".tar.gz"));
+        let Ok(url) = url::Url::parse(url) else {
+            return false;
+        };
         match self {
             Payload::Any => true,
-            Payload::AppImage => !archive,
-            Payload::Prefix => archive,
+            Payload::AppImage => url.path().ends_with(".AppImage"),
+            Payload::Prefix => url.path().ends_with(".tar.gz"),
         }
     }
 }
@@ -327,7 +329,16 @@ mod tests {
         assert_eq!(pick(Payload::AppImage).length, 3);
         assert_eq!(pick(Payload::Prefix).length, 4);
         assert_eq!(pick(Payload::Any).length, 3);
-        let appimage_only = feed("2.0.0", "");
+        // A package this installation cannot apply is never offered as its update.
+        let packages = f.replace(".AppImage", ".deb").replace(".tar.gz", ".rpm");
+        for payload in [Payload::AppImage, Payload::Prefix] {
+            assert!(
+                newest(&packages, "1.0.0", "linux", payload)
+                    .unwrap()
+                    .is_none()
+            );
+        }
+        let appimage_only = f.replace(".tar.gz", ".zip");
         assert!(
             newest(&appimage_only, "1.0.0", "linux", Payload::Prefix)
                 .unwrap()

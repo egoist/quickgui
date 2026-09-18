@@ -91,7 +91,7 @@ The target fixes every address. `<file>` is a name such as `appcast-darwin-arm64
 
 | | GitHub | S3 |
 | --- | --- | --- |
-| Update feed, `install.sh`, `latest-linux.txt` | `https://github.com/<repository>/releases/latest/download/<file>` | `<publicUrl>/<prefix>/<file>` |
+| Update feed, `install.sh`, `latest-linux-<arch>.txt` | `https://github.com/<repository>/releases/latest/download/<file>` | `<publicUrl>/<prefix>/<file>` |
 | Installers and update archives | `https://github.com/<repository>/releases/download/<tag>/<file>` | `<publicUrl>/<prefix>/<file>` |
 
 On GitHub the feed always comes from the release marked **Latest**. Drafts and pre-releases are never latest, so they do not reach users until you publish them as a normal release.
@@ -195,7 +195,7 @@ A Linux release lists both payloads as enclosures of one appcast item; each inst
 
 ### The Linux tarball install
 
-`quickgui build` writes `<Name>-<version>-linux-<arch>.tar.gz`, `install.sh`, and `latest-linux.txt` unless `linux.tarball = false`. None of them needs an external tool. The archive holds one versioned directory with an install-prefix layout: the executable, native libraries, and resources in `bin/`, and the desktop entry, icons, MIME package, and managed-install marker in `share/`.
+`quickgui build` writes `<Name>-<version>-linux-<arch>.tar.gz`, `install.sh`, and `latest-linux-<arch>.txt` unless `linux.tarball = false`. None of them needs an external tool. The archive holds one versioned directory with an install-prefix layout: the executable, native libraries, and resources in `bin/`, and the desktop entry, icons, MIME package, and managed-install marker in `share/`.
 
 `--upload` publishes all three, which gives the script a stable URL at the destination:
 
@@ -204,7 +204,7 @@ curl -fsSL https://github.com/example/my-app/releases/latest/download/install.sh
 curl -fsSL https://github.com/example/my-app/releases/latest/download/install.sh | sh -s -- --uninstall
 ```
 
-The script needs no root. It resolves the version from `latest-linux.txt`, unpacks into `~/.local/<package>.app`, links `~/.local/bin/<package>`, and registers the desktop entry (and MIME package) under `$XDG_DATA_HOME` with absolute `Exec=` and `Icon=` paths, so the app appears in the applications menu and its URL schemes and document types resolve. `<PREFIX>_VERSION`, `<PREFIX>_BUNDLE_PATH`, and `<PREFIX>_RELEASES_URL` override the version, install a local tarball, or change the download origin; the prefix is the uppercased package name, such as `MY_APP`. Running the script again upgrades in place.
+The script needs no root. It resolves the version from `latest-linux-<arch>.txt` (one per architecture, because targets publish independently), refuses a bundle that holds anything but regular files and directories under one top-level directory, unpacks into `~/.local/<package>.app`, links `~/.local/bin/<package>`, and registers the desktop entry (and MIME package) under `$XDG_DATA_HOME` with absolute `Exec=` and `Icon=` paths, so the app appears in the applications menu and its URL schemes and document types resolve. `<PREFIX>_VERSION`, `<PREFIX>_BUNDLE_PATH`, and `<PREFIX>_RELEASES_URL` override the version, install a local tarball, or change the download origin; the prefix is the uppercased package name, such as `MY_APP`. Running the script again upgrades in place.
 
 Updates unpack the verified archive beside the prefix and swap the whole directory, so files dropped from a later layout do not survive. Archives may hold only regular files and directories under one top-level directory; permissions are reduced to `0755`/`0644`, and the marker's identifier must match the installed one. After a successful swap the helper refreshes the registered desktop entry from the new release when it still points at this prefix. Uninstalling leaves settings and data alone. Windows installer failures are reported; rollback remains the installer's responsibility.
 
@@ -231,7 +231,7 @@ For GitHub, sign in once with `gh auth login` (or set `GH_TOKEN`). For S3, set `
 | --- | --- |
 | macOS | `<Name>.dmg` for new users, `<Name>-<version>-<target>.zip` for updates, `appcast-<target>.xml` |
 | Windows | `<Name>-<version>-<target>.exe` (installer and update), `appcast-<target>.xml` |
-| Linux | `.AppImage`, `<Name>-<version>-<target>.tar.gz`, `.deb` if configured, `install.sh`, `latest-linux.txt`, `appcast-<target>.xml` |
+| Linux | `.AppImage`, `<Name>-<version>-<target>.tar.gz`, `.deb` if configured, `install.sh`, `latest-linux-<arch>.txt`, `appcast-<target>.xml` |
 
 Versioned files are uploaded first and the feed last, so the feed never points at a file that is not there yet. On GitHub the first target creates the release `<tag>` (with this version's changelog section as its description) and later targets add their files to it. Re-running replaces files of the same name.
 
@@ -325,7 +325,7 @@ Publishing fails with ``CHANGELOG.md has no notes for this release. Add a `## 1.
 | `AWS_SECRET_ACCESS_KEY` or `S3_SECRET_ACCESS_KEY` | Its secret |
 | `AWS_SESSION_TOKEN` or `S3_SESSION_TOKEN` | Only for temporary credentials |
 
-For R2, create an API token with **Object Read & Write** on the bucket and use its access key ID and secret. If a CDN caches your bucket, give `appcast-*.xml`, `latest-linux.txt`, and `install.sh` a short cache lifetime, because they change with every release.
+For R2, create an API token with **Object Read & Write** on the bucket and use its access key ID and secret. If a CDN caches your bucket, give `appcast-*.xml`, `latest-linux-<arch>.txt`, and `install.sh` a short cache lifetime, because they change with every release.
 
 ### Linux install command
 

@@ -7,6 +7,7 @@ import {
   readlinkSync,
   rmSync,
   statSync,
+  symlinkSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -439,7 +440,7 @@ describe("application resources", () => {
         const executable = config.executableName;
         const tarball = join(root, `${executable}-1.2.3-linux-x64.tar.gz`);
         expect(result.artifacts).toContain(tarball);
-        expect(readFileSync(join(root, "latest-linux.txt"), "utf8")).toBe("1.2.3\n");
+        expect(readFileSync(join(root, "latest-linux-x64.txt"), "utf8")).toBe("1.2.3\n");
 
         const home = join(root, "home");
         mkdirSync(home);
@@ -473,6 +474,23 @@ describe("application resources", () => {
         expect(desktop).toContain(
           `Icon=${join(prefix, "share/icons/hicolor/256x256/apps", `${executable}.png`)}\n`,
         );
+
+        // A bundle holding anything but files and directories is refused before it is unpacked.
+        const hostile = join(root, "hostile");
+        mkdirSync(join(hostile, "evil-1.0.0", "bin"), { recursive: true });
+        symlinkSync("/etc/passwd", join(hostile, "evil-1.0.0", "bin", "link"));
+        const hostileTarball = join(root, "hostile.tar.gz");
+        expect(
+          Bun.spawnSync(["tar", "-czf", hostileTarball, "-C", hostile, "evil-1.0.0"]).exitCode,
+        ).toBe(0);
+        const refused = Bun.spawnSync(["sh", join(root, "install.sh")], {
+          env: { PATH: process.env.PATH ?? "", HOME: home, DEMO_S_APP_BUNDLE_PATH: hostileTarball },
+          stdout: "pipe",
+          stderr: "pipe",
+        });
+        expect(refused.exitCode).toBe(1);
+        expect(refused.stderr.toString()).toContain("refusing to unpack");
+        expect(existsSync(join(prefix, "bin", executable))).toBe(true);
 
         // Re-running upgrades in place; uninstalling removes only what the script created.
         expect(run().exitCode).toBe(0);

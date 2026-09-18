@@ -173,8 +173,14 @@ export function debianPayloadPaths(
 export const MANAGED_INSTALL_MARKER = "share/quickgui/install.json";
 /** Icon size the install script and updater pin the desktop entry to. */
 export const MANAGED_INSTALL_ICON_SIZE = 256;
-/** Version pointer `install.sh` resolves "latest" from. */
-export const LATEST_LINUX_VERSION_FILE = "latest-linux.txt";
+/**
+ * Version pointer `install.sh` resolves "latest" from. Each architecture has its own, because
+ * targets publish independently: a pointer must never name a version whose tarball for that
+ * architecture is not uploaded yet.
+ */
+export function latestVersionFile(target: QuickGuiTarget): string {
+  return `latest-${target}.txt`;
+}
 
 /** Marker body. `install.sh` greps the identifier, so the serialization has no whitespace. */
 export function managedInstallMarker(identifier: string, executableName: string): string {
@@ -331,8 +337,8 @@ main() {
         fi
         version="\${${prefix}_VERSION:-}"
         if [ -z "$version" ]; then
-            if ! version="$(fetch "$pointers/${LATEST_LINUX_VERSION_FILE}")"; then
-                echo "Could not reach $pointers/${LATEST_LINUX_VERSION_FILE}." >&2
+            if ! version="$(fetch "$pointers/latest-$target.txt")"; then
+                echo "Could not reach $pointers/latest-$target.txt." >&2
                 echo "Set ${prefix}_VERSION to install a specific version." >&2
                 exit 1
             fi
@@ -355,8 +361,16 @@ main() {
             exit 1
         fi
     fi
-    if ! tar -tzf "$archive" >/dev/null 2>&1; then
+    if ! tar -tzf "$archive" >"$temp/names" 2>/dev/null || ! tar -tvzf "$archive" >"$temp/entries" 2>/dev/null; then
         echo "The bundle is not a readable tarball." >&2
+        exit 1
+    fi
+    # A release holds only regular files and directories beneath one top-level directory. Links,
+    # devices, absolute paths, and ".." never appear, so nothing can be written outside $staging.
+    if grep -q '^[^d-]' "$temp/entries" ||
+        grep -qE '^/|(^|/)\.\.(/|$)' "$temp/names" ||
+        [ "$(sed 's|/.*||' "$temp/names" | sort -u | wc -l | tr -d ' ')" != "1" ]; then
+        echo "The bundle contains entries a release never has; refusing to unpack it." >&2
         exit 1
     fi
 

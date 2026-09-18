@@ -49,3 +49,26 @@ test("a release without notes names the heading to add", () => {
     releaseNotes(`## 1.3.0\n\n${"x".repeat(16 * 1024 + 1)}\n`, "1.3.0", "CHANGELOG.md"),
   ).toThrow("16 KiB");
 });
+
+test("headings inside fenced code are part of the notes", () => {
+  const fenced = [
+    "## 2.0.0",
+    "",
+    "Changelogs now look like this:",
+    "",
+    "```md",
+    "## 1.0.0",
+    "- example",
+    "```",
+    "",
+    "- Done",
+    "",
+    "## 1.0.0",
+    "",
+    "- First",
+  ].join("\n");
+  expect(extractReleaseNotes(fenced, "2.0.0")).toBe(
+    "Changelogs now look like this:\n\n```md\n## 1.0.0\n- example\n```\n\n- Done",
+  );
+  expect(extractReleaseNotes(fenced, "1.0.0")).toBe("- First");
+});

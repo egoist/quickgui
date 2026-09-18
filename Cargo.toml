@@ -203,6 +203,8 @@ wasm-bindgen-futures = "0.4"
 web-sys = { version = "0.3", features = ["CssStyleDeclaration", "Document", "Element", "HtmlCanvasElement", "HtmlElement", "Node", "console", "CustomEvent", "Window"] }
 
 [dev-dependencies]
+# macOS test builds also compile the updater's portable backend, which production builds skip.
+tempfile = "3.23"
 tree-sitter-lua = "0.5.0"
 tree-sitter-rust = "0.24.2"
 criterion = { version = "0.8", features = ["html_reports"] }

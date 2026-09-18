@@ -42,7 +42,7 @@ import {
   DEBIAN_ARCHITECTURES,
   desktopEntry,
   installScript,
-  LATEST_LINUX_VERSION_FILE,
+  latestVersionFile,
   MANAGED_INSTALL_ICON_SIZE,
   MANAGED_INSTALL_MARKER,
   managedInstallMarker,
@@ -234,7 +234,7 @@ export async function packageLinux(input: LinuxPackagingInput): Promise<Packagin
       }),
     );
     chmodSync(scriptPath, 0o755);
-    const latestPath = resolve(input.stagingRoot, LATEST_LINUX_VERSION_FILE);
+    const latestPath = resolve(input.stagingRoot, latestVersionFile(input.target));
     writeFileSync(latestPath, `${config.version}\n`);
     artifacts.push(tarballPath, scriptPath, latestPath);
   }

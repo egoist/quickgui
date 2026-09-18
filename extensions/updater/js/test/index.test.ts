@@ -1,6 +1,13 @@
 import { expect, test } from "bun:test";
 import * as native from "@quickgui/native";
-import Updater, { Updater as NamedUpdater, type UpdateEvent } from "@quickgui/extension-updater";
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import Updater, {
+  acknowledgeStartup,
+  Updater as NamedUpdater,
+  type UpdateEvent,
+} from "@quickgui/extension-updater";
 import { callsNamed, emitExtensionEvent, lastCall } from "../../../../packages/native/test/fake-binding.ts";
 
 await native.app.whenReady();
@@ -79,5 +86,25 @@ test("updaters inherit CLI metadata, observe native state, and route commands th
     await updater.close();
     if (previous === undefined) delete runtime.__QUICKGUI_UPDATER_OPTIONS__;
     else runtime.__QUICKGUI_UPDATER_OPTIONS__ = previous;
+  }
+});
+
+test("an updated app acknowledges startup only through the helper's private file", () => {
+  const stage = mkdtempSync(join(tmpdir(), "quickgui-updater-ready-"));
+  try {
+    const ready = join(stage, "application-ready");
+    process.env.QUICKGUI_UPDATE_READY_FILE = ready;
+    acknowledgeStartup();
+    expect(readFileSync(ready, "utf8")).toBe("ready\n");
+    expect(process.env.QUICKGUI_UPDATE_READY_FILE).toBeUndefined();
+    for (const path of [join(stage, "other-name"), "application-ready"]) {
+      process.env.QUICKGUI_UPDATE_READY_FILE = path;
+      acknowledgeStartup();
+      expect(existsSync(path)).toBe(false);
+      expect(process.env.QUICKGUI_UPDATE_READY_FILE).toBeUndefined();
+    }
+  } finally {
+    delete process.env.QUICKGUI_UPDATE_READY_FILE;
+    rmSync(stage, { recursive: true, force: true });
   }
 });

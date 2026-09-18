@@ -234,16 +234,19 @@ pub(crate) fn apply(prefix: &Path, bytes: Vec<u8>, stage: &Path) -> Result<()> {
 /// `install.sh` pinned the launcher entry to this prefix. Carry a later release's entry (new URL
 /// schemes or document types) over to it; an entry that points elsewhere is someone else's.
 fn refresh_desktop_entry(prefix: &Path, marker: &Marker) {
-    let Some(prefix_text) = prefix
-        .to_str()
-        .filter(|text| !text.contains(['"', '`', '$', '\\', '\n']))
-    else {
-        return;
-    };
-    let Some(data_home) = std::env::var_os("XDG_DATA_HOME")
+    if let Some(data_home) = std::env::var_os("XDG_DATA_HOME")
         .map(PathBuf::from)
         .filter(|path| path.is_absolute())
         .or_else(|| std::env::var_os("HOME").map(|home| PathBuf::from(home).join(".local/share")))
+    {
+        refresh_registrations(prefix, marker, &data_home);
+    }
+}
+
+fn refresh_registrations(prefix: &Path, marker: &Marker, data_home: &Path) {
+    let Some(prefix_text) = prefix
+        .to_str()
+        .filter(|text| !text.contains(['"', '`', '$', '\\', '\n']))
     else {
         return;
     };
@@ -274,18 +277,49 @@ fn refresh_desktop_entry(prefix: &Path, marker: &Marker) {
         &executable,
         icon.is_file().then_some(icon.as_path()),
     );
-    let Some(directory) = installed.parent() else {
+    write_registration(&installed, text.as_bytes());
+    let _ = database_command("update-desktop-database", &data_home.join("applications")).status();
+
+    // File types follow the release as well: a new package replaces the registered one, and a
+    // release that dropped its document types withdraws it.
+    let name = format!("{}.xml", marker.executable);
+    let registered = data_home.join("mime/packages").join(&name);
+    match read(&prefix.join("share/mime/packages").join(&name)) {
+        Some(package) => write_registration(&registered, package.as_bytes()),
+        None if registered.is_file() => {
+            let _ = fs::remove_file(&registered);
+        }
+        None => return,
+    }
+    let _ = database_command("update-mime-database", &data_home.join("mime")).status();
+}
+
+/// Replace one registration file atomically. Failures leave the previous registration in place.
+fn write_registration(path: &Path, contents: &[u8]) {
+    let Some(directory) = path.parent() else {
         return;
     };
-    if let Ok(mut file) = tempfile::NamedTempFile::new_in(directory)
-        && file.write_all(text.as_bytes()).is_ok()
+    if fs::create_dir_all(directory).is_ok()
+        && let Ok(mut file) = tempfile::NamedTempFile::new_in(directory)
+        && file.write_all(contents).is_ok()
         && file
             .as_file()
             .set_permissions(fs::Permissions::from_mode(0o644))
             .is_ok()
     {
-        let _ = file.persist(installed);
+        let _ = file.persist(path);
     }
+}
+
+/// The desktop's cache refresh tools are optional; a missing one only delays the change.
+fn database_command(tool: &str, directory: &Path) -> std::process::Command {
+    let mut command = std::process::Command::new(tool);
+    command
+        .arg(directory)
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null());
+    command
 }
 
 /// The same rewrite `install.sh` applies to the relocatable packaged entry.
@@ -450,6 +484,55 @@ mod tests {
         assert!(!prefix.join("bin/dropped.txt").exists());
         // Neither outcome leaves a backup beside the installation.
         assert_eq!(fs::read_dir(dir.path()).unwrap().count(), 2);
+    }
+
+    #[test]
+    fn an_update_refreshes_only_registrations_that_point_at_this_prefix() {
+        let dir = tempfile::tempdir().unwrap();
+        let prefix = dir.path().join("prefix");
+        let data_home = dir.path().join("data");
+        let entry = "[Desktop Entry]\nExec=app %U\nIcon=app\nMimeType=x-scheme-handler/new;\n";
+        install(
+            &prefix,
+            &archive(
+                "app-2.0.0",
+                "com.example.app",
+                &[
+                    ("bin/app", b"x", 0o755),
+                    ("share/applications/app.desktop", entry.as_bytes(), 0o644),
+                    ("share/mime/packages/app.xml", b"<new/>", 0o644),
+                ],
+            ),
+        );
+        let marker = read_marker(&prefix).unwrap();
+        let registered = data_home.join("applications/app.desktop");
+        let mime = data_home.join("mime/packages/app.xml");
+        fs::create_dir_all(registered.parent().unwrap()).unwrap();
+
+        // Another installation owns the launcher entry: nothing of it is touched.
+        fs::write(&registered, "Exec=\"/opt/other/bin/app\"\n").unwrap();
+        refresh_registrations(&prefix, &marker, &data_home);
+        assert_eq!(
+            fs::read_to_string(&registered).unwrap(),
+            "Exec=\"/opt/other/bin/app\"\n"
+        );
+        assert!(!mime.exists());
+
+        fs::write(
+            &registered,
+            format!("Exec=\"{}/bin/app\"\n", prefix.display()),
+        )
+        .unwrap();
+        refresh_registrations(&prefix, &marker, &data_home);
+        let text = fs::read_to_string(&registered).unwrap();
+        assert!(text.contains(&format!("Exec=\"{}/bin/app\" %U\n", prefix.display())));
+        assert!(text.contains("x-scheme-handler/new"));
+        assert_eq!(fs::read_to_string(&mime).unwrap(), "<new/>");
+
+        // A later release without document types withdraws the package.
+        fs::remove_file(prefix.join("share/mime/packages/app.xml")).unwrap();
+        refresh_registrations(&prefix, &marker, &data_home);
+        assert!(!mime.exists());
     }
 
     #[test]

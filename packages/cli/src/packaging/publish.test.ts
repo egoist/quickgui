@@ -41,8 +41,8 @@ test("a destination fixes the feed, pointer, and artifact URLs", () => {
   expect(artifactUrl(s3, "1.2.3", "Demo 1.dmg")).toBe(
     "https://dl.example.com/my%20app/stable/Demo%201.dmg",
   );
-  expect(pointerUrl({ ...s3, prefix: "" }, "latest-linux.txt")).toBe(
-    "https://dl.example.com/latest-linux.txt",
+  expect(pointerUrl({ ...s3, prefix: "" }, "latest-linux-x64.txt")).toBe(
+    "https://dl.example.com/latest-linux-x64.txt",
   );
   expect(s3Key(s3, "/out/linux-x64/install.sh")).toBe("my app/stable/install.sh");
   expect(s3Key({ ...s3, prefix: "" }, "/out/install.sh")).toBe("install.sh");
@@ -58,7 +58,7 @@ test("a build publishes installers and archives, then the files describing the n
       "demo_1.2.3_amd64.deb",
       "Demo-1.2.3-linux-x64.tar.gz",
       "install.sh",
-      "latest-linux.txt",
+      "latest-linux-x64.txt",
       "Demo-1.2.3-linux-x64.tar.gz",
     ].map(out),
     out("appcast-linux-x64.xml"),
@@ -69,7 +69,7 @@ test("a build publishes installers and archives, then the files describing the n
       "demo_1.2.3_amd64.deb",
       "Demo-1.2.3-linux-x64.tar.gz",
     ].map(out),
-    pointers: ["install.sh", "latest-linux.txt", "appcast-linux-x64.xml"].map(out),
+    pointers: ["install.sh", "latest-linux-x64.txt", "appcast-linux-x64.xml"].map(out),
   });
   const commands = githubUploadCommands({
     destination: github,
@@ -140,6 +140,9 @@ test("GitHub uploads create the release once and add later targets to it", async
     let released = false;
     let viewSeesRelease = true;
     const tools: UploadTools = {
+      putObject: async () => {
+        throw new Error("GitHub uploads never touch S3");
+      },
       which: () => "/usr/bin/gh",
       spawn: async (command) => {
         calls.push(`${command[2]} ${command[3]}`);
@@ -172,6 +175,55 @@ test("GitHub uploads create the release once and add later targets to it", async
         spawn: async () => ({ status: 1, output: "HTTP 403" }),
       }),
     ).rejects.toThrow("HTTP 403");
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("S3 uploads store versioned files before the pointers, under the prefix", async () => {
+  const root = mkdtempSync(join(tmpdir(), "quickgui-s3-"));
+  try {
+    const files = ["Demo-1.2.3-linux-x64.tar.gz", "install.sh", "appcast-linux-x64.xml"].map(
+      (name) => join(root, name),
+    );
+    for (const file of files) writeFileSync(file, "x");
+    const stored: Array<[string, string]> = [];
+    const tools: UploadTools = {
+      which: () => null,
+      spawn: async () => {
+        throw new Error("S3 uploads run no commands");
+      },
+      putObject: async (destination, key, _path, type) => {
+        expect(destination.bucket).toBe("releases");
+        stored.push([key, type]);
+      },
+    };
+    const upload = {
+      destination: s3,
+      name: "Demo",
+      version: "1.2.3",
+      artifacts: [files[0]!],
+      pointers: [files[1]!, files[2]!],
+      cwd: root,
+    };
+    expect(await uploadRelease(upload, tools)).toEqual([
+      "https://dl.example.com/my%20app/stable/Demo-1.2.3-linux-x64.tar.gz",
+      "https://dl.example.com/my%20app/stable/install.sh",
+      "https://dl.example.com/my%20app/stable/appcast-linux-x64.xml",
+    ]);
+    expect(stored).toEqual([
+      ["my app/stable/Demo-1.2.3-linux-x64.tar.gz", "application/gzip"],
+      ["my app/stable/install.sh", "text/x-shellscript; charset=utf-8"],
+      ["my app/stable/appcast-linux-x64.xml", "application/xml"],
+    ]);
+    await expect(
+      uploadRelease(upload, {
+        ...tools,
+        putObject: async () => {
+          throw new Error("AccessDenied");
+        },
+      }),
+    ).rejects.toThrow("S3 upload failed for Demo-1.2.3-linux-x64.tar.gz: AccessDenied");
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

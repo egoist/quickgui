@@ -19,11 +19,20 @@ export function headingVersion(line: string): string | undefined {
 /** Body of the section for `version`, without its heading. Undefined when there is none. */
 export function extractReleaseNotes(changelog: string, version: string): string | undefined {
   const lines = changelog.split(/\r?\n/);
-  const start = lines.findIndex((line) => headingVersion(line) === version);
+  // A `## ` line inside a fenced code block is sample text, not a heading.
+  let fence: string | undefined;
+  const headings = lines.map((line) => {
+    const marker = /^ {0,3}(`{3,}|~{3,})/.exec(line)?.[1];
+    if (marker && fence === undefined) fence = marker[0];
+    else if (marker && marker[0] === fence && line.trim() === marker) fence = undefined;
+    else if (fence === undefined && /^##\s/.test(line)) return true;
+    return false;
+  });
+  const start = lines.findIndex((line, index) => headings[index] && headingVersion(line) === version);
   if (start === -1) return undefined;
-  const length = lines.slice(start + 1).findIndex((line) => /^##\s/.test(line));
+  const end = headings.indexOf(true, start + 1);
   const body = lines
-    .slice(start + 1, length === -1 ? undefined : start + 1 + length)
+    .slice(start + 1, end === -1 ? undefined : end)
     .join("\n")
     .trim();
   return body.length > 0 ? body : undefined;

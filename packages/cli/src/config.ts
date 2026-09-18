@@ -140,7 +140,7 @@ export interface LinuxConfig {
   deb?: boolean;
   /**
    * Build the self-updating per-user install: a `bin/` + `share/` tarball, its `install.sh`, and
-   * `latest-linux.txt`. Defaults to true.
+   * `latest-linux-<arch>.txt`. Defaults to true.
    */
   tarball?: boolean;
 }
@@ -591,8 +591,16 @@ function resolveDestination(updates: Record<string, unknown>): UpdateDestination
     } catch {
       /* reported below */
     }
-    if (!url || url.protocol !== "https:" || url.username || url.password || url.hash || url.search)
-      throw new CliError(`\`${field}\` must be an HTTPS URL without credentials, query, or fragment`);
+    if (
+      !url ||
+      /\s/.test(raw) ||
+      url.protocol !== "https:" ||
+      url.username ||
+      url.password ||
+      url.hash ||
+      url.search
+    )
+      throw new CliError(`\`${field}\` must be an HTTPS URL without spaces, credentials, query, or fragment`);
     return raw.replace(/\/+$/, "");
   };
   const publicUrl = httpsOrigin(
