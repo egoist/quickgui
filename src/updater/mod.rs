@@ -8,12 +8,15 @@ mod client;
 // Sparkle parses and verifies appcasts itself; macOS only validates options with this module.
 #[cfg_attr(target_os = "macos", allow(dead_code))]
 mod feed;
+// macOS compiles the portable backend only so its tests run there; Sparkle does the work.
 #[cfg(any(not(target_os = "macos"), test))]
+#[cfg_attr(target_os = "macos", allow(dead_code))]
 #[doc(hidden)]
 pub mod handoff;
 #[cfg(target_os = "macos")]
 mod macos;
 #[cfg(any(not(target_os = "macos"), test))]
+#[cfg_attr(target_os = "macos", allow(dead_code))]
 mod portable;
 #[cfg(target_os = "linux")]
 mod prefix;
