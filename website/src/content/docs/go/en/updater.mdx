@@ -92,7 +92,7 @@ The target fixes every address. `<file>` is a name such as `appcast-darwin-arm64
 | Update feed, `install.sh`, `latest-linux-<arch>.txt` | `https://github.com/<repository>/releases/latest/download/<file>` | `<publicUrl>/<prefix>/<file>` |
 | Installers and update archives | `https://github.com/<repository>/releases/download/<tag>/<file>` | `<publicUrl>/<prefix>/<file>` |
 
-On GitHub the feed always comes from the release marked **Latest**. Drafts and pre-releases are never latest, so they do not reach users until you publish them as a normal release.
+On GitHub the feed always comes from the release marked **Latest**. Drafts and pre-releases are never latest, so they do not reach users until you publish them as a normal release. `--upload` always creates a draft.
 
 The CLI embeds the version, identifier, feed URL, and public key in the app. Secret keys are never embedded. App Store and sandboxed builds should exclude the updater import with a Go build tag.
 
@@ -165,7 +165,7 @@ quickgui build --upload
 
 For GitHub, sign in once with `gh auth login` (or set `GH_TOKEN`). For S3, set `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`.
 
-`--upload` builds the app, signs the update files, writes the feed, and publishes everything. It prints each public URL when it finishes. Use `--update-manifest` instead to sign and write the feed without uploading, for example to inspect `dist/` first. Run the command once per target; every target has its own feed, so a Mac never downloads a Linux build.
+`--upload` builds the app, signs the update files, writes the feed, and publishes everything. It prints each public URL when it finishes; on GitHub those URLs work once you publish the draft release. Use `--update-manifest` instead to sign and write the feed without uploading, for example to inspect `dist/` first. Run the command once per target; every target has its own feed, so a Mac never downloads a Linux build.
 
 ### 2. What gets uploaded
 
@@ -175,7 +175,15 @@ For GitHub, sign in once with `gh auth login` (or set `GH_TOKEN`). For S3, set `
 | Windows | `<Name>-<version>-<target>.exe` (installer and update), `appcast-<target>.xml` |
 | Linux | `.AppImage`, `<Name>-<version>-<target>.tar.gz`, `.deb` if configured, `install.sh`, `latest-linux-<arch>.txt`, `appcast-<target>.xml` |
 
-Versioned files are uploaded first and the feed last, so the feed never points at a file that is not there yet. On GitHub the first target creates the release `<tag>` (with this version's changelog section as its description) and later targets add their files to it. Re-running replaces files of the same name.
+Versioned files are uploaded first and the feed last, so the feed never points at a file that is not there yet. On GitHub the first target creates the release `<tag>` as a **draft**, with this version's changelog section as its description, and later targets add their files to it. Re-running replaces files of the same name.
+
+A draft is invisible to users and the update feed does not move, so a half-uploaded release can never be offered. When every target has uploaded, review the draft and publish it, from the release page or with:
+
+```sh
+gh release edit v1.2.0 --repo example/my-app --draft=false
+```
+
+Publishing marks it as the latest release, and installed apps find the update on their next check. S3 has no draft stage: files are live as soon as they are uploaded.
 
 ### 3. Release from GitHub Actions
 
@@ -218,9 +226,19 @@ jobs:
           # For updates.s3 instead of GH_TOKEN:
           # AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           # AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+  # updates.github only: the uploads above go into a draft release. Publish it once every
+  # target succeeded. Remove this job to review and publish drafts by hand.
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - run: gh release edit "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --draft=false
+        env:
+          GH_TOKEN: ${{ github.token }}
 ```
 
-The three jobs upload into the same release. The `gh` CLI is preinstalled on GitHub's runners. macOS builds that you distribute should also pass `--sign` and `--notarize`; Windows needs NSIS (`makensis`) on the runner, and Linux produces an AppImage only when `appimagetool` is installed (the tarball needs nothing).
+The three build jobs upload into the same draft release, and `publish` makes it live only after all of them succeeded, so users never get a release with a platform missing. The `gh` CLI is preinstalled on GitHub's runners. macOS builds that you distribute should also pass `--sign` and `--notarize`; Windows needs NSIS (`makensis`) on the runner, and Linux produces an AppImage only when `appimagetool` is installed (the tarball needs nothing).
 
 ### Release notes
 
@@ -284,7 +302,7 @@ Add `| sh -s -- --uninstall` to the same URL to remove it. Set `linux.tarball = 
 
 ### Troubleshooting
 
-- **The app says it is up to date.** The published `version` must be higher than the installed one, the release must not be a draft or pre-release on GitHub, and the feed for that target must exist. Open the feed URL from the table above in a browser to check.
+- **The app says it is up to date.** The published `version` must be higher than the installed one, the GitHub release must be published (`--upload` leaves it as a draft) and not marked as a pre-release, and the feed for that target must exist. Open the feed URL from the table above in a browser to check.
 - **`Set updates.publicKey and QUICKGUI_UPDATER_PRIVATE_KEY`.** The build has no private key. Export the variable or set `ed25519SecretKey`.
 - **`Update signing key does not match updates.publicKey`.** The private key is not the pair of the configured public key. Use the original key; apps in the field only trust that one.
 - **`CHANGELOG.md has no notes for this release`.** Add a `## x.y.z` heading that equals `version` exactly, with at least one line under it.

@@ -208,7 +208,7 @@ repository = "example/my-app"            # public repository; tagPrefix = "v" by
 | --- | --- |
 | `quickgui build` | Builds and packages. Nothing is signed or uploaded. |
 | `quickgui build --update-manifest` | Also signs the update files and writes `appcast-<target>.xml`. `updates.manifest = true` does this on every production build. |
-| `quickgui build --upload` | Also publishes the installers, update files, feed, `install.sh`, and `latest-linux-<arch>.txt` to the configured target. Implies `--update-manifest`. |
+| `quickgui build --upload` | Also publishes the installers, update files, feed, `install.sh`, and `latest-linux-<arch>.txt` to the configured target. Implies `--update-manifest`. On GitHub the release is a draft; publish it when every target has uploaded (`gh release edit <tag> --draft=false`). |
 
 Release notes come from one Markdown changelog for all versions: the build publishes the section under the `## x.y.z` heading that equals `version` (a date may follow, `## x.y.z - 2026-09-19`), and fails when that section is missing. See [Release notes](../../docs/updater.md#release-notes).
 

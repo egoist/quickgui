@@ -92,7 +92,7 @@ target によってすべてのアドレスが決まります。`<file>` は `ap
 | 更新フィード、`install.sh`、`latest-linux-<arch>.txt` | `https://github.com/<repository>/releases/latest/download/<file>` | `<publicUrl>/<prefix>/<file>` |
 | インストーラーと更新アーカイブ | `https://github.com/<repository>/releases/download/<tag>/<file>` | `<publicUrl>/<prefix>/<file>` |
 
-GitHub では、フィードは常に **Latest** と表示されているリリースから取得されます。ドラフトとプレリリースは latest にならないため、通常のリリースとして公開するまでユーザーには届きません。
+GitHub では、フィードは常に **Latest** と表示されているリリースから取得されます。ドラフトとプレリリースは latest にならないため、通常のリリースとして公開するまでユーザーには届きません。`--upload` は常にドラフトを作成します。
 
 CLI はバージョン、識別子、フィード URL、公開鍵をアプリに埋め込みます。秘密鍵が埋め込まれることはありません。App Store 向けやサンドボックス化したビルドでは、Go のビルドタグでアップデーターのインポートを除外してください。
 
@@ -165,7 +165,7 @@ quickgui build --upload
 
 GitHub の場合は、一度 `gh auth login` でサインインしておきます（または `GH_TOKEN` を設定します）。S3 の場合は `AWS_ACCESS_KEY_ID` と `AWS_SECRET_ACCESS_KEY` を設定します。
 
-`--upload` はアプリをビルドし、更新ファイルに署名し、フィードを書き出して、すべてを公開します。完了すると公開 URL を 1 つずつ表示します。アップロードせずに署名とフィードの書き出しだけを行いたい場合（先に `dist/` を確認したい場合など）は、代わりに `--update-manifest` を使います。このコマンドはターゲットごとに 1 回実行します。ターゲットごとに専用のフィードがあるため、Mac が Linux ビルドをダウンロードすることはありません。
+`--upload` はアプリをビルドし、更新ファイルに署名し、フィードを書き出して、すべてを公開します。完了すると公開 URL を 1 つずつ表示します。GitHub の場合、これらの URL はドラフトリリースを公開した後に有効になります。アップロードせずに署名とフィードの書き出しだけを行いたい場合（先に `dist/` を確認したい場合など）は、代わりに `--update-manifest` を使います。このコマンドはターゲットごとに 1 回実行します。ターゲットごとに専用のフィードがあるため、Mac が Linux ビルドをダウンロードすることはありません。
 
 ### 2. アップロードされるファイル
 
@@ -175,7 +175,15 @@ GitHub の場合は、一度 `gh auth login` でサインインしておきま�
 | Windows | `<Name>-<version>-<target>.exe`（インストーラー兼更新）、`appcast-<target>.xml` |
 | Linux | `.AppImage`、`<Name>-<version>-<target>.tar.gz`、設定している場合は `.deb`、`install.sh`、`latest-linux-<arch>.txt`、`appcast-<target>.xml` |
 
-バージョン付きファイルが先に、フィードが最後にアップロードされるため、フィードがまだ存在しないファイルを指すことはありません。GitHub では、最初のターゲットがリリース `<tag>` を作成し（そのバージョンの変更履歴セクションが説明になります）、以降のターゲットは自分のファイルをそこに追加します。再実行すると同名のファイルは置き換えられます。
+バージョン付きファイルが先に、フィードが最後にアップロードされるため、フィードがまだ存在しないファイルを指すことはありません。GitHub では、最初のターゲットがリリース `<tag>` を**ドラフト**として作成し（そのバージョンの変更履歴セクションが説明になります）、以降のターゲットは自分のファイルをそこに追加します。再実行すると同名のファイルは置き換えられます。
+
+ドラフトはユーザーには見えず、更新フィードも変わらないため、アップロード途中のリリースが配信されることはありません。すべてのターゲットのアップロードが終わったら、ドラフトを確認して公開します。リリースページから、または次のコマンドで行えます：
+
+```sh
+gh release edit v1.2.0 --repo example/my-app --draft=false
+```
+
+公開すると最新リリースになり、インストール済みのアプリは次回の確認時に更新を見つけます。S3 にはドラフトの段階がなく、ファイルはアップロードされた時点で有効になります。
 
 ### 3. GitHub Actions からリリースする
 
@@ -218,9 +226,19 @@ jobs:
           # For updates.s3 instead of GH_TOKEN:
           # AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           # AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+  # updates.github only: the uploads above go into a draft release. Publish it once every
+  # target succeeded. Remove this job to review and publish drafts by hand.
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - run: gh release edit "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --draft=false
+        env:
+          GH_TOKEN: ${{ github.token }}
 ```
 
-3 つのジョブは同じリリースにアップロードします。`gh` CLI は GitHub のランナーにプリインストールされています。配布する macOS ビルドには `--sign` と `--notarize` も指定してください。Windows ではランナーに NSIS（`makensis`）が必要です。Linux は `appimagetool` がインストールされている場合にのみ AppImage を生成します（tarball には何も必要ありません）。
+3 つのビルドジョブは同じドラフトリリースにアップロードし、すべてが成功した後にだけ `publish` がそれを公開するため、プラットフォームが欠けたリリースがユーザーに届くことはありません。`gh` CLI は GitHub のランナーにプリインストールされています。配布する macOS ビルドには `--sign` と `--notarize` も指定してください。Windows ではランナーに NSIS（`makensis`）が必要です。Linux は `appimagetool` がインストールされている場合にのみ AppImage を生成します（tarball には何も必要ありません）。
 
 ### リリースノート
 
@@ -284,7 +302,7 @@ curl -fsSL https://downloads.example.com/install.sh | sh
 
 ### トラブルシューティング
 
-- **アプリが「最新です」と表示する。** 公開した `version` はインストール済みのものより高い必要があります。GitHub ではそのリリースがドラフトやプレリリースであってはならず、そのターゲットのフィードが存在している必要があります。上の表のフィード URL をブラウザーで開いて確認してください。
+- **アプリが「最新です」と表示する。** 公開した `version` はインストール済みのものより高い必要があります。GitHub ではリリースが公開済みで（`--upload` はドラフトのままにします）、プレリリースに指定されていない必要があり、そのターゲットのフィードが存在している必要があります。上の表のフィード URL をブラウザーで開いて確認してください。
 - **`Set updates.publicKey and QUICKGUI_UPDATER_PRIVATE_KEY`。** ビルドに秘密鍵が渡されていません。変数をエクスポートするか、`ed25519SecretKey` を設定してください。
 - **`Update signing key does not match updates.publicKey`。** 秘密鍵が、設定した公開鍵と対になっていません。最初の鍵を使ってください。配布済みのアプリはその鍵しか信頼しません。
 - **`CHANGELOG.md has no notes for this release`。** `version` と完全に一致する `## x.y.z` 見出しを追加し、その下に少なくとも 1 行書いてください。

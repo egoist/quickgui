@@ -21,7 +21,8 @@ All notable user-facing changes to QuickGUI are recorded here.
   chosen explicitly, with the matching section `updates.github` (just the repository) or
   `updates.s3` (`bucket`, `publicUrl`, optional `endpoint`/`region`/`prefix`). The
   feed, artifact, and `install.sh` URLs follow from it. `quickgui build --upload` signs the
-  release and publishes it there, through `gh` or Bun's S3 client. `updates.baseUrl`,
+  release and publishes it there, through `gh` or Bun's S3 client. GitHub releases are created
+  as drafts shared by every target, so an update goes live only when you publish the draft. `updates.baseUrl`,
   `updates.feedUrl`, and `--update-base-url` are removed.
 
 - Release notes come from one changelog for all versions. `updates.changelog` (default

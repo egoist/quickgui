@@ -83,11 +83,16 @@ export interface ReleaseUpload {
   cwd: string;
 }
 
-/** Command lines for publishing to a GitHub release with the `gh` CLI. */
+/**
+ * Command lines for publishing to a GitHub release with the `gh` CLI. The release is created as
+ * a draft: nothing reaches users, and the update feed does not move, until someone publishes it
+ * after every target has uploaded.
+ */
 export function githubUploadCommands(upload: ReleaseUpload & { destination: GitHubDestination }): {
   view: string[];
   create: string[];
   upload: string[];
+  drafts: string[];
 } {
   const tag = releaseTag(upload.destination, upload.version);
   const repository = ["--repo", upload.destination.repository];
@@ -100,6 +105,7 @@ export function githubUploadCommands(upload: ReleaseUpload & { destination: GitH
       "create",
       tag,
       ...repository,
+      "--draft",
       "--title",
       `${upload.name} ${upload.version}`,
       ...(upload.notesFile ? ["--notes-file", upload.notesFile] : ["--notes", ""]),
@@ -107,6 +113,14 @@ export function githubUploadCommands(upload: ReleaseUpload & { destination: GitH
     ],
     // Other targets of the same version add their files to the release that already exists.
     upload: ["gh", "release", "upload", tag, ...repository, "--clobber", ...files],
+    // GitHub lets several drafts share a tag, so parallel targets can each create one.
+    drafts: [
+      "gh",
+      "api",
+      `repos/${upload.destination.repository}/releases?per_page=100`,
+      "--jq",
+      `[.[] | select(.draft and .tag_name == ${JSON.stringify(tag)}) | {id, url: .html_url}] | sort_by(.id)`,
+    ],
   };
 }
 
@@ -130,7 +144,9 @@ async function spawn(command: string[], cwd: string): Promise<{ status: number; 
     new Response(child.stdout).text(),
     new Response(child.stderr).text(),
   ]);
-  return { status, output: (stderr.trim() || stdout.trim()).slice(0, 4096) };
+  // A failure explains itself on stderr; a success answers on stdout.
+  const output = status === 0 ? stdout.trim() : stderr.trim() || stdout.trim();
+  return { status, output: output.slice(0, 256 * 1024) };
 }
 
 /** How `uploadRelease` reaches `gh`. Tests substitute it so they never touch GitHub. */
@@ -156,11 +172,19 @@ async function putObject(
   await client.write(key, Bun.file(path), { type });
 }
 
-/** Publish one build's release files. Returns the public URLs, pointers last. */
+export interface UploadResult {
+  /** Public URLs of the uploaded files, pointers last. */
+  urls: string[];
+  /** Anything the user still has to do before the release is live. */
+  notes: string[];
+}
+
+/** Publish one build's release files. */
 export async function uploadRelease(
   upload: ReleaseUpload,
   tools: UploadTools = { which: (command) => Bun.which(command), spawn, putObject },
-): Promise<string[]> {
+): Promise<UploadResult> {
+  const notes: string[] = [];
   const { destination } = upload;
   for (const path of [...upload.artifacts, ...upload.pointers])
     if (!existsSync(path)) throw new CliError(`Release file is missing: ${path}`);
@@ -170,16 +194,45 @@ export async function uploadRelease(
         "Uploading to GitHub needs the `gh` CLI on PATH, authenticated with GH_TOKEN or `gh auth login`",
       );
     const commands = githubUploadCommands({ ...upload, destination });
-    let result = await tools.spawn(
-      (await tools.spawn(commands.view, upload.cwd)).status === 0
-        ? commands.upload
-        : commands.create,
-      upload.cwd,
-    );
-    // Parallel target builds race to create the release; the loser uploads into the winner's.
+    const exists = (await tools.spawn(commands.view, upload.cwd)).status === 0;
+    let result = await tools.spawn(exists ? commands.upload : commands.create, upload.cwd);
+    // A published release of this tag appeared between `view` and `create`.
     if (result.status !== 0 && /already.exists/i.test(result.output))
       result = await tools.spawn(commands.upload, upload.cwd);
     if (result.status !== 0) throw new CliError(`GitHub upload failed\n${result.output}`);
+    if (!exists) {
+      // Two targets that both saw no release each created a draft. The oldest one stays; a
+      // later one is deleted and its files go into the oldest.
+      const listed = await tools.spawn(commands.drafts, upload.cwd);
+      let drafts: Array<{ id: number; url: string }> = [];
+      try {
+        drafts = listed.status === 0 ? JSON.parse(listed.output) : [];
+      } catch {
+        /* an unreadable listing leaves the draft that was just created */
+      }
+      const mine = drafts.find((draft) => result.output.includes(draft.url));
+      if (mine && drafts[0] && mine.id !== drafts[0].id) {
+        const removed = await tools.spawn(
+          [
+            "gh",
+            "api",
+            "-X",
+            "DELETE",
+            `repos/${destination.repository}/releases/${mine.id}`,
+          ],
+          upload.cwd,
+        );
+        if (removed.status !== 0)
+          throw new CliError(`Could not remove a duplicate draft release\n${removed.output}`);
+        result = await tools.spawn(commands.upload, upload.cwd);
+        if (result.status !== 0) throw new CliError(`GitHub upload failed\n${result.output}`);
+      }
+    }
+    const tag = releaseTag(destination, upload.version);
+    notes.push(
+      `GitHub release ${tag} is a draft. Once every target has uploaded, publish it to make the ` +
+        `update live: gh release edit ${tag} --repo ${destination.repository} --draft=false`,
+    );
   } else {
     for (const path of [...upload.artifacts, ...upload.pointers]) {
       const extension = /\.[^.]+$/.exec(path)?.[0] ?? "";
@@ -197,8 +250,11 @@ export async function uploadRelease(
       }
     }
   }
-  return [
-    ...upload.artifacts.map((path) => artifactUrl(destination, upload.version, basename(path))),
-    ...upload.pointers.map((path) => pointerUrl(destination, basename(path))),
-  ];
+  return {
+    urls: [
+      ...upload.artifacts.map((path) => artifactUrl(destination, upload.version, basename(path))),
+      ...upload.pointers.map((path) => pointerUrl(destination, basename(path))),
+    ],
+    notes,
+  };
 }

@@ -142,7 +142,7 @@ target 决定了所有地址。`<file>` 是类似 `appcast-darwin-arm64.xml` 的
 | 更新 feed、`install.sh`、`latest-linux-<arch>.txt` | `https://github.com/<repository>/releases/latest/download/<file>` | `<publicUrl>/<prefix>/<file>` |
 | 安装程序和更新归档 | `https://github.com/<repository>/releases/download/<tag>/<file>` | `<publicUrl>/<prefix>/<file>` |
 
-在 GitHub 上，feed 始终来自标记为 **Latest** 的 release。草稿和预发布永远不会成为 latest，因此在你把它们发布为正式 release 之前，用户不会收到它们。
+在 GitHub 上，feed 始终来自标记为 **Latest** 的 release。草稿和预发布永远不会成为 latest，因此在你把它们发布为正式 release 之前，用户不会收到它们。`--upload` 始终创建草稿。
 
 CLI 会把版本、标识符、feed URL 和公钥嵌入应用。私钥绝不会被嵌入。
 
@@ -210,7 +210,7 @@ bunx @quickgui/cli build --upload
 
 使用 GitHub 时，先用 `gh auth login` 登录一次（或设置 `GH_TOKEN`）。使用 S3 时，设置 `AWS_ACCESS_KEY_ID` 和 `AWS_SECRET_ACCESS_KEY`。
 
-`--upload` 会构建应用、为更新文件签名、写出 feed 并发布所有内容，完成后打印每个公开 URL。如果只想签名并写出 feed 而不上传（例如先检查 `dist/`），请改用 `--update-manifest`。每个目标平台运行一次该命令；每个目标都有自己的 feed，因此 Mac 永远不会下载到 Linux 构建。
+`--upload` 会构建应用、为更新文件签名、写出 feed 并发布所有内容，完成后打印每个公开 URL；使用 GitHub 时，这些 URL 在你发布草稿 release 之后才可访问。如果只想签名并写出 feed 而不上传（例如先检查 `dist/`），请改用 `--update-manifest`。每个目标平台运行一次该命令；每个目标都有自己的 feed，因此 Mac 永远不会下载到 Linux 构建。
 
 ### 2. 会上传哪些文件
 
@@ -220,7 +220,15 @@ bunx @quickgui/cli build --upload
 | Windows | `<Name>-<version>-<target>.exe`（安装与更新共用）、`appcast-<target>.xml` |
 | Linux | `.AppImage`、`<Name>-<version>-<target>.tar.gz`、已配置时的 `.deb`、`install.sh`、`latest-linux-<arch>.txt`、`appcast-<target>.xml` |
 
-带版本号的文件先上传，feed 最后上传，因此 feed 永远不会指向尚不存在的文件。在 GitHub 上，第一个目标会创建 release `<tag>`（以该版本的更新日志一节作为描述），之后的目标把自己的文件追加进去。重新运行会替换同名文件。
+带版本号的文件先上传，feed 最后上传，因此 feed 永远不会指向尚不存在的文件。在 GitHub 上，第一个目标会以**草稿**形式创建 release `<tag>`，并以该版本的更新日志一节作为描述，之后的目标把自己的文件追加进去。重新运行会替换同名文件。
+
+草稿对用户不可见，更新 feed 也不会变化，因此尚未上传完整的 release 永远不会被推送给用户。所有目标都上传完成后，检查草稿并将其发布——可以在 release 页面操作，也可以运行：
+
+```sh
+gh release edit v1.2.0 --repo example/my-app --draft=false
+```
+
+发布后它会成为最新 release，已安装的应用会在下次检查时发现更新。S3 没有草稿阶段：文件上传后立即生效。
 
 ### 3. 通过 GitHub Actions 发布
 
@@ -260,9 +268,19 @@ jobs:
           # For updates.s3 instead of GH_TOKEN:
           # AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           # AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+  # updates.github only: the uploads above go into a draft release. Publish it once every
+  # target succeeded. Remove this job to review and publish drafts by hand.
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - run: gh release edit "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --draft=false
+        env:
+          GH_TOKEN: ${{ github.token }}
 ```
 
-三个 job 会上传到同一个 release。GitHub 的 runner 已预装 `gh` CLI。对外分发的 macOS 构建还应加上 `--sign` 和 `--notarize`；Windows 需要 runner 上有 NSIS（`makensis`）；Linux 只有在安装了 `appimagetool` 时才会生成 AppImage（tarball 不需要任何工具）。
+三个构建 job 会上传到同一个草稿 release，只有它们全部成功后 `publish` 才会让它生效，因此用户永远不会拿到缺少某个平台的 release。GitHub 的 runner 已预装 `gh` CLI。对外分发的 macOS 构建还应加上 `--sign` 和 `--notarize`；Windows 需要 runner 上有 NSIS（`makensis`）；Linux 只有在安装了 `appimagetool` 时才会生成 AppImage（tarball 不需要任何工具）。
 
 ### 发行说明
 
@@ -326,7 +344,7 @@ curl -fsSL https://downloads.example.com/install.sh | sh
 
 ### 故障排查
 
-- **应用提示已是最新版本。** 已发布的 `version` 必须高于已安装的版本；在 GitHub 上该 release 不能是草稿或预发布；并且该目标的 feed 必须存在。用浏览器打开上表中的 feed URL 进行检查。
+- **应用提示已是最新版本。** 已发布的 `version` 必须高于已安装的版本；GitHub 上的 release 必须已经发布（`--upload` 创建的是草稿），并且不能标记为预发布；并且该目标的 feed 必须存在。用浏览器打开上表中的 feed URL 进行检查。
 - **`Set updates.publicKey and QUICKGUI_UPDATER_PRIVATE_KEY`。** 构建时没有私钥。请导出该变量或设置 `ed25519SecretKey`。
 - **`Update signing key does not match updates.publicKey`。** 私钥与配置的公钥不是一对。请使用最初的密钥；已发布出去的应用只信任它。
 - **`CHANGELOG.md has no notes for this release`。** 添加一个与 `version` 完全一致的 `## x.y.z` 标题，并在其下至少写一行内容。

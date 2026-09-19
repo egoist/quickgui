@@ -44,7 +44,7 @@ import {
 import { stageApplicationResources } from "./packaging/resources.ts";
 import { updaterMetadata } from "./packaging/appcast.ts";
 import { latestVersionFile, tarballName } from "./packaging/linux.ts";
-import { uploadRelease } from "./packaging/publish.ts";
+import { uploadRelease, type UploadResult } from "./packaging/publish.ts";
 import { targetInfo, type QuickGuiTarget } from "./targets.ts";
 
 export type BuildMode = "development" | "production";
@@ -134,7 +134,7 @@ export async function buildProject(
       resolve(targetOutDir, basename(stagedPath)),
     );
     let updates: { artifactPath: string; manifestPath: string; notesPath?: string } | undefined;
-    let uploadedUrls: string[] | undefined;
+    let uploaded: UploadResult | undefined;
     if ((options.updateManifest || options.upload) && options.mode === "production") {
       updates = await writeUpdateManifest({
         config,
@@ -151,7 +151,7 @@ export async function buildProject(
           ),
           updates.manifestPath,
         );
-        uploadedUrls = await uploadRelease({
+        uploaded = await uploadRelease({
           destination: config.updates.destination,
           name: config.name,
           version: config.version,
@@ -168,11 +168,13 @@ export async function buildProject(
       mode: options.mode,
       ...(finalDmgPath ? { dmgPath: finalDmgPath } : {}),
       ...(packagePaths.length > 0 ? { packagePaths } : {}),
-      ...(staged.notes?.length ? { notes: staged.notes } : {}),
+      ...(staged.notes?.length || uploaded?.notes.length
+        ? { notes: [...(staged.notes ?? []), ...(uploaded?.notes ?? [])] }
+        : {}),
       ...(updates
         ? { updateArtifactPath: updates.artifactPath, manifestPath: updates.manifestPath }
         : {}),
-      ...(uploadedUrls ? { uploadedUrls } : {}),
+      ...(uploaded ? { uploadedUrls: uploaded.urls } : {}),
     };
   } finally {
     if (existsSync(stagingRoot)) rmSync(stagingRoot, { recursive: true, force: true });

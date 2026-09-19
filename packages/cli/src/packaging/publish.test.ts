@@ -80,13 +80,14 @@ test("a build publishes installers and archives, then the files describing the n
     cwd: "/project",
   });
   expect(commands.view.slice(0, 6)).toEqual(["gh", "release", "view", "v1.2.3", "--repo", "demo/app"]);
-  expect(commands.create.slice(0, 10)).toEqual([
+  expect(commands.create.slice(0, 11)).toEqual([
     "gh",
     "release",
     "create",
     "v1.2.3",
     "--repo",
     "demo/app",
+    "--draft",
     "--title",
     "Demo 1.2.3",
     "--notes-file",
@@ -120,7 +121,7 @@ test("install.sh follows the destination's layout", () => {
   }
 });
 
-test("GitHub uploads create the release once and add later targets to it", async () => {
+test("GitHub uploads go into one draft release, even when targets race to create it", async () => {
   const root = mkdtempSync(join(tmpdir(), "quickgui-gh-"));
   try {
     const artifact = join(root, "Demo-1.2.3-linux-x64.tar.gz");
@@ -135,36 +136,68 @@ test("GitHub uploads create the release once and add later targets to it", async
       pointers: [feed],
       cwd: root,
     };
-    // A stand-in for gh: `view` fails until a release exists, and `create` fails once it does.
+    // A stand-in for GitHub. Drafts may share a tag, and `view`/`upload` reach the oldest one.
     const calls: string[] = [];
-    let released = false;
-    let viewSeesRelease = true;
+    let drafts: Array<{ id: number; url: string; uploads: number }> = [];
+    let nextId = 10;
+    let viewIsStale = false;
     const tools: UploadTools = {
       putObject: async () => {
         throw new Error("GitHub uploads never touch S3");
       },
       which: () => "/usr/bin/gh",
       spawn: async (command) => {
-        calls.push(`${command[2]} ${command[3]}`);
-        if (command[2] === "view") return { status: released && viewSeesRelease ? 0 : 1, output: "" };
-        if (command[2] === "create") {
-          if (released)
-            return { status: 1, output: "a release with the same tag name already exists" };
-          released = true;
+        if (command[1] === "api" && command[2] === "-X") {
+          calls.push(`delete ${command[4]}`);
+          drafts = drafts.filter((draft) => !command[4]!.endsWith(`/${draft.id}`));
+          return { status: 0, output: "" };
         }
+        if (command[1] === "api") {
+          calls.push("list drafts");
+          return { status: 0, output: JSON.stringify(drafts.map(({ id, url }) => ({ id, url }))) };
+        }
+        calls.push(`${command[2]} ${command[3]}`);
+        if (command[2] === "view") return { status: drafts.length > 0 && !viewIsStale ? 0 : 1, output: "" };
+        if (command[2] === "create") {
+          expect(command).toContain("--draft");
+          const id = nextId++;
+          const url = `https://github.com/demo/app/releases/tag/untagged-${id}`;
+          drafts.push({ id, url, uploads: 1 });
+          return { status: 0, output: url };
+        }
+        drafts[0]!.uploads += 1;
         return { status: 0, output: "" };
       },
     };
-    expect(await uploadRelease(upload, tools)).toEqual([
+
+    const first = await uploadRelease(upload, tools);
+    expect(first.urls).toEqual([
       "https://github.com/demo/app/releases/download/v1.2.3/Demo-1.2.3-linux-x64.tar.gz",
       "https://github.com/demo/app/releases/latest/download/appcast-linux-x64.xml",
     ]);
+    expect(first.notes.join("\n")).toContain("gh release edit v1.2.3 --repo demo/app --draft=false");
     await uploadRelease(upload, tools);
-    expect(calls).toEqual(["view v1.2.3", "create v1.2.3", "view v1.2.3", "upload v1.2.3"]);
-    // A parallel target created the release between `view` and `create`.
-    viewSeesRelease = false;
+    expect(calls).toEqual([
+      "view v1.2.3",
+      "create v1.2.3",
+      "list drafts",
+      "view v1.2.3",
+      "upload v1.2.3",
+    ]);
+    expect(drafts).toEqual([{ id: 10, url: expect.any(String), uploads: 2 }]);
+
+    // Another target created its draft first, but this one's `view` ran before that.
+    viewIsStale = true;
     await uploadRelease(upload, tools);
-    expect(calls.slice(-3)).toEqual(["view v1.2.3", "create v1.2.3", "upload v1.2.3"]);
+    expect(calls.slice(-5)).toEqual([
+      "view v1.2.3",
+      "create v1.2.3",
+      "list drafts",
+      "delete repos/demo/app/releases/11",
+      "upload v1.2.3",
+    ]);
+    expect(drafts).toEqual([{ id: 10, url: expect.any(String), uploads: 3 }]);
+
     await expect(
       uploadRelease({ ...upload, artifacts: [join(root, "missing")] }, tools),
     ).rejects.toThrow("missing");
@@ -206,11 +239,14 @@ test("S3 uploads store versioned files before the pointers, under the prefix", a
       pointers: [files[1]!, files[2]!],
       cwd: root,
     };
-    expect(await uploadRelease(upload, tools)).toEqual([
-      "https://dl.example.com/my%20app/stable/Demo-1.2.3-linux-x64.tar.gz",
-      "https://dl.example.com/my%20app/stable/install.sh",
-      "https://dl.example.com/my%20app/stable/appcast-linux-x64.xml",
-    ]);
+    expect(await uploadRelease(upload, tools)).toEqual({
+      urls: [
+        "https://dl.example.com/my%20app/stable/Demo-1.2.3-linux-x64.tar.gz",
+        "https://dl.example.com/my%20app/stable/install.sh",
+        "https://dl.example.com/my%20app/stable/appcast-linux-x64.xml",
+      ],
+      notes: [],
+    });
     expect(stored).toEqual([
       ["my app/stable/Demo-1.2.3-linux-x64.tar.gz", "application/gzip"],
       ["my app/stable/install.sh", "text/x-shellscript; charset=utf-8"],
