@@ -51,7 +51,7 @@ const coreGraph = await run([
   "none",
 ]);
 if (
-  /^(tree-sitter|imara-diff|pulldown-cmark|libghostty|portable-pty|quickgui-editor|quickgui-markdown|quickgui-terminal|quickgui-updater|ed25519-dalek|minisign-verify)\b/m.test(
+  /^(tree-sitter|imara-diff|pulldown-cmark|libghostty|portable-pty|quickgui-editor|quickgui-markdown|quickgui-terminal|quickgui-updater|ed25519-dalek)\b/m.test(
     coreGraph,
   )
 )
@@ -61,14 +61,14 @@ const extensionGraph = await run([
   "tree",
   "-p",
   "quickgui-terminal",
-  "-p", "quickgui-editor", "-p", "quickgui-markdown",
+  "-p", "quickgui-editor", "-p", "quickgui-markdown", "-p", "quickgui-updater",
   "--edges",
   "normal",
   "--prefix",
   "none",
 ]);
 if (/^(quickgui |quickgui-host|wgpu|taffy)\b/m.test(extensionGraph))
-  throw new Error("Terminal backend pulled in the renderer or runtime");
+  throw new Error("An extension backend pulled in the renderer or runtime");
 
 const directory = mkdtempSync(join(tmpdir(), "quickgui-native-extensions-"));
 console.log((await run(["bun", "scripts/check-language-packs.ts"])).trim());

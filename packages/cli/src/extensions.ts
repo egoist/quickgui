@@ -1,5 +1,8 @@
 import { createHash } from "node:crypto";
 import {
+  chmodSync,
+  constants,
+  copyFileSync,
   existsSync,
   mkdirSync,
   mkdtempSync,
@@ -15,6 +18,7 @@ import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import type { ResolvedQuickGuiConfig } from "./config.ts";
 import { CliError } from "./error.ts";
+import { unpackResources } from "./extension-resources.ts";
 import { targetInfo, type QuickGuiTarget } from "./targets.ts";
 
 const manifestName = "quickgui.extension.json";
@@ -229,6 +233,34 @@ async function boundedFetch(url: string, maximum: number): Promise<Uint8Array> {
   }
   if (!response.body) throw new CliError("Native extension download returned no data");
   return readBounded(response.body, maximum);
+}
+
+/**
+ * Copy each extension's declared resources for `target` into `destination` and return what was
+ * written. A `.qgr` archive unpacks there; any other resource is an executable helper.
+ */
+export async function stageExtensionResources(
+  extensions: readonly ExtensionManifest[],
+  target: QuickGuiTarget,
+  projectRoot: string,
+  destination: string,
+): Promise<string[]> {
+  const staged: string[] = [];
+  for (const extension of extensions) {
+    for (const resource of extension.resources?.[targetInfo(target).platform] ?? []) {
+      const input = await resolveExtension(extension, target, projectRoot, resource);
+      if (resource.endsWith(".qgr")) staged.push(unpackResources(input, destination));
+      else {
+        const output = join(destination, resource);
+        if (existsSync(output))
+          throw new CliError("Native extension resource collision: " + resource);
+        copyFileSync(input, output, constants.COPYFILE_FICLONE);
+        chmodSync(output, 0o755);
+        staged.push(output);
+      }
+    }
+  }
+  return staged;
 }
 
 export async function resolveExtension(

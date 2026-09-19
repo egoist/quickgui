@@ -44,6 +44,7 @@ export default defineConfig({
 | --- | --- |
 | macOS `.app` | `Contents/Resources` |
 | Linux AppDir, AppImage, and `.deb` | Next to the executable (`usr/bin`) |
+| Linux `install.sh` tarball | Next to the executable (`~/.local/<package>.app/bin`) |
 | Windows installer | Next to the executable in `$INSTDIR` |
 
 Join packaged names onto `resourceDir` at runtime; do not read from the project tree or the current working directory.

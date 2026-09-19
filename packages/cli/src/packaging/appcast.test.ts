@@ -47,6 +47,8 @@ test("appcasts use Sparkle raw Ed25519 signatures on every platform", () => {
     ).toBe(false);
     expect(xml).toContain("Test &amp; App");
     expect(xml).toContain("&lt;not markup&gt;");
+    // Notes are the changelog's Markdown; without the format Sparkle would read them as HTML.
+    expect(xml).toContain('<description sparkle:format="markdown">&lt;not markup&gt;</description>');
   }
   expect(() =>
     renderAppcast({
@@ -59,6 +61,30 @@ test("appcasts use Sparkle raw Ed25519 signatures on every platform", () => {
       publicKey: Buffer.alloc(32).toString("base64"),
     }),
   ).toThrow("does not match");
+});
+test("alternate enclosures follow the primary one, each with its own signature", () => {
+  const appImage = Buffer.from("appimage payload");
+  const tarball = Buffer.from("tarball payload");
+  const xml = renderAppcast({
+    name: "Test",
+    version: "2.0.0",
+    target: "linux-x64",
+    url: "https://example.com/Test-2.0.0-linux-x64.AppImage",
+    bytes: appImage,
+    alternates: [{ url: "https://example.com/Test-2.0.0-linux-x64.tar.gz", bytes: tarball }],
+    privateKey: secret,
+    publicKey,
+  });
+  const enclosures = [...xml.matchAll(/<enclosure url="([^"]+)"[^>]*sparkle:edSignature="([^"]+)"/g)];
+  expect(enclosures.map((match) => match[1])).toEqual([
+    "https://example.com/Test-2.0.0-linux-x64.AppImage",
+    "https://example.com/Test-2.0.0-linux-x64.tar.gz",
+  ]);
+  for (const [index, bytes] of [appImage, tarball].entries()) {
+    const signature = Buffer.from(enclosures[index]![2]!, "base64");
+    expect(verify(null, bytes, createPublicKey(key), signature)).toBe(true);
+  }
+  expect(xml.match(/<item>/g)).toHaveLength(1);
 });
 test("keygen writes Sparkle-compatible key material without overwriting existing keys", () => {
   const dir = mkdtempSync(join(tmpdir(), "quickgui-keygen-"));
@@ -79,12 +105,19 @@ test("TOML updater defaults are shared by Go metadata and Sparkle Info.plist", (
     {
       name: "Test",
       identifier: "test.app",
-      updates: { baseUrl: "https://example.com/releases", publicKey, automaticChecks: false },
+      updates: {
+        target: "github",
+        github: { repository: "example/app" },
+        publicKey,
+        automaticChecks: false,
+      },
     },
     "/tmp",
   );
   const metadata = updaterMetadata(config, "darwin-arm64", "production");
-  expect(metadata.feedUrl).toBe("https://example.com/releases/appcast-darwin-arm64.xml");
+  expect(metadata.feedUrl).toBe(
+    "https://github.com/example/app/releases/latest/download/appcast-darwin-arm64.xml",
+  );
   expect(metadata.automaticChecks).toBe(false);
   expect(metadata.development).toBe(false);
   const plist = macInfoPlist({
@@ -110,13 +143,19 @@ test("portable appcasts publish separate signed artifacts for each architecture"
     const secretPath = join(dir, "test.key"),
       source = join(dir, "setup.exe");
     writeFileSync(secretPath, secret);
+    // Found by its conventional name; only the section of the version being built is published.
+    writeFileSync(
+      join(dir, "CHANGELOG.md"),
+      "# Changelog\n\n## 2.0.0 - 2026-09-19\n\n- Faster & <safer>\n\n## 1.0.0\n\n- First release\n",
+    );
     const config = resolveConfig(
       {
         name: "Test",
         identifier: "test.app",
         version: "2.0.0",
         updates: {
-          baseUrl: "https://example.com/releases",
+          target: "github",
+          github: { repository: "example/app" },
           publicKey,
           ed25519SecretKey: secretPath,
         },
@@ -131,16 +170,30 @@ test("portable appcasts publish separate signed artifacts for each architecture"
         target,
         outputDirectory: dir,
         source,
-        baseUrl: "https://example.com/releases",
         run: async () => {
           throw new Error("unexpected tool call");
         },
       });
       paths.push(result.artifactPath);
-      expect(result.url).toContain(target);
+      expect(result.url).toBe(
+        `https://github.com/example/app/releases/download/v2.0.0/Test-2.0.0-${target}.exe`,
+      );
       expect(readFileSync(result.manifestPath, "utf8")).toContain(result.url);
+      expect(readFileSync(result.manifestPath, "utf8")).toContain(
+        '<description sparkle:format="markdown">- Faster &amp; &lt;safer&gt;</description>',
+      );
+      expect(readFileSync(result.notesPath!, "utf8")).toBe("- Faster & <safer>\n");
     }
     expect(paths[0]).not.toBe(paths[1]);
+    await expect(
+      writeAppcast({
+        config: { ...config, version: "2.1.0" },
+        target: "windows-x64",
+        outputDirectory: dir,
+        source,
+        run: async () => {},
+      }),
+    ).rejects.toThrow("Add a `## 2.1.0` section");
     expect(readFileSync(paths[0]!, "utf8")).toBe("windows-x64");
     expect(readFileSync(paths[1]!, "utf8")).toBe("windows-arm64");
   } finally {

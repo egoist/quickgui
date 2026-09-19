@@ -43,6 +43,8 @@ import {
 } from "./packaging/pipeline.ts";
 import { stageApplicationResources } from "./packaging/resources.ts";
 import { updaterMetadata } from "./packaging/appcast.ts";
+import { latestVersionFile, tarballName } from "./packaging/linux.ts";
+import { uploadRelease, type UploadResult } from "./packaging/publish.ts";
 import { targetInfo, type QuickGuiTarget } from "./targets.ts";
 
 export type BuildMode = "development" | "production";
@@ -53,10 +55,10 @@ export interface BuildProjectOptions {
   outDir?: string;
   signingIdentity?: string;
   notarization?: MacOSNotarizationConfig;
-  /** Produce and sign the artifact the Rust updater installs, then write `latest.json`. */
+  /** Sign the update artifacts and write the target's appcast. */
   updateManifest?: boolean;
-  /** Override `updates.baseUrl` for this build. */
-  updateBaseUrl?: string;
+  /** Publish the release files to `updates.github` or `updates.s3`. Implies `updateManifest`. */
+  upload?: boolean;
   /** Sign for the Mac App Store and produce a `.pkg` instead of a DMG. */
   macAppStore?: boolean;
 }
@@ -71,8 +73,10 @@ export interface BuildResult {
   packagePaths?: string[];
   /** The signed artifact published to the updater, when `--update-manifest` was requested. */
   updateArtifactPath?: string;
-  /** `latest.json`, when `--update-manifest` was requested. */
+  /** The appcast, when `--update-manifest` was requested. */
   manifestPath?: string;
+  /** Public URLs of the files `--upload` published. */
+  uploadedUrls?: string[];
   /** Advisory lines describing tools that were missing. */
   notes?: string[];
 }
@@ -129,16 +133,33 @@ export async function buildProject(
     const packagePaths = (staged.packagedArtifacts ?? []).map((stagedPath) =>
       resolve(targetOutDir, basename(stagedPath)),
     );
-    let updates: { artifactPath: string; manifestPath: string } | undefined;
-    if (options.updateManifest && options.mode === "production") {
+    let updates: { artifactPath: string; manifestPath: string; notesPath?: string } | undefined;
+    let uploaded: UploadResult | undefined;
+    if ((options.updateManifest || options.upload) && options.mode === "production") {
       updates = await writeUpdateManifest({
         config,
         target: options.target,
         outputDirectory: targetOutDir,
         source: updateSource(options, finalPath, packagePaths),
-        baseUrl: updateBaseUrl(config, options),
+        alternates: updateAlternates(options, packagePaths),
         run: (command, cwd) => run(command, cwd),
       });
+      if (options.upload && config.updates) {
+        const release = releaseFiles(
+          [finalDmgPath, ...packagePaths, updates.artifactPath].filter(
+            (path): path is string => path !== undefined,
+          ),
+          updates.manifestPath,
+        );
+        uploaded = await uploadRelease({
+          destination: config.updates.destination,
+          name: config.name,
+          version: config.version,
+          ...release,
+          ...(updates.notesPath ? { notesFile: updates.notesPath } : {}),
+          cwd: config.projectRoot,
+        });
+      }
     }
     return {
       artifactPath: finalPath,
@@ -147,10 +168,13 @@ export async function buildProject(
       mode: options.mode,
       ...(finalDmgPath ? { dmgPath: finalDmgPath } : {}),
       ...(packagePaths.length > 0 ? { packagePaths } : {}),
-      ...(staged.notes?.length ? { notes: staged.notes } : {}),
+      ...(staged.notes?.length || uploaded?.notes.length
+        ? { notes: [...(staged.notes ?? []), ...(uploaded?.notes ?? [])] }
+        : {}),
       ...(updates
         ? { updateArtifactPath: updates.artifactPath, manifestPath: updates.manifestPath }
         : {}),
+      ...(uploaded ? { uploadedUrls: uploaded.urls } : {}),
     };
   } finally {
     if (existsSync(stagingRoot)) rmSync(stagingRoot, { recursive: true, force: true });
@@ -545,18 +569,24 @@ function replaceArtifacts(
   }
 }
 
-function updateBaseUrl(config: ResolvedQuickGuiConfig, options: BuildProjectOptions): string {
-  const baseUrl = options.updateBaseUrl ?? config.updates?.baseUrl;
-  if (!baseUrl) {
-    throw new CliError(
-      "Writing an update manifest needs a publication URL. Set `updates.baseUrl` in " +
-        "quickgui.toml or quickgui.config.ts, or pass --update-base-url.",
-    );
-  }
-  return baseUrl;
+/**
+ * What one build publishes: installers and update archives as versioned artifacts, then the
+ * files that always describe the newest release. Desktop entries, AppDirs, and NSIS scripts stay
+ * local.
+ */
+export function releaseFiles(
+  produced: readonly string[],
+  manifestPath: string,
+): { artifacts: string[]; pointers: string[] } {
+  const artifact = /\.(?:AppImage|tar\.gz|deb|dmg|pkg|zip|exe)$/;
+  const pointer = (name: string): boolean => name === "install.sh" || /^latest-[a-z0-9-]+\.txt$/.test(name);
+  return {
+    artifacts: [...new Set(produced.filter((path) => artifact.test(path)))],
+    pointers: [...produced.filter((path) => pointer(basename(path))), manifestPath],
+  };
 }
 
-/** The artifact the Rust updater installs for this target, chosen from what the build produced. */
+/** The artifact the updater installs for this target, chosen from what the build produced. */
 export function updateSource(
   options: Pick<BuildProjectOptions, "target">,
   artifactPath: string,
@@ -575,7 +605,21 @@ export function updateSource(
     return installer;
   }
   const appImage = packagePaths.find((path) => path.endsWith(".AppImage"));
-  return appImage ?? artifactPath;
+  return appImage ?? linuxTarball(packagePaths) ?? artifactPath;
+}
+
+/** Further artifacts published in the same appcast item as {@link updateSource}. */
+export function updateAlternates(
+  options: Pick<BuildProjectOptions, "target">,
+  packagePaths: readonly string[],
+): string[] {
+  if (targetInfo(options.target).platform !== "linux") return [];
+  const tarball = linuxTarball(packagePaths);
+  return tarball && packagePaths.some((path) => path.endsWith(".AppImage")) ? [tarball] : [];
+}
+
+function linuxTarball(packagePaths: readonly string[]): string | undefined {
+  return packagePaths.find((path) => path.endsWith(".tar.gz"));
 }
 
 function iconSource(
@@ -604,7 +648,7 @@ export function reservedSidecarNames(
   config: ResolvedQuickGuiConfig,
   platform: "darwin" | "linux" | "windows",
 ): string[] {
-  const names = ["fonts", "quickgui.json", ".quickgui-icons"];
+  const names = ["fonts", "quickgui.json", ".quickgui-icons", "release-notes.md"];
   if (platform === "linux") {
     const packageName = debianPackageName(config.executableName);
     names.push(
@@ -615,6 +659,11 @@ export function reservedSidecarNames(
       `${config.executableName}-${config.version}-aarch64.AppImage`,
       `${packageName}_${config.version}_amd64.deb`,
       `${packageName}_${config.version}_arm64.deb`,
+      tarballName(config.executableName, config.version, "linux-x64"),
+      tarballName(config.executableName, config.version, "linux-arm64"),
+      "install.sh",
+      latestVersionFile("linux-x64"),
+      latestVersionFile("linux-arm64"),
     );
   }
   if (platform === "windows") {
@@ -713,8 +762,8 @@ export function validateBuildInputs(
     requireExistingFile(config.linux.icon, "Linux icon");
   }
   if (config.icon) requireExistingFile(config.icon, "Icon");
-  if (config.updates?.notesFile && !existsSync(config.updates.notesFile)) {
-    throw new CliError(`Release notes not found: ${config.updates.notesFile}`);
+  if (config.updates?.changelog && !existsSync(config.updates.changelog)) {
+    throw new CliError(`Changelog not found: ${config.updates.changelog}`);
   }
 }
 

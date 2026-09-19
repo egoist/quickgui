@@ -94,12 +94,88 @@ The project `resources/` directory is packaged automatically. Put the applicatio
 quickgui build --target darwin-arm64
 quickgui build --target darwin-x64
 quickgui build --sign "Developer ID Application: Example (TEAMID)" --notarize quickgui-notary
-quickgui build --update-manifest --update-base-url https://dl.example.com/demo
+quickgui build --update-manifest
+quickgui build --upload
 quickgui build --mas
 ```
 
-Production Go builds use `-trimpath -ldflags='-s -w …'`. Production Rust builds use `cargo build --release`. macOS packages put the shared library for Go and TypeScript in `Contents/Frameworks` and resources in `Contents/Resources`. Linux AppDir/Debian and Windows installer payloads keep the shared library, fonts, and `resources` beside the executable. Rust apps omit that library and keep `quickgui.json` with the resources. The signed `.app` is packaged in a versioned DMG with [create-dmg](https://github.com/create-dmg/create-dmg): a Finder window, icon positions, and an Applications drop link. Notarization uses an existing `notarytool` Keychain profile; development builds do not create DMGs. MAS builds use the configured app/installer identities and entitlements. Signed update manifests require the configured update signing key. The project `resources/` directory is packaged automatically; `resources/icon.png` is the application icon and is resized to every platform size. The `resources` config option adds extra files. `macos.icon` / `windows.icon` / `linux.icon` override platform containers.
+Production Go builds use `-trimpath -ldflags='-s -w …'`. Production Rust builds use `cargo build --release`. macOS packages put the shared library for Go and TypeScript in `Contents/Frameworks` and resources in `Contents/Resources`. Linux AppDir/Debian and Windows installer payloads keep the shared library, fonts, and `resources` beside the executable. Rust apps omit that library and keep `quickgui.json` with the resources. The signed `.app` is packaged in a versioned DMG with [create-dmg](https://github.com/create-dmg/create-dmg): a Finder window, icon positions, and an Applications drop link. Notarization uses an existing `notarytool` Keychain profile; development builds do not create DMGs. MAS builds use the configured app/installer identities and entitlements. Signed updates and `--upload` are described under [Signed updates and publishing](#signed-updates-and-publishing). The project `resources/` directory is packaged automatically; `resources/icon.png` is the application icon and is resized to every platform size. The `resources` config option adds extra files. `macos.icon` / `windows.icon` / `linux.icon` override platform containers.
 
 The Go compiler maps `darwin-x64`, `linux-x64`, and `windows-x64` to `GOARCH=amd64`; arm64 targets use `GOARCH=arm64`. A matching native library and target packaging tools are required. Linux AppDir/Debian and Windows installer payloads include the shared library beside the executable. Published native assets cover macOS arm64/x64, Linux arm64/x64, and Windows x64.
+
+## Linux packages
+
+A production Linux build writes these files to `dist/linux-<arch>/`:
+
+| File | What it is | Needs |
+| --- | --- | --- |
+| `<Name>` plus libraries and resources | The plain executable | nothing |
+| `<Name>.desktop` | Desktop entry template used by the packages below | nothing |
+| `<Name>-<version>-<arch>.AppImage` | Single-file app. Without `appimagetool` the finished `<Name>.AppDir` is left instead, with the command that completes it | `appimagetool` on `PATH` |
+| `<package>_<version>_<arch>.deb` | Debian package, written in pure TypeScript | `linux.maintainer` |
+| `<Name>-<version>-linux-<arch>.tar.gz` | Per-user install with a `bin/` + `share/` layout | nothing |
+| `install.sh` | Installs the tarball into `~/.local/<package>.app` without root, links `~/.local/bin/<package>`, and registers the desktop entry, icon, and file types | nothing |
+| `latest-linux-<arch>.txt` | The version `install.sh` resolves "latest" to | nothing |
+
+`<package>` is the lowercase executable name, for example `my-app`. A project without an icon gets a gray placeholder in the AppImage and tarball; add `resources/icon.png` to replace it.
+
+```toml
+[linux]
+categories = ["Development"]             # freedesktop menu categories, default ["Utility"]
+comment = "A short description"          # Comment= in the desktop entry and the .deb description
+maintainer = "Example <hello@example.com>"   # required for, and enables, the .deb
+section = "utils"                        # Debian section
+depends = ["libgtk-3-0"]                 # Debian Depends
+icon = "assets/linux.png"                # only when resources/icon.png and `icon` are absent
+appImage = true                          # default true
+deb = true                               # default: true when maintainer is set
+tarball = true                           # default true; false skips the tarball, install.sh, latest-linux-<arch>.txt
+```
+
+Test the install script against a local build without publishing anything. The variable prefix is the package name in upper case:
+
+```console
+MY_APP_BUNDLE_PATH=dist/linux-x64/My-App-1.0.0-linux-x64.tar.gz sh dist/linux-x64/install.sh
+sh dist/linux-x64/install.sh --uninstall
+```
+
+`MY_APP_VERSION` installs a specific version and `MY_APP_RELEASES_URL` downloads from another location. AppImage and tarball installs update themselves when the app includes the updater; `.deb` installs are updated by the package manager.
+
+## Signed updates and publishing
+
+```console
+quickgui keygen --out-dir ~/.config/my-app/update-keys
+```
+
+`keygen` writes `quickgui-update.pub` and `quickgui-update.key`, an Ed25519 pair. Put the public key in the config and keep the private key out of the repository. `--force` overwrites an existing pair.
+
+```toml
+[updates]
+target = "github"                        # "github" or "s3": where releases are published and read from
+publicKey = "CONTENTS_OF_quickgui-update.pub"
+automaticChecks = true
+changelog = "CHANGELOG.md"              # optional; the default when the file exists
+
+[updates.github]
+repository = "example/my-app"            # public repository; tagPrefix = "v" by default
+
+# With target = "s3":
+# [updates.s3]
+# bucket = "my-app-releases"
+# publicUrl = "https://downloads.example.com"
+# endpoint = "https://ACCOUNT_ID.r2.cloudflarestorage.com"   # non-AWS providers
+# region = "auto"
+# prefix = "stable"
+```
+
+| Command | Effect |
+| --- | --- |
+| `quickgui build` | Builds and packages. Nothing is signed or uploaded. |
+| `quickgui build --update-manifest` | Also signs the update files and writes `appcast-<target>.xml`. `updates.manifest = true` does this on every production build. |
+| `quickgui build --upload` | Also publishes the installers, update files, feed, `install.sh`, and `latest-linux-<arch>.txt` to the configured target. Implies `--update-manifest`. On GitHub the release is a draft; publish it when every target has uploaded (`gh release edit <tag> --draft=false`). |
+
+Release notes come from one Markdown changelog for all versions: the build publishes the section under the `## x.y.z` heading that equals `version` (a date may follow, `## x.y.z - 2026-09-19`), and fails when that section is missing. See [Release notes](updater.md#release-notes).
+
+Signing reads the private key from `QUICKGUI_UPDATER_PRIVATE_KEY` (or `SPARKLE_PRIVATE_KEY`), otherwise from the file named by `updates.ed25519SecretKey`. Uploading to GitHub uses the `gh` CLI with `GH_TOKEN` or `gh auth login`; S3 uses `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` (or the `S3_*` names). Run the command once per target. The [updater guide](updater.md) covers the application code, every option, a GitHub Actions workflow, and troubleshooting.
 
 Use `quickgui dev --help` and `quickgui build --help` for all command flags, and [config.ts](../packages/cli/src/config.ts) for typed resource, signing, entitlements, file associations, update, and platform packaging options.

@@ -10,9 +10,7 @@ import { runDev } from "./dev.ts";
 import { CliError, errorMessage } from "./error.ts";
 import { initProject } from "./init.ts";
 import { initExtension } from "./init-extension.ts";
-import { findMinisignTool } from "./packaging/pipeline.ts";
 import { generateUpdaterKeys } from "./packaging/appcast.ts";
-import { minisignKeygenArguments } from "./packaging/updates.ts";
 import { hostTarget } from "./targets.ts";
 
 export const CLI_VERSION = "0.1.5";
@@ -134,49 +132,11 @@ export async function runCli(argv: string[]): Promise<number> {
 async function runKeygen(
   command: Extract<ParsedCliCommand, { command: "keygen" }>,
 ): Promise<number> {
-  if (command.sparkle) {
-    if (!command.passwordless)
-      throw new CliError(
-        "Sparkle keys are raw Ed25519 keys; store the private key in your CI secret store",
-      );
-    const paths = generateUpdaterKeys(resolve(command.outDir), command.force);
-    console.log("[quickgui] Wrote " + paths.publicKeyPath);
-    console.log("[quickgui] Wrote " + paths.secretKeyPath);
-    console.log(
-      "Set updates.publicKey to the public key, and keep the secret key outside version control.",
-    );
-    return 0;
-  }
-  const tool = findMinisignTool();
-  if (!tool) {
-    throw new CliError(
-      "Creating an update signing key needs `minisign` or `rsign` on PATH. Install one from " +
-        "https://jedisct1.github.io/minisign/ and re-run `quickgui keygen`.",
-    );
-  }
-  const outDir = resolve(command.outDir);
-  const publicKeyPath = resolve(outDir, "quickgui-update.pub");
-  const secretKeyPath = resolve(outDir, "quickgui-update.key");
-  for (const path of [publicKeyPath, secretKeyPath]) {
-    if (existsSync(path) && !command.force) {
-      throw new CliError(`${path} already exists. Pass --force to overwrite it.`);
-    }
-  }
-  const argv = minisignKeygenArguments(tool, publicKeyPath, secretKeyPath, command.passwordless);
-  const child = Bun.spawn(argv, {
-    cwd: outDir,
-    stdin: "inherit",
-    stdout: "inherit",
-    stderr: "inherit",
-  });
-  const status = await child.exited;
-  if (status !== 0) throw new CliError(`Command failed: ${argv.join(" ")}`);
-  console.log(`\n[quickgui] Wrote ${publicKeyPath}`);
-  console.log(`[quickgui] Wrote ${secretKeyPath}`);
+  const paths = generateUpdaterKeys(resolve(command.outDir), command.force);
+  console.log("[quickgui] Wrote " + paths.publicKeyPath);
+  console.log("[quickgui] Wrote " + paths.secretKeyPath);
   console.log(
-    "\nKeep the secret key out of version control. Pass its path through " +
-      "`updates.minisignSecretKey` or QUICKGUI_MINISIGN_SECRET_KEY, and embed the public key in " +
-      "your application's UpdateClient.",
+    "Set updates.publicKey to the public key, and keep the secret key outside version control.",
   );
   return 0;
 }
@@ -193,7 +153,7 @@ async function runBuild(command: Extract<ParsedCliCommand, { command: "build" }>
     macAppStore: command.macAppStore,
     ...(command.outDir ? { outDir: command.outDir } : {}),
     ...(command.signingIdentity ? { signingIdentity: command.signingIdentity } : {}),
-    ...(command.updateBaseUrl ? { updateBaseUrl: command.updateBaseUrl } : {}),
+    upload: command.upload,
     ...(command.notarizationProfile
       ? { notarization: { keychainProfile: command.notarizationProfile } }
       : {}),
@@ -205,6 +165,7 @@ async function runBuild(command: Extract<ParsedCliCommand, { command: "build" }>
     console.log(`[quickgui] Signed ${result.updateArtifactPath}`);
   }
   if (result.manifestPath) console.log(`[quickgui] Created ${result.manifestPath}`);
+  for (const url of result.uploadedUrls ?? []) console.log(`[quickgui] Uploaded ${url}`);
   for (const note of result.notes ?? []) console.log(`[quickgui] ${note}`);
   return 0;
 }
@@ -236,13 +197,11 @@ Options:
   if (topic === "keygen") {
     return `Usage: quickgui keygen [options]
 
-Create an update signing key pair. Use --sparkle for the Go updater extension.
+Create the Sparkle-compatible Ed25519 key pair that signs update appcasts.
 
 Options:
-  --sparkle                  Generate a Sparkle-compatible Ed25519 key pair
   --out-dir <directory>      Where to write the key pair (default: .)
   --force                    Overwrite an existing key pair
-  --password                 Encrypt the secret key with a password
   -h, --help                 Show this help`;
   }
   if (topic === "init") {
@@ -286,8 +245,8 @@ Options:
   --sign <identity>          macOS signing identity (default: ad-hoc)
   --notarize <profile>       Notary Keychain profile for the macOS DMG
   --mas                      Sign for the Mac App Store and build a .pkg
-  --update-manifest          Sign the artifact and write an appcast (or legacy latest.json)
-  --update-base-url <url>    Publication URL for the signed update artifact
+  --update-manifest          Sign the update artifacts and write the appcast
+  --upload                   Also publish the release to updates.github or updates.s3
   -h, --help                 Show this help`;
   }
   if (topic === "fmt") {
@@ -317,7 +276,7 @@ Commands:
   fmt                        Format Go, TypeScript, or Rust source
   check                      Type-check compiled Go, TypeScript, or Rust views
   test                       Test compiled Go, TypeScript, or Rust views
-  keygen                     Create a Minisign update signing key pair
+  keygen                     Create an update signing key pair
 
 Run \`quickgui help <command>\` for command-specific help.`;
 }

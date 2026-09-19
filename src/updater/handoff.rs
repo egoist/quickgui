@@ -1,7 +1,7 @@
 //! Out-of-process installation is limited to this helper: application UI and extension calls
-//! stay in-process. Windows cannot replace loaded DLLs; Linux AppImage mounts must survive until
-//! the old process exits. The helper re-verifies bytes and waits for the normal quit lifecycle.
-use crate::feed::{self, Item};
+//! stay in-process. Windows cannot replace loaded DLLs; Linux AppImage mounts and install
+//! prefixes must survive until the old process exits. The helper re-verifies bytes and waits for the normal quit lifecycle.
+use super::feed::{self, Item, Payload};
 use serde::{Deserialize, Serialize};
 use std::{
     fs,
@@ -15,22 +15,39 @@ const QUIT_TIMEOUT: Duration = Duration::from_secs(120);
 const READY_TIMEOUT: Duration = Duration::from_secs(60);
 pub const READY_ENV: &str = "QUICKGUI_UPDATE_READY_FILE";
 
-pub fn install_target() -> Result<PathBuf> {
+/// What the helper replaces, and the appcast enclosure that can replace it.
+pub struct Target {
+    pub path: PathBuf,
+    pub payload: Payload,
+}
+
+pub fn install_target() -> Result<Target> {
     #[cfg(target_os = "linux")]
     {
         if unsafe { libc::geteuid() } == 0 {
             return Err("self-updates are disabled for root installations".into());
         }
-        let appimage=std::env::var_os("APPIMAGE").ok_or("this installation is managed externally; install the AppImage to use automatic updates")?;
-        let appdir = std::env::var_os("APPDIR").ok_or("not running inside an AppImage")?;
+        let executable = std::env::current_exe()
+            .and_then(fs::canonicalize)
+            .map_err(|e| e.to_string())?;
+        // A terminal or launcher that is itself an AppImage leaks both variables to its children,
+        // so they only count when the mount really holds this executable.
+        let mounted = std::env::var_os("APPDIR")
+            .and_then(|appdir| fs::canonicalize(appdir).ok())
+            .is_some_and(|mount| executable.starts_with(mount));
+        let Some(appimage) = std::env::var_os("APPIMAGE").filter(|_| mounted) else {
+            return super::prefix::locate(&executable)
+                .map(|path| Target {
+                    path,
+                    payload: Payload::Prefix,
+                })
+                .map_err(|error| {
+                    format!(
+                        "this installation is managed externally ({error}); install the AppImage or run install.sh to use automatic updates"
+                    )
+                });
+        };
         let target = fs::canonicalize(appimage).map_err(|e| e.to_string())?;
-        let mount = fs::canonicalize(appdir).map_err(|e| e.to_string())?;
-        if !std::env::current_exe()
-            .map_err(|e| e.to_string())?
-            .starts_with(mount)
-        {
-            return Err("APPDIR does not contain the running application".into());
-        }
         let metadata = fs::metadata(&target).map_err(|e| e.to_string())?;
         use std::os::unix::fs::MetadataExt;
         if !metadata.is_file() || metadata.uid() != unsafe { libc::geteuid() } {
@@ -39,12 +56,19 @@ pub fn install_target() -> Result<PathBuf> {
         let parent = target.parent().ok_or("invalid AppImage location")?;
         tempfile::NamedTempFile::new_in(parent)
             .map_err(|_| "AppImage directory must be writable")?;
-        Ok(target)
+        Ok(Target {
+            path: target,
+            payload: Payload::AppImage,
+        })
     }
     #[cfg(windows)]
     {
         std::env::current_exe()
             .and_then(fs::canonicalize)
+            .map(|path| Target {
+                path,
+                payload: Payload::Any,
+            })
             .map_err(|e| e.to_string())
     }
     #[cfg(not(any(target_os = "linux", windows)))]
@@ -57,6 +81,7 @@ pub fn install_target() -> Result<PathBuf> {
 struct Plan {
     parent: u32,
     target: PathBuf,
+    kind: Payload,
     payload: PathBuf,
     item: Item,
     public_key: String,
@@ -70,13 +95,16 @@ pub(crate) fn launch(
     cancelled: impl Fn() -> bool,
     ready: impl FnOnce(),
 ) -> Result<()> {
-    let target = install_target()?;
-    validate_format(&bytes)?;
+    let Target {
+        path: target,
+        payload: kind,
+    } = install_target()?;
+    validate_format(&bytes, kind, &target)?;
     let stage = create_stage(stage_root)?;
-    let payload = stage.path().join(if cfg!(windows) {
-        "update.exe"
-    } else {
-        "update.AppImage"
+    let payload = stage.path().join(match kind {
+        Payload::Prefix => "update.tar.gz",
+        Payload::AppImage => "update.AppImage",
+        Payload::Any => "update.exe",
     });
     write_new(&payload, &bytes)?;
     drop(bytes); // Do not retain the download while waiting for the app's quit lifecycle.
@@ -95,6 +123,7 @@ pub(crate) fn launch(
     let plan = Plan {
         parent: std::process::id(),
         target,
+        kind,
         payload,
         item: item.clone(),
         public_key: key.into(),
@@ -217,7 +246,7 @@ pub fn run_helper() -> Result<()> {
     }
     let bytes = read_payload(&payload)?;
     feed::verify(&bytes, &plan.item, &plan.public_key)?;
-    validate_format(&bytes)?;
+    validate_format(&bytes, plan.kind, &plan.target)?;
     drop(bytes);
     // Hold a handle to this exact parent on Windows, so PID reuse can never delay/advance install.
     let parent = Parent::open(plan.parent)?;
@@ -349,7 +378,12 @@ fn read_error(path: &Path, fallback: &str) -> String {
         String::from_utf8_lossy(&bytes).into_owned()
     }
 }
-fn validate_format(bytes: &[u8]) -> Result<()> {
+fn validate_format(bytes: &[u8], kind: Payload, target: &Path) -> Result<()> {
+    #[cfg(target_os = "linux")]
+    if kind == Payload::Prefix {
+        return super::prefix::validate(bytes, target);
+    }
+    let _ = (kind, target);
     #[cfg(windows)]
     if !bytes.starts_with(b"MZ") {
         return Err("Windows updates must be signed QuickGUI NSIS executables".into());
@@ -448,6 +482,10 @@ fn apply(plan: &Plan, bytes: Vec<u8>, stage: &Path) -> Result<()> {
     }
     #[cfg(not(windows))]
     {
+        #[cfg(target_os = "linux")]
+        if plan.kind == Payload::Prefix {
+            return super::prefix::apply(&plan.target, bytes, stage);
+        }
         let parent = plan.target.parent().ok_or("invalid AppImage location")?;
         let backup = tempfile::Builder::new()
             .prefix(".quickgui-backup-")
@@ -485,7 +523,11 @@ fn apply(plan: &Plan, bytes: Vec<u8>, stage: &Path) -> Result<()> {
     }
 }
 
-fn replace_with_backup(target: &Path, replacement: &Path, previous: &Path) -> Result<()> {
+pub(crate) fn replace_with_backup(
+    target: &Path,
+    replacement: &Path,
+    previous: &Path,
+) -> Result<()> {
     fs::rename(target, previous).map_err(|e| e.to_string())?;
     if let Err(error) = fs::rename(replacement, target) {
         fs::rename(previous, target).map_err(|e| {
@@ -505,7 +547,7 @@ fn replace_with_backup(target: &Path, replacement: &Path, previous: &Path) -> Re
     }
     Ok(())
 }
-fn clean_command(target: &Path) -> Command {
+pub(crate) fn clean_command(target: &Path) -> Command {
     let mut command = Command::new(target);
     for key in [
         "APPIMAGE",
@@ -525,7 +567,7 @@ fn clean_command(target: &Path) -> Command {
         .stderr(Stdio::null());
     command
 }
-fn relaunch(target: &Path, stage: &Path) -> Result<()> {
+pub(crate) fn relaunch(target: &Path, stage: &Path) -> Result<()> {
     let ready = stage.join("application-ready");
     let _ = fs::remove_file(&ready);
     let mut child = clean_command(target)

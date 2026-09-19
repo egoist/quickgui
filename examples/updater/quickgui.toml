@@ -3,7 +3,12 @@ identifier = "dev.quickgui.updater-example"
 version = "0.1.0"
 
 [updates]
-baseUrl = "https://example.com/quickgui-updater"
-# Demonstration public key only. Generate your own key with quickgui keygen --sparkle.
+# Demonstration public key only. Generate your own key with quickgui keygen.
 publicKey = "GX9rI+FsU4YtjNSAyOdwmHw28GPA59ORGo2SvUhRXvY="
 automaticChecks = false
+
+# Releases are published to, and updates read from, this target.
+target = "github"
+
+[updates.github]
+repository = "example/quickgui-updater"

@@ -2728,12 +2728,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "minisign-verify"
-version = "0.2.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "22f9645cb765ea72b8111f36c522475d2daa0d22c957a9826437e97534bc4e9e"
-
-[[package]]
 name = "miniz_oxide"
 version = "0.8.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3964,12 +3958,15 @@ dependencies = [
  "arboard",
  "ashpd",
  "async-task",
+ "base64 0.22.1",
  "bitflags 2.13.2",
  "block2 0.5.1",
+ "block2 0.6.2",
  "bytemuck",
  "core-foundation 0.9.4",
  "criterion",
  "dunce",
+ "ed25519-dalek",
  "flate2",
  "global-hotkey",
  "image",
@@ -3981,8 +3978,10 @@ dependencies = [
  "lyon",
  "naga",
  "objc2 0.5.2",
+ "objc2 0.6.4",
  "objc2-app-kit 0.2.2",
  "objc2-foundation 0.2.2",
+ "objc2-foundation 0.3.2",
  "objc2-quartz-core 0.2.2",
  "objc2-user-notifications 0.2.2",
  "opener",
@@ -3997,11 +3996,14 @@ dependencies = [
  "raw-window-metal",
  "resvg",
  "rfd",
+ "roxmltree 0.21.1",
+ "semver",
  "serde",
  "serde_json",
  "sha2 0.10.9",
  "taffy",
  "tar",
+ "tempfile",
  "thiserror 2.0.20",
  "tracing",
  "tracing-subscriber",
@@ -4028,6 +4030,7 @@ dependencies = [
  "tree-sitter-yaml",
  "unicode-segmentation",
  "ureq",
+ "url",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
@@ -4168,28 +4171,22 @@ name = "quickgui-system"
 version = "0.1.5"
 dependencies = [
  "auto-launch",
- "base64 0.22.1",
  "block2 0.5.1",
  "core-foundation 0.9.4",
  "dirs",
  "dunce",
- "flate2",
  "hostname",
  "keyring",
  "libc",
- "minisign-verify",
  "notify",
  "objc2 0.5.2",
  "objc2-app-kit 0.2.2",
  "objc2-foundation 0.2.2",
  "os_info",
  "rust-ini",
- "semver",
  "serde",
  "serde_json",
  "sys-locale",
- "tar",
- "tempfile",
  "thiserror 2.0.20",
  "ureq",
  "windows-sys 0.61.2",
@@ -4219,6 +4216,7 @@ dependencies = [
  "base64 0.22.1",
  "block2 0.6.2",
  "ed25519-dalek",
+ "flate2",
  "libc",
  "objc2 0.6.4",
  "objc2-foundation 0.3.2",
@@ -4227,6 +4225,7 @@ dependencies = [
  "semver",
  "serde",
  "serde_json",
+ "tar",
  "tempfile",
  "ureq",
  "url",
@@ -5167,7 +5166,6 @@ checksum = "3f6221d9a6003c78398e3b239969f352578258df48c8eb051caadae0015bc840"
 dependencies = [
  "filetime",
  "libc",
- "xattr",
 ]
 
 [[package]]
@@ -6976,16 +6974,6 @@ name = "x11rb-protocol"
 version = "0.13.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ea6fc2961e4ef194dcbfe56bb845534d0dc8098940c7e5c012a258bfec6701bd"
-
-[[package]]
-name = "xattr"
-version = "1.6.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "32e45ad4206f6d2479085147f02bc2ef834ac85886624a23575ae137c8aa8156"
-dependencies = [
- "libc",
- "rustix 1.1.4",
-]
 
 [[package]]
 name = "xcursor"

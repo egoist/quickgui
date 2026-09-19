@@ -18,7 +18,9 @@ import {
   packagedAppMetadata,
   packagedResourceDir,
   parseCargoExecutable,
+  parseCargoCore,
   rustBuildPlan,
+  rustUpdaterResources,
   rustManifestPath,
   rustPackagedSidecars,
   rustTargetTriple,
@@ -236,4 +238,71 @@ test("Rust sidecars stay inside the macOS bundle and beside other executables", 
     "/tmp/quickgui.json",
     "/tmp/fonts",
   ]);
+});
+
+test("Rust builds embed updater settings and detect the core's updater feature", () => {
+  const publicKey = Buffer.alloc(32, 7).toString("base64");
+  const config = resolveConfig(
+    {
+      name: "Rust App",
+      identifier: "dev.test.rust",
+      version: "1.2.3",
+      language: "rust",
+      updates: { target: "s3", s3: { bucket: "releases", publicUrl: "https://dl.example.com/app" }, publicKey },
+    },
+    "/tmp/rust-app",
+  );
+  const plan = rustBuildPlan({
+    config,
+    mode: "production",
+    target: "linux-x64",
+    executablePath: "/tmp/app",
+    fonts: [],
+  });
+  expect(
+    JSON.parse(Buffer.from(plan.env.QUICKGUI_UPDATER_METADATA!, "base64url").toString("utf8")),
+  ).toEqual({
+    feedUrl: "https://dl.example.com/app/appcast-linux-x64.xml",
+    publicKey,
+    currentVersion: "1.2.3",
+    identifier: "dev.test.rust",
+    automaticChecks: true,
+    development: false,
+  });
+  const artifact = (package_id: string, features: string[], kind = "lib", name = "quickgui") =>
+    JSON.stringify({
+      reason: "compiler-artifact",
+      package_id,
+      features,
+      target: { kind: [kind], name },
+    });
+  const stdout = [
+    artifact(
+      "registry+https://github.com/rust-lang/crates.io-index#quickgui-system@0.1.5",
+      [],
+      "lib",
+      "quickgui_system",
+    ),
+    "warning: not json",
+    artifact("path+file:///work/quickgui#0.1.5", [], "custom-build", "build-script-build"),
+    artifact("path+file:///work/quickgui#0.1.5", ["default", "updater"]),
+    artifact("path+file:///project#demo@1.2.3", [], "bin", "demo"),
+  ].join("\n");
+  expect(parseCargoCore(stdout)).toEqual({ version: "0.1.5", features: ["default", "updater"] });
+  expect(
+    parseCargoCore(
+      artifact("registry+https://github.com/rust-lang/crates.io-index#quickgui@0.2.0-beta.1", []),
+    ),
+  ).toEqual({ version: "0.2.0-beta.1", features: [] });
+  expect(
+    parseCargoCore(artifact("path+file:///project#demo@1.2.3", [], "bin", "demo")),
+  ).toBeUndefined();
+  // The CLI ships without the extension package, so it carries the resource list itself.
+  const manifest = JSON.parse(
+    readFileSync(
+      join(import.meta.dir, "../../../extensions/updater/quickgui.extension.json"),
+      "utf8",
+    ),
+  );
+  expect(rustUpdaterResources(manifest.version)).toEqual(manifest);
 });

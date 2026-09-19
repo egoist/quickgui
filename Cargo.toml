@@ -68,7 +68,19 @@ file-watcher = ["quickgui-system/file-watcher"]
 swift-ui = []
 test-support = []
 terminal = ["dep:libghostty-vt", "dep:portable-pty"]
-updater = ["quickgui-system/updater"]
+updater = [
+  "dep:base64",
+  "dep:ed25519-dalek",
+  "dep:roxmltree",
+  "dep:semver",
+  "dep:url",
+  "dep:ureq",
+  "dep:tempfile",
+  "dep:tar",
+  "dep:block2_06",
+  "dep:objc2_06",
+  "dep:objc2_foundation_03",
+]
 
 [dependencies]
 accesskit = "0.24.1"
@@ -125,9 +137,19 @@ libc = "0.2"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 quickgui-system = { path = "crates/quickgui-system", version = "=0.1.5", default-features = false, features = ["autostart", "protocol", "secure-storage"] }
+# `updater` feature. extensions/updater compiles the same sources with the same versions.
+base64 = { version = "0.22", optional = true }
+ed25519-dalek = { version = "2.2", optional = true }
+roxmltree = { version = "0.21", optional = true }
+semver = { version = "1.0", optional = true }
+url = { version = "2.5", optional = true }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 block2 = "0.5.1"
+# Sparkle's driver in the `updater` feature is written against the next objc2 generation.
+block2_06 = { package = "block2", version = "0.6", optional = true }
+objc2_06 = { package = "objc2", version = "0.6", optional = true }
+objc2_foundation_03 = { package = "objc2-foundation", version = "0.3", optional = true, features = ["NSObject", "NSString", "NSBundle", "NSThread"] }
 core-foundation = "0.9.4"
 objc2 = "0.5.2"
 objc2-app-kit = { version = "0.2.2", features = ["NSAccessibility", "NSAccessibilityConstants", "NSAccessibilityProtocols", "NSAlert", "NSApplication", "NSBitmapImageRep", "NSBox", "NSButton", "NSButtonCell", "NSCell", "NSColor", "NSControl", "NSDockTile", "NSDocumentController", "NSDragging", "NSDraggingItem", "NSDraggingSession", "NSEvent", "NSGraphics", "NSGraphicsContext", "NSImage", "NSMenu", "NSMenuItem", "NSOpenPanel", "NSPanel", "NSPasteboard", "NSResponder", "NSRunningApplication", "NSSavePanel", "NSScreen", "NSTextField", "NSView", "NSVisualEffectView", "NSWindow", "NSWindowTabGroup", "NSWorkspace", "block2", "objc2-quartz-core"] }
@@ -144,6 +166,9 @@ global-hotkey = "0.8.0"
 tray-icon = { version = "0.24.2", default-features = false }
 
 [target.'cfg(all(not(target_os = "macos"), not(target_arch = "wasm32")))'.dependencies]
+# `updater` feature: Sparkle downloads and installs on macOS, so only the portable backend needs these.
+tempfile = { version = "3.23", optional = true }
+ureq = { version = "3.4", optional = true }
 arboard = { version = "3.6.1", default-features = false, features = ["image-data"] }
 opener = { version = "0.8.5", features = ["reveal"] }
 
@@ -157,7 +182,7 @@ interprocess = { version = "2.4.3", default-features = false }
 # WGPU and gpu-allocator exchange nominal WinRT types; 0.62.0 is the newest version accepted by
 # gpu-allocator 0.28 and must stay unified across both crates.
 windows = { version = "=0.62.0", default-features = false, features = ["Data_Xml_Dom", "Foundation", "Foundation_Collections", "UI_Notifications", "Win32_Foundation", "Win32_Graphics_Gdi", "Win32_Storage_FileSystem", "Win32_System_Com", "Win32_System_Com_StructuredStorage", "Win32_System_Variant", "Win32_UI_Shell", "Win32_UI_Shell_Common", "Win32_UI_Shell_PropertiesSystem", "Win32_UI_WindowsAndMessaging"] }
-windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_Graphics_Gdi", "Win32_System_LibraryLoader", "Win32_System_RemoteDesktop", "Win32_UI_Input_KeyboardAndMouse", "Win32_UI_Shell", "Win32_UI_WindowsAndMessaging"] }
+windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_Graphics_Gdi", "Win32_System_Com", "Win32_System_LibraryLoader", "Win32_System_Registry", "Win32_System_RemoteDesktop", "Win32_System_Threading", "Win32_UI_Input_KeyboardAndMouse", "Win32_UI_Shell", "Win32_UI_WindowsAndMessaging"] }
 wgpu = { version = "30.0.1", default-features = false, features = ["dx12"] }
 
 [target.'cfg(any(target_os = "linux", target_os = "freebsd", target_os = "dragonfly", target_os = "openbsd", target_os = "netbsd"))'.dependencies]
@@ -178,6 +203,8 @@ wasm-bindgen-futures = "0.4"
 web-sys = { version = "0.3", features = ["CssStyleDeclaration", "Document", "Element", "HtmlCanvasElement", "HtmlElement", "Node", "console", "CustomEvent", "Window"] }
 
 [dev-dependencies]
+# macOS test builds also compile the updater's portable backend, which production builds skip.
+tempfile = "3.23"
 tree-sitter-lua = "0.5.0"
 tree-sitter-rust = "0.24.2"
 criterion = { version = "0.8", features = ["html_reports"] }
@@ -199,6 +226,10 @@ harness = false
 [[example]]
 name = "editor"
 required-features = ["editor"]
+
+[[example]]
+name = "updater"
+required-features = ["updater"]
 
 [[test]]
 name = "macos_native_images"

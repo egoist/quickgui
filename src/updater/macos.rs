@@ -3,15 +3,19 @@
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
-use block2::{DynBlock, RcBlock};
-use objc2::rc::Retained;
-use objc2::runtime::{AnyClass, AnyObject, NSObject, NSObjectProtocol};
-use objc2::{
+// The core still builds against objc2 0.5, so both crates name this generation explicitly.
+use block2_06::{DynBlock, RcBlock};
+use objc2_06::rc::Retained;
+use objc2_06::runtime::{AnyClass, AnyObject, NSObject, NSObjectProtocol};
+use objc2_06::{
     ClassType, DefinedClass, MainThreadMarker, MainThreadOnly, define_class, msg_send, sel,
 };
-use objc2_foundation::NSString;
+use objc2_foundation_03::NSString;
 
-use super::{Command, Events, Options, Result, Sink, UpdateStatus, UpdaterEvent};
+use super::{
+    Command, Result, SessionEvents as Events, SessionOptions as Options, Sink, UpdateStatus,
+    UpdaterEvent,
+};
 use std::sync::Arc;
 
 const USER_UPDATE_CHOICE_INSTALL: isize = 1;
@@ -22,7 +26,7 @@ const MANUAL_CHECK_MAX_RETRIES: u16 = 200;
 // objc2 generates additional unsafe marker traits without inheriting the protocol docs.
 #[allow(clippy::missing_safety_doc)]
 mod protocols {
-    use objc2::{extern_protocol, runtime::NSObjectProtocol};
+    use objc2_06::{extern_protocol, runtime::NSObjectProtocol};
     extern_protocol!(
         /// Dynamically loaded from the embedded Sparkle framework.
         ///
@@ -218,7 +222,7 @@ define_class!(
                 };
                 return;
             }
-            self.set_status(UpdateStatus::Updating);
+            self.set_status(UpdateStatus::Installing);
         }
 
         #[unsafe(method(showDownloadDidReceiveExpectedContentLength:))]
@@ -253,7 +257,7 @@ define_class!(
                 };
                 return;
             }
-            self.set_status(UpdateStatus::Updating);
+            self.set_status(UpdateStatus::Installing);
         }
 
         #[unsafe(method(showExtractionReceivedProgress:))]
@@ -279,7 +283,7 @@ define_class!(
                 };
                 return;
             }
-            self.set_status(UpdateStatus::Updating);
+            self.set_status(UpdateStatus::Installing);
             reply.call((USER_UPDATE_CHOICE_INSTALL,));
         }
 
@@ -299,7 +303,7 @@ define_class!(
                 };
                 return;
             }
-            self.set_status(UpdateStatus::Updating);
+            self.set_status(UpdateStatus::Installing);
         }
 
         #[unsafe(method(showUpdateInstalledAndRelaunched:acknowledgement:))]
@@ -489,7 +493,7 @@ impl UserDriver {
             let _: () = unsafe { msg_send![&*self.ivars().standard_driver, showUpdateInFocus] };
             return true;
         }
-        if self.ivars().status.get() == UpdateStatus::Updating {
+        if self.ivars().status.get() == UpdateStatus::Installing {
             return false;
         }
 
@@ -539,7 +543,7 @@ impl UserDriver {
         let Some(update) = self.ivars().pending_update.borrow_mut().take() else {
             return false;
         };
-        self.set_status(UpdateStatus::Updating);
+        self.set_status(UpdateStatus::Installing);
         update.reply.call((USER_UPDATE_CHOICE_INSTALL,));
         true
     }
@@ -607,6 +611,7 @@ pub(super) fn invoke(id: u32, method: &str, params: &str, sink: Arc<Sink>) -> Re
     })
 }
 
+#[allow(dead_code)] // See `super::shutdown`.
 pub(super) fn shutdown() {
     SESSION.with(|slot| {
         if let Some(session) = slot.borrow_mut().take() {
