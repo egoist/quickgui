@@ -399,6 +399,13 @@ export async function getHostedWindowState(
   await windowReady(window);
   return command(app, { method: "get-window-state", window });
 }
+export async function getHostedFrameMetrics(
+  app: number,
+  window: number,
+): Promise<T.NativeFrameMetrics> {
+  await windowReady(window);
+  return command(app, { method: "get-window-frame-metrics", window });
+}
 export async function getHostedWindowRestoreState(
   app: number,
   window: number,

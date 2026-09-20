@@ -1,5 +1,11 @@
 import { afterAll, describe, expect, mock, test } from "bun:test";
-import { callsNamed, fakeBinding, lastCall, queueEvents } from "./fake-binding.ts";
+import {
+  callsNamed,
+  fakeBinding,
+  lastCall,
+  queueEvents,
+  setFrameMetricsReply,
+} from "./fake-binding.ts";
 
 /** Window actions carry their payload in the fourth binding argument. */
 function windowActions(action: string): unknown[] {
@@ -10,7 +16,7 @@ function windowActions(action: string): unknown[] {
 
 mock.module("../src/binding.ts", () => fakeBinding);
 
-const { Menu, Shell, SpellChecker, Window, app } = await import("../src/index.ts");
+const { Menu, Metrics, Shell, SpellChecker, Window, app } = await import("../src/index.ts");
 await app.whenReady();
 
 const window = new Window({ renderer: () => () => {} });
@@ -174,6 +180,33 @@ describe("declared-ahead resize and move policies", () => {
 });
 
 describe("window stacking, input, and state commands", () => {
+  test("frame metrics are read on demand for the requested window", async () => {
+    setFrameMetricsReply({
+      frameNumber: 0,
+      cpuMilliseconds: 0,
+      smoothedCpuMilliseconds: 0,
+      frameMilliseconds: 0,
+      smoothedFrameMilliseconds: 0,
+    });
+    expect(await Metrics.getFrameMetrics(window)).toBeNull();
+
+    setFrameMetricsReply({
+      frameNumber: 42,
+      cpuMilliseconds: 1.25,
+      smoothedCpuMilliseconds: 1.5,
+      frameMilliseconds: 8,
+      smoothedFrameMilliseconds: 10,
+    });
+    expect(await Metrics.getFrameMetrics(window)).toEqual({
+      frameNumber: 42,
+      cpuMilliseconds: 1.25,
+      smoothedCpuMilliseconds: 1.5,
+      frameMilliseconds: 8,
+      smoothedFrameMilliseconds: 10,
+    });
+    expect(lastCall("getFrameMetrics").args).toEqual([1, window.nativeId]);
+  });
+
   test("always-on-top carries the Electron level name it was given", () => {
     window.setAlwaysOnTop(true, "screenSaver");
     expect(JSON.parse(String(windowActions("set-always-on-top").at(-1)))).toEqual({

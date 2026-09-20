@@ -38,6 +38,15 @@ type WindowNativeTabs struct {
 	Truncated       bool
 }
 
+// FrameMetrics is the latest CPU-side frame timing retained for one window.
+type FrameMetrics struct {
+	FrameNumber               uint64  `json:"frameNumber"`
+	CPUMilliseconds           float64 `json:"cpuMilliseconds"`
+	SmoothedCPUMilliseconds   float64 `json:"smoothedCpuMilliseconds"`
+	FrameMilliseconds         float64 `json:"frameMilliseconds"`
+	SmoothedFrameMilliseconds float64 `json:"smoothedFrameMilliseconds"`
+}
+
 // WindowState is the native window snapshot, in logical pixels.
 type WindowState struct {
 	DisplayID                string           `json:"displayId"`

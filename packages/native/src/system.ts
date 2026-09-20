@@ -215,6 +215,20 @@ export interface WindowState {
   };
 }
 
+/** CPU-side timing for the last frame a window completed. */
+export interface FrameMetrics {
+  /** Monotonic count of completed frames. */
+  frameNumber: number;
+  /** Application-thread CPU time spent preparing and submitting the last frame. */
+  cpuMilliseconds: number;
+  /** Exponentially smoothed application-thread CPU time. */
+  smoothedCpuMilliseconds: number;
+  /** Wall time spent preparing and submitting the last frame, including any surface wait. */
+  frameMilliseconds: number;
+  /** Exponentially smoothed wall time. Derive FPS as `1000 / smoothedFrameMilliseconds`. */
+  smoothedFrameMilliseconds: number;
+}
+
 export interface ClipboardTextEntry {
   type: "text";
   text: string;
@@ -614,6 +628,12 @@ export async function getNativeWindowState(window: Window): Promise<WindowState>
   const { context: current, window: resolved } = windowContext(window);
   const state = await binding.getHostedWindowState(current.appId, resolved.nativeId);
   return normalizeWindowState(state);
+}
+
+/** Read the latest completed frame without requesting another frame. */
+export async function getNativeFrameMetrics(window: Window): Promise<FrameMetrics> {
+  const { context: current, window: resolved } = windowContext(window);
+  return await binding.getHostedFrameMetrics(current.appId, resolved.nativeId);
 }
 
 /** Declare whether the hosted application intercepts the preventable before-quit phase. */

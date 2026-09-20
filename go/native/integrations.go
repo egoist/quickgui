@@ -202,3 +202,22 @@ func (metricsAPI) GetProcessMetrics(done func(ProcessMetrics, error)) {
 func (metricsAPI) GetSystemMemory(done func(SystemMemory, error)) {
 	invokeJSON("get-system-memory", struct{}{}, done)
 }
+
+// GetFrameMetrics reads the latest completed frame without requesting another frame.
+// It returns nil before the window completes its first frame.
+func (metricsAPI) GetFrameMetrics(window *Window, done func(*FrameMetrics, error)) {
+	if done == nil {
+		done = func(*FrameMetrics, error) {}
+	}
+	if window == nil {
+		done(nil, fmt.Errorf("frame metrics require a window"))
+		return
+	}
+	commandJSON(map[string]any{"method": "get-window-frame-metrics", "window": window.NativeID}, func(metrics FrameMetrics, err error) {
+		if err != nil || metrics.FrameNumber == 0 {
+			done(nil, err)
+			return
+		}
+		done(&metrics, nil)
+	})
+}

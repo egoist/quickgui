@@ -115,6 +115,20 @@ impl NativeRuntime {
                     .ok_or_else(|| format!("native window {window} is not mounted"))?;
                 Ok(SystemCommandResult::WindowState(state.into()))
             }
+            SystemCommand::GetWindowFrameMetrics(window) => {
+                let handle = self.system_window_handle(window)?;
+                let metrics = self
+                    .running_runner()?
+                    .window_frame_metrics(handle)
+                    .ok_or_else(|| format!("native window {window} is not mounted"))?;
+                Ok(SystemCommandResult::FrameMetrics(NativeFrameMetrics {
+                    frame_number: metrics.frame_number,
+                    cpu_milliseconds: metrics.cpu_milliseconds(),
+                    smoothed_cpu_milliseconds: metrics.smoothed_cpu_milliseconds(),
+                    frame_milliseconds: metrics.frame_milliseconds(),
+                    smoothed_frame_milliseconds: metrics.smoothed_frame_milliseconds(),
+                }))
+            }
             SystemCommand::ReadClipboard => self
                 .running_runner()?
                 .read_from_clipboard()

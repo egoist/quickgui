@@ -1,6 +1,8 @@
 import { Buffer } from "node:buffer";
 import { resolve as resolvePath } from "node:path";
 import * as binding from "./binding.ts";
+import { getNativeFrameMetrics, type FrameMetrics } from "./system.ts";
+import type { Window } from "./index.ts";
 
 export type AutoStartMode =
   | "native"
@@ -172,6 +174,16 @@ export const Metrics = Object.freeze({
 
   getSystemMemory(): Promise<SystemMemory> {
     return binding.getSystemMemory() as Promise<SystemMemory>;
+  },
+
+  /**
+   * Read the latest completed frame for `window` without requesting another frame.
+   *
+   * An idle window keeps its last value. Compare `frameNumber` to detect a newly completed frame.
+   */
+  async getFrameMetrics(window: Window): Promise<FrameMetrics | null> {
+    const metrics = await getNativeFrameMetrics(window);
+    return metrics.frameNumber === 0 ? null : metrics;
   },
 
   /** Create a stateful sampler; each `sample()` reports usage since that sampler's last call. */

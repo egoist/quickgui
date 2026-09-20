@@ -93,6 +93,14 @@ impl AppRunner {
         self.runtime.window_state_for(handle)
     }
 
+    /// Return the latest CPU-side frame telemetry retained for one mounted native window.
+    ///
+    /// This read does not request a frame. An idle window keeps its last value until it renders
+    /// again, and `frame_number` is zero before its first completed frame.
+    pub fn window_frame_metrics(&self, handle: WindowHandle) -> Option<crate::FrameMetrics> {
+        self.runtime.frame_metrics_for(handle)
+    }
+
     /// Read one bounded item from the operating system's general clipboard.
     pub fn read_from_clipboard(&self) -> Result<Option<ClipboardItem>, crate::ClipboardError> {
         self.runtime.clipboard.read(ClipboardTarget::General)

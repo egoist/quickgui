@@ -80,6 +80,45 @@ func TestWindowStateIncludesGeometryCursorAndNativeTabs(t *testing.T) {
 	}
 }
 
+func TestFrameMetricsAreReadOnDemandForOneWindow(t *testing.T) {
+	fake := installCommandHost(t)
+	window := &Window{NodeHost: NewNodeHost(1, 2)}
+
+	called := false
+	Metrics.GetFrameMetrics(window, func(metrics *FrameMetrics, err error) {
+		called = true
+		if err != nil || metrics != nil {
+			t.Fatalf("metrics before first frame = %+v, %v", metrics, err)
+		}
+	})
+	var request struct {
+		Method string `json:"method"`
+		Window uint32 `json:"window"`
+	}
+	if err := json.Unmarshal([]byte(fake.payload), &request); err != nil {
+		t.Fatal(err)
+	}
+	if request.Method != "get-window-frame-metrics" || request.Window != window.NativeID {
+		t.Fatalf("unexpected frame metrics request: %s", fake.payload)
+	}
+	replyCommand(fake, "command", `{"frameNumber":0}`, "")
+	if !called {
+		t.Fatal("frame metrics request did not complete")
+	}
+
+	var received *FrameMetrics
+	Metrics.GetFrameMetrics(window, func(metrics *FrameMetrics, err error) {
+		if err != nil {
+			t.Fatal(err)
+		}
+		received = metrics
+	})
+	replyCommand(fake, "command", `{"frameNumber":42,"cpuMilliseconds":1.25,"smoothedCpuMilliseconds":1.5,"frameMilliseconds":8,"smoothedFrameMilliseconds":10}`, "")
+	if received == nil || received.FrameNumber != 42 || received.SmoothedFrameMilliseconds != 10 {
+		t.Fatalf("frame metrics = %+v", received)
+	}
+}
+
 func TestWindowInterceptionAndEventPayloadsHaveNativeParity(t *testing.T) {
 	fake := installCommandHost(t)
 	window := &Window{NodeHost: NewNodeHost(1, 2)}

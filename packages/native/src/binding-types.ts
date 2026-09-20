@@ -328,6 +328,14 @@ export interface NativeProcessMetrics {
   uptimeSeconds: number;
 }
 
+export interface NativeFrameMetrics {
+  frameNumber: number;
+  cpuMilliseconds: number;
+  smoothedCpuMilliseconds: number;
+  frameMilliseconds: number;
+  smoothedFrameMilliseconds: number;
+}
+
 export interface NativeProtocolRegistrationOptions {
   scheme: string;
   appName: string;

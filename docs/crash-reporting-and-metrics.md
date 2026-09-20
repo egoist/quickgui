@@ -1,11 +1,11 @@
-# Crash reporting and process metrics
+# Crash reporting and metrics
 
 [Documentation index](README.md)
 
 QuickGUI implements crash reporting and process/system metrics in the Rust core
-(`quickgui-system`), re-exported from `quickgui`, and adopts that behavior in the
-`native` Go package. Nothing here runs in the background unless you explicitly
-start the opt-in watchdog.
+(`quickgui-system`) and retains frame metrics in each window runtime. The Go and
+TypeScript bindings expose those readings explicitly. Nothing here runs in the
+background unless you explicitly start the opt-in watchdog.
 
 ## Crash reporting
 
@@ -169,7 +169,7 @@ when explicitly called; an empty endpoint uses the configured endpoint.
 `IsStarted()` is a synchronous flag query returning `(bool, error)`. Operations
 that perform I/O run asynchronously; the watchdog is not exposed by the Go SDK.
 
-## Process and system metrics
+## Process, system, and frame metrics
 
 `ProcessMetrics::current()` and `SystemMemory::current()` are single explicit reads; neither
 starts a thread or caches. `CpuUsageSampler` holds one previous reading and converts cumulative
@@ -228,5 +228,25 @@ at application-chosen times on the application goroutine; the first sample has a
 nil `Percent`. Call `Release()` when finished. Sampling creates no polling loop.
 Go reports byte counts as `uint64`, duration seconds as `float64`, and optional
 platform fields as pointers, preserving absence separately from a zero value.
+
+Frame timing is retained per window by the renderer. Reading it is also explicit: it does not
+request a redraw or start a polling loop. The result is `null`/`nil` before the first completed
+frame. An idle window keeps its last result, so compare `frameNumber`/`FrameNumber` when a caller
+needs to detect a new frame. FPS can be derived as `1000 / smoothedFrameMilliseconds`.
+
+```ts
+import { Metrics } from "@quickgui/native";
+
+const frame = await Metrics.getFrameMetrics(window);
+if (frame) console.log(1000 / frame.smoothedFrameMilliseconds);
+```
+
+```go
+native.Metrics.GetFrameMetrics(window, func(frame *native.FrameMetrics, err error) {
+	if err == nil && frame != nil {
+		log.Print("FPS: ", 1000/frame.SmoothedFrameMilliseconds)
+	}
+})
+```
 
 Return to the [documentation index](README.md).

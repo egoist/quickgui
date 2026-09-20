@@ -570,6 +570,15 @@ impl Runtime {
         Some(runtime_window_state(handle, &entry.config, &entry.state))
     }
 
+    pub(super) fn frame_metrics_for(&self, handle: WindowHandle) -> Option<FrameMetrics> {
+        if self.current_handle() == Some(handle) {
+            return self.window.as_ref().map(|state| state.metrics.current());
+        }
+        let window_id = self.window_handles.get(&handle)?;
+        let entry = self.windows.get(window_id)?;
+        Some(entry.state.metrics.current())
+    }
+
     pub(super) fn current_window_state(&self) -> Option<WindowState> {
         let handle = self.current_handle()?;
         let state = self.window.as_ref()?;

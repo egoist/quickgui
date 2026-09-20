@@ -31,6 +31,17 @@ export function emitExtensionEvent(session: number, value: unknown): void {
 
 let clipboardItem: { entries: Record<string, unknown>[] } | null = null;
 let findClipboardItem: { entries: Record<string, unknown>[] } | null = null;
+let frameMetricsReply = {
+  frameNumber: 0,
+  cpuMilliseconds: 0,
+  smoothedCpuMilliseconds: 0,
+  frameMilliseconds: 0,
+  smoothedFrameMilliseconds: 0,
+};
+
+export function setFrameMetricsReply(value: typeof frameMetricsReply): void {
+  frameMetricsReply = value;
+}
 
 function record(name: string, args: unknown[]): void {
   calls.push({ name, args });
@@ -143,6 +154,10 @@ export const fakeBinding: Record<string, unknown> = {
       displayUuid: "00112233-4455-6677-8899-aabbccddeeff",
       scaleFactor: 2,
     };
+  },
+  getFrameMetrics: (...args: unknown[]) => {
+    record("getFrameMetrics", args);
+    return frameMetricsReply;
   },
   releaseSingleInstanceLock: () => true,
   readClipboard: () => clipboardItem,

@@ -305,6 +305,16 @@ pub struct NativeWindowState {
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct NativeFrameMetrics {
+    pub frame_number: u64,
+    pub cpu_milliseconds: f64,
+    pub smoothed_cpu_milliseconds: f64,
+    pub frame_milliseconds: f64,
+    pub smoothed_frame_milliseconds: f64,
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct NativeClipboardEntry {
     pub kind: String,
     pub text: Option<String>,
@@ -505,6 +515,7 @@ pub(super) enum SystemCommand {
     GetDisplays,
     GetKeyboardLayout,
     GetWindowState(u32),
+    GetWindowFrameMetrics(u32),
     ReadClipboard,
     WriteClipboard(ClipboardItem),
     ShowNotification(SystemNotification),
@@ -652,6 +663,7 @@ pub(super) enum SystemCommandResult {
     Displays(Vec<NativeDisplay>),
     KeyboardLayout(NativeKeyboardLayout),
     WindowState(NativeWindowState),
+    FrameMetrics(NativeFrameMetrics),
     WindowRestoreState(NativeWindowRestoreState),
     ApplicationsFolderSupport(NativeApplicationsFolderSupport),
     Clipboard(Option<ClipboardItem>),

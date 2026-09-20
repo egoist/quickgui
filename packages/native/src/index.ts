@@ -246,6 +246,7 @@ export type {
   SystemColor,
   SystemPreferencesSnapshot,
   Rectangle,
+  FrameMetrics,
   TrayEvent,
   TrayEventType,
   TrayIconOptions,

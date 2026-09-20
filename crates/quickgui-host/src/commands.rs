@@ -61,6 +61,9 @@ enum SystemRequest {
     GetWindowState {
         window: u32,
     },
+    GetWindowFrameMetrics {
+        window: u32,
+    },
     ReadClipboard,
     WriteClipboard {
         item: NativeClipboardItem,
@@ -202,6 +205,9 @@ pub(crate) fn parse_system_request(json: &str) -> std::result::Result<SystemComm
         SystemRequest::GetDisplays => SystemCommand::GetDisplays,
         SystemRequest::GetKeyboardLayout => SystemCommand::GetKeyboardLayout,
         SystemRequest::GetWindowState { window } => SystemCommand::GetWindowState(window),
+        SystemRequest::GetWindowFrameMetrics { window } => {
+            SystemCommand::GetWindowFrameMetrics(window)
+        }
         SystemRequest::ReadClipboard => SystemCommand::ReadClipboard,
         SystemRequest::WriteClipboard { item } => {
             SystemCommand::WriteClipboard(clipboard_item(item)?)
@@ -331,6 +337,7 @@ pub(crate) fn system_result_json(result: SystemCommandResult) -> serde_json::Val
         SystemCommandResult::Displays(value) => json(&value),
         SystemCommandResult::KeyboardLayout(value) => json(&value),
         SystemCommandResult::WindowState(value) => json(&value),
+        SystemCommandResult::FrameMetrics(value) => json(&value),
         SystemCommandResult::WindowRestoreState(value) => json(&value),
         SystemCommandResult::ApplicationsFolderSupport(value) => json(&value),
         SystemCommandResult::Clipboard(value) => json(&value.map(native_clipboard_item)),
@@ -369,6 +376,10 @@ mod tests {
             } if position == Point::new(10.0, 20.0)
         ));
 
+        let command =
+            parse_system_request(r#"{"method":"get-window-frame-metrics","window":7}"#).unwrap();
+        assert!(matches!(command, SystemCommand::GetWindowFrameMetrics(7)));
+
         assert!(parse_system_request(r#"{"method":"no-such-command"}"#).is_err());
         let error = parse_system_request(
             r#"{"method":"window-popup-menu","request":1,"window":2,"menu":"[]","x":1}"#,
@@ -394,5 +405,25 @@ mod tests {
         }));
         assert_eq!(point["x"], 1.5);
         assert_eq!(point["y"], 2.0);
+
+        let metrics = system_result_json(SystemCommandResult::FrameMetrics(
+            crate::system::NativeFrameMetrics {
+                frame_number: 12,
+                cpu_milliseconds: 1.25,
+                smoothed_cpu_milliseconds: 1.5,
+                frame_milliseconds: 8.0,
+                smoothed_frame_milliseconds: 10.0,
+            },
+        ));
+        assert_eq!(
+            metrics,
+            serde_json::json!({
+                "frameNumber": 12,
+                "cpuMilliseconds": 1.25,
+                "smoothedCpuMilliseconds": 1.5,
+                "frameMilliseconds": 8.0,
+                "smoothedFrameMilliseconds": 10.0,
+            })
+        );
     }
 }
