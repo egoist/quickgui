@@ -18,7 +18,7 @@ Enable the opt-in crate feature:
 
 ```toml
 [dependencies]
-quickgui = { version = "0.1.5", features = ["editor"] }
+quickgui = { version = "0.1.6", features = ["editor"] }
 ```
 
 Keep editor, code-block, and diff models on the owning view. The editor is controlled, like

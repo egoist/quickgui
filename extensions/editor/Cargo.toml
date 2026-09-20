@@ -1,6 +1,6 @@
 [package]
 name = "quickgui-editor"
-version = "0.1.5"
+version = "0.1.6"
 edition = "2024"
 rust-version = "1.90"
 description = "Editor, CodeBlock and DiffView native component extension"
@@ -17,7 +17,7 @@ language-packs = ["tree-sitter/wasm", "dep:tar", "dep:sha2"]
 bundled-languages = ["dep:tree-sitter-bash", "dep:tree-sitter-cpp", "dep:tree-sitter-css", "dep:tree-sitter-go", "dep:tree-sitter-html", "dep:tree-sitter-java", "dep:tree-sitter-javascript", "dep:tree-sitter-json", "dep:tree-sitter-markdown", "dep:tree-sitter-python", "dep:tree-sitter-ruby", "dep:tree-sitter-rust", "dep:tree-sitter-sequel", "dep:tree-sitter-swift", "dep:tree-sitter-toml-ng", "dep:tree-sitter-typescript", "dep:tree-sitter-yaml"]
 
 [dependencies]
-quickgui-extension-sdk = { path = "../../crates/quickgui-extension-sdk", version = "=0.1.5" }
+quickgui-extension-sdk = { path = "../../crates/quickgui-extension-sdk", version = "=0.1.6" }
 serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 tar = { version = "0.4", default-features = false, optional = true }

@@ -79,4 +79,4 @@ func View(props Props, children ...any) *native.Node {
 	).
 		Children(children...).Node
 }
-func init() { host.RequireExtension("terminal", "0.1.5") }
+func init() { host.RequireExtension("terminal", "0.1.6") }

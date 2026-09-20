@@ -1,6 +1,6 @@
 {
   "name": "@quickgui/extension-editor",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "Optional editor, code-block, and diff-view bindings for QuickGUI TypeScript applications",
   "license": "MIT OR Apache-2.0",
   "repository": {

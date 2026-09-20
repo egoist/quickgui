@@ -1,6 +1,6 @@
 [package]
 name = "quickgui-updater"
-version = "0.1.5"
+version = "0.1.6"
 edition = "2024"
 rust-version = "1.90"
 description = "Optional Sparkle-compatible automatic updater for QuickGUI"
@@ -15,7 +15,7 @@ name = "quickgui-updater-helper"
 path = "src/helper.rs"
 
 [dependencies]
-quickgui-extension-sdk = { path = "../../crates/quickgui-extension-sdk", version = "=0.1.5" }
+quickgui-extension-sdk = { path = "../../crates/quickgui-extension-sdk", version = "=0.1.6" }
 base64 = "0.22"
 ed25519-dalek = "2.2"
 roxmltree = "0.21"

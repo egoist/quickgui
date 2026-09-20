@@ -176,7 +176,7 @@
     },
     "extensions/editor": {
       "name": "@quickgui/extension-editor",
-      "version": "0.1.5",
+      "version": "0.1.6",
       "devDependencies": {
         "@quickgui/native": "workspace:*",
         "@quickgui/solid": "workspace:*",
@@ -190,7 +190,7 @@
     },
     "extensions/markdown": {
       "name": "@quickgui/extension-markdown",
-      "version": "0.1.5",
+      "version": "0.1.6",
       "devDependencies": {
         "@quickgui/native": "workspace:*",
         "@quickgui/solid": "workspace:*",
@@ -204,7 +204,7 @@
     },
     "extensions/terminal": {
       "name": "@quickgui/extension-terminal",
-      "version": "0.1.5",
+      "version": "0.1.6",
       "devDependencies": {
         "@quickgui/native": "workspace:*",
         "@quickgui/solid": "workspace:*",
@@ -218,7 +218,7 @@
     },
     "extensions/updater": {
       "name": "@quickgui/extension-updater",
-      "version": "0.1.5",
+      "version": "0.1.6",
       "devDependencies": {
         "@quickgui/native": "workspace:*",
       },
@@ -228,7 +228,7 @@
     },
     "packages/cli": {
       "name": "@quickgui/cli",
-      "version": "0.1.5",
+      "version": "0.1.6",
       "bin": {
         "quickgui": "src/cli.ts",
       },
@@ -240,11 +240,11 @@
     },
     "packages/native": {
       "name": "@quickgui/native",
-      "version": "0.1.5",
+      "version": "0.1.6",
     },
     "packages/solid": {
       "name": "@quickgui/solid",
-      "version": "0.1.5",
+      "version": "0.1.6",
       "dependencies": {
         "@quickgui/native": "workspace:*",
         "@solidjs/universal": "2.0.0-rc.8",

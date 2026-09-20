@@ -4,6 +4,8 @@ All notable user-facing changes to QuickGUI are recorded here.
 
 ## Unreleased
 
+## 0.1.6 - 2026-09-20
+
 ### CLI
 
 - `quickgui build` writes a self-updating per-user Linux install without external tools:

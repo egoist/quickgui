@@ -1,6 +1,6 @@
 [package]
 name = "quickgui-terminal"
-version = "0.1.5"
+version = "0.1.6"
 edition = "2024"
 rust-version = "1.90"
 description = "Optional PTY and Ghostty backend for the QuickGUI terminal extension"
@@ -15,7 +15,7 @@ name = "windows_msvc_link"
 path = "windows_msvc_link.rs"
 
 [dependencies]
-quickgui-extension-sdk = { path = "../../crates/quickgui-extension-sdk", version = "=0.1.5" }
+quickgui-extension-sdk = { path = "../../crates/quickgui-extension-sdk", version = "=0.1.6" }
 bitflags = "2.9"
 libc = "0.2"
 libghostty-vt = { version = "0.2.1", default-features = false }

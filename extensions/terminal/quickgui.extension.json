@@ -3,6 +3,6 @@
   "name": "terminal",
   "abi": 1,
   "package": "@quickgui/extension-terminal",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "library": "quickgui_terminal"
 }

@@ -13,7 +13,7 @@ import { initExtension } from "./init-extension.ts";
 import { generateUpdaterKeys } from "./packaging/appcast.ts";
 import { hostTarget } from "./targets.ts";
 
-export const CLI_VERSION = "0.1.5";
+export const CLI_VERSION = "0.1.6";
 
 export async function runCli(argv: string[]): Promise<number> {
   const command = parseCliArgs(argv);

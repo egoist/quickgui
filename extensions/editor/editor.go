@@ -8,7 +8,7 @@ import (
 	"github.com/egoist/quickgui/go/ui"
 )
 
-func init() { host.RequireExtension("editor", "0.1.5") }
+func init() { host.RequireExtension("editor", "0.1.6") }
 
 // HighlightedCodeBlock renders Markdown fences with this extension's CodeBlock component.
 var HighlightedCodeBlock = ui.ComponentReference{

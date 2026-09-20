@@ -39,4 +39,4 @@ func View(props Props) *ui.Element {
 		props.Props,
 	)
 }
-func init() { host.RequireExtension("markdown", "0.1.5") }
+func init() { host.RequireExtension("markdown", "0.1.6") }

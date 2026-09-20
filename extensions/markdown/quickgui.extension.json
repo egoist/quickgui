@@ -3,6 +3,6 @@
   "name": "markdown",
   "abi": 1,
   "package": "@quickgui/extension-markdown",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "library": "quickgui_markdown"
 }

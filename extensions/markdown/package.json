@@ -1,6 +1,6 @@
 {
   "name": "@quickgui/extension-markdown",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "Optional retained Markdown bindings for QuickGUI TypeScript applications",
   "license": "MIT OR Apache-2.0",
   "repository": {

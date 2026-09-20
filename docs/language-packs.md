@@ -141,7 +141,7 @@ source text, selections or scroll anchors.
 Enable `language-packs` for the Wasm loader; it includes `editor` but no grammars:
 
 ```toml
-quickgui = { version = "0.1.5", features = ["language-packs"] }
+quickgui = { version = "0.1.6", features = ["language-packs"] }
 ```
 
 ```rust
