@@ -11,6 +11,9 @@ impl Runtime {
         if first_ready {
             // Native Rust apps have no host C API; announce the same ready socket the CLI waits on.
             notify_development_ready();
+            // The install helper restores the previous version unless the new one gets this far.
+            #[cfg(all(feature = "updater", not(target_arch = "wasm32")))]
+            crate::updater::acknowledge_startup();
         }
         event_loop.set_control_flow(ControlFlow::Wait);
         self.initialize_global_shortcuts();

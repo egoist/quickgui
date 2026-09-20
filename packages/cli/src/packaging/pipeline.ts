@@ -3,7 +3,7 @@
  *
  * The generators in the sibling modules are pure; this module is the only place that touches the
  * filesystem or spawns a tool, so tests can exercise every generated file and argument list
- * without running `appimagetool`, `makensis`, `minisign`, or `productbuild`.
+ * without running `appimagetool`, `makensis`, or `productbuild`.
  */
 
 import {
@@ -21,7 +21,7 @@ import { sharedLibraryName } from "../native-build.ts";
 import type { ResolvedQuickGuiConfig } from "../config.ts";
 import { CliError } from "../error.ts";
 import { targetInfo, type QuickGuiTarget } from "../targets.ts";
-import type { TarEntry } from "./archive.ts";
+import { createTar, type TarEntry } from "./archive.ts";
 import {
   collectIconSizes,
   createIcns,
@@ -41,22 +41,16 @@ import {
   debianPayloadPaths,
   DEBIAN_ARCHITECTURES,
   desktopEntry,
+  installScript,
+  latestVersionFile,
+  MANAGED_INSTALL_ICON_SIZE,
+  MANAGED_INSTALL_MARKER,
+  managedInstallMarker,
+  tarballName,
 } from "./linux.ts";
 import { writeAppcast } from "./appcast.ts";
 import { copyBesideExecutable, extraPayloadEntries } from "./resources.ts";
 import { makensisArguments, nsisScript, signToolArguments } from "./windows.ts";
-import {
-  buildUpdateManifest,
-  joinUrl,
-  minisignSignArguments,
-  readSignature,
-  resolveSecretKey,
-  serializeUpdateManifest,
-  updateArchiveArguments,
-  updateTarget,
-  type MinisignTool,
-  type UpdateManifest,
-} from "./updates.ts";
 
 export type Runner = (command: string[], cwd: string) => Promise<void>;
 
@@ -70,13 +64,6 @@ export interface PackagingOutput {
 
 function toolPath(name: string): string | undefined {
   return Bun.which(name) ?? undefined;
-}
-
-/** The first Minisign-compatible signer on PATH, if any. */
-export function findMinisignTool(): MinisignTool | undefined {
-  if (toolPath("minisign")) return "minisign";
-  if (toolPath("rsign")) return "rsign";
-  return undefined;
 }
 
 export interface IconBuildResult {
@@ -120,12 +107,11 @@ export interface LinuxPackagingInput {
   run: Runner;
 }
 
-/** Build the desktop entry, AppDir, optional AppImage, and optional `.deb`. */
+/** Build the desktop entry, AppDir, optional AppImage, optional `.deb`, and optional tarball. */
 export async function packageLinux(input: LinuxPackagingInput): Promise<PackagingOutput> {
   const { config } = input;
   const artifacts: string[] = [];
   const notes: string[] = [];
-  const paths = debianPayloadPaths(config.executableName);
   const entry = desktopEntry({
     name: config.name,
     executableName: config.executableName,
@@ -194,19 +180,7 @@ export async function packageLinux(input: LinuxPackagingInput): Promise<Packagin
       throw new CliError('Building a .deb requires `linux.maintainer` ("Name <email>")');
     }
     const architecture = DEBIAN_ARCHITECTURES[targetInfo(input.target).architecture];
-    const executable = new Uint8Array(readFileSync(input.executablePath));
-    const data: TarEntry[] = [
-      { path: paths.executable, data: executable, mode: 0o755 },
-      ...extraPayloadEntries(
-        input.libraries ?? [join(input.stagingRoot, sharedLibraryName(input.target))],
-        dirname(paths.executable),
-      ),
-      { path: paths.desktopEntry, data: new TextEncoder().encode(entry) },
-      ...(mimeXml ? [{ path: paths.mimePackage, data: new TextEncoder().encode(mimeXml) }] : []),
-      ...[...(input.icons?.png ?? [])]
-        .filter(([size]) => LINUX_ICON_SIZES.includes(size))
-        .map(([size, png]) => ({ path: paths.icon(size), data: png })),
-    ];
+    const data = prefixPayload(input, "usr", entry, mimeXml, false);
     const control = debianControl({
       packageName: debianPackageName(config.executableName),
       version: config.version,
@@ -233,7 +207,74 @@ export async function packageLinux(input: LinuxPackagingInput): Promise<Packagin
     artifacts.push(debPath);
   }
 
+  if (config.linux.tarball) {
+    // One versioned top-level directory, which `install.sh` and the updater both strip.
+    const root = `${config.executableName}-${config.version}`;
+    const data = prefixPayload(input, root, entry, mimeXml, true);
+    data.push({
+      path: `${root}/${MANAGED_INSTALL_MARKER}`,
+      data: new TextEncoder().encode(
+        managedInstallMarker(config.identifier, config.executableName),
+      ),
+    });
+    const tarballPath = resolve(
+      input.stagingRoot,
+      tarballName(config.executableName, config.version, input.target),
+    );
+    writeFileSync(tarballPath, Bun.gzipSync(Buffer.from(createTar(data))));
+    const scriptPath = resolve(input.stagingRoot, "install.sh");
+    writeFileSync(
+      scriptPath,
+      installScript({
+        name: config.name,
+        executableName: config.executableName,
+        identifier: config.identifier,
+        packageName: debianPackageName(config.executableName),
+        ...(config.updates ? { destination: config.updates.destination } : {}),
+      }),
+    );
+    chmodSync(scriptPath, 0o755);
+    const latestPath = resolve(input.stagingRoot, latestVersionFile(input.target));
+    writeFileSync(latestPath, `${config.version}\n`);
+    artifacts.push(tarballPath, scriptPath, latestPath);
+  }
+
   return { artifacts, notes };
+}
+
+/**
+ * Executable, sidecars, desktop entry, MIME package, and icons laid out under one install prefix.
+ *
+ * A tarball install pins its desktop entry to one icon file, so it gets the placeholder when the
+ * project has no icon; a `.deb` leaves the theme lookup to the desktop.
+ */
+function prefixPayload(
+  input: LinuxPackagingInput,
+  prefix: string,
+  entry: string,
+  mimeXml: string | undefined,
+  placeholderIcon: boolean,
+): TarEntry[] {
+  const paths = debianPayloadPaths(input.config.executableName, prefix);
+  const encoder = new TextEncoder();
+  const icons = [...(input.icons?.png ?? [])].filter(([size]) => LINUX_ICON_SIZES.includes(size));
+  if (icons.length === 0 && placeholderIcon) {
+    icons.push([MANAGED_INSTALL_ICON_SIZE, placeholderPng(MANAGED_INSTALL_ICON_SIZE)]);
+  }
+  return [
+    {
+      path: paths.executable,
+      data: new Uint8Array(readFileSync(input.executablePath)),
+      mode: 0o755,
+    },
+    ...extraPayloadEntries(
+      input.libraries ?? [join(input.stagingRoot, sharedLibraryName(input.target))],
+      dirname(paths.executable),
+    ),
+    { path: paths.desktopEntry, data: encoder.encode(entry) },
+    ...(mimeXml ? [{ path: paths.mimePackage, data: encoder.encode(mimeXml) }] : []),
+    ...icons.map(([size, png]) => ({ path: paths.icon(size), data: png })),
+  ];
 }
 
 /** Hash file members for `md5sums`. Directory entries stay in `data.tar.gz` only. */
@@ -375,121 +416,22 @@ export interface UpdateManifestInput {
   outputDirectory: string;
   /** The final `.app` bundle, AppImage, executable, or installer to publish. */
   source: string;
-  baseUrl: string;
+  /** Further artifacts for the same appcast item, such as the Linux tarball beside an AppImage. */
+  alternates?: string[];
   run: Runner;
 }
 
 export interface UpdateManifestOutput {
   artifactPath: string;
   manifestPath: string;
+  /** This release's changelog section, written beside the appcast. */
+  notesPath?: string;
   url: string;
 }
 
-/**
- * Produce and sign the artifact the Rust updater installs, then write `latest.json`.
- *
- * The archive layout matches `install_staged` exactly: macOS takes a gzip tar holding one
- * top-level `.app`, Linux takes a raw executable or a gzip tar holding one AppImage, and Windows
- * takes the `.exe` installer as-is.
- */
+/** Sign the update artifacts and write the target's appcast. */
 export async function writeUpdateManifest(
   input: UpdateManifestInput,
 ): Promise<UpdateManifestOutput> {
-  const { config } = input;
-  if (config.updates?.publicKey) return writeAppcast(input);
-  const platform = targetInfo(input.target).platform;
-  let artifactPath: string;
-  if (platform === "darwin" || input.source.endsWith(".AppImage")) {
-    const archiveName = `${basename(input.source)}.tar.gz`;
-    artifactPath = resolve(input.outputDirectory, archiveName);
-    await input.run(
-      updateArchiveArguments(dirname(input.source), basename(input.source), artifactPath),
-      config.projectRoot,
-    );
-  } else {
-    artifactPath = input.source;
-  }
-  if (!existsSync(artifactPath)) {
-    throw new CliError(`The update artifact was not created: ${artifactPath}`);
-  }
-
-  const tool = findMinisignTool();
-  if (!tool) {
-    throw new CliError(
-      "Signing an update needs `minisign` or `rsign` on PATH. Install one " +
-        "(https://jedisct1.github.io/minisign/) and re-run, or drop --update-manifest.",
-    );
-  }
-  const secretKey = resolveSecretKey(config.updates?.minisignSecretKey);
-  const signaturePath = `${artifactPath}.minisig`;
-  await runSigner(
-    minisignSignArguments({
-      tool,
-      secretKey,
-      artifact: artifactPath,
-      signaturePath,
-      comment: `${config.name} ${config.version}`,
-      trustedComment: `${config.name} ${config.version} ${updateTarget(input.target)}`,
-    }),
-    config.projectRoot,
-    process.env.QUICKGUI_MINISIGN_PASSWORD,
-  );
-
-  const manifestPath = resolve(input.outputDirectory, "latest.json");
-  const existing = readExistingManifest(manifestPath);
-  const notes = config.updates?.notesFile
-    ? readFileSync(config.updates.notesFile, "utf8")
-    : undefined;
-  const manifest = buildUpdateManifest({
-    version: config.version,
-    baseUrl: input.baseUrl,
-    target: input.target,
-    artifactName: basename(artifactPath),
-    signature: readSignature(signaturePath),
-    ...(notes ? { notes } : {}),
-    ...(existing ? { existing } : {}),
-  });
-  writeFileSync(manifestPath, serializeUpdateManifest(manifest));
-  return {
-    artifactPath,
-    manifestPath,
-    url: joinUrl(input.baseUrl, basename(artifactPath)),
-  };
-}
-
-/**
- * Run a Minisign-compatible signer, feeding an encrypted key's password through standard input.
- *
- * Neither `minisign -S` nor `rsign sign` accepts a password flag, so `QUICKGUI_MINISIGN_PASSWORD`
- * is written to the child's stdin; without it stdin is closed and an unencrypted key signs
- * without prompting.
- */
-async function runSigner(command: string[], cwd: string, password?: string): Promise<void> {
-  const child = Bun.spawn(command, {
-    cwd,
-    stdin:
-      password === undefined ? "ignore" : new TextEncoder().encode(`${password}\n${password}\n`),
-    stdout: "pipe",
-    stderr: "pipe",
-  });
-  const [status, stdout, stderr] = await Promise.all([
-    child.exited,
-    new Response(child.stdout).text(),
-    new Response(child.stderr).text(),
-  ]);
-  if (status !== 0) {
-    const detail = stderr.trim() || stdout.trim();
-    throw new CliError(
-      `Signing failed: ${command[0]} exited with ${status}${detail ? `\n${detail}` : ""}`,
-    );
-  }
-}
-
-function readExistingManifest(path: string): UpdateManifest | undefined {
-  if (!existsSync(path) || !statSync(path).isFile()) return undefined;
-  try {
-    return JSON.parse(readFileSync(path, "utf8")) as UpdateManifest;
-  } catch {
-    return undefined;
-  }
+  return writeAppcast(input);
 }

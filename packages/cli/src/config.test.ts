@@ -58,7 +58,7 @@ test("TOML shares config validation and path resolution with TypeScript", async 
     macos: { minimumSystemVersion: "14.0", notarization: { keychainProfile: "release", keychain: "ci.keychain-db" } },
     windows: { hideConsole: false, nsis: { createDesktopShortcut: false, perMachine: true } },
     linux: { maintainer: "Example <hello@example.com>", categories: ["Development"], deb: false },
-    updates: { manifest: true, baseUrl: "https://example.com/releases/", notesFile: "notes.md" },
+    updates: { manifest: true, target: "github", github: { repository: "example/app" }, changelog: "notes.md" },
     documentTypes: [{ name: "Project", extensions: [".QG"], mimeTypes: ["application/x-quickgui"], role: "Viewer", utTypeIdentifier: "com.example.project", exported: false }],
   };
   writeFileSync(join(root, "quickgui.config.ts"), `export default ${JSON.stringify(input)}`);
@@ -94,8 +94,10 @@ categories = ["Development"]
 deb = false
 [updates]
 manifest = true
-baseUrl = "https://example.com/releases/"
-notesFile = "notes.md"
+target = "github"
+changelog = "notes.md"
+[updates.github]
+repository = "example/app"
 [[documentTypes]]
 name = "Project"
 extensions = [".QG"]

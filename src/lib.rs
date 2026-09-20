@@ -441,14 +441,8 @@ pub use quickgui_system::{
     SessionState, SystemBitness, SystemColor, SystemColorRole, SystemInfo, SystemIntegrationError,
     SystemPreferences, ThermalState,
 };
-#[cfg(feature = "updater")]
-pub use quickgui_system::{
-    AvailableUpdate, DEFAULT_MAX_EXPANDED_UPDATE_BYTES, DEFAULT_MAX_UPDATE_BYTES, InstalledUpdate,
-    MAX_UPDATE_ARCHIVE_ENTRIES, MAX_UPDATE_INSTALLER_ARGUMENT_BYTES,
-    MAX_UPDATE_INSTALLER_ARGUMENTS, MAX_UPDATE_MANIFEST_BYTES, MAX_UPDATE_SIGNATURE_BYTES,
-    UpdateCancellation, UpdateClient, UpdateInstallDisposition, UpdateInstallOptions,
-    UpdateProgress, WindowsUpdateInstallMode, default_update_target,
-};
+#[cfg(all(feature = "updater", not(target_arch = "wasm32")))]
+pub mod updater;
 #[cfg(feature = "crash-reporter")]
 pub use quickgui_system::{
     BacktracePolicy, CRASH_REPORT_SCHEMA_VERSION, CrashKind, CrashLocation, CrashReport,

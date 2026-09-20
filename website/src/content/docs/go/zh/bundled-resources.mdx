@@ -43,6 +43,7 @@ export default defineConfig({
 | --- | --- |
 | macOS `.app` | `Contents/Resources` |
 | Linux AppDir, AppImage, and `.deb` | Next to the executable (`usr/bin`) |
+| Linux `install.sh` tarball | Next to the executable (`~/.local/<package>.app/bin`) |
 | Windows installer | Next to the executable in `$INSTDIR` |
 
 运行时把打包后的名称拼到 `ResourceDir` 上；不要从项目树或当前工作目录读取。
