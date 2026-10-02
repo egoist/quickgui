@@ -791,32 +791,18 @@ impl Runtime {
                 return;
             }
         };
-        let native_buttons = match rfd_prompt_buttons(&buttons) {
-            Ok(buttons) => buttons,
+        let alert = match portable_alert(
+            native_window.as_deref(),
+            level,
+            &message,
+            detail.as_deref(),
+            buttons,
+        ) {
+            Ok(alert) => alert,
             Err(error) => {
                 responder.complete(Err(error));
                 return;
             }
-        };
-
-        let mut dialog = rfd::AsyncMessageDialog::new()
-            .set_level(match level {
-                PromptLevel::Info => rfd::MessageLevel::Info,
-                PromptLevel::Warning => rfd::MessageLevel::Warning,
-                PromptLevel::Critical => rfd::MessageLevel::Error,
-            })
-            .set_buttons(native_buttons);
-        if let Some(native_window) = &native_window {
-            dialog = dialog.set_parent(native_window.as_ref());
-        }
-        // RFD has a title and one description field rather than AppKit's message/detail pair.
-        // Preserve the hierarchy when a detail exists; otherwise avoid repeating the message.
-        dialog = if let Some(detail) = &detail {
-            dialog
-                .set_title(message.as_ref())
-                .set_description(detail.as_ref())
-        } else {
-            dialog.set_description(message.as_ref())
         };
 
         let id = PlatformDialogId::next();
@@ -828,8 +814,7 @@ impl Runtime {
         let failed_responder = responder.clone();
         let future = async move {
             let _completion = completion;
-            let result = dialog.show().await;
-            responder.complete(rfd_prompt_index(result, &buttons));
+            responder.complete(alert.await);
         };
         let task = match owner {
             Some(owner) => self
@@ -878,31 +863,18 @@ impl Runtime {
                 return;
             }
         };
-        let buttons = options.resolved_buttons();
-        let native_buttons = match rfd_prompt_buttons(&buttons) {
-            Ok(buttons) => buttons,
+        let alert = match portable_alert(
+            native_window.as_deref(),
+            options.level.unwrap_or(PromptLevel::Info),
+            &options.message,
+            options.detail.as_deref(),
+            options.resolved_buttons(),
+        ) {
+            Ok(alert) => alert,
             Err(error) => {
                 responder.complete(Err(error));
                 return;
             }
-        };
-
-        let mut dialog = rfd::AsyncMessageDialog::new()
-            .set_level(match options.level.unwrap_or(PromptLevel::Info) {
-                PromptLevel::Info => rfd::MessageLevel::Info,
-                PromptLevel::Warning => rfd::MessageLevel::Warning,
-                PromptLevel::Critical => rfd::MessageLevel::Error,
-            })
-            .set_buttons(native_buttons);
-        if let Some(native_window) = &native_window {
-            dialog = dialog.set_parent(native_window.as_ref());
-        }
-        dialog = if let Some(detail) = &options.detail {
-            dialog
-                .set_title(options.message.as_ref())
-                .set_description(detail.as_ref())
-        } else {
-            dialog.set_description(options.message.as_ref())
         };
 
         let id = PlatformDialogId::next();
@@ -914,12 +886,9 @@ impl Runtime {
         let failed_responder = responder.clone();
         let future = async move {
             let _completion = completion;
-            let result = dialog.show().await;
-            responder.complete(rfd_prompt_index(result, &buttons).map(|button| {
-                crate::MessageBoxResponse {
-                    button,
-                    checkbox_checked: false,
-                }
+            responder.complete(alert.await.map(|button| crate::MessageBoxResponse {
+                button,
+                checkbox_checked: false,
             }));
         };
         let task = match owner {
@@ -1477,6 +1446,7 @@ impl Runtime {
     }
 }
 
+/// The chosen button index of a portable alert.
 #[cfg(any(
     target_os = "windows",
     target_os = "linux",
@@ -1485,7 +1455,88 @@ impl Runtime {
     target_os = "openbsd",
     target_os = "netbsd"
 ))]
-fn rfd_prompt_buttons(buttons: &[PromptButton]) -> Result<rfd::MessageButtons, PlatformError> {
+type PortableAlert = std::pin::Pin<Box<dyn Future<Output = Result<usize, PlatformError>>>>;
+
+/// Present the alert behind portable prompts and message boxes.
+///
+/// The portable backends have a title and one description rather than AppKit's message/detail
+/// pair. A detail keeps the hierarchy by moving the message into the title; otherwise the message
+/// is the description, so it is not repeated. Windows shows the layout in its task dialog, which
+/// the runtime loads without an application manifest; the other platforms use RFD.
+#[cfg(any(
+    target_os = "windows",
+    target_os = "linux",
+    target_os = "freebsd",
+    target_os = "dragonfly",
+    target_os = "openbsd",
+    target_os = "netbsd"
+))]
+fn portable_alert(
+    parent: Option<&Window>,
+    level: PromptLevel,
+    message: &str,
+    detail: Option<&str>,
+    buttons: Vec<PromptButton>,
+) -> Result<PortableAlert, PlatformError> {
+    validate_portable_alert_buttons(&buttons)?;
+    let (title, description) = match detail {
+        Some(detail) => (Some(message), detail),
+        None => (None, message),
+    };
+    #[cfg(target_os = "windows")]
+    {
+        let parent = parent
+            .map(windows_window::hwnd)
+            .transpose()
+            .map_err(|error| PlatformError::Platform(error.into()))?;
+        let response = windows_task_dialog::show(
+            parent,
+            level,
+            title.unwrap_or_default(),
+            description,
+            &buttons,
+        );
+        Ok(Box::pin(async move {
+            response
+                .await?
+                .or_else(|| dismissed_alert_index(&buttons))
+                .ok_or_else(|| {
+                    PlatformError::Platform("the native alert returned an unknown button".into())
+                })
+        }))
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        let mut dialog = rfd::AsyncMessageDialog::new()
+            .set_level(match level {
+                PromptLevel::Info => rfd::MessageLevel::Info,
+                PromptLevel::Warning => rfd::MessageLevel::Warning,
+                PromptLevel::Critical => rfd::MessageLevel::Error,
+            })
+            .set_buttons(rfd_prompt_buttons(&buttons)?);
+        if let Some(parent) = parent {
+            dialog = dialog.set_parent(parent);
+        }
+        if let Some(title) = title {
+            dialog = dialog.set_title(title);
+        }
+        let dialog = dialog.set_description(description);
+        Ok(Box::pin(async move {
+            rfd_prompt_index(dialog.show().await, &buttons)
+        }))
+    }
+}
+
+/// Every portable backend accepts the button sets RFD can label: one to three distinct labels.
+#[cfg(any(
+    target_os = "windows",
+    target_os = "linux",
+    target_os = "freebsd",
+    target_os = "dragonfly",
+    target_os = "openbsd",
+    target_os = "netbsd"
+))]
+fn validate_portable_alert_buttons(buttons: &[PromptButton]) -> Result<(), PlatformError> {
     if buttons.len() > 3 {
         return Err(PlatformError::Platform(
             "the portable native alert backend supports at most three buttons".into(),
@@ -1500,6 +1551,36 @@ fn rfd_prompt_buttons(buttons: &[PromptButton]) -> Result<rfd::MessageButtons, P
             "the portable native alert backend requires unique button labels".into(),
         ));
     }
+    if buttons.is_empty() {
+        return Err(PlatformError::InvalidButtons);
+    }
+    Ok(())
+}
+
+/// Dismissing a portable alert answers its cancel button, or else its last button.
+#[cfg(any(
+    target_os = "windows",
+    target_os = "linux",
+    target_os = "freebsd",
+    target_os = "dragonfly",
+    target_os = "openbsd",
+    target_os = "netbsd"
+))]
+fn dismissed_alert_index(buttons: &[PromptButton]) -> Option<usize> {
+    buttons
+        .iter()
+        .position(PromptButton::is_cancel)
+        .or_else(|| buttons.len().checked_sub(1))
+}
+
+#[cfg(any(
+    target_os = "linux",
+    target_os = "freebsd",
+    target_os = "dragonfly",
+    target_os = "openbsd",
+    target_os = "netbsd"
+))]
+fn rfd_prompt_buttons(buttons: &[PromptButton]) -> Result<rfd::MessageButtons, PlatformError> {
     Ok(match buttons {
         [first] => rfd::MessageButtons::OkCustom(first.label().to_owned()),
         [first, second] => {
@@ -1515,7 +1596,6 @@ fn rfd_prompt_buttons(buttons: &[PromptButton]) -> Result<rfd::MessageButtons, P
 }
 
 #[cfg(any(
-    target_os = "windows",
     target_os = "linux",
     target_os = "freebsd",
     target_os = "dragonfly",
@@ -1532,10 +1612,7 @@ fn rfd_prompt_index(
         }
         rfd::MessageDialogResult::Ok | rfd::MessageDialogResult::Yes => Some(0),
         rfd::MessageDialogResult::No => (buttons.len() > 1).then_some(1),
-        rfd::MessageDialogResult::Cancel => buttons
-            .iter()
-            .position(PromptButton::is_cancel)
-            .or_else(|| buttons.len().checked_sub(1)),
+        rfd::MessageDialogResult::Cancel => dismissed_alert_index(buttons),
     };
     index.ok_or_else(|| {
         PlatformError::Platform("the native alert returned an unknown button".into())

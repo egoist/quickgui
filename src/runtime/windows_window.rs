@@ -55,7 +55,7 @@ pub(super) fn current_cursor_screen_position(displays: &Displays) -> Result<Poin
     Ok(Point::new(physical.x / scale, physical.y / scale))
 }
 
-fn hwnd(window: &Window) -> Result<HWND, String> {
+pub(super) fn hwnd(window: &Window) -> Result<HWND, String> {
     let handle = window.window_handle().map_err(|error| error.to_string())?;
     let RawWindowHandle::Win32(handle) = handle.as_raw() else {
         return Err("the window does not expose a Win32 handle".to_owned());

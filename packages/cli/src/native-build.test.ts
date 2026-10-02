@@ -53,6 +53,23 @@ test("production Go builds strip symbols and map x64 to amd64", () => {
   expect(sharedLibraryName("darwin-x64")).toBe("libquickgui_host.dylib");
 });
 
+test("Windows Go builds hide the console only in production", () => {
+  const config = resolveConfig({ name: "Go App", identifier: "dev.test.go" }, "/tmp/go-app");
+  const ldflags = (mode: "development" | "production") => {
+    const plan = goBuildPlan({
+      config,
+      mode,
+      target: "windows-x64",
+      executablePath: "/tmp/app.exe",
+      fonts: [],
+    });
+    return plan.argv[plan.argv.indexOf("-ldflags") + 1]!;
+  };
+  // A GUI-subsystem child cannot write to the console `quickgui dev` hands it.
+  expect(ldflags("development")).not.toContain("-H=windowsgui");
+  expect(ldflags("production")).toContain("-H=windowsgui");
+});
+
 test("independent updater names do not require built-in updater configuration, and resources cannot replace another image", async () => {
   const root = mkdtempSync(join(tmpdir(), "quickgui-third-party-build-"));
   const previousDirectory = process.env.QUICKGUI_EXTENSION_DIR;

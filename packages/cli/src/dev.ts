@@ -130,7 +130,7 @@ export async function runDev(options: DevOptions): Promise<number> {
   try {
     watcher = watch(projectRoot, { recursive: true }, (_event, filename) => {
       const path = filename ? resolve(projectRoot, String(filename)) : undefined;
-      if (path && shouldIgnoreChange(projectRoot, path, config.outDir)) {
+      if (shouldIgnoreChange(projectRoot, path, config.outDir)) {
         return;
       }
       if (debounce) clearTimeout(debounce);
@@ -273,13 +273,18 @@ async function stopApplication(child: AppProcess): Promise<void> {
  * @internal
  * `modulesDir` is the native modules directory; the `index.ts` the CLI generates in each module
  * is ignored so writing it during a reload does not queue another one.
+ *
+ * A change without a path is ignored too. Windows reports one when its notification buffer
+ * overflows, which a build rewriting a large executable under `.quickgui` causes; reloading on it
+ * would rebuild, overflow again, and restart the application forever.
  */
 export function shouldIgnoreChange(
   root: string,
-  path: string,
+  path: string | undefined,
   outDir: string,
   modulesDir?: string,
 ): boolean {
+  if (path === undefined) return true;
   const pathFromRoot = relative(root, path);
   if (pathFromRoot.startsWith("..") || isAbsolute(pathFromRoot)) return true;
   if (basename(path).endsWith(".bun-build")) return true;

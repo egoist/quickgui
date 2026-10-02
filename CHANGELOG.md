@@ -4,6 +4,22 @@ All notable user-facing changes to QuickGUI are recorded here.
 
 ## Unreleased
 
+### Windows
+
+- Applications start without a Common Controls manifest. Native prompts linked
+  `TaskDialogIndirect`, which only Common Controls v6 exports, so Go and TypeScript apps failed to
+  load the native library ("The specified procedure could not be found") and Rust executables
+  failed to launch. The runtime now loads the v6 task dialog itself when a prompt opens.
+- `quickgui dev` detects the application's first ready window. The runtime announced readiness
+  only over Unix sockets, so every Windows development launch timed out after 15 seconds.
+- Development builds of Go and TypeScript apps keep the console, so their output and startup errors
+  reach the `quickgui dev` terminal. `windows.hideConsole` applies to production builds only, as
+  it already did for Rust.
+- `quickgui dev` reloads once per change. A rebuild rewriting a TypeScript executable made Windows
+  report a change without a path, which started another rebuild and restarted the app every few
+  seconds. Reloading also no longer fails while the previous app runs: Windows cannot delete its
+  executable, so the build leaves it in staging and the next build removes it.
+
 ## 0.1.6 - 2026-09-20
 
 ### CLI

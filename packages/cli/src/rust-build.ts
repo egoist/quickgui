@@ -2,7 +2,7 @@ import { copyFileSync, existsSync, mkdirSync, statSync, writeFileSync } from "no
 import { dirname, join, resolve } from "node:path";
 
 import type { NativeCompileOptions } from "./native-build.ts";
-import type { ResolvedQuickGuiConfig } from "./config.ts";
+import { hidesWindowsConsole, type ResolvedQuickGuiConfig } from "./config.ts";
 import { CliError } from "./error.ts";
 import { stageExtensionResources, type ExtensionManifest } from "./extensions.ts";
 import { updaterMetadata } from "./packaging/appcast.ts";
@@ -269,9 +269,7 @@ function rustFlags(
 ): string | undefined {
   const flags = [
     process.env.RUSTFLAGS,
-    targetInfo(target).platform === "windows" && config.windows.hideConsole && mode === "production"
-      ? "-C link-arg=/SUBSYSTEM:WINDOWS"
-      : undefined,
+    hidesWindowsConsole(config, target, mode) ? "-C link-arg=/SUBSYSTEM:WINDOWS" : undefined,
   ].filter((flag): flag is string => Boolean(flag));
   return flags.length > 0 ? flags.join(" ") : undefined;
 }

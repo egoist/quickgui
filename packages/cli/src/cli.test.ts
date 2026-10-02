@@ -168,6 +168,12 @@ test("dev watcher ignores Bun compile transients without ignoring source", () =>
   expect(shouldIgnoreChange(root, join(root, "app.tsx"), outDir)).toBe(false);
 });
 
+test("dev watcher ignores changes it cannot attribute to a path", () => {
+  const root = join(tmpdir(), "quickgui-dev-watch");
+  // Windows reports a buffer overflow without a path while a build rewrites its executable.
+  expect(shouldIgnoreChange(root, undefined, join(root, "dist"))).toBe(true);
+});
+
 describe("project configuration", () => {
   test("normalizes paths and creates a filesystem-safe executable name", () => {
     const root = temporaryRoot();

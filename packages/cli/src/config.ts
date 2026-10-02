@@ -9,7 +9,7 @@ import {
   type ResolvedDocumentType,
 } from "./packaging/documents.ts";
 import type { UpdateDestination } from "./packaging/publish.ts";
-import { parseTarget, type QuickGuiTarget } from "./targets.ts";
+import { parseTarget, targetInfo, type QuickGuiTarget } from "./targets.ts";
 
 export type { QuickGuiTarget } from "./targets.ts";
 
@@ -41,6 +41,10 @@ export interface WindowsConfig {
   publisher?: string;
   description?: string;
   copyright?: string;
+  /**
+   * Build production executables for the Windows GUI subsystem so no console window opens.
+   * Defaults to true. Development builds always keep the console, so `quickgui dev` shows output.
+   */
   hideConsole?: boolean;
   /** NSIS installer layout. QuickGUI generates the script and runs `makensis` when available. */
   nsis?: WindowsNsisConfig;
@@ -285,6 +289,20 @@ export interface ResolvedQuickGuiConfig {
     LinuxConfig;
   projectRoot: string;
   configPath: string;
+}
+
+/**
+ * Whether a build links for the Windows GUI subsystem. A GUI-subsystem child cannot write to the
+ * console it inherits, so development builds keep the console and `quickgui dev` shows output.
+ */
+export function hidesWindowsConsole(
+  config: ResolvedQuickGuiConfig,
+  target: QuickGuiTarget,
+  mode: "development" | "production",
+): boolean {
+  return (
+    mode === "production" && targetInfo(target).platform === "windows" && config.windows.hideConsole
+  );
 }
 
 export function defineConfig(config: QuickGuiConfig): QuickGuiConfig {
