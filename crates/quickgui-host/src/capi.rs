@@ -95,18 +95,19 @@ impl Drop for HostAutoreleasePool {
 /// The Go UI goroutine independently submits commands through the nonblocking C ABI.
 #[unsafe(no_mangle)]
 pub extern "C" fn quickgui_run_host() -> c_int {
-    run_host(ready_notifier())
+    run_host()
 }
 
 /// Run the native host loop on the current (main) thread until the application exits.
 ///
 /// Returns the process exit code. A host failure prints its reason and exits with status 1.
-pub fn run_host(on_ready: Option<Box<dyn FnMut()>>) -> i32 {
+/// The core runtime announces the first ready turn on `QUICKGUI_READY_SOCKET` for development.
+pub fn run_host() -> i32 {
     if let Err(error) = HOST.begin() {
         eprintln!("quickgui: {error}");
         return 1;
     }
-    let result = run_app_host_loop(on_ready);
+    let result = run_app_host_loop();
     let code = match result {
         Ok(code) => code,
         Err(error) => {
@@ -117,24 +118,6 @@ pub fn run_host(on_ready: Option<Box<dyn FnMut()>>) -> i32 {
     };
     HOST.finish();
     code
-}
-
-/// Development hosts announce their first ready native turn through `QUICKGUI_READY_SOCKET`.
-fn ready_notifier() -> Option<Box<dyn FnMut()>> {
-    let path = std::env::var_os("QUICKGUI_READY_SOCKET")?;
-    Some(Box::new(move || {
-        #[cfg(unix)]
-        {
-            use std::io::Write as _;
-            if let Ok(mut stream) = std::os::unix::net::UnixStream::connect(&path) {
-                let _ = stream.write_all(b"ready\n");
-            }
-        }
-        #[cfg(not(unix))]
-        {
-            let _ = &path;
-        }
-    }))
 }
 
 #[unsafe(no_mangle)]
@@ -618,14 +601,11 @@ pub unsafe extern "C" fn quickgui_abort(message: *const c_char) {
     HOST.fail(message);
 }
 
-pub(super) fn run_app_host_loop(
-    mut on_ready: Option<Box<dyn FnMut()>>,
-) -> std::result::Result<i32, String> {
+pub(super) fn run_app_host_loop() -> std::result::Result<i32, String> {
     #[cfg(target_os = "macos")]
     let mut autorelease_pool = HostAutoreleasePool::new();
     let mut active_app = None;
     let mut runtime: Option<NativeRuntime> = None;
-    let mut ready_reported = false;
     // Window handles are allocated before the platform mounts them during a native turn.
     // A separate creation notification also covers hidden windows, which may never present.
     let mut pending_windows = Vec::new();
@@ -863,12 +843,6 @@ pub(super) fn run_app_host_loop(
                 )
             })?
             .map_err(|error| error.to_string())?;
-        if !ready_reported {
-            if let Some(on_ready) = on_ready.as_mut() {
-                on_ready();
-            }
-            ready_reported = true;
-        }
         runtime.sync_closed_windows();
         HOST.publish_events(runtime.drain_events());
         #[cfg(target_os = "macos")]

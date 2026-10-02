@@ -1,7 +1,7 @@
 /** Application compilation. Go and TypeScript reuse the Rust shared library; Rust apps link the crate. */
 import { copyFileSync, constants, existsSync, mkdirSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
-import type { ResolvedQuickGuiConfig } from "./config.ts";
+import { hidesWindowsConsole, type ResolvedQuickGuiConfig } from "./config.ts";
 import { CliError } from "./error.ts";
 import { hostTarget, targetInfo, type QuickGuiTarget } from "./targets.ts";
 import { updaterMetadata } from "./packaging/appcast.ts";
@@ -78,7 +78,7 @@ export function goBuildPlan(options: NativeCompileOptions): {
   ).toString("base64url");
   const ldflags = [
     ...(mode === "production" ? ["-s", "-w"] : []),
-    ...(info.platform === "windows" && config.windows.hideConsole ? ["-H=windowsgui"] : []),
+    ...(hidesWindowsConsole(config, target, mode) ? ["-H=windowsgui"] : []),
     "-X",
     `github.com/egoist/quickgui/go/native.buildMetadata=${metadata}`,
   ];

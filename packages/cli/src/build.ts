@@ -4,6 +4,7 @@ import {
   existsSync,
   mkdirSync,
   readFileSync,
+  readdirSync,
   mkdtempSync,
   renameSync,
   rmSync,
@@ -104,7 +105,10 @@ export async function buildProject(
       : config.outDir;
   const targetOutDir = resolve(baseOutDir, options.target);
   mkdirSync(targetOutDir, { recursive: true });
-  const stagingRoot = mkdtempSync(join(targetOutDir, ".quickgui-staging-"));
+  for (const entry of readdirSync(targetOutDir)) {
+    if (entry.startsWith(STAGING_PREFIX)) removeStaging(join(targetOutDir, entry));
+  }
+  const stagingRoot = mkdtempSync(join(targetOutDir, STAGING_PREFIX));
 
   try {
     const staged: StagedBuild =
@@ -177,8 +181,28 @@ export async function buildProject(
       ...(uploaded ? { uploadedUrls: uploaded.urls } : {}),
     };
   } finally {
-    if (existsSync(stagingRoot)) rmSync(stagingRoot, { recursive: true, force: true });
+    removeStaging(stagingRoot);
   }
+}
+
+const STAGING_PREFIX = ".quickgui-staging-";
+
+/**
+ * Replacing a running development app moves its executable and libraries into staging. Windows
+ * can rename those files but not delete them until the app exits, so they stay behind and the
+ * next build removes them.
+ */
+function removeStaging(stagingRoot: string): void {
+  try {
+    rmSync(stagingRoot, { recursive: true, force: true });
+  } catch (error) {
+    if (!isWindowsFileInUse(error)) throw error;
+  }
+}
+
+function isWindowsFileInUse(error: unknown): boolean {
+  const code = (error as NodeJS.ErrnoException | undefined)?.code;
+  return process.platform === "win32" && (code === "EPERM" || code === "EBUSY");
 }
 
 async function buildMacApp(
@@ -565,7 +589,12 @@ function replaceArtifacts(
     throw error;
   }
   for (const backup of backups) {
-    rmSync(backup.backupPath, { recursive: true, force: true });
+    try {
+      rmSync(backup.backupPath, { recursive: true, force: true });
+    } catch (error) {
+      // A running app's previous executable stays in staging; see `removeStaging`.
+      if (!isWindowsFileInUse(error)) throw error;
+    }
   }
 }
 

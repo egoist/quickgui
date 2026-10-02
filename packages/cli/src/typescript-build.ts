@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import type { NativeCompileOptions } from "./native-build.ts";
+import { hidesWindowsConsole } from "./config.ts";
 import { CliError } from "./error.ts";
 import { extensionLibraryName, extensionManifests, type ExtensionManifest } from "./extensions.ts";
 import { updaterMetadata } from "./packaging/appcast.ts";
@@ -79,7 +80,7 @@ export async function compileTypeScriptApplication(
         ...(target.startsWith("windows-")
           ? {
               windows: {
-                hideConsole: config.windows.hideConsole,
+                hideConsole: hidesWindowsConsole(config, target, mode),
                 title: config.name,
                 version: config.version,
               },

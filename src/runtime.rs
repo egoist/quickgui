@@ -437,6 +437,8 @@ mod windows_menu;
 #[cfg(target_os = "windows")]
 mod windows_shell;
 #[cfg(target_os = "windows")]
+mod windows_task_dialog;
+#[cfg(target_os = "windows")]
 mod windows_window;
 
 #[cfg(target_os = "windows")]
